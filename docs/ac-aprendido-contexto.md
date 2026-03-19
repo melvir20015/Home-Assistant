@@ -1,0 +1,204 @@
+# Contexto operativo del aprendizaje del AC
+
+## 1. Descripción física del entorno
+
+El sistema de climatización que se quiere automatizar opera en un apartamento de una recámara. El aire acondicionado es un AC de ventana instalado en la recámara, pero el confort térmico real no depende únicamente de ese punto físico, porque la sala y la cocina están conectadas y forman parte del mismo volumen habitable.
+
+### Distribución relevante
+
+- **Recámara:** contiene el AC de ventana y un sensor de temperatura/humedad.
+- **Sala:** contiene un segundo sensor de temperatura/humedad y además un sensor de movimiento.
+- **Cocina conectada:** comparte la dinámica térmica general con la sala y la recámara, aunque no tenga un sensor dedicado descrito aquí.
+
+### Implicación de diseño
+
+El confort percibido por el usuario no debe modelarse como si todo el apartamento fuera equivalente al punto donde está instalado el AC. El aire se enfría o calienta primero en la recámara, pero el usuario vive el confort como una combinación de:
+
+- la temperatura y humedad de la recámara;
+- la temperatura y humedad de la sala;
+- la diferencia entre ambos espacios;
+- la presencia real detectada en la sala y el uso efectivo del apartamento.
+
+Por eso, cualquier lógica de aprendizaje y decisión debe asumir que el confort térmico relevante surge del conjunto **recámara + sala**, y no solamente del sensor más cercano al equipo.
+
+## 2. Objetivo general de la automatización
+
+La automatización del AC debe perseguir un objetivo práctico de confort, no únicamente el cumplimiento rígido de umbrales aislados.
+
+### Objetivos principales
+
+- Encender y apagar el AC considerando, como mínimo, **temperatura interior**, **humedad**, **temperatura exterior**, **presencia** y **horario**.
+- Tener en cuenta que la decisión correcta puede depender de la combinación de sensores interiores y del contexto ambiental exterior, no de una sola lectura.
+- Aprender de las acciones manuales del usuario para refinar decisiones futuras.
+- Ajustar con el tiempo la agresividad de encendido, apagado y setpoints según el feedback real observado.
+
+### Intención funcional
+
+El sistema no debe entenderse como una fórmula fija. La meta real es aproximarse al **confort percibido por el usuario**. En consecuencia:
+
+- una automatización puede ser “correcta” técnicamente y aun así resultar incómoda;
+- una acción manual del usuario puede contener información más valiosa que un umbral duro;
+- el aprendizaje debe orientar la lógica hacia la experiencia real del usuario, no sólo hacia una regla abstracta.
+
+## 3. Interpretación esperada de acciones manuales
+
+Las acciones manuales son señales de retroalimentación. Deben interpretarse sólo cuando exista suficiente contexto para distinguirlas de eventos automáticos o ambiguos.
+
+### Cuando el AC está en `cool`
+
+- Si el AC estaba en `cool` y el usuario lo **apaga manualmente** por un medio distinto a una rama automática, se debe interpretar como una señal probable de que **ya había demasiado frío**, de que el apagado automático debió ocurrir antes o de que la automatización fue demasiado agresiva.
+- Si el usuario **enciende manualmente** el AC después de un **apagado automático**, se debe interpretar como una señal probable de que el sistema **apagó demasiado pronto**, perdió el confort deseado o no sostuvo suficientemente las condiciones que el usuario esperaba.
+
+### Cuando el AC está en `heat`
+
+La intención conceptual debe ser simétrica para `heat`:
+
+- un apagado manual tras operar en `heat` sugiere que probablemente ya había demasiado calor o que la lógica calentó más de lo necesario;
+- un encendido manual posterior a un apagado automático sugiere que el sistema dejó enfriar demasiado el ambiente o dejó de sostener el confort esperado.
+
+La calibración concreta de cuánto ajustar en `heat` puede diferir de `cool`, pero la interpretación de alto nivel debe conservarse: **las acciones manuales expresan correcciones del usuario sobre el confort percibido**.
+
+## 4. Datos que deben registrarse al aprender
+
+Cuando el sistema detecte una señal manual que sí sea válida para aprendizaje, debe registrar suficiente contexto para que la interpretación futura no dependa de memoria implícita ni de una sola variable.
+
+### Datos mínimos a persistir
+
+- Hora y fecha del evento.
+- Temperatura interior del sensor de recámara.
+- Temperatura interior del sensor de sala.
+- Promedio interior entre ambos sensores.
+- Humedad del sensor de recámara.
+- Humedad del sensor de sala.
+- Promedio de humedad interior.
+- Temperatura exterior aparente.
+- Velocidad del viento, si el modelo o la lógica la usa en esa decisión.
+- Modo del AC en el momento relevante.
+- Setpoint vigente.
+- `fan mode` vigente.
+- Diferencia entre sensores interiores.
+- Tipo de evento manual detectado.
+- Relación entre el evento manual y la última acción automática conocida.
+
+### Criterio de calidad del registro
+
+Registrar estos datos permite distinguir, por ejemplo, entre:
+
+- una queja por exceso de frío en recámara con sala todavía templada;
+- un apagado manual porque ya todo el apartamento estaba confortable;
+- un reencendido manual porque la automatización apagó pronto;
+- una acción manual que en realidad no aporta aprendizaje claro.
+
+Sin este contexto, cualquier ajuste futuro corre el riesgo de sobrecorregir o aprender una conclusión equivocada.
+
+## 5. Relación con helpers clave
+
+Los helpers existentes forman la memoria operativa mínima del sistema. Este documento define el propósito conceptual que futuras automatizaciones deben respetar.
+
+### `input_boolean.ac_off_por_automatizacion`
+
+Este helper funciona como **bandera explícita** para indicar que un apagado reciente fue provocado por la lógica automática y no por el usuario. Su papel principal es evitar que el sistema confunda un apagado automático con una señal manual de descontento térmico.
+
+Debe usarse para responder preguntas como:
+
+- “¿El estado `off` actual proviene de una decisión automática?”
+- “¿Un encendido manual posterior debe interpretarse como feedback contra un apagado automático?”
+
+### Helpers `input_text.ac_last_auto_*`, `input_number.ac_last_auto_*`, `input_datetime.ac_last_auto_ts`
+
+Estos helpers guardan el **contexto de la última acción automática relevante**. Su objetivo es preservar una fotografía operativa del momento en que la automatización actuó.
+
+Deben representar, como mínimo:
+
+- qué rama automática actuó;
+- qué acción ejecutó;
+- qué modo y `fan mode` quedaron establecidos;
+- en qué instante ocurrió;
+- cuáles eran las temperaturas interiores, la humedad, la temperatura exterior, el setpoint y la diferencia entre sensores.
+
+Su utilidad principal es permitir que un evento manual posterior pueda compararse contra una acción automática específica y reciente, en vez de ser interpretado de forma aislada.
+
+### Helpers `input_datetime.ac_last_manual_*`, `input_text.ac_last_manual_*`, `input_number.ac_last_manual_*`
+
+Estos helpers deben almacenar la **traza estructurada de los eventos manuales** reconocidos por el sistema.
+
+Su función incluye:
+
+- registrar cuándo ocurrió el evento manual;
+- clasificar el tipo de feedback detectado;
+- guardar modo, `fan mode`, setpoint y snapshot ambiental asociado;
+- permitir auditoría y recalibración posterior;
+- separar el evento manual inicial del estado final si hubo varios cambios consecutivos.
+
+En términos prácticos, son la base para aprender del usuario sin depender exclusivamente del historial crudo de estados del clima.
+
+### Sesgos `ac_bias_cool_*` y `ac_bias_heat_*`
+
+Estos helpers representan el **aprendizaje acumulado** que modifica la decisión base del sistema.
+
+Conceptualmente:
+
+- `ac_bias_cool_on` y `ac_bias_heat_on` ajustan qué tan pronto o qué tan tarde conviene encender;
+- `ac_bias_cool_off` y `ac_bias_heat_off` ajustan qué tan pronto o qué tan tarde conviene apagar;
+- `ac_bias_cool_setpoint` y `ac_bias_heat_setpoint` ajustan el setpoint preferido cuando existe evidencia consistente.
+
+No deben verse como valores arbitrarios, sino como la memoria resumida de un patrón de feedback manual repetido.
+
+### `input_select.ac_ultimo_modo_no_fan`
+
+Este helper cumple el papel de **memoria operativa del último modo térmico significativo** distinto de un estado puramente de ventilación.
+
+Debe preservar cuál fue el último modo útil para confort (`cool`, `heat`, u otro modo térmicamente relevante definido por la lógica) para que el sistema pueda:
+
+- reanudar contexto después de transiciones a `off` o a estados auxiliares;
+- interpretar correctamente eventos manuales posteriores;
+- distinguir entre “último modo térmico del usuario” y un estado transitorio que no expresa intención térmica.
+
+En otras palabras, ayuda a mantener continuidad semántica entre acciones automáticas, acciones manuales y decisiones de aprendizaje.
+
+## 6. Principios de diseño que no deben romperse
+
+Cualquier modificación futura debe preservar estos principios:
+
+1. **No confundir acciones automáticas con acciones manuales.** Si el origen del cambio no está claro, no debe inferirse aprendizaje fuerte.
+2. **No aprender de eventos ambiguos.** Un evento sin contexto suficiente o sin relación clara con la última acción automática debe considerarse no confiable.
+3. **No depender de un único sensor para representar todo el apartamento.** El modelo de confort debe considerar al menos recámara y sala, así como su diferencia.
+4. **Priorizar el confort percibido del usuario por encima de umbrales rígidos cuando exista feedback manual consistente.**
+5. **Mantener trazabilidad.** Cada ajuste aprendido debería poder explicarse en función de un evento manual y su contexto.
+6. **Evitar sobreajustes por una sola observación.** El aprendizaje debe ser gradual, especialmente cuando las condiciones exteriores cambian.
+
+## 7. Supuestos importantes para futuras modificaciones
+
+Antes de cambiar la lógica, debe asumirse que estos supuestos siguen siendo válidos salvo evidencia explícita en contrario:
+
+- El AC está físicamente en la recámara, pero el confort objetivo es del apartamento habitable y no sólo del punto de instalación.
+- La sala aporta información crítica porque refleja ocupación y equilibrio térmico fuera de la recámara.
+- Un apagado manual en `cool` o `heat` suele indicar exceso respecto al confort esperado, salvo que el contexto demuestre otra cosa.
+- Un encendido manual tras apagado automático suele indicar que el sistema se quedó corto para sostener confort.
+- La diferencia entre sensores interiores importa; no es un dato accesorio.
+- Los helpers de última acción automática y último evento manual son parte del contrato operativo del sistema.
+- Si no puede distinguirse con suficiente confianza entre evento manual y automático, es mejor no aprender.
+
+## 8. Preguntas de validación antes de cambiar la lógica
+
+Toda IA o programador que modifique esta automatización debería responder, como mínimo, estas preguntas:
+
+- ¿La nueva lógica sigue diferenciando de forma confiable entre acciones automáticas y manuales?
+- ¿La propuesta usa información de recámara y sala, o volvió a depender implícitamente de un solo sensor?
+- ¿El cambio conserva la relación entre un evento manual y la última acción automática relevante?
+- ¿Se siguen registrando fecha, contexto ambiental, modo, setpoint, `fan mode` y diferencia entre sensores?
+- ¿El cambio evita aprender de eventos ambiguos o demasiado lejanos en el tiempo?
+- ¿La modificación mejora el confort percibido o sólo endurece umbrales?
+- ¿Los sesgos de `cool` y `heat` siguen representando aprendizaje acumulado y no parches aislados?
+- ¿`input_select.ac_ultimo_modo_no_fan` continúa funcionando como memoria semántica del último modo térmico útil?
+
+## 9. Uso recomendado de este documento
+
+Este archivo debe tomarse como referencia operativa cuando se modifiquen:
+
+- automatizaciones de encendido y apagado del AC;
+- reglas de aprendizaje por feedback manual;
+- helpers de memoria de contexto;
+- criterios para interpretar presencia, horario o clima exterior en decisiones de confort.
+
+Si en el futuro cambia la distribución del apartamento, la ubicación de sensores o la estrategia de aprendizaje, este documento debe actualizarse antes o junto con la lógica correspondiente.
