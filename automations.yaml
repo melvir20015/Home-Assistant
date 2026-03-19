@@ -2588,8 +2588,7 @@
       }}={{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
   mode: single
-- &id001
-  id: ac_pausa_1h_si_off_manual_fisico
+- id: ac_pausa_1h_si_off_manual_fisico
   alias: AC - Pausa 1h si apagan físicamente (OFF manual)
   description: ''
   triggers:
@@ -2632,10 +2631,6 @@
         ttl: 0
         priority: high
   mode: single
-- *id001
-- *id001
-- *id001
-- *id001
 - id: '1769981375283'
   alias: AC - Iniciar bloqueo 2h al apagarse
   description: ''
