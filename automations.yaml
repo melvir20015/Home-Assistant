@@ -1556,7 +1556,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: idle
+          option: off
         action: input_select.select_option
       - choose:
         - conditions:
@@ -1674,7 +1674,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: idle
+          option: off
         action: input_select.select_option
       - data:
           title: AC OFF (sin presencia 30m)
@@ -1899,7 +1899,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: idle
+          option: off
         action: input_select.select_option
       - data:
           title: AC OFF (emergencia objetivo)
@@ -1991,7 +1991,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: idle
+          option: off
         action: input_select.select_option
       - data:
           title: AC OFF (heat por exterior)
@@ -2082,7 +2082,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: idle
+          option: off
         action: input_select.select_option
       - data:
           title: AC OFF (heat objetivo)
@@ -2206,7 +2206,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: idle
+          option: off
         action: input_select.select_option
       - data:
           title: AC OFF (cool objetivo)
@@ -3069,7 +3069,7 @@
   - target:
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
-      option: idle
+      option: off
     action: input_select.select_option
   - choose:
     - conditions:
