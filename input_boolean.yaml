@@ -1,0 +1,37 @@
+ac_bloqueo_cambio_modo_2h:
+  name: "AC - Bloqueo cambio modo 2h"
+
+ac_bloqueo_modo_noche:
+  name: "AC bloqueo modo noche"
+
+ac_tendencia_subiendo_con_ac_off:
+  name: "AC Tendencia subiendo (con AC OFF)"
+  icon: mdi:thermometer
+
+apagar_shield_en_30_min:
+  name: "Apagar SHIELD en 30 min"
+  icon: mdi:toggle-switch-variant-off
+
+ausencia_prolongada_calefaccion:
+  name: "Ausencia Prolongada Calefaccion"
+  icon: mdi:motion-sensor
+
+calefaccion_reciente:
+  name: "Calefacción reciente"
+  icon: mdi:fire-circle
+
+ac_off_por_automatizacion:
+  name: AC OFF por automatización (flag)
+  icon: mdi:robot
+
+ac_on_por_automatizacion:
+  name: AC ON por automatización (flag)
+  icon: mdi:robot
+
+ac_learning_enabled:
+  name: "AC Learning Enabled"
+  icon: mdi:brain
+
+ac_learning_debug:
+  name: "AC Learning Debug"
+  icon: mdi:bug

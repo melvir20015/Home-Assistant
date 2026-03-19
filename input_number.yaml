@@ -1,0 +1,249 @@
+ac_off_avg_final_19_00_21_59:
+  name: "AC OFF Avg Final (19:00-21:59)"
+  min: 0
+  max: 50
+  step: 0.01
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:thermometer
+
+ac_off_avg_inicio_19_00_21_59:
+  name: "AC OFF Avg Inicio (19:00-21:59)"
+  min: 0
+  max: 50
+  step: 0.01
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:thermometer
+
+ac_off_avg_previo_dinamico:
+  name: "AC - OFF avg previo (dinámico)"
+  min: 0
+  max: 60
+  step: 0.01
+  mode: box
+
+ac_off_muestras_19_00_21_59:
+  name: "AC OFF Muestras (19:00-21:59)"
+  min: 0
+  max: 500
+  step: 1
+  mode: box
+  icon: mdi:thermometer
+
+tarifa_kwh_usd:
+  name: "Tarifa KWH USD"
+  min: 0
+  max: 100
+  step: 0.00001
+  mode: slider
+  unit_of_measurement: "USD/kWh"
+  icon: mdi:currency-usd
+
+temp_snapshot_coco_calef:
+  name: "Temp snapshot coco (calef)"
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:thermometer
+
+temp_snapshot_cuarto_calef:
+  name: "Temp snapshot cuarto (calef)"
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:thermometer
+
+ac_last_auto_tin:
+  name: "AC Last Auto Tin"
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_auto_t1:
+  name: "AC Last Auto T1"
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_auto_t2:
+  name: "AC Last Auto T2"
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_auto_hin:
+  name: "AC Last Auto Humidity"
+  min: 0
+  max: 100
+  step: 0.1
+  mode: box
+  unit_of_measurement: "%"
+
+ac_last_auto_tout:
+  name: "AC Last Auto Tout"
+  min: -20
+  max: 60
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_auto_setpoint:
+  name: "AC Last Auto Setpoint"
+  min: 16
+  max: 30
+  step: 0.5
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_auto_sensor_delta:
+  name: "AC Last Auto Sensor Delta"
+  min: 0
+  max: 20
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_manual_tin:
+  name: "AC Last Manual Tin"
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_manual_t1:
+  name: "AC Last Manual T1"
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_manual_t2:
+  name: "AC Last Manual T2"
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_manual_hin:
+  name: "AC Last Manual Humidity"
+  min: 0
+  max: 100
+  step: 0.1
+  mode: box
+  unit_of_measurement: "%"
+
+ac_last_manual_tout:
+  name: "AC Last Manual Tout"
+  min: -20
+  max: 60
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_manual_setpoint:
+  name: "AC Last Manual Setpoint"
+  min: 16
+  max: 30
+  step: 0.5
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_manual_sensor_delta:
+  name: "AC Last Manual Sensor Delta"
+  min: 0
+  max: 20
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_last_manual_final_setpoint:
+  name: "AC Last Manual Final Setpoint"
+  min: 16
+  max: 30
+  step: 0.5
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_bias_cool_on:
+  name: "AC Bias Cool ON"
+  min: -2
+  max: 2
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_bias_cool_off:
+  name: "AC Bias Cool OFF"
+  min: -2
+  max: 2
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_bias_cool_setpoint:
+  name: "AC Bias Cool Setpoint"
+  min: -2
+  max: 2
+  step: 0.5
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_bias_heat_on:
+  name: "AC Bias Heat ON"
+  min: -2
+  max: 2
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_bias_heat_off:
+  name: "AC Bias Heat OFF"
+  min: -2
+  max: 2
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_bias_heat_setpoint:
+  name: "AC Bias Heat Setpoint"
+  min: -2
+  max: 2
+  step: 0.5
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_learning_rate_small:
+  name: "AC Learning Rate Small"
+  min: 0.01
+  max: 0.30
+  step: 0.01
+  mode: box
+
+ac_learning_rate_large:
+  name: "AC Learning Rate Large"
+  min: 0.01
+  max: 0.30
+  step: 0.01
+  mode: box
+
+ac_feedback_window_minutes:
+  name: "AC Feedback Window Minutes"
+  min: 1
+  max: 120
+  step: 1
+  mode: box
+  unit_of_measurement: "min"

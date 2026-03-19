@@ -1,0 +1,43 @@
+ac_last_auto_branch:
+  name: "AC Last Auto Branch"
+  max: 100
+
+ac_last_auto_action:
+  name: "AC Last Auto Action"
+  max: 50
+
+ac_last_auto_mode:
+  name: "AC Last Auto Mode"
+  max: 50
+
+ac_last_auto_fan:
+  name: "AC Last Auto Fan"
+  max: 50
+
+ac_last_manual_event_type:
+  name: "AC Last Manual Event Type"
+  max: 60
+
+ac_last_manual_learning_type:
+  name: "AC Last Manual Learning Type"
+  max: 60
+
+ac_last_manual_feedback_type:
+  name: "AC Last Manual Feedback Type"
+  max: 60
+
+ac_last_manual_feedback_mode:
+  name: "AC Last Manual Feedback Mode"
+  max: 50
+
+ac_last_manual_feedback_fan:
+  name: "AC Last Manual Feedback Fan"
+  max: 50
+
+ac_last_manual_final_mode:
+  name: "AC Last Manual Final Mode"
+  max: 50
+
+ac_last_manual_final_fan:
+  name: "AC Last Manual Final Fan"
+  max: 50

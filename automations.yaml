@@ -1,0 +1,3252 @@
+- id: ac_memoria_y_bloqueo_2h_cool_heat
+  alias: AC - Memoria último modo + Bloqueo 2h Cool/Heat (rolling, a prueba de fan_only)
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: climate.0200009211c7_climate
+    to:
+    - cool
+    - heat
+    for: 00:00:02
+  variables:
+    to_mode: '{{ trigger.to_state.state if trigger.to_state else ''unknown'' }}'
+  action:
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.ac_ultimo_modo_no_fan
+    data:
+      option: '{{ to_mode }}'
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.ac_ultimo_cambio_modo
+    data:
+      timestamp: '{{ now().timestamp() }}'
+  - service: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
+- id: ac_bloqueo_cambio_modo_2h_expira
+  alias: AC - Bloqueo cambio modo 2h (expira por timestamp, rolling)
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /1
+  - platform: state
+    entity_id:
+    - input_datetime.ac_ultimo_cambio_modo
+    - input_select.ac_ultimo_modo_no_fan
+  variables:
+    last_ts: '{{ state_attr(''input_datetime.ac_ultimo_cambio_modo'',''timestamp'')
+      | float(0) }}'
+    last_mode: '{{ states(''input_select.ac_ultimo_modo_no_fan'') }}'
+    expired: '{{ last_ts > 0 and (now().timestamp() - last_ts) >= 7200 }}'
+    invalid_mode: '{{ last_mode not in [''cool'',''heat''] }}'
+  action:
+  - choose:
+    - conditions: '{{ expired or invalid_mode or last_ts == 0 }}'
+      sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
+    default: []
+- id: ac_dinamico_por_tendencia_con_ac_off
+  alias: AC - Modo dinámico por tendencia con AC OFF (23:00-07:00) + cooldown afinado
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /5
+  condition:
+  - condition: time
+    after: '23:00:00'
+    before: 07:00:00
+  - condition: template
+    value_template: '{{ states(''climate.0200009211c7_climate'') in [''off'',''fan_only'']
+      }}'
+  variables:
+    t_cuarto: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(0)
+      }}'
+    t_coco: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(0) }}'
+    cap: 0.7
+    t_coco_filtrado: "{% if (t_coco - t_cuarto) > cap %}\n  {{ (t_cuarto + cap) |
+      round(2) }}\n{% else %}\n  {{ t_coco | round(2) }}\n{% endif %}"
+    avg: '{{ ((t_cuarto + (t_coco_filtrado | float(0))) / 2) | round(2) }}'
+    prev: '{{ states(''input_number.ac_off_avg_previo_dinamico'') | float(0) }}'
+    delta: '{{ (avg - prev) | round(2) }}'
+    umbral: 0.1
+    cooldown_min: 15
+    last_off_ts: '{{ state_attr(''input_datetime.ac_ultimo_apagado'', ''timestamp'')
+      | float(0) }}'
+    cooldown_ok: '{{ last_off_ts > 0 and (now().timestamp() - last_off_ts) >= (cooldown_min
+      * 60) }}'
+    prev_inicializado: '{{ prev > 0 }}'
+  action:
+  - choose:
+    - conditions: '{{ not cooldown_ok }}'
+      sequence: []
+    - conditions: '{{ cooldown_ok and not prev_inicializado }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ac_off_avg_previo_dinamico
+        data:
+          value: '{{ avg }}'
+    - conditions: '{{ cooldown_ok and prev_inicializado }}'
+      sequence:
+      - choose:
+        - conditions: '{{ delta >= umbral }}'
+          sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.ac_modo_dinamico
+            data:
+              option: cool
+        - conditions: '{{ delta <= (0 - umbral) }}'
+          sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.ac_modo_dinamico
+            data:
+              option: heat
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ac_off_avg_previo_dinamico
+        data:
+          value: '{{ avg }}'
+- id: ac_dormitorio_noche_on
+  alias: AC - Noche Enciende Cool sobre 22.7 con tendencia
+  description: 'Enciende el AC en modo COOL si está dentro del horario nocturno y
+    el selector activo lo permite. Respeta bloqueo anti-cambio cool<->heat 2h. Presencia
+    válida: (S24 home) OR (movimiento ON por 5 min).
+
+    '
+  triggers:
+  - entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    above: 22.7
+    trigger: numeric_state
+  - entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    above: 22.7
+    trigger: numeric_state
+  - entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'on'
+    for: 00:05:00
+    id: presencia_on
+    trigger: state
+  - entity_id: device_tracker.samsung_s24
+    to: home
+    for: 00:10:00
+    id: s24_home
+    trigger: state
+  - entity_id: input_select.ac_modo_noche_2200
+    trigger: state
+  - entity_id: input_select.ac_modo_dinamico
+    trigger: state
+  - entity_id: input_boolean.calefaccion_reciente
+    to: 'off'
+    trigger: state
+  - entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
+    to: 'off'
+    trigger: state
+  conditions:
+  - condition: or
+    conditions:
+    - condition: time
+      after: '22:00:00'
+    - condition: time
+      before: 07:00:00
+  - condition: template
+    value_template: "{% set hm = now().strftime('%H:%M:%S') %} {% if hm >= '22:00:00'
+      and hm < '23:00:00' %}\n  {{ is_state('input_select.ac_modo_noche_2200','cool')
+      }}\n{% else %}\n  {{ is_state('input_select.ac_modo_dinamico','cool') }}\n{%
+      endif %}"
+  - condition: state
+    entity_id: climate.0200009211c7_climate
+    state:
+    - 'off'
+    - cool
+    - fan_only
+  - condition: template
+    value_template: "{% set last = states('input_select.ac_ultimo_modo_no_fan') %}
+      {% if last == 'heat' %}\n  {{ is_state('input_boolean.ac_bloqueo_cambio_modo_2h','off')
+      }}\n{% else %}\n  true\n{% endif %}"
+  - condition: state
+    entity_id: input_boolean.calefaccion_reciente
+    state: 'off'
+  - condition: numeric_state
+    entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    above: 22.7
+  - condition: numeric_state
+    entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    above: 22.7
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: device_tracker.samsung_s24
+      state: home
+    - condition: state
+      entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+      state: 'on'
+  actions:
+  - target:
+      entity_id: climate.0200009211c7_climate
+    action: climate.turn_on
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      hvac_mode: cool
+    action: climate.set_hvac_mode
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      temperature: 20
+    action: climate.set_temperature
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      fan_mode: Low
+    action: climate.set_fan_mode
+  - target:
+      entity_id: input_boolean.ac_bloqueo_modo_noche
+    action: input_boolean.turn_on
+  mode: single
+- id: ac_dormitorio_noche_off_temp
+  alias: AC - Apaga Cool a 22.2 (Noche)
+  mode: single
+  trigger:
+  - platform: numeric_state
+    entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    below: 22.2
+  - platform: numeric_state
+    entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    below: 22.2
+  condition:
+  - condition: or
+    conditions:
+    - condition: time
+      after: '22:00:00'
+    - condition: time
+      before: 07:00:00
+  - condition: numeric_state
+    entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    below: 22.2
+  - condition: numeric_state
+    entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    below: 22.2
+  - condition: state
+    entity_id: climate.0200009211c7_climate
+    state: cool
+  action:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ ''fan_only'' in (state_attr(''climate.0200009211c7_climate'',''hvac_modes'')
+          or []) }}'
+      sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: fan_only
+      - service: climate.set_fan_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          fan_mode: Low
+      - delay: 00:10:00
+  - service: climate.turn_off
+    target:
+      entity_id: climate.0200009211c7_climate
+  - delay: 00:00:15
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: climate.0200009211c7_climate
+      state: 'off'
+  - service: climate.turn_off
+    target:
+      entity_id: climate.0200009211c7_climate
+- id: ac_dormitorio_noche_off_0700
+  alias: AC - Apaga a las 07:00 am
+  mode: single
+  trigger:
+  - platform: time
+    at: 07:00:00
+  condition:
+  - condition: device
+    type: is_on
+    device_id: b07c5314911b066b8cc4e8d7060aca45
+    entity_id: be2f149d806b6f938839fe01a46dcaea
+    domain: switch
+  action:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ ''fan_only'' in (state_attr(''climate.0200009211c7_climate'',''hvac_modes'')
+          or []) }}'
+      sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: fan_only
+      - service: climate.set_fan_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          fan_mode: Low
+      - delay: 00:10:00
+  - service: climate.turn_off
+    target:
+      entity_id: climate.0200009211c7_climate
+  - delay: 00:00:15
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: climate.0200009211c7_climate
+      state: 'off'
+  - service: climate.turn_off
+    target:
+      entity_id: climate.0200009211c7_climate
+- id: ac_dia_cool_presencia_245
+  alias: AC - Día Enciende cool si hace calor y hay presencia
+  description: 'Enciende el AC en modo cool (20 °C) y ventilador Auto entre 08:00
+    y 21:59. Presencia válida: (S24 home) OR (ausencia_prolongada_calefaccion OFF
+    + movimiento ON).
+
+    '
+  triggers:
+  - entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    above: 23.5
+    trigger: numeric_state
+  - entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    above: 23.5
+    trigger: numeric_state
+  - entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'on'
+    for: 00:05:00
+    id: presencia_on
+    trigger: state
+  - entity_id: device_tracker.samsung_s24
+    to: home
+    for: 00:10:00
+    id: s24_home
+    trigger: state
+  - entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
+    to: 'off'
+    trigger: state
+  conditions:
+  - condition: time
+    after: 08:00:00
+    before: '21:59:00'
+  - condition: state
+    entity_id: climate.0200009211c7_climate
+    state:
+    - 'off'
+    - cool
+  - condition: template
+    value_template: "{% set last = states('input_select.ac_ultimo_modo_no_fan') %}
+      {% if last == 'heat' %}\n  {{ is_state('input_boolean.ac_bloqueo_cambio_modo_2h','off')
+      }}\n{% else %}\n  true\n{% endif %}"
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: device_tracker.samsung_s24
+      state: home
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: input_boolean.ausencia_prolongada_calefaccion
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+        state: 'on'
+  - condition: numeric_state
+    entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    above: 23.5
+  - condition: numeric_state
+    entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    above: 23.5
+  actions:
+  - target:
+      entity_id: climate.0200009211c7_climate
+    action: climate.turn_on
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      hvac_mode: cool
+    action: climate.set_hvac_mode
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      fan_mode: Auto
+    action: climate.set_fan_mode
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      temperature: 20
+    action: climate.set_temperature
+  mode: single
+- id: ac_dia_cool_off_frio_o_ausencia
+  alias: AC - Apaga Cool bajando de 23 o no presencia.
+  description: 'Apaga el AC si ambos sensores bajan de 23 °C, o si no hay presencia
+    30 min y el S24 NO está en casa, entre 08:00 y 21:59, solo en modo cool.
+
+    '
+  mode: single
+  trigger:
+  - platform: numeric_state
+    entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    below: 23
+    for: 00:02:00
+    id: frio_cuarto
+  - platform: numeric_state
+    entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    below: 23
+    for: 00:02:00
+    id: frio_coco
+  - platform: state
+    entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'off'
+    for: 00:30:00
+    id: ausencia_30m
+  condition:
+  - condition: time
+    after: 08:00:00
+    before: '21:59:00'
+  - condition: state
+    entity_id: climate.0200009211c7_climate
+    state: cool
+  action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: ausencia_30m
+      - condition: state
+        entity_id: device_tracker.samsung_s24
+        state: not_home
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ ''fan_only'' in (state_attr(''climate.0200009211c7_climate'',''hvac_modes'')
+              or []) }}'
+          sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              hvac_mode: fan_only
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Low
+          - delay: 00:10:00
+      - service: climate.turn_off
+        target:
+          entity_id: climate.0200009211c7_climate
+      - delay: 00:00:15
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: climate.0200009211c7_climate
+          state: 'off'
+      - service: climate.turn_off
+        target:
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+        below: 23
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_coco_temperatura
+        below: 23
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ ''fan_only'' in (state_attr(''climate.0200009211c7_climate'',''hvac_modes'')
+              or []) }}'
+          sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              hvac_mode: fan_only
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Low
+          - delay: 00:10:00
+      - service: climate.turn_off
+        target:
+          entity_id: climate.0200009211c7_climate
+      - delay: 00:00:15
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: climate.0200009211c7_climate
+          state: 'off'
+      - service: climate.turn_off
+        target:
+          entity_id: climate.0200009211c7_climate
+- id: ac_noche_heat_on_225
+  alias: AC - Enciende calefaccion debajo de 22.5 (Noche)
+  description: 'Enciende HEAT durante la noche solo si el selector activo permite
+    HEAT. Presencia válida: (S24 home) OR (ausencia_prolongada_calefaccion OFF + movimiento
+    ON). Respeta bloqueo anti-cambio cool<->heat 2h.
+
+    '
+  triggers:
+  - entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    below: 22.5
+    trigger: numeric_state
+  - entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    below: 22.5
+    trigger: numeric_state
+  - entity_id: input_select.ac_modo_noche_2200
+    trigger: state
+  - entity_id: input_select.ac_modo_dinamico
+    trigger: state
+  - entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
+    to: 'off'
+    trigger: state
+  - entity_id: device_tracker.samsung_s24
+    to: home
+    for: 00:10:00
+    id: s24_home
+    trigger: state
+  - entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'on'
+    for: 00:05:00
+    id: presencia_on
+    trigger: state
+  conditions:
+  - condition: or
+    conditions:
+    - condition: time
+      after: '22:00:00'
+    - condition: time
+      before: 07:00:00
+  - condition: template
+    value_template: "{% set hm = now().strftime('%H:%M:%S') %} {% if hm >= '22:00:00'
+      and hm < '23:00:00' %}\n  {{ is_state('input_select.ac_modo_noche_2200','heat')
+      }}\n{% else %}\n  {{ is_state('input_select.ac_modo_dinamico','heat') }}\n{%
+      endif %}"
+  - condition: state
+    entity_id: climate.0200009211c7_climate
+    state:
+    - 'off'
+    - heat
+    - fan_only
+  - condition: template
+    value_template: "{% set last = states('input_select.ac_ultimo_modo_no_fan') %}
+      {% if last == 'cool' %}\n  {{ is_state('input_boolean.ac_bloqueo_cambio_modo_2h','off')
+      }}\n{% else %}\n  true\n{% endif %}"
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: device_tracker.samsung_s24
+      state: home
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: input_boolean.ausencia_prolongada_calefaccion
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+        state: 'on'
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+        below: 22.5
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_coco_temperatura
+        below: 22.5
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+        above: 22.5
+        below: 23
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_coco_temperatura
+        above: 22.5
+        below: 23
+  actions:
+  - target:
+      entity_id: climate.0200009211c7_climate
+    action: climate.turn_on
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      hvac_mode: heat
+    action: climate.set_hvac_mode
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      fan_mode: Low
+    action: climate.set_fan_mode
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      temperature: 28
+    action: climate.set_temperature
+  - target:
+      entity_id: input_boolean.ac_bloqueo_modo_noche
+    action: input_boolean.turn_on
+  mode: single
+- id: ac_noche_heat_off_23
+  alias: AC - Apaga calefacción a 23 (Noche)
+  description: Apaga HEAT si sube a 23.5+ en ambos sensores durante la noche.
+  triggers:
+  - entity_id:
+    - sensor.lumi_lumi_weather_cuarto_temperatura
+    above: 24.5
+    trigger: numeric_state
+  - entity_id:
+    - sensor.lumi_lumi_weather_coco_temperatura
+    above: 24.5
+    trigger: numeric_state
+  conditions:
+  - condition: or
+    conditions:
+    - condition: time
+      after: '22:00:00'
+    - condition: time
+      before: 07:00:00
+  - condition: numeric_state
+    entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    above: 24.5
+  - condition: numeric_state
+    entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    above: 24.5
+  - condition: state
+    entity_id: climate.0200009211c7_climate
+    state: heat
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ ''fan_only'' in (state_attr(''climate.0200009211c7_climate'',''hvac_modes'')
+          or []) }}'
+      sequence:
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: fan_only
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          fan_mode: Low
+        action: climate.set_fan_mode
+      - delay: 00:05:00
+  - target:
+      entity_id: climate.0200009211c7_climate
+    action: climate.turn_off
+  - delay: 00:00:15
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: climate.0200009211c7_climate
+      state: 'off'
+  - target:
+      entity_id: climate.0200009211c7_climate
+    action: climate.turn_off
+  mode: single
+- id: ac_dia_heat_on_por_ausencia
+  alias: AC - En el Día Enciende Calefacción si hace frío y hay presencia (sin tendencia)
+  description: 'Enciende HEAT de día cuando hace frío y hay presencia válida: (S24
+    home) OR (ausencia_prolongada_calefaccion OFF + movimiento ON). Respeta bloqueo
+    anti-cambio cool<->heat 2h.
+
+    '
+  triggers:
+  - entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    below: 22.5
+    id: frio_cuarto
+    trigger: numeric_state
+  - entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    below: 22.5
+    id: frio_coco
+    trigger: numeric_state
+  - entity_id: device_tracker.samsung_s24
+    to: home
+    for: 00:10:00
+    id: s24_home
+    trigger: state
+  - entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'on'
+    for: 00:05:00
+    id: presencia_on
+    trigger: state
+  - entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
+    to: 'off'
+    id: desbloqueo_modo
+    trigger: state
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '21:59:00'
+  - condition: template
+    value_template: "{% set last = states('input_select.ac_ultimo_modo_no_fan') %}
+      {% if last == 'cool' %}\n  {{ is_state('input_boolean.ac_bloqueo_cambio_modo_2h','off')
+      }}\n{% else %}\n  true\n{% endif %}"
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: device_tracker.samsung_s24
+      state: home
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: input_boolean.ausencia_prolongada_calefaccion
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+        state: 'on'
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+        below: 22.5
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_coco_temperatura
+        below: 22.5
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+        above: 22.5
+        below: 23
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_coco_temperatura
+        above: 22.5
+        below: 23
+  - condition: template
+    value_template: "{{ not (\n  is_state('climate.0200009211c7_climate','heat')\n
+      \ and state_attr('climate.0200009211c7_climate','hvac_action') == 'heating'\n)
+      }}"
+  actions:
+  - target:
+      entity_id: climate.0200009211c7_climate
+    action: climate.turn_on
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      hvac_mode: heat
+    action: climate.set_hvac_mode
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      fan_mode: Auto
+    action: climate.set_fan_mode
+  - target:
+      entity_id: climate.0200009211c7_climate
+    data:
+      temperature: 30
+    action: climate.set_temperature
+  mode: single
+- id: ac_dia_heat_off_por_ausencia_o_calor
+  alias: AC - Durante el dia apaga calefaccion por ausencia o calor
+  description: Apaga HEAT de día si ambos sensores > 24.5 o ausencia 30m + S24 fuera.
+  mode: single
+  trigger:
+  - platform: numeric_state
+    entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+    above: 24.5
+  - platform: numeric_state
+    entity_id: sensor.lumi_lumi_weather_coco_temperatura
+    above: 24.5
+  - platform: state
+    entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'off'
+    for: 00:30:00
+  condition:
+  - condition: time
+    after: 07:01:00
+    before: '21:59:59'
+  - condition: state
+    entity_id: climate.0200009211c7_climate
+    state: heat
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_cuarto_temperatura
+        above: 24.5
+      - condition: numeric_state
+        entity_id: sensor.lumi_lumi_weather_coco_temperatura
+        above: 24.5
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+        state: 'off'
+        for: 00:30:00
+      - condition: state
+        entity_id: device_tracker.samsung_s24
+        state: not_home
+  action:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ ''fan_only'' in (state_attr(''climate.0200009211c7_climate'',''hvac_modes'')
+          or []) }}'
+      sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: fan_only
+      - service: climate.set_fan_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          fan_mode: Low
+      - delay: 00:05:00
+  - service: climate.turn_off
+    target:
+      entity_id: climate.0200009211c7_climate
+  - delay: 00:00:15
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: climate.0200009211c7_climate
+      state: 'off'
+  - service: climate.turn_off
+    target:
+      entity_id: climate.0200009211c7_climate
+- id: helper_ausencia_prolongada_calefaccion_on
+  alias: Helper - Ausencia prolongada calefacción
+  description: Marca una bandera cuando no hay presencia por 1 hora
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'off'
+    for: 01:00:00
+  action:
+  - service: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.ausencia_prolongada_calefaccion
+- id: helper_ausencia_prolongada_calefaccion_off
+  alias: Helper - Resetea ausencia prolongada calefacción
+  description: Apaga el helper cuando vuelve la presencia (confirmada 5 min) o llegas
+    a casa
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'on'
+    for: 00:05:00
+  - platform: state
+    entity_id: device_tracker.samsung_s24
+    to: home
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.ausencia_prolongada_calefaccion
+- id: helper_calefaccion_reciente_3h
+  alias: Helper - Marca calefaccion reciente 2 horas
+  description: Mantiene la bandera en on durante 2 horas desde el último cambio SALIENDO
+    de heat
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: climate.0200009211c7_climate
+    from: heat
+  action:
+  - service: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.calefaccion_reciente
+  - delay: 02:00:00
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.calefaccion_reciente
+- id: ac_noche_reset_tendencia_off_1900
+  alias: AC - Noche Reset tendencia OFF (19:00)
+  mode: single
+  trigger:
+  - platform: time
+    at: '19:00:00'
+  action:
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.ac_off_muestras_19_00_21_59
+    data:
+      value: 0
+  - service: input_number.set_value
+    target:
+      entity_id:
+      - input_number.ac_off_avg_inicio_19_00_21_59
+      - input_number.ac_off_avg_final_19_00_21_59
+    data:
+      value: 0
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.ac_tendencia_subiendo_con_ac_off
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.ac_bloqueo_modo_noche
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.ac_modo_noche_2200
+    data:
+      option: none
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.ac_modo_dinamico
+    data:
+      option: none
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.ac_off_avg_previo_dinamico
+    data:
+      value: 0
+- id: ac_noche_muestreo_tendencia_off
+  alias: AC - Noche Muestreo tendencia solo AC OFF
+  description: Muestrea cada 2 min entre 19:00-22:00 cuando AC está off o fan_only.
+    Filtra Coco con clamp anti-cocina.
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /2
+  condition:
+  - condition: time
+    after: '19:00:00'
+    before: '22:00:00'
+  - condition: template
+    value_template: '{{ states(''climate.0200009211c7_climate'') in [''off'',''fan_only'']
+      }}'
+  action:
+  - variables:
+      t_cuarto: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(0)
+        }}'
+      t_coco: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(0)
+        }}'
+      cap: 0.7
+      t_coco_filtrado: "{% if (t_coco - t_cuarto) > cap %}\n  {{ (t_cuarto + cap)
+        | round(2) }}\n{% else %}\n  {{ t_coco | round(2) }}\n{% endif %}"
+      avg: '{{ ((t_cuarto + (t_coco_filtrado | float(0))) / 2) | round(2) }}'
+      n: '{{ states(''input_number.ac_off_muestras_19_00_21_59'') | int(0) }}'
+  - choose:
+    - conditions: '{{ n == 0 }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ac_off_avg_inicio_19_00_21_59
+        data:
+          value: '{{ avg }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.ac_off_avg_final_19_00_21_59
+    data:
+      value: '{{ avg }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.ac_off_muestras_19_00_21_59
+    data:
+      value: '{{ n + 1 }}'
+- id: ac_noche_decide_tendencia_off_2159
+  alias: AC - Noche Decide tendencia OFF (21:59)
+  description: Decide si la tendencia (filtrada) sube entre 19:00 y 21:59.
+  mode: single
+  trigger:
+  - platform: time
+    at: '21:59:00'
+  action:
+  - variables:
+      inicio: '{{ states(''input_number.ac_off_avg_inicio_19_00_21_59'') | float(0)
+        }}'
+      final: '{{ states(''input_number.ac_off_avg_final_19_00_21_59'') | float(0)
+        }}'
+      n: '{{ states(''input_number.ac_off_muestras_19_00_21_59'') | int(0) }}'
+      delta: '{{ (final - inicio) | round(2) }}'
+      umbral: 0.1
+      min_muestras: 30
+  - choose:
+    - conditions: '{{ n >= min_muestras and delta >= umbral }}'
+      sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ac_tendencia_subiendo_con_ac_off
+    default:
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.ac_tendencia_subiendo_con_ac_off
+- id: ac_noche_decide_modo_2200
+  alias: AC - Noche Decide modo final (22:00) con bloqueo (no cae a none si AC estaba
+    ON)
+  mode: single
+  trigger:
+  - platform: time
+    at: '22:00:00'
+  condition:
+  - condition: template
+    value_template: '{{ states(''input_select.ac_modo_noche_2200'') in [''none'',''unknown'',''unavailable'']
+      }}'
+  variables:
+    cl: '{{ states(''climate.0200009211c7_climate'') }}'
+    last_no_fan: '{{ states(''input_select.ac_ultimo_modo_no_fan'') }}'
+    t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(0) }}'
+    t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(0) }}'
+    tendencia_sube: '{{ is_state(''input_boolean.ac_tendencia_subiendo_con_ac_off'',''on'')
+      }}'
+    calefaccion_reciente: '{{ is_state(''input_boolean.calefaccion_reciente'',''on'')
+      }}'
+  action:
+  - choose:
+    - conditions: '{{ cl in [''cool'',''heat''] }}'
+      sequence:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.ac_modo_noche_2200
+        data:
+          option: '{{ cl }}'
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ac_bloqueo_modo_noche
+    - conditions: '{{ cl == ''fan_only'' and last_no_fan in [''cool'',''heat''] }}'
+      sequence:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.ac_modo_noche_2200
+        data:
+          option: '{{ last_no_fan }}'
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ac_bloqueo_modo_noche
+    - conditions: '{{ cl == ''off'' }}'
+      sequence:
+      - choose:
+        - conditions: '{{ t1 > 22.7 and t2 > 22.7 and tendencia_sube and not calefaccion_reciente
+            }}'
+          sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.ac_modo_noche_2200
+            data:
+              option: cool
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.ac_bloqueo_modo_noche
+        - conditions: '{{ t1 < 22.5 and t2 < 22.5 }}'
+          sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.ac_modo_noche_2200
+            data:
+              option: heat
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.ac_bloqueo_modo_noche
+        - conditions: '{{ (t1 >= 22.5 and t1 < 23) and (t2 >= 22.5 and t2 < 23) and
+            not tendencia_sube }}'
+          sequence:
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.ac_modo_noche_2200
+            data:
+              option: heat
+          - service: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.ac_bloqueo_modo_noche
+        default:
+        - service: input_select.select_option
+          target:
+            entity_id: input_select.ac_modo_noche_2200
+          data:
+            option: none
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.ac_bloqueo_modo_noche
+    default:
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.ac_modo_noche_2200
+      data:
+        option: none
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.ac_bloqueo_modo_noche
+- id: ac_noche_desbloquea_modo_0700
+  alias: AC - Noche Desbloquea modo (07:00)
+  mode: single
+  trigger:
+  - platform: time
+    at: 07:00:00
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.ac_bloqueo_modo_noche
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.ac_modo_noche_2200
+    data:
+      option: none
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.ac_modo_dinamico
+    data:
+      option: none
+- id: tv_apaga_si_no_movimiento_15m
+  alias: Apaga TV si no hay movimiento
+  mode: single
+  trigger:
+  - platform: device
+    type: not_occupied
+    device_id: 9e34fa9a4109a8d91ad290cf5e8804c5
+    entity_id: 3c09d62ea03fb985b4793f6d9ec6e5be
+    domain: binary_sensor
+    for:
+      minutes: 15
+  condition:
+  - condition: device
+    device_id: 4b5d3b1711fd182e022fadf04e569a10
+    domain: media_player
+    entity_id: 574fff47ea5c0427ec2847f0abca9a99
+    type: is_on
+  action:
+  - type: turn_off
+    device_id: 4b5d3b1711fd182e022fadf04e569a10
+    entity_id: e643b26a1dbb8954fc955e220899de91
+    domain: remote
+- id: notifica_movimiento_despues_1h
+  alias: Notificación - Movimiento después de 1h sin actividad
+  description: Notifica cuando hay movimiento tras 60+ min sin actividad (08:00-20:00).
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'on'
+  condition:
+  - condition: time
+    after: 08:00:00
+    before: '20:00:00'
+  - condition: template
+    value_template: "{{ trigger.from_state is not none\n   and trigger.from_state.state
+      == 'off'\n   and (as_timestamp(trigger.to_state.last_changed)\n        - as_timestamp(trigger.from_state.last_changed))
+      >= 3600 }}"
+  action:
+  - service: notify.mobile_app_samsung_s24
+    data:
+      title: Movimiento detectado en casa
+      message: Hubo movimiento después de 1 hora o mas sin actividad.
+- id: aviso_afuera_mas_fresco_cool
+  alias: Aviso - Afuera más fresco que adentro (AC en cool, Met.no)
+  description: Notifica si el AC está en cool y afuera está 5°C más fresco (solo de
+    día).
+  mode: single
+  trigger:
+  - platform: state
+    entity_id:
+    - climate.0200009211c7_climate
+    - sensor.lumi_lumi_weather_cuarto_temperatura
+    - sensor.lumi_lumi_weather_coco_temperatura
+    - sensor.temperatura_exterior_metno
+  - platform: time_pattern
+    minutes: /10
+  condition:
+  - condition: time
+    after: 08:00:00
+    before: '20:00:00'
+  - condition: state
+    entity_id: climate.0200009211c7_climate
+    state: cool
+  - condition: template
+    value_template: '{% set t_cuarto = states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(0)
+      %} {% set t_coco   = states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(0)
+      %} {% set t_in     = (t_cuarto + t_coco) / 2 %} {% set t_out    = states(''sensor.temperatura_exterior_metno'')|float(100)
+      %} {{ t_in - t_out >= 5 }}'
+  action:
+  - service: notify.mobile_app_samsung_s24
+    data:
+      title: Afuera está más fresco
+      message: El aire acondicionado está en modo COOL y afuera está al menos 5 °C
+        más fresco que adentro.
+- id: shield_programa_apagado_30m
+  alias: TV Dormitorio - Programar apagado 30 min
+  description: Inicia o cancela el timer de apagado de la SHIELD
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_boolean.apagar_shield_en_30_min
+  action:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.apagar_shield_en_30_min
+        state: 'on'
+      sequence:
+      - service: timer.start
+        target:
+          entity_id: timer.timer_apagado_tv_dormitorio
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.apagar_shield_en_30_min
+        state: 'off'
+      sequence:
+      - service: timer.cancel
+        target:
+          entity_id: timer.timer_apagado_tv_dormitorio
+- id: shield_apaga_al_terminar_timer_30m
+  alias: TV Dormitorio - Apaga SHIELD al terminar timer
+  description: Apaga la SHIELD cuando termina el timer de 30 min
+  mode: single
+  trigger:
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.timer_apagado_tv_dormitorio
+  condition:
+  - condition: state
+    entity_id: media_player.shield_android_tv_2
+    state: 'on'
+  action:
+  - service: media_player.turn_off
+    target:
+      entity_id: media_player.shield_android_tv_2
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.apagar_shield_en_30_min
+- id: '1766870769686'
+  alias: AC - Guardar último apagado (solo OFF)
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: climate.0200009211c7_climate
+    to: 'off'
+  action:
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.ac_ultimo_apagado
+    data:
+      timestamp: '{{ now().timestamp() }}'
+- id: '1768016118285'
+  alias: AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones
+  description: '21:00–07:00: Control nocturno inteligente HEAT/COOL/OFF usando temperatura
+    interior vs exterior (OpenWeather apparent_temperature), presencia estable, histéresis,
+    bloqueo 2h y ajuste de emergencia por humedad (punto de rocío). Emergencia COOL
+    SOLO si exterior aparente < 17°C. Promedio de 2 sensores (temp y humedad). Notifica
+    SOLO cuando hace ON/OFF.
+
+    '
+  triggers:
+  - minutes: /5
+    trigger: time_pattern
+  - entity_id:
+    - weather.openweathermap
+    - sensor.lumi_lumi_weather_cuarto_temperatura
+    - sensor.lumi_lumi_weather_coco_temperatura
+    - sensor.lumi_lumi_weather_cuarto_humedad
+    - sensor.lumi_lumi_weather_coco_humedad
+    - input_boolean.ac_bloqueo_cambio_modo_2h
+    - binary_sensor.presencia_ok_estable
+    - binary_sensor.presencia_s24_estable
+    - binary_sensor.presencia_movimiento_estable
+    trigger: state
+  - entity_id: binary_sensor.presencia_movimiento_estable
+    to: 'on'
+    trigger: state
+  - entity_id: binary_sensor.presencia_s24_estable
+    to: 'on'
+    trigger: state
+  conditions:
+  - condition: time
+    after: '21:00:00'
+    before: 07:00:00
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ (not presence_ok) and cur_mode != ''off'' }}'
+      sequence:
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - data:
+          title: AC OFF (sin presencia)
+          message: '{{ notif_base }} | Prev={{ cur_mode }} | R=sin_pres'
+        action: '{{ notify_service }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ tin is none or tout is none }}'
+      sequence: []
+    - conditions:
+      - condition: template
+        value_template: '{{ cur_mode==''cool'' and tout < cool_emergency_outdoor_min
+          }}'
+      sequence:
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - data:
+          title: AC OFF (cool bloqueado por frío exterior)
+          message: '{{ notif_base }} | Prev=cool | R=ext_bajo | Min={{ cool_emergency_outdoor_min
+            }}'
+        action: '{{ notify_service }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ cur_mode==''heat'' and tout >= heat_force_off_outdoor
+          }}'
+      sequence:
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - data:
+          title: AC OFF (heat bloqueado por exterior templado)
+          message: '{{ notif_base }} | Prev=heat | R=ext_templ | Umbral={{ heat_force_off_outdoor
+            }}'
+        action: '{{ notify_service }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ cur_mode==''heat'' and heat_off is not none and tin>=heat_off
+          }}'
+      sequence:
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - data:
+          title: AC OFF (heat objetivo)
+          message: '{{ notif_base }} | Prev=heat | R=heat_off | On={{ heat_on }} Off={{
+            heat_off }}'
+        action: '{{ notify_service }}'
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode == 'cool'\n   and tin is not none and tout is
+          not none\n   and (\n     (\n       (tout|float) < 17\n       and (tout|float)
+          >= (cool_emergency_outdoor_min|float)\n       and (cool_emergency_off is
+          not none)\n       and (tin|float) <= (cool_emergency_off|float)\n     )\n
+          \    or\n     (\n       (tout|float) >= 17\n       and (cool_off is not
+          none)\n       and (tin|float) <= (cool_off|float)\n     )\n   )\n}}"
+      sequence:
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - data:
+          title: AC OFF (cool objetivo)
+          message: '{{ notif_base }} | Prev=cool | R=cool_off | Ctx={{ ''Emerg'' if
+            (tout|float) < 17 else ''Normal'' }} | TargetOff={{ (cool_emergency_off|float)
+            if (tout|float) < 17 else (cool_off|float) }} | EOn={{ cool_emergency_on
+            }} EOff={{ cool_emergency_off }} | On={{ cool_on }} Off={{ cool_off }}
+            | Set={{ cool_setpoint_emerg if (tout|float) < 17 else cool_setpoint_normal
+            }}'
+        action: '{{ notify_service }}'
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode == 'cool'\n   and tout is not none\n   and (tout|float)
+          < 17\n   and (tout|float) >= (cool_emergency_outdoor_min|float)\n   and
+          tin is not none\n   and (cool_emergency_off is not none)\n   and (tin|float)
+          > (cool_emergency_off|float)\n}}"
+      sequence:
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          temperature: '{{ cool_setpoint_emerg }}'
+        action: climate.set_temperature
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none and\n
+              \  'Low' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: '{{ climate_ent }}'
+            data:
+              fan_mode: Low
+            action: climate.set_fan_mode
+        default: []
+    - conditions:
+      - condition: template
+        value_template: "{{ heat_on is not none\n   and tin is not none and (tin|float)
+          <= (heat_on|float)\n   and (tout|float) < (heat_force_off_outdoor|float)\n
+          \  and cur_mode != 'heat'\n   and (not locked or last_mode_no_fan == 'heat'
+          or last_mode_no_fan not in ['cool','heat'])\n}}"
+      sequence:
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          hvac_mode: heat
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          temperature: 28
+        action: climate.set_temperature
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none and\n
+              \  'Low' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: '{{ climate_ent }}'
+            data:
+              fan_mode: Low
+            action: climate.set_fan_mode
+        default: []
+      - data:
+          title: AC HEAT ON
+          message: '{{ notif_base }} | Act=HEAT | On={{ heat_on }} Off={{ heat_off
+            }} | Set=28 Fan=Low | Prev={{ cur_mode }}'
+        action: '{{ notify_service }}'
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode != 'cool'\n   and tin is not none and tout is
+          not none\n   and (\n     (\n       (tout|float) < 17\n       and (tout|float)
+          >= (cool_emergency_outdoor_min|float)\n       and (cool_emergency_on is
+          not none)\n       and (tin|float) >= (cool_emergency_on|float)\n     )\n
+          \    or\n     (\n       (tout|float) >= 17\n       and cool_on is not none\n
+          \      and (tin|float) >= (cool_on|float)\n     )\n   )\n   and (not locked
+          or last_mode_no_fan == 'cool' or last_mode_no_fan not in ['cool','heat'])\n}}"
+      sequence:
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          hvac_mode: cool
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: '{{ climate_ent }}'
+        data:
+          temperature: '{{ cool_setpoint_emerg if ((tout|float) < 17) else cool_setpoint_normal
+            }}'
+        action: climate.set_temperature
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none and\n
+              \  'Low' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: '{{ climate_ent }}'
+            data:
+              fan_mode: Low
+            action: climate.set_fan_mode
+        default: []
+      - data:
+          title: AC COOL ON
+          message: '{{ notif_base }} | Act=COOL | Ctx={{ ''Emerg'' if ((tout|float)
+            < 17) else ''Normal'' }} | EOn={{ cool_emergency_on }} EOff={{ cool_emergency_off
+            }} | On={{ cool_on }} Off={{ cool_off }} | Set={{ cool_setpoint_emerg
+            if ((tout|float) < 17) else cool_setpoint_normal }} Fan=Low | Prev={{
+            cur_mode }}'
+        action: '{{ notify_service }}'
+    default: []
+  mode: single
+  variables:
+    climate_ent: climate.0200009211c7_climate
+    notify_service: notify.mobile_app_samsung_s24
+    t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(none) }}'
+    t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(none) }}'
+    h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'')|float(none) }}'
+    h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'')|float(none) }}'
+    tin: "{% if t1 is not none and t2 is not none %}\n  {{ ((t1 + t2) / 2) | round(2)
+      }}\n{% elif t1 is not none %}\n  {{ t1 | round(2) }}\n{% elif t2 is not none
+      %}\n  {{ t2 | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    hin: "{% if h1 is not none and h2 is not none %}\n  {{ ((h1 + h2) / 2) | round(1)
+      }}\n{% elif h1 is not none %}\n  {{ h1 | round(1) }}\n{% elif h2 is not none
+      %}\n  {{ h2 | round(1) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    hot_temp: "{% if t1 is none and t2 is none %}\n  {{ none }}\n{% elif t2 is none
+      %}\n  {{ t1 | round(2) }}\n{% elif t1 is none %}\n  {{ t2 | round(2) }}\n{%
+      else %}\n  {{ (t1 if t1 >= t2 else t2) | round(2) }}\n{% endif %}"
+    hot_sensor_name: "{% if t1 is none and t2 is none %}\n  none\n{% elif t2 is none
+      %}\n  Cuarto\n{% elif t1 is none %}\n  Sala\n{% else %}\n  {{ 'Cuarto' if t1
+      >= t2 else 'Sala' }}\n{% endif %}"
+    dewpoint: "{% if tin is none or hin is none %}\n  {{ none }}\n{% else %}\n  {%
+      set T = tin|float %}\n  {% set RH = hin|float %}\n  {% set a = 17.62 %}\n  {%
+      set b = 243.12 %}\n  {% set gamma = (a*T/(b+T)) + (RH/100)|log %}\n  {{ ((b*gamma)/(a-gamma))
+      | round(2) }}\n{% endif %}"
+    dp_offset: "{% if dewpoint is none %}\n  {{ 0 }}\n{% else %}\n  {% set dp = dewpoint|float
+      %}\n  {% if dp >= 20 %}\n    {{ -0.6 }}\n  {% elif dp >= 18 %}\n    {{ -0.4
+      }}\n  {% elif dp >= 16 %}\n    {{ -0.2 }}\n  {% elif dp >= 14 %}\n    {{ -0.1
+      }}\n  {% else %}\n    {{ 0 }}\n  {% endif %}\n{% endif %}"
+    tout: '{{ state_attr(''weather.openweathermap'',''apparent_temperature'')|float(none)
+      }}'
+    wind_kmh: '{{ state_attr(''weather.openweathermap'',''wind_speed'')|float(0) }}'
+    wind: '{{ (wind_kmh / 3.6) | round(2) }}'
+    month: '{{ now().month }}'
+    cur_mode: '{{ states(climate_ent) }}'
+    locked: '{{ is_state(''input_boolean.ac_bloqueo_cambio_modo_2h'',''on'') }}'
+    last_mode_no_fan: '{{ states(''input_select.ac_ultimo_modo_no_fan'') }}'
+    presence_ok: '{{ is_state(''binary_sensor.presencia_ok_estable'',''on'') }}'
+    heat_force_off_outdoor: 20
+    cool_emergency_outdoor_min: 8
+    cool_emergency_on_base: 24
+    cool_emergency_on: '{{ (cool_emergency_on_base + (dp_offset|float)) | round(2)
+      }}'
+    cool_emergency_off: '{{ (cool_emergency_on|float - 0.3) | round(2) }}'
+    cool_setpoint_emerg: '{{ max(((cool_emergency_off|float) - 2) | round(0,''floor''),
+      16) | int }}'
+    cool_on: "{% if tout is none %}\n  {{ none }}\n{% elif tout >= 17 %}\n  {{ 23.3
+      if month in [11,12,1,2,3] else 22.8 if (month in [6,7,8,9] and tout>=30) else
+      23.3 }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    cool_off: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ 22.8 if month
+      in [11,12,1,2,3] else 21.3 if (month in [6,7,8,9] and tout>=30) else 22.5 }}\n{%
+      endif %}"
+    cool_setpoint_normal: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{
+      max(cool_off - 2, 16) | round(1) }}\n{% endif %}"
+    cool_emergency_active: "{{ tout is not none and tin is not none\n   and (tout|float)
+      < 17\n   and (tout|float) >= (cool_emergency_outdoor_min|float)\n   and (\n
+      \    (tin|float) >= (cool_emergency_on|float)\n     or (cur_mode == 'cool' and
+      (tin|float) > (cool_emergency_off|float))\n   )\n}}"
+    heat_on: "{% if tout is none %}\n  {{ none }}\n{% else %}\n  {% set base = 23.0
+      if tout <= 5 else 22.0 if tout >= 17 else (23.0 - ((tout-5)/12)) %}\n  {{ (base
+      + min(wind*0.05,0.8)) | round(2) }}\n{% endif %}"
+    heat_off: '{{ (heat_on + 2) if heat_on is not none else none }}'
+    trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
+      %}\n    t(/5)\n  {% elif trigger.platform == 'state' %}\n    s:{{ trigger.entity_id.split('.')[-1]
+      }}=>{{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
+      \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
+    notif_base: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }} | Trig={{ trig }} | C_T={{
+      t1 }}°C S_T={{ t2 }}°C PromT={{ tin }}°C | C_H={{ h1 }}% S_H={{ h2 }}% PromH={{
+      hin }}% | DP={{ dewpoint }}°C | Ext={{ tout }}°C V={{ wind }}m/s | Pres={{ ''ON''
+      if presence_ok else ''OFF'' }} | Lock={{ ''ON'' if locked else ''OFF'' }} |
+      Last={{ last_mode_no_fan }}'
+- id: '1768159303322'
+  alias: AC - Día dinámico aprendido (principal)
+  description: 'Automatización principal diurna 07:01–20:59. Usa fórmula base + sesgos
+    aprendidos. Respeta presencia jerárquica, pausa manual de 5 min, presencia temporal
+    por encendido manual y aprendizaje por feedback.
+
+    '
+  triggers:
+  - trigger: time_pattern
+    minutes: /5
+  - trigger: state
+    entity_id:
+    - weather.openweathermap
+    - sensor.lumi_lumi_weather_cuarto_temperatura
+    - sensor.lumi_lumi_weather_coco_temperatura
+    - sensor.lumi_lumi_weather_cuarto_humedad
+    - sensor.lumi_lumi_weather_coco_humedad
+    - binary_sensor.presencia_ok_estable
+    - binary_sensor.presencia_movimiento_estable
+    - device_tracker.samsung_s24
+    - person.ivan
+    - input_boolean.ac_bloqueo_cambio_modo_2h
+    - input_select.ac_ultimo_modo_no_fan
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '20:59:00'
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ cur_mode == ''off'' and last_mode_no_fan == ''emergency_cool''
+          and (minutes_since_last_auto | float(99999)) > 2 }}'
+      sequence:
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: idle
+        action: input_select.select_option
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: input_boolean.ac_learning_debug
+            state: 'on'
+          sequence:
+          - data:
+              title: AC DEBUG - Limpieza latch emergencia
+              message: '{{ ts }} | Se limpió emergency_cool atascado porque el AC
+                ya estaba OFF.'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
+    - conditions:
+      - condition: template
+        value_template: '{{ presence_away_30m and cur_mode != ''off'' }}'
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_on
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cur_mode == ''cool'' }}'
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              hvac_mode: fan_only
+            action: climate.set_hvac_mode
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+                  \  and 'Low' in state_attr(climate_ent,'fan_modes') }}"
+              sequence:
+              - target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  fan_mode: Low
+                action: climate.set_fan_mode
+            default: []
+          - delay: '{{ fan_dry_delay }}'
+        default: []
+      - target:
+          entity_id:
+          - input_datetime.ac_ultimo_apagado
+          - input_datetime.ac_last_auto_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: presence_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_mode
+        data:
+          value: '{{ cur_mode }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_fan
+        data:
+          value: '{{ ac_fan }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t1
+        data:
+          value: '{{ t1 if t1 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t2
+        data:
+          value: '{{ t2 if t2 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_hin
+        data:
+          value: '{{ hin if hin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tout
+        data:
+          value: '{{ tout if tout is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ ac_set if ac_set is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_sensor_delta
+        data:
+          value: '{{ sensor_delta }}'
+        action: input_number.set_value
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: idle
+        action: input_select.select_option
+      - data:
+          title: AC OFF (sin presencia 30m)
+          message: '{{ ts }} | Trig={{ trig }} | Prom={{ tin }}°C | Ext={{ tout }}°C
+            | Hum={{ hin }}% | ModoPrev={{ cur_mode }} | Away30m={{ away30_txt }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_off
+    - conditions:
+      - condition: template
+        value_template: "{{ auto_on_allowed\n   and (not recent_any_auto_on)\n   and
+          emergency_hot\n   and (not emergency_latched)\n   and (\n     cur_mode !=
+          'cool'\n     or (ac_set | float(0)) != (emergency_setpoint | float)\n     or
+          ac_fan != emergency_fan_mode\n   ) }}"
+      sequence:
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: emergency_cool
+        action: input_select.select_option
+      - target:
+          entity_id:
+          - input_datetime.ac_ultimo_cambio_modo
+          - input_datetime.ac_last_auto_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: cool_emergency_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_mode
+        data:
+          value: cool
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_fan
+        data:
+          value: '{{ emergency_fan_mode }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t1
+        data:
+          value: '{{ t1 if t1 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t2
+        data:
+          value: '{{ t2 if t2 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_hin
+        data:
+          value: '{{ hin if hin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tout
+        data:
+          value: '{{ tout if tout is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ emergency_setpoint }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_sensor_delta
+        data:
+          value: '{{ sensor_delta }}'
+        action: input_number.set_value
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: cool
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ emergency_setpoint }}'
+        action: climate.set_temperature
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+              \  and emergency_fan_mode in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: '{{ emergency_fan_mode }}'
+            action: climate.set_fan_mode
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+              \  and 'Auto' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Auto
+            action: climate.set_fan_mode
+        default: []
+      - data:
+          title: AC ON (emergencia COOL)
+          message: '{{ ts }} | Prom={{ tin }}°C | Ext={{ tout }}°C | Hum={{ hin }}%
+            | Ventana={{ emergency_window }} | Set={{ emergency_setpoint }}°C | Fan={{
+            emergency_fan_mode }} | ManualBlock={{ manual_off_block_txt }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    - conditions:
+      - condition: template
+        value_template: "{{ emergency_latched\n   and emergency_off_ready\n   and
+          cur_mode != 'off' }}"
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_on
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: fan_only
+        action: climate.set_hvac_mode
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+              \  and 'Low' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Low
+            action: climate.set_fan_mode
+        default: []
+      - delay: '{{ fan_dry_delay }}'
+      - target:
+          entity_id:
+          - input_datetime.ac_ultimo_apagado
+          - input_datetime.ac_last_auto_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: cool_emergency_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_mode
+        data:
+          value: cool
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_fan
+        data:
+          value: '{{ ac_fan }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t1
+        data:
+          value: '{{ t1 if t1 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t2
+        data:
+          value: '{{ t2 if t2 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_hin
+        data:
+          value: '{{ hin if hin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tout
+        data:
+          value: '{{ tout if tout is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ ac_set if ac_set is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_sensor_delta
+        data:
+          value: '{{ sensor_delta }}'
+        action: input_number.set_value
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: idle
+        action: input_select.select_option
+      - data:
+          title: AC OFF (emergencia objetivo)
+          message: '{{ ts }} | Prom={{ tin }}°C | Ext={{ tout }}°C | Hum={{ hin }}%
+            | ObjOFF={{ emergency_off_avg }}°C'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_off
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode == 'heat'\n   and tout is not none\n   and tout
+          >= heat_force_off_outdoor }}"
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_on
+      - target:
+          entity_id:
+          - input_datetime.ac_ultimo_apagado
+          - input_datetime.ac_last_auto_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: heat_force_off_outdoor
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_mode
+        data:
+          value: heat
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_fan
+        data:
+          value: '{{ ac_fan }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t1
+        data:
+          value: '{{ t1 if t1 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t2
+        data:
+          value: '{{ t2 if t2 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_hin
+        data:
+          value: '{{ hin if hin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tout
+        data:
+          value: '{{ tout if tout is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ ac_set if ac_set is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_sensor_delta
+        data:
+          value: '{{ sensor_delta }}'
+        action: input_number.set_value
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: idle
+        action: input_select.select_option
+      - data:
+          title: AC OFF (heat por exterior)
+          message: '{{ ts }} | Tout={{ tout }}°C >= {{ heat_force_off_outdoor }}°C'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_off
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode == 'heat'\n   and heat_off is not none\n   and
+          tin is not none\n   and (tin | float) >= (heat_off | float) }}"
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_on
+      - target:
+          entity_id:
+          - input_datetime.ac_ultimo_apagado
+          - input_datetime.ac_last_auto_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: heat_normal_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_mode
+        data:
+          value: heat
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_fan
+        data:
+          value: '{{ ac_fan }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t1
+        data:
+          value: '{{ t1 if t1 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t2
+        data:
+          value: '{{ t2 if t2 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_hin
+        data:
+          value: '{{ hin if hin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tout
+        data:
+          value: '{{ tout if tout is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ ac_set if ac_set is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_sensor_delta
+        data:
+          value: '{{ sensor_delta }}'
+        action: input_number.set_value
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: idle
+        action: input_select.select_option
+      - data:
+          title: AC OFF (heat objetivo)
+          message: '{{ ts }} | Prom={{ tin }}°C | HeatON={{ heat_on }}°C | HeatOFF={{
+            heat_off }}°C'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_off
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
+          cool_setpoint is not none\n   and ac_set is not none\n   and (ac_set | float)
+          != (cool_setpoint | float) }}"
+      sequence:
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ cool_setpoint }}'
+        action: climate.set_temperature
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
+          (\n     (cool_off is not none and tin is not none and (tin | float) <= (cool_off
+          | float))\n     or (t1 is not none and (t1 | float) <= (cool_sensor_off
+          | float))\n     or (t2 is not none and (t2 | float) <= (cool_sensor_off
+          | float))\n   ) }}"
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_on
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: fan_only
+        action: climate.set_hvac_mode
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+              \  and 'Low' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Low
+            action: climate.set_fan_mode
+        default: []
+      - delay: '{{ fan_dry_delay }}'
+      - target:
+          entity_id:
+          - input_datetime.ac_ultimo_apagado
+          - input_datetime.ac_last_auto_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: cool_normal_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_mode
+        data:
+          value: cool
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_fan
+        data:
+          value: '{{ ac_fan }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t1
+        data:
+          value: '{{ t1 if t1 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t2
+        data:
+          value: '{{ t2 if t2 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_hin
+        data:
+          value: '{{ hin if hin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tout
+        data:
+          value: '{{ tout if tout is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ ac_set if ac_set is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_sensor_delta
+        data:
+          value: '{{ sensor_delta }}'
+        action: input_number.set_value
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: 'off'
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: idle
+        action: input_select.select_option
+      - data:
+          title: AC OFF (cool objetivo)
+          message: '{{ ts }} | Prom={{ tin }}°C | T1={{ t1 }}°C | T2={{ t2 }}°C |
+            CoolON={{ cool_on }}°C | CoolOFF={{ cool_off }}°C | SensorOFF={{ cool_sensor_off
+            }}°C | Set={{ cool_setpoint }}°C'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_off_por_automatizacion
+        action: input_boolean.turn_off
+    - conditions:
+      - condition: template
+        value_template: "{{ (not emergency_latched)\n   and auto_on_allowed\n   and
+          (not recent_any_auto_on)\n   and heat_on is not none\n   and tin is not
+          none\n   and (tin | float) <= (heat_on | float)\n   and (tout | float(99))
+          < (heat_force_off_outdoor | float)\n   and cur_mode != 'heat'\n   and (not
+          locked or last_mode_no_fan not in ['cool','emergency_cool']) }}"
+      sequence:
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: heat
+        action: input_select.select_option
+      - target:
+          entity_id:
+          - input_datetime.ac_ultimo_cambio_modo
+          - input_datetime.ac_last_auto_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: heat_normal_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_mode
+        data:
+          value: heat
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_fan
+        data:
+          value: '{{ fan_day_mode }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t1
+        data:
+          value: '{{ t1 if t1 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t2
+        data:
+          value: '{{ t2 if t2 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_hin
+        data:
+          value: '{{ hin if hin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tout
+        data:
+          value: '{{ tout if tout is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ heat_setpoint }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_sensor_delta
+        data:
+          value: '{{ sensor_delta }}'
+        action: input_number.set_value
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: heat
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ heat_setpoint }}'
+        action: climate.set_temperature
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+              \  and fan_day_mode in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: '{{ fan_day_mode }}'
+            action: climate.set_fan_mode
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+              \  and 'Auto' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Auto
+            action: climate.set_fan_mode
+        default: []
+      - data:
+          title: AC ON (heat)
+          message: '{{ ts }} | Prom={{ tin }}°C | Ext={{ tout }}°C | Hum={{ hin }}%
+            | HeatON={{ heat_on }}°C | HeatOFF={{ heat_off }}°C | Set={{ heat_setpoint
+            }}°C | Lock2h={{ lock_txt }} | ManualBlock={{ manual_off_block_txt }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    - conditions:
+      - condition: template
+        value_template: "{{ (not emergency_latched)\n   and auto_on_allowed\n   and
+          (not recent_any_auto_on)\n   and cool_on is not none\n   and cool_setpoint
+          is not none\n   and tin is not none\n   and (tin | float) >= (cool_on |
+          float)\n   and cur_mode != 'cool'\n   and (not locked or last_mode_no_fan
+          != 'heat') }}"
+      sequence:
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: cool
+        action: input_select.select_option
+      - target:
+          entity_id:
+          - input_datetime.ac_ultimo_cambio_modo
+          - input_datetime.ac_last_auto_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: cool_normal_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_mode
+        data:
+          value: cool
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_fan
+        data:
+          value: Low
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t1
+        data:
+          value: '{{ t1 if t1 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_t2
+        data:
+          value: '{{ t2 if t2 is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_hin
+        data:
+          value: '{{ hin if hin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_tout
+        data:
+          value: '{{ tout if tout is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ cool_setpoint }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_last_auto_sensor_delta
+        data:
+          value: '{{ sensor_delta }}'
+        action: input_number.set_value
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: cool
+        action: climate.set_hvac_mode
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ cool_setpoint }}'
+        action: climate.set_temperature
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+              \  and 'Low' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Low
+            action: climate.set_fan_mode
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
+              \  and 'Auto' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Auto
+            action: climate.set_fan_mode
+        default: []
+      - data:
+          title: AC ON (cool)
+          message: '{{ ts }} | Prom={{ tin }}°C | T1={{ t1 }}°C | T2={{ t2 }}°C |
+            Ext={{ tout }}°C | Hum={{ hin }}% | CoolON={{ cool_on }}°C | CoolOFF={{
+            cool_off }}°C | Set={{ cool_setpoint }}°C | SensorOFF={{ cool_sensor_off
+            }}°C | Lock2h={{ lock_txt }} | ManualBlock={{ manual_off_block_txt }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    default: []
+  variables:
+    climate_ent: climate.0200009211c7_climate
+    fan_dry_delay: 00:05:00
+    t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
+      }}'
+    t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
+    h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
+    h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'') | float(none) }}'
+    tin: "{% if t1 is not none and t2 is not none %}\n  {{ ((t1 + t2) / 2) | round(2)
+      }}\n{% elif t1 is not none %}\n  {{ t1 | round(2) }}\n{% elif t2 is not none
+      %}\n  {{ t2 | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    hin: "{% if h1 is not none and h2 is not none %}\n  {{ ((h1 + h2) / 2) | round(1)
+      }}\n{% elif h1 is not none %}\n  {{ h1 | round(1) }}\n{% elif h2 is not none
+      %}\n  {{ h2 | round(1) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    sensor_delta: "{% if t1 is not none and t2 is not none %}\n  {{ (t1 - t2) | abs
+      | round(2) }}\n{% else %}\n  {{ 0 }}\n{% endif %}"
+    tout: '{{ state_attr(''weather.openweathermap'',''apparent_temperature'') | float(none)
+      }}'
+    wind_kmh: '{{ state_attr(''weather.openweathermap'',''wind_speed'') | float(0)
+      }}'
+    wind: '{{ (wind_kmh / 3.6) | round(2) }}'
+    cur_mode: '{{ states(climate_ent) }}'
+    ac_set: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
+    ac_fan: "{{ state_attr(climate_ent,'fan_mode')\n   if state_attr(climate_ent,'fan_mode')
+      is not none else 'n/a' }}"
+    locked: '{{ is_state(''input_boolean.ac_bloqueo_cambio_modo_2h'',''on'') }}'
+    lock_txt: '{{ ''ON'' if locked else ''OFF'' }}'
+    last_mode_no_fan: '{{ states(''input_select.ac_ultimo_modo_no_fan'') }}'
+    mov_raw: '{{ states(''binary_sensor.presencia_movimiento_estable'') }}'
+    s24_raw: '{{ states(''device_tracker.samsung_s24'') }}'
+    person_raw: '{{ states(''person.ivan'') }}'
+    presence_ok: '{{ is_state(''binary_sensor.presencia_ok_estable'',''on'') }}'
+    presence_real_now: '{{ mov_raw == ''on'' }}'
+    presence_phone_home: '{{ (s24_raw in [''home'',''on'']) or (person_raw == ''home'')
+      }}'
+    manual_presence_until_raw: '{{ states(''input_datetime.ac_manual_presence_until'')
+      }}'
+    presence_temp_from_manual: "{% if manual_presence_until_raw in ['unknown','unavailable','none','']
+      %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw)
+      }}\n{% endif %}"
+    presence_sensor_strict: '{{ presence_ok and presence_real_now }}'
+    presence_effective: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
+      }}'
+    auto_on_allowed: '{{ presence_effective and (not manual_off_block) }}'
+    presence_away_30m: "{{ (not presence_effective)\n   and is_state('binary_sensor.presencia_movimiento_estable','off')\n
+      \  and (person_raw != 'home')\n   and (s24_raw not in ['home','on']) }}"
+    away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
+    learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
+    bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
+    bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0) }}'
+    bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') | float(0)
+      }}'
+    bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
+    bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0) }}'
+    bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0)
+      }}'
+    fan_day_mode: '{{ ''Low'' if now().hour < 9 else ''Auto'' }}'
+    emergency_window: "{% set t = now().strftime('%H:%M:%S') %} {% if '10:00:00' <=
+      t < '16:00:00' %}\n  10-16\n{% else %}\n  07-10/16-21\n{% endif %}"
+    emergency_on_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 24.5 if ''10:00:00''
+      <= t < ''16:00:00'' else 25.0 }}'
+    emergency_off_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 23.5 if ''10:00:00''
+      <= t < ''16:00:00'' else 24.0 }}'
+    emergency_setpoint: 22
+    emergency_fan_mode: '{% set t = now().strftime(''%H:%M:%S'') %} {{ ''Auto'' if
+      ''10:00:00'' <= t < ''16:00:00'' else ''Low'' }}'
+    emergency_hot: '{{ tin is not none and (tin | float) >= (emergency_on_avg | float)
+      }}'
+    emergency_off_ready: '{{ tin is not none and (tin | float) <= (emergency_off_avg
+      | float) }}'
+    emergency_latched: '{{ last_mode_no_fan == ''emergency_cool'' }}'
+    heat_force_off_outdoor: 20
+    heat_on_base: "{% if tout is none %}\n  {{ none }}\n{% else %}\n  {% set base
+      = 23.0 if tout <= 5 else 22.0 if tout >= 17 else (23.0 - ((tout-5)/12)) %}\n
+      \ {{ (base + min(wind*0.05,0.8)) | round(2) }}\n{% endif %}"
+    heat_on: "{% if heat_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
+      = (heat_on_base | float) + (bias_heat_on if learning_enabled else 0) %}\n  {{
+      [[raw, 23.8] | min, 21.0] | max | round(2) }}\n{% endif %}"
+    heat_off: "{% if heat_on is none %}\n  {{ none }}\n{% else %}\n  {% set raw =
+      (heat_on | float) + 1.5 + (bias_heat_off if learning_enabled else 0) %}\n  {{
+      [[raw, 25.5] | min, (heat_on | float) + 0.6] | max | round(2) }}\n{% endif %}"
+    heat_setpoint: '{% set raw = 28 + (bias_heat_setpoint if learning_enabled else
+      0) %} {{ [[raw, 30] | min, 24] | max | round(1) }}'
+    cool_on_base: "{% if tout is none %}\n  {{ none }}\n{% elif tout < 17 %}\n  {{
+      none }}\n{% else %}\n  {% set anchor_tout = 18.1 %}\n  {% set anchor_cool_on
+      = 24.0 %}\n  {% set k = 0.10 %}\n  {% set offset = 0.5 %}\n  {% set humidity_adj
+      = 0 if hin is none else (-0.25 if hin >= 65 else -0.10 if hin >= 58 else 0)
+      %}\n  {% set raw = (anchor_cool_on - (k * (tout - anchor_tout))) + offset +
+      humidity_adj %}\n  {{ [[raw, 24.7] | min, 24.0] | max | round(2) }}\n{% endif
+      %}"
+    cool_on: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
+      = (cool_on_base | float) + (bias_cool_on if learning_enabled else 0) %}\n  {{
+      [[raw, 25.2] | min, 23.8] | max | round(2) }}\n{% endif %}"
+    cool_off_base: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_on
+      | float) - 0.5) | round(2) }}\n{% endif %}"
+    cool_off: "{% if cool_off_base is none %}\n  {{ none }}\n{% else %}\n  {% set
+      raw = (cool_off_base | float) + (bias_cool_off if learning_enabled else 0) %}\n
+      \ {% set hi = (cool_on | float) - 0.4 %}\n  {{ [[raw, hi] | min, 22.8] | max
+      | round(2) }}\n{% endif %}"
+    cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
+      raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
+      }}\n{% endif %}"
+    cool_setpoint_base: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {%
+      set flo = (cool_off | float) | int %}\n  {{ [(flo - 1), 16] | max }}\n{% endif
+      %}"
+    cool_setpoint: "{% if cool_setpoint_base is none %}\n  {{ none }}\n{% else %}\n
+      \ {% set raw = (cool_setpoint_base | float) + (bias_cool_setpoint if learning_enabled
+      else 0) %}\n  {{ [[raw, 24] | min, 21] | max | round(1) }}\n{% endif %}"
+    last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+    minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
+      %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
+      / 60) | round(1) }}\n{% endif %}"
+    last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
+    last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
+    last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
+    recent_any_auto_on: "{{ last_auto_action == 'auto_on'\n   and (minutes_since_last_auto
+      | float(99999)) <= 2 }}"
+    last_manual_off_ts_raw: '{{ states(''input_datetime.ac_last_manual_off_ts'') }}'
+    manual_off_hold_minutes: 5
+    minutes_since_manual_off: "{% if last_manual_off_ts_raw in ['unknown','unavailable','none','']
+      %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_manual_off_ts_raw))
+      / 60) | round(1) }}\n{% endif %}"
+    manual_off_block: '{{ (minutes_since_manual_off | float(99999)) < (manual_off_hold_minutes
+      | float) }}'
+    manual_off_block_txt: '{{ ''ON'' if manual_off_block else ''OFF'' }}'
+    ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+    trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
+      %}\n    /5min\n  {% elif trigger.platform == 'state' %}\n    {{ trigger.entity_id
+      }}={{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
+      \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
+  mode: single
+- &id001
+  id: ac_pausa_1h_si_off_manual_fisico
+  alias: AC - Pausa 1h si apagan físicamente (OFF manual)
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: climate.0200009211c7_climate
+    to: 'off'
+    for: 00:00:04
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '20:59:00'
+  - condition: state
+    entity_id: timer.ac_pausa_manual_off_1h
+    state: idle
+  - condition: state
+    entity_id: input_boolean.ac_off_por_automatizacion
+    state: 'off'
+  - condition: template
+    value_template: "{{ (as_timestamp(now()) -\n    as_timestamp(states.input_boolean.ac_off_por_automatizacion.last_changed))
+      > 8 }}"
+  actions:
+  - action: timer.start
+    target:
+      entity_id: timer.ac_pausa_manual_off_1h
+    data:
+      duration: 01:00:00
+  - action: input_select.select_option
+    target:
+      entity_id: input_select.ac_ultimo_modo_no_fan
+    data:
+      option: 'off'
+  - action: notify.mobile_app_samsung_s24
+    data:
+      title: AC OFF manual
+      message: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }} | Se activó pausa manual
+        1h. El apagado se interpretó como manual porque ac_off_por_automatizacion
+        estaba en OFF desde hace más de 8 segundos.'
+      data:
+        ttl: 0
+        priority: high
+  mode: single
+- *id001
+- *id001
+- *id001
+- *id001
+- id: '1769981375283'
+  alias: AC - Iniciar bloqueo 2h al apagarse
+  description: ''
+  triggers:
+  - entity_id: climate.0200009211c7_climate
+    to: 'off'
+    trigger: state
+  actions:
+  - target:
+      entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
+    action: input_boolean.turn_on
+  - delay: 02:00:00
+  - target:
+      entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
+    action: input_boolean.turn_off
+  mode: restart
+- id: '1773894905330'
+  alias: AC - Learning - Manual OFF feedback
+  description: 'Si el usuario apaga manualmente el AC y la última acción automática
+    reciente fue AUTO ON, se interpreta como corrección de confort. Ajusta sesgos
+    aprendidos.
+
+    '
+  triggers:
+  - trigger: state
+    entity_id: climate.0200009211c7_climate
+    to: 'off'
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '20:59:00'
+  - condition: state
+    entity_id: input_boolean.ac_off_por_automatizacion
+    state: 'off'
+  actions:
+  - variables:
+      t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
+        }}'
+      t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none)
+        }}'
+      h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
+      h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'') | float(none) }}'
+      tin: "{% if t1 is not none and t2 is not none %}\n  {{ ((t1 + t2) / 2) | round(2)
+        }}\n{% elif t1 is not none %}\n  {{ t1 | round(2) }}\n{% elif t2 is not none
+        %}\n  {{ t2 | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      hin: "{% if h1 is not none and h2 is not none %}\n  {{ ((h1 + h2) / 2) | round(1)
+        }}\n{% elif h1 is not none %}\n  {{ h1 | round(1) }}\n{% elif h2 is not none
+        %}\n  {{ h2 | round(1) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      sensor_delta: "{% if t1 is not none and t2 is not none %}\n  {{ (t1 - t2) |
+        abs | round(2) }}\n{% else %}\n  {{ 0 }}\n{% endif %}"
+      tout: '{{ state_attr(''weather.openweathermap'',''apparent_temperature'') |
+        float(none) }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
+      last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
+      last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
+      feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
+        | float(30) }}'
+      lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
+        }}'
+      lr_large: '{{ states(''input_number.ac_learning_rate_large'') | float(0.10)
+        }}'
+      learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'')
+        }}'
+      minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
+        %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
+        / 60) | round(1) }}\n{% endif %}"
+      quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 8 }}'
+      valid_feedback: "{{ learning_enabled\n   and last_auto_action == 'auto_on'\n
+        \  and last_auto_mode in ['cool','heat']\n   and (minutes_since_last_auto
+        | float(99999)) <= (feedback_window_min | float(30)) }}"
+      cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
+      cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
+        }}'
+      cur_bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') |
+        float(0) }}'
+      cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
+      cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
+        }}'
+      cur_bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') |
+        float(0) }}'
+      step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
+      debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
+      ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      feedback_type: "{% if valid_feedback and last_auto_mode == 'cool' %}\n  manual_off_after_auto_on_cool\n{%
+        elif valid_feedback and last_auto_mode == 'heat' %}\n  manual_off_after_auto_on_heat\n{%
+        elif not learning_enabled %}\n  manual_off_learning_disabled\n{% elif last_auto_action
+        != 'auto_on' %}\n  manual_off_last_action_not_auto_on\n{% elif last_auto_mode
+        not in ['cool','heat'] %}\n  manual_off_last_mode_not_learnable\n{% elif (minutes_since_last_auto
+        | float(99999)) > (feedback_window_min | float(30)) %}\n  manual_off_feedback_window_expired\n{%
+        else %}\n  manual_off_no_valid_learning\n{% endif %}"
+  - target:
+      entity_id: input_datetime.ac_last_manual_feedback_ts
+    data:
+      datetime: '{{ ts }}'
+    action: input_datetime.set_datetime
+  - target:
+      entity_id: input_number.ac_last_manual_tin
+    data:
+      value: '{{ tin if tin is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_t1
+    data:
+      value: '{{ t1 if t1 is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_t2
+    data:
+      value: '{{ t2 if t2 is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_hin
+    data:
+      value: '{{ hin if hin is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_tout
+    data:
+      value: '{{ tout if tout is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_sensor_delta
+    data:
+      value: '{{ sensor_delta }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_text.ac_last_manual_feedback_type
+    data:
+      value: '{{ feedback_type }}'
+    action: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ valid_feedback and last_auto_mode == ''cool'' }}'
+      sequence:
+      - target:
+          entity_id: input_text.ac_last_manual_feedback_mode
+        data:
+          value: cool
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_manual_feedback_fan
+        data:
+          value: 'off'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_bias_cool_on
+        data:
+          value: '{% set raw = (cur_bias_cool_on | float) + (step_main | float) %}
+            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_bias_cool_off
+        data:
+          value: '{% set raw = (cur_bias_cool_off | float) + (step_main | float) %}
+            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+        action: input_number.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ quick_feedback }}'
+          sequence:
+          - target:
+              entity_id: input_number.ac_bias_cool_setpoint
+            data:
+              value: '{% set raw = (cur_bias_cool_setpoint | float) + 0.5 %} {{ [[raw,
+                2] | min, -2] | max | round(1) }}'
+            action: input_number.set_value
+        default: []
+    - conditions:
+      - condition: template
+        value_template: '{{ valid_feedback and last_auto_mode == ''heat'' }}'
+      sequence:
+      - target:
+          entity_id: input_text.ac_last_manual_feedback_mode
+        data:
+          value: heat
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_manual_feedback_fan
+        data:
+          value: 'off'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_bias_heat_on
+        data:
+          value: '{% set raw = (cur_bias_heat_on | float) - (step_main | float) %}
+            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_bias_heat_off
+        data:
+          value: '{% set raw = (cur_bias_heat_off | float) - (step_main | float) %}
+            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+        action: input_number.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ quick_feedback }}'
+          sequence:
+          - target:
+              entity_id: input_number.ac_bias_heat_setpoint
+            data:
+              value: '{% set raw = (cur_bias_heat_setpoint | float) - 0.5 %} {{ [[raw,
+                2] | min, -2] | max | round(1) }}'
+            action: input_number.set_value
+        default: []
+    default:
+    - choose:
+      - conditions:
+        - condition: state
+          entity_id: input_boolean.ac_learning_debug
+          state: 'on'
+        sequence:
+        - data:
+            title: AC Learning - Manual OFF sin ajuste
+            message: '{{ ts }} | Type={{ feedback_type }} | learning={{ learning_enabled
+              }} | last_action={{ last_auto_action }} | last_mode={{ last_auto_mode
+              }} | min={{ minutes_since_last_auto }} | branch={{ last_auto_branch
+              }}'
+            data:
+              ttl: 0
+              priority: high
+          action: notify.mobile_app_samsung_s24
+      default: []
+  mode: restart
+- id: '1773895045305'
+  alias: AC - Learning - Manual ON feedback
+  description: 'Si el usuario enciende manualmente el AC y la última acción automática
+    reciente fue AUTO OFF, se interpreta como corrección. Ajusta sesgos aprendidos.
+
+    '
+  triggers:
+  - trigger: state
+    entity_id: climate.0200009211c7_climate
+    from: 'off'
+    to:
+    - cool
+    - heat
+    - fan_only
+    for: 00:00:02
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '20:59:00'
+  - condition: state
+    entity_id: input_boolean.ac_off_por_automatizacion
+    state: 'off'
+  actions:
+  - delay: 00:00:15
+  - variables:
+      climate_ent: climate.0200009211c7_climate
+      final_mode: '{{ states(climate_ent) }}'
+      final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
+      final_fan: "{{ state_attr(climate_ent,'fan_mode')\n   if state_attr(climate_ent,'fan_mode')
+        is not none else 'n/a' }}"
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
+      last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
+      last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
+      feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
+        | float(30) }}'
+      lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
+        }}'
+      lr_large: '{{ states(''input_number.ac_learning_rate_large'') | float(0.10)
+        }}'
+      learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'')
+        }}'
+      minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
+        %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
+        / 60) | round(1) }}\n{% endif %}"
+      quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 10 }}'
+      valid_feedback: "{{ learning_enabled\n   and last_auto_action == 'auto_off'\n
+        \  and final_mode in ['cool','heat']\n   and (minutes_since_last_auto | float(99999))
+        <= (feedback_window_min | float(30)) }}"
+      cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
+      cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
+        }}'
+      cur_bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') |
+        float(0) }}'
+      cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
+      cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
+        }}'
+      cur_bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') |
+        float(0) }}'
+      step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
+      debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
+      ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      feedback_type: "{% if valid_feedback and final_mode == 'cool' %}\n  manual_on_after_auto_off_cool\n{%
+        elif valid_feedback and final_mode == 'heat' %}\n  manual_on_after_auto_off_heat\n{%
+        elif not learning_enabled %}\n  manual_on_learning_disabled\n{% elif last_auto_action
+        != 'auto_off' %}\n  manual_on_last_action_not_auto_off\n{% elif final_mode
+        not in ['cool','heat'] %}\n  manual_on_final_mode_not_learnable\n{% elif (minutes_since_last_auto
+        | float(99999)) > (feedback_window_min | float(30)) %}\n  manual_on_feedback_window_expired\n{%
+        else %}\n  manual_on_no_valid_learning\n{% endif %}"
+  - target:
+      entity_id: input_text.ac_last_manual_feedback_type
+    data:
+      value: '{{ feedback_type }}'
+    action: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ valid_feedback and final_mode == ''cool'' }}'
+      sequence:
+      - target:
+          entity_id: input_number.ac_bias_cool_on
+        data:
+          value: '{% set raw = (cur_bias_cool_on | float) - (step_main | float) %}
+            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_bias_cool_off
+        data:
+          value: '{% set raw = (cur_bias_cool_off | float) - (step_main | float) %}
+            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+        action: input_number.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ quick_feedback }}'
+          sequence:
+          - target:
+              entity_id: input_number.ac_bias_cool_setpoint
+            data:
+              value: '{% set raw = (cur_bias_cool_setpoint | float) - 0.5 %} {{ [[raw,
+                2] | min, -2] | max | round(1) }}'
+            action: input_number.set_value
+        default: []
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ debug_enabled }}'
+          sequence:
+          - data:
+              title: AC Learning - Manual ON corrige COOL OFF
+              message: '{{ ts }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
+                }} | step={{ step_main }} | FinalSet={{ final_setpoint }} | Fan={{
+                final_fan }}'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
+    - conditions:
+      - condition: template
+        value_template: '{{ valid_feedback and final_mode == ''heat'' }}'
+      sequence:
+      - target:
+          entity_id: input_number.ac_bias_heat_on
+        data:
+          value: '{% set raw = (cur_bias_heat_on | float) + (step_main | float) %}
+            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_bias_heat_off
+        data:
+          value: '{% set raw = (cur_bias_heat_off | float) + (step_main | float) %}
+            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+        action: input_number.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ quick_feedback }}'
+          sequence:
+          - target:
+              entity_id: input_number.ac_bias_heat_setpoint
+            data:
+              value: '{% set raw = (cur_bias_heat_setpoint | float) + 0.5 %} {{ [[raw,
+                2] | min, -2] | max | round(1) }}'
+            action: input_number.set_value
+        default: []
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ debug_enabled }}'
+          sequence:
+          - data:
+              title: AC Learning - Manual ON corrige HEAT OFF
+              message: '{{ ts }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
+                }} | step={{ step_main }} | FinalSet={{ final_setpoint }} | Fan={{
+                final_fan }}'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
+    default:
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ debug_enabled }}'
+        sequence:
+        - data:
+            title: AC Learning - Manual ON sin ajuste
+            message: '{{ ts }} | Type={{ feedback_type }} | learning={{ learning_enabled
+              }} | last_action={{ last_auto_action }} | last_mode={{ last_auto_mode
+              }} | min={{ minutes_since_last_auto }} | branch={{ last_auto_branch
+              }} | final_mode={{ final_mode }} | set={{ final_setpoint }} | fan={{
+              final_fan }}'
+            data:
+              ttl: 0
+              priority: high
+          action: notify.mobile_app_samsung_s24
+      default: []
+  mode: restart
+- id: '1773939304415'
+  alias: AC - Manual OFF guard + pausa 5 min
+  description: 'Detecta apagado manual real del AC, registra timestamp de manual off,
+    limpia el latch del último modo no-fan y activa pausa de 5 minutos para impedir
+    AUTO ON.
+
+    '
+  triggers:
+  - trigger: state
+    entity_id: climate.0200009211c7_climate
+    to: 'off'
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '20:59:00'
+  - condition: state
+    entity_id: input_boolean.ac_off_por_automatizacion
+    state: 'off'
+  actions:
+  - target:
+      entity_id:
+      - input_datetime.ac_last_manual_off_ts
+      - input_datetime.ac_last_manual_feedback_ts
+    data:
+      datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+    action: input_datetime.set_datetime
+  - target:
+      entity_id: input_select.ac_ultimo_modo_no_fan
+    data:
+      option: idle
+    action: input_select.select_option
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_learning_debug
+        state: 'on'
+      sequence:
+      - data:
+          title: AC Manual OFF detectado
+          message: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }} | Se registró apagado
+            manual. AUTO ON bloqueado por 5 min.'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    default: []
+  mode: restart
+- id: '1773947560399'
+  alias: AC - Manual ON guard + presencia temporal
+  description: 'Detecta encendido manual del AC, registra timestamps, crea presencia
+    temporal por 60 minutos y guarda datos finales elegidos por el usuario. No depende
+    del learning.
+
+    '
+  triggers:
+  - trigger: state
+    entity_id: climate.0200009211c7_climate
+    from: 'off'
+    to:
+    - cool
+    - heat
+    - fan_only
+    for: 00:00:02
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '20:59:00'
+  - condition: state
+    entity_id: input_boolean.ac_off_por_automatizacion
+    state: 'off'
+  actions:
+  - delay: 00:00:15
+  - variables:
+      climate_ent: climate.0200009211c7_climate
+      ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      manual_presence_until: '{{ (now() + timedelta(hours=1)).strftime(''%Y-%m-%d
+        %H:%M:%S'') }}'
+      final_mode: '{{ states(climate_ent) }}'
+      final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
+      final_fan: "{{ state_attr(climate_ent,'fan_mode')\n   if state_attr(climate_ent,'fan_mode')
+        is not none else 'n/a' }}"
+      t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
+        }}'
+      t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none)
+        }}'
+      h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
+      h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'') | float(none) }}'
+      tin: "{% if t1 is not none and t2 is not none %}\n  {{ ((t1 + t2) / 2) | round(2)
+        }}\n{% elif t1 is not none %}\n  {{ t1 | round(2) }}\n{% elif t2 is not none
+        %}\n  {{ t2 | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      hin: "{% if h1 is not none and h2 is not none %}\n  {{ ((h1 + h2) / 2) | round(1)
+        }}\n{% elif h1 is not none %}\n  {{ h1 | round(1) }}\n{% elif h2 is not none
+        %}\n  {{ h2 | round(1) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      sensor_delta: "{% if t1 is not none and t2 is not none %}\n  {{ (t1 - t2) |
+        abs | round(2) }}\n{% else %}\n  {{ 0 }}\n{% endif %}"
+      tout: '{{ state_attr(''weather.openweathermap'',''apparent_temperature'') |
+        float(none) }}'
+  - target:
+      entity_id: input_datetime.ac_last_manual_on_ts
+    data:
+      datetime: '{{ ts }}'
+    action: input_datetime.set_datetime
+  - target:
+      entity_id: input_datetime.ac_last_manual_feedback_ts
+    data:
+      datetime: '{{ ts }}'
+    action: input_datetime.set_datetime
+  - target:
+      entity_id: input_datetime.ac_last_manual_final_ts
+    data:
+      datetime: '{{ ts }}'
+    action: input_datetime.set_datetime
+  - target:
+      entity_id: input_datetime.ac_manual_presence_until
+    data:
+      datetime: '{{ manual_presence_until }}'
+    action: input_datetime.set_datetime
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ final_mode in [''cool'',''heat''] }}'
+      sequence:
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: '{{ final_mode }}'
+        action: input_select.select_option
+    default: []
+  - target:
+      entity_id: input_text.ac_last_manual_feedback_type
+    data:
+      value: manual_on_detected
+    action: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_manual_feedback_mode
+    data:
+      value: '{{ final_mode }}'
+    action: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_manual_feedback_fan
+    data:
+      value: '{{ final_fan }}'
+    action: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_manual_final_mode
+    data:
+      value: '{{ final_mode }}'
+    action: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_manual_final_fan
+    data:
+      value: '{{ final_fan }}'
+    action: input_text.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_tin
+    data:
+      value: '{{ tin if tin is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_t1
+    data:
+      value: '{{ t1 if t1 is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_t2
+    data:
+      value: '{{ t2 if t2 is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_hin
+    data:
+      value: '{{ hin if hin is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_tout
+    data:
+      value: '{{ tout if tout is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_setpoint
+    data:
+      value: '{{ final_setpoint if final_setpoint is not none else 0 }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_sensor_delta
+    data:
+      value: '{{ sensor_delta }}'
+    action: input_number.set_value
+  - target:
+      entity_id: input_number.ac_last_manual_final_setpoint
+    data:
+      value: '{{ final_setpoint if final_setpoint is not none else 0 }}'
+    action: input_number.set_value
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_learning_debug
+        state: 'on'
+      sequence:
+      - data:
+          title: AC Manual ON detectado
+          message: '{{ ts }} | Mode={{ final_mode }} | Set={{ final_setpoint }} |
+            Fan={{ final_fan }} | Presencia manual hasta={{ manual_presence_until
+            }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    default: []
+  mode: restart

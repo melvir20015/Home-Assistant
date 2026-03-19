@@ -1,0 +1,3 @@
+ac_pausa_manual_off_1h:
+  name: AC pausa por apagado manual
+  duration: "01:00:00"

@@ -1,0 +1,24 @@
+ac_modo_dinamico:
+  name: "AC - Modo dinámico (23:00-07:00)"
+  options:
+    - cool
+    - heat
+    - none
+  initial: none
+
+ac_modo_noche_2200:
+  name: "AC modo noche 22:00"
+  options:
+    - none
+    - cool
+    - heat
+  initial: none
+
+ac_ultimo_modo_no_fan:
+  name: "AC - Último modo no fan"
+  options:
+    - off
+    - cool
+    - heat
+    - emergency_cool
+  initial: off

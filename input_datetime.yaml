@@ -1,0 +1,39 @@
+ac_ultimo_apagado:
+  name: "AC Ultimo Apagado"
+  has_date: true
+  has_time: true
+
+ac_ultimo_cambio_modo:
+  name: "AC - Último cambio cool/heat"
+  has_date: true
+  has_time: true
+
+ac_last_auto_ts:
+  name: "AC Last Auto Timestamp"
+  has_date: true
+  has_time: true
+
+ac_last_manual_feedback_ts:
+  name: "AC Last Manual Feedback Timestamp"
+  has_date: true
+  has_time: true
+
+ac_last_manual_final_ts:
+  name: "AC Last Manual Final Timestamp"
+  has_date: true
+  has_time: true
+
+ac_last_manual_on_ts:
+  name: "AC Last Manual ON Timestamp"
+  has_date: true
+  has_time: true
+
+ac_last_manual_off_ts:
+  name: "AC Last Manual OFF Timestamp"
+  has_date: true
+  has_time: true
+
+ac_manual_presence_until:
+  name: "AC Manual Presence Until"
+  has_date: true
+  has_time: true
