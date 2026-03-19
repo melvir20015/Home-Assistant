@@ -1523,7 +1523,8 @@
   alias: AC - Día dinámico aprendido (principal)
   description: 'Automatización principal diurna 07:01–20:59. Usa fórmula base + sesgos
     aprendidos. Respeta presencia jerárquica, pausa manual de 5 min, presencia temporal
-    por encendido manual y aprendizaje por feedback.
+    por encendido manual y aprendizaje por feedback. En `input_select.ac_ultimo_modo_no_fan`,
+    `off` representa reposo/sin modo recordado; no se usa `idle`.
 
     '
   triggers:
@@ -1675,6 +1676,7 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: off
+        # `off` es el reposo del helper; no existe un estado `idle` válido aquí.
         action: input_select.select_option
       - data:
           title: AC OFF (sin presencia 30m)
@@ -2619,6 +2621,7 @@
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
       option: 'off'
+  # `off` equivale al estado interno en reposo del helper; no usar `idle`.
   - action: notify.mobile_app_samsung_s24
     data:
       title: AC OFF manual
@@ -3043,8 +3046,8 @@
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
   description: 'Detecta apagado manual real del AC, registra timestamp de manual off,
-    limpia el latch del último modo no-fan y activa pausa de 5 minutos para impedir
-    AUTO ON.
+    resetea `input_select.ac_ultimo_modo_no_fan` a `off` (estado de reposo del helper)
+    y activa pausa de 5 minutos para impedir AUTO ON.
 
     '
   triggers:
@@ -3070,6 +3073,8 @@
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
       option: off
+    # Consistencia del helper: los apagados manuales limpian el estado a `off`,
+    # que reemplaza cualquier noción previa de `idle`.
     action: input_select.select_option
   - choose:
     - conditions:
