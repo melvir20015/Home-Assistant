@@ -2876,6 +2876,33 @@
         else %}
   manual_off_feedback_ignored_no_valid_learning
 {% endif %}"
+      cool_on_after: '{{ [[(cur_bias_cool_on | float) + (step_main | float), 2] | min, -2] | max | round(2) }}'
+      cool_off_after: '{{ [[(cur_bias_cool_off | float) + (step_main | float), 2] | min, -2] | max | round(2) }}'
+      cool_setpoint_after: '{{ [[(cur_bias_cool_setpoint | float) + 0.5, 2] | min, -2] | max | round(1) }}'
+      heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 2] | min, -2] | max | round(2) }}'
+      heat_off_after: '{{ [[(cur_bias_heat_off | float) - (step_main | float), 2] | min, -2] | max | round(2) }}'
+      heat_setpoint_after: '{{ [[(cur_bias_heat_setpoint | float) - 0.5, 2] | min, -2] | max | round(1) }}'
+      cool_setpoint_adjustment: "{% if quick_feedback %}
+  setpoint {{ cur_bias_cool_setpoint | float }}→{{ cool_setpoint_after }} (+0.5)
+{% else %}
+  sin ajuste setpoint
+{% endif %}"
+      heat_setpoint_adjustment: "{% if quick_feedback %}
+  setpoint {{ cur_bias_heat_setpoint | float }}→{{ heat_setpoint_after }} (-0.5)
+{% else %}
+  sin ajuste setpoint
+{% endif %}"
+      ignored_reason_summary: "{% if not learning_enabled %}
+  aprendizaje deshabilitado
+{% elif last_auto_action != 'auto_on' %}
+  última acción no fue auto_on
+{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}
+  ventana expirada
+{% elif last_auto_mode not in ['cool','heat'] %}
+  modo previo no aprendible
+{% else %}
+  sin aprendizaje válido
+{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -2961,6 +2988,23 @@
                 2] | min, -2] | max | round(1) }}'
             action: input_number.set_value
         default: []
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ debug_enabled }}'
+          sequence:
+          - data:
+              title: AC Learning - Manual OFF corrige AUTO ON COOL
+              message: '{{ ts }} | branch={{ last_auto_branch }} | min={{ minutes_since_last_auto
+                }} | learning={{ learning_type }} | step={{ step_main }} | bias_on={{ cur_bias_cool_on
+                }}→{{ cool_on_after }} | bias_off={{ cur_bias_cool_off }}→{{ cool_off_after
+                }} | {{ cool_setpoint_adjustment }} | tin={{ tin }} | t1={{ t1 }} | t2={{ t2
+                }} | h={{ hin }} | tout={{ tout }}'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
     - conditions:
       - condition: template
         value_template: '{{ valid_feedback and last_auto_mode == ''heat'' }}'
@@ -2999,19 +3043,35 @@
                 2] | min, -2] | max | round(1) }}'
             action: input_number.set_value
         default: []
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ debug_enabled }}'
+          sequence:
+          - data:
+              title: AC Learning - Manual OFF corrige AUTO ON HEAT
+              message: '{{ ts }} | branch={{ last_auto_branch }} | min={{ minutes_since_last_auto
+                }} | learning={{ learning_type }} | step={{ step_main }} | bias_on={{ cur_bias_heat_on
+                }}→{{ heat_on_after }} | bias_off={{ cur_bias_heat_off }}→{{ heat_off_after
+                }} | {{ heat_setpoint_adjustment }} | tin={{ tin }} | t1={{ t1 }} | t2={{ t2
+                }} | h={{ hin }} | tout={{ tout }}'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
     default:
     - choose:
       - conditions:
-        - condition: state
-          entity_id: input_boolean.ac_learning_debug
-          state: 'on'
+        - condition: template
+          value_template: '{{ debug_enabled }}'
         sequence:
         - data:
-            title: AC Learning - Manual OFF sin ajuste
-            message: '{{ ts }} | Learning={{ learning_type }} | learning={{ learning_enabled
-              }} | last_action={{ last_auto_action }} | last_mode={{ last_auto_mode
-              }} | min={{ minutes_since_last_auto }} | branch={{ last_auto_branch
-              }}'
+            title: 'AC Learning - Manual OFF ignorado: {% if not learning_enabled %}learning disabled{% elif last_auto_action != ''auto_on'' %}last action not auto_on{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}window expired{% else %}sin ajuste{% endif %}'
+            message: '{{ ts }} | reason={{ ignored_reason_summary }} | learning={{ learning_type
+              }} | branch={{ last_auto_branch }} | last_action={{ last_auto_action
+              }} | last_mode={{ last_auto_mode }} | min={{ minutes_since_last_auto
+              }} | tin={{ tin }} | t1={{ t1 }} | t2={{ t2 }} | h={{ hin }} | tout={{ tout }}'
             data:
               ttl: 0
               priority: high
