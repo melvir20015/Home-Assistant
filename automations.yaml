@@ -3308,6 +3308,28 @@
   - choose:
     - conditions:
       - condition: template
+        value_template: '{{ valid_feedback }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Manual Trace
+          message: >-
+            manual_on_learning_valid | final_mode={{ final_mode }} | learning_type={{ learning_type }} | minutes_since_last_auto={{ minutes_since_last_auto }} | feedback_window_min={{ feedback_window_min }} | last_auto_action={{ last_auto_action }}
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ not valid_feedback }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Manual Trace
+          message: >-
+            manual_on_learning_ignored | learning_type={{ learning_type }} | reason={{ ignored_reason_code }} | summary={{ ignored_reason_summary }} | manual_event_type={{ manual_event_type }} | final_mode={{ final_mode }} | minutes_since_last_auto={{ minutes_since_last_auto }} | feedback_window_min={{ feedback_window_min }} | last_auto_action={{ last_auto_action }} | last_change_origin={{ last_change_origin }}
+          entity_id: climate.0200009211c7_climate
+    default: []
+  - choose:
+    - conditions:
+      - condition: template
         value_template: '{{ valid_feedback and final_mode == ''cool'' }}'
       sequence:
       - target:
@@ -3529,6 +3551,12 @@
     data:
       value: manual_on_detected
     action: input_text.set_value
+  - action: logbook.log
+    data:
+      name: AC Manual Trace
+      message: >-
+        manual_on_detected | origin=manual_on | trigger={{ trigger.to_state.state if trigger.to_state else 'unknown' }} | automation_flags=on:{{ states('input_boolean.ac_on_por_automatizacion') }},off:{{ states('input_boolean.ac_off_por_automatizacion') }}
+      entity_id: climate.0200009211c7_climate
   - delay: 00:00:15
   - variables:
       climate_ent: climate.0200009211c7_climate
@@ -3647,6 +3675,18 @@
     data:
       value: '{{ manual_event_type_final | trim }}'
     action: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ (manual_event_type_final | trim) == 'manual_on_due_to_presence_gap' }}"
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Manual Trace
+          message: >-
+            manual_on_classified_presence_gap | final_mode={{ final_mode }} | presence_effective={{ presence_effective }} | phone_home={{ presence_phone_home }} | sensor_strict={{ presence_sensor_strict }} | manual_presence_temp={{ presence_temp_from_manual }} | minutes_since_last_auto={{ minutes_since_last_auto }}
+          entity_id: climate.0200009211c7_climate
+    default: []
   - choose:
     - conditions:
       - condition: template
