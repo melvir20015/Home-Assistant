@@ -58,6 +58,53 @@
           entity_id: climate.0200009211c7_climate
     default: []
 
+- id: ac_audita_helpers_telemetria_runtime
+  alias: AC - Audita helpers de telemetría en runtime
+  description: 'Verifica al iniciar Home Assistant que los helpers críticos del AC
+    existan realmente en runtime. Si alguno responde `unknown` o `unavailable`,
+    se deja evidencia en logbook para diagnóstico sin generar ruido en producción.
+
+    '
+  mode: single
+  trigger:
+  - platform: homeassistant
+    event: start
+  variables:
+    helper_states:
+      input_text.ac_last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
+      input_text.ac_last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
+      input_text.ac_last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
+      input_text.ac_last_auto_fan: '{{ states(''input_text.ac_last_auto_fan'') }}'
+      input_text.ac_last_manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'') }}'
+      input_text.ac_last_manual_learning_type: '{{ states(''input_text.ac_last_manual_learning_type'') }}'
+      input_text.ac_last_manual_feedback_mode: '{{ states(''input_text.ac_last_manual_feedback_mode'') }}'
+      input_text.ac_last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
+    missing_helpers: >-
+      {% set ns = namespace(items=[]) %}
+      {% for entity_id, value in helper_states.items() %}
+        {% if value in ['unknown','unavailable'] %}
+          {% set ns.items = ns.items + [entity_id ~ '=' ~ value] %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.items | join(', ') }}
+  action:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ missing_helpers | trim != '''' }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Runtime Helpers
+          message: 'Helpers faltantes o no cargados: {{ missing_helpers }}'
+          entity_id: climate.0200009211c7_climate
+    default:
+    - service: logbook.log
+      data:
+        name: AC Runtime Helpers
+        message: 'Helpers críticos cargados correctamente en runtime.'
+        entity_id: climate.0200009211c7_climate
+
 - id: ac_memoria_y_bloqueo_2h_cool_heat
   alias: AC - Memoria último modo + Bloqueo 2h Cool/Heat (rolling, a prueba de fan_only)
   mode: single
@@ -1659,7 +1706,7 @@
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ presence_away_30m and cur_mode != ''off'' and (not manual_on_guard_active) and (not manual_presence_override_active) }}'
+        value_template: '{{ presence_away_30m and cur_mode != ''off'' and (not manual_override_active) }}'
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -1789,18 +1836,8 @@
           - condition: template
             value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
           sequence:
-          - data:
-              name: AC AUTO ON bloqueado
-              message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
-              entity_id: climate.0200009211c7_climate
-            action: logbook.log
-          - stop: 'AUTO ON cool_emergency_on abortado: manual OFF < 5 min.'
+          - stop: 'AUTO ON abortado: manual OFF < 5 min.'
         default: []
-      - data:
-          name: AC AUTO ON auditoría
-          message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
-          entity_id: climate.0200009211c7_climate
-        action: logbook.log
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_on
@@ -1924,7 +1961,7 @@
     - conditions:
       - condition: template
         value_template: "{{ emergency_latched\n   and emergency_off_ready\n   and
-          cur_mode != 'off'\n   and (not manual_on_guard_active) }}"
+          cur_mode != 'off'\n   and (not manual_override_active) }}"
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2040,7 +2077,7 @@
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'heat'\n   and tout is not none\n   and tout
-          >= heat_force_off_outdoor\n   and (not manual_on_guard_active) }}"
+          >= heat_force_off_outdoor\n   and (not manual_override_active) }}"
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2139,7 +2176,7 @@
       - condition: template
         value_template: "{{ cur_mode == 'heat'\n   and heat_off is not none\n   and
           tin is not none\n   and (tin | float) >= (heat_off | float)\n   and (not
-          manual_on_guard_active) }}"
+          manual_override_active) }}"
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2238,7 +2275,7 @@
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
           cool_setpoint is not none\n   and ac_set is not none\n   and (ac_set | float)
-          != (cool_setpoint | float)\n   and (not manual_on_guard_active) }}"
+          != (cool_setpoint | float)\n   and (not manual_override_active) }}"
       sequence:
       - target:
           entity_id: climate.0200009211c7_climate
@@ -2248,7 +2285,7 @@
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
-          (not manual_on_guard_active)\n   and (\n     (cool_off is not none and tin
+          (not manual_override_active)\n   and (\n     (cool_off is not none and tin
           is not none and (tin | float) <= (cool_off | float))\n     or (t1 is not
           none and (t1 | float) <= (cool_sensor_off | float))\n     or (t2 is not
           none and (t2 | float) <= (cool_sensor_off | float))\n   ) }}"
@@ -2377,18 +2414,8 @@
           - condition: template
             value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
           sequence:
-          - data:
-              name: AC AUTO ON bloqueado
-              message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
-              entity_id: climate.0200009211c7_climate
-            action: logbook.log
-          - stop: 'AUTO ON heat_normal_on abortado: manual OFF < 5 min.'
+          - stop: 'AUTO ON abortado: manual OFF < 5 min.'
         default: []
-      - data:
-          name: AC AUTO ON auditoría
-          message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
-          entity_id: climate.0200009211c7_climate
-        action: logbook.log
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_on
@@ -2522,18 +2549,8 @@
           - condition: template
             value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
           sequence:
-          - data:
-              name: AC AUTO ON bloqueado
-              message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
-              entity_id: climate.0200009211c7_climate
-            action: logbook.log
-          - stop: 'AUTO ON cool_normal_on abortado: manual OFF < 5 min.'
+          - stop: 'AUTO ON abortado: manual OFF < 5 min.'
         default: []
-      - data:
-          name: AC AUTO ON auditoría
-          message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
-          entity_id: climate.0200009211c7_climate
-        action: logbook.log
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_on
@@ -2714,15 +2731,15 @@
     fan_day_mode: '{{ ''Low'' if now().hour < 9 else ''Auto'' }}'
     emergency_window: "{% set t = now().strftime('%H:%M:%S') %} {% if '10:00:00' <=
       t < '16:00:00' %}\n  10-16\n{% else %}\n  07-10/16-21\n{% endif %}"
-    emergency_on_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 25.1 if ''10:00:00''
-      <= t < ''16:00:00'' else 25.5 }}'
-    emergency_off_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 24.0 if ''10:00:00''
-      <= t < ''16:00:00'' else 24.4 }}'
+    emergency_on_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 25.6 if ''10:00:00''
+      <= t < ''16:00:00'' else 26.0 }}'
+    emergency_off_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 24.4 if ''10:00:00''
+      <= t < ''16:00:00'' else 24.8 }}'
     emergency_setpoint: 22
     emergency_fan_mode: '{% set t = now().strftime(''%H:%M:%S'') %} {{ ''Auto'' if
       ''10:00:00'' <= t < ''16:00:00'' else ''Low'' }}'
-    emergency_hot: '{{ tin is not none and (tin | float) >= (emergency_on_avg | float)
-      }}'
+    emergency_hot: '{{ tin is not none and tout is not none and (tout | float) >= 24
+      and (tin | float) >= (emergency_on_avg | float) }}'
     emergency_off_ready: '{{ tin is not none and (tin | float) <= (emergency_off_avg
       | float) }}'
     emergency_latched: '{{ last_mode_no_fan == ''emergency_cool'' }}'
@@ -2773,15 +2790,22 @@
     recent_any_auto_on: "{{ last_auto_action == 'auto_on'\n   and (minutes_since_last_auto
       | float(99999)) <= 2 }}"
     last_manual_on_ts_raw: '{{ states(''input_datetime.ac_last_manual_on_ts'') }}'
+    last_manual_final_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'') }}'
     manual_on_hold_minutes: 12
-    minutes_since_manual_on: "{% if last_manual_on_ts_raw in ['unknown','unavailable','none',''] %}
+    last_manual_override_ts: "{% set on_ts = as_timestamp(last_manual_on_ts_raw, 0)
+      %}
+      {% set final_ts = as_timestamp(last_manual_final_ts_raw, 0) %}
+      {{ [on_ts, final_ts] | max }}"
+    minutes_since_manual_on: "{% if (last_manual_override_ts | float(0)) <= 0 %}
   99999
 {% else %}
-  {{ ((as_timestamp(now()) - as_timestamp(last_manual_on_ts_raw)) / 60) | round(1) }}
+  {{ ((as_timestamp(now()) - (last_manual_override_ts | float(0))) / 60) | round(1) }}
 {% endif %}"
-    manual_on_guard_active: '{{ (minutes_since_manual_on | float(99999)) < (manual_on_hold_minutes | float) }}'
+    manual_on_guard_active: '{{ (minutes_since_manual_on | float(99999)) < (manual_on_hold_minutes
+      | float) }}'
     last_manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'') }}'
     manual_presence_override_active: "{{ last_manual_event_type in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] and presence_temp_from_manual }}"
+    manual_override_active: '{{ manual_on_guard_active or manual_presence_override_active }}'
     last_manual_off_ts_raw: '{{ states(''input_datetime.ac_last_manual_off_ts'') }}'
     manual_off_hold_minutes: 5
     minutes_since_manual_off: "{% if last_manual_off_ts_raw in ['unknown','unavailable','none','']
@@ -3497,13 +3521,18 @@
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
   - target:
+      entity_id: input_datetime.ac_last_manual_final_ts
+    data:
+      datetime: '{{ ts }}'
+    action: input_datetime.set_datetime
+  - target:
       entity_id: input_text.ac_last_change_origin
     data:
       value: manual_off
     action: input_text.set_value
   - data:
-      name: AC Manual OFF audit
-      message: '{{ ts }} | input_datetime.ac_last_manual_off_ts={{ ts }} | event_type={{ manual_event_type }} | last_auto_action={{ last_auto_action }} | last_auto_mode={{ last_auto_mode }} | last_auto_branch={{ last_auto_branch }} | minutes_since_last_auto={{ minutes_since_last_auto }} | Ventana anti-rebote activada por 5 min antes de cualquier AUTO ON.'
+      name: AC Manual OFF
+      message: 'manual_off | tipo={{ manual_event_type }} | last_auto={{ last_auto_action }}/{{ last_auto_mode }} | {{ minutes_since_last_auto }} min'
       entity_id: climate.0200009211c7_climate
     action: logbook.log
   - target:
@@ -3586,8 +3615,6 @@
   - variables:
       climate_ent: climate.0200009211c7_climate
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-      manual_presence_until: '{{ (now() + timedelta(hours=1)).strftime(''%Y-%m-%d
-        %H:%M:%S'') }}'
       final_mode: '{{ states(climate_ent) }}'
       final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
       final_fan: "{{ state_attr(climate_ent,'fan_mode')\n   if state_attr(climate_ent,'fan_mode')
@@ -3676,7 +3703,8 @@
      or (tin | float(999)) > (heat_on | float(-999))
      or (tout | float(99)) >= (heat_force_off_outdoor | float)
    ) }}"
-      manual_event_type_final: "{% if final_mode == 'cool' and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap_cool\n{% elif final_mode == 'heat' and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap_heat\n{% elif final_mode in ['cool','heat'] and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap\n{% elif final_mode == 'cool' and cool_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_cool\n{% elif final_mode == 'heat' and heat_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_heat\n{% else %}\n  manual_on_detected\n{% endif %}"
+      manual_event_type_final: "{% if final_mode == 'cool' and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap_cool\n{% elif final_mode == 'heat' and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap_heat\n{% elif final_mode in ['cool','heat','fan_only'] and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap\n{% elif final_mode == 'cool' and cool_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_cool\n{% elif final_mode == 'heat' and heat_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_heat\n{% else %}\n  manual_on_detected\n{% endif %}"
+      manual_presence_until: "{% if (manual_event_type_final | trim) in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] %}\n  {{ (now() + timedelta(minutes=90)).strftime('%Y-%m-%d %H:%M:%S') }}\n{% else %}\n  {{ states('input_datetime.ac_manual_presence_until') }}\n{% endif %}"
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
       notify_message: >-
         {% if (manual_event_type_final | trim) in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] %}AC aprendió: ON manual por ausencia | presencia temporal activada{% else %}AC manual detectado: {{ final_mode }}{% endif %}
@@ -3685,11 +3713,17 @@
     data:
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
-  - target:
-      entity_id: input_datetime.ac_manual_presence_until
-    data:
-      datetime: '{{ manual_presence_until }}'
-    action: input_datetime.set_datetime
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ (manual_event_type_final | trim) in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] }}"
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_manual_presence_until
+        data:
+          datetime: '{{ manual_presence_until }}'
+        action: input_datetime.set_datetime
+    default: []
   - target:
       entity_id: input_text.ac_last_manual_event_type
     data:
@@ -3702,9 +3736,9 @@
       sequence:
       - action: logbook.log
         data:
-          name: AC Manual Trace
+          name: AC Manual ON
           message: >-
-            manual_on_classified_presence_gap | final_mode={{ final_mode }} | presence_effective={{ presence_effective }} | phone_home={{ presence_phone_home }} | sensor_strict={{ presence_sensor_strict }} | manual_presence_temp={{ presence_temp_from_manual }} | minutes_since_last_auto={{ minutes_since_last_auto }}
+            manual_on_due_to_presence_gap | modo={{ final_mode }} | presencia temporal hasta {{ manual_presence_until }}
           entity_id: climate.0200009211c7_climate
       - data:
           title: AC manual importante
