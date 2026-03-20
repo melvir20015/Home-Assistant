@@ -212,6 +212,13 @@ Debe preservar cuál fue el último modo útil para confort (`cool`, `heat`, u o
 
 En otras palabras, ayuda a mantener continuidad semántica entre acciones automáticas, acciones manuales y decisiones de aprendizaje.
 
+Opciones válidas exactas del helper:
+
+- `off`
+- `cool`
+- `heat`
+- `emergency_cool`
+
 Semántica funcional vigente del helper:
 
 - `off` significa **reposo explícito del helper**: no hay un modo térmico recordado que convenga conservar. No es un sinónimo de `idle`; `idle` no debe usarse como valor de este helper.
@@ -220,6 +227,11 @@ Semántica funcional vigente del helper:
 - `heat` debe guardarse cuando una automatización o una intervención manual deja al AC operando efectivamente en calefacción y esa calefacción sí debe quedar como último modo térmico útil.
 - `emergency_cool` debe guardarse únicamente cuando entra en acción la rama de enfriamiento de emergencia por calor severo y se necesita distinguir ese contexto del flujo normal de `cool`.
 - El helper debe resetearse a `off` cuando el sistema entra en reposo y ya no conviene conservar memoria operativa, por ejemplo tras apagados manuales, auto-off por ausencia, limpiezas de latch de emergencia o cualquier otra rama que explícitamente descarte el modo recordado.
+
+Regla operativa que no debe romperse:
+
+- `off` es el único estado de reposo permitido para este helper.
+- No debe existir ninguna opción booleana como `False` ni ningún flujo que intente escribirla.
 
 ## 6. Principios de diseño que no deben romperse
 
