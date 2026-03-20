@@ -2913,7 +2913,7 @@
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
   No hubo aprendizaje válido porque la última acción automática registrada no fue auto_on.
 {% elif ignored_reason_code == 'window_expired' %}
-  No hubo aprendizaje válido porque la ventana de feedback expiró.
+  No hubo aprendizaje válido porque la ventana de feedback expiró (minutes_since_last_auto={{ minutes_since_last_auto }}, feedback_window_min={{ feedback_window_min }}).
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
   No hubo aprendizaje válido porque el último modo automático no es aprendible.
 {% else %}
@@ -3193,21 +3193,32 @@
         else %}
   manual_on_feedback_ignored_no_valid_learning
 {% endif %}"
-      ignored_reason_summary: "{% if not learning_enabled %}
-  aprendizaje deshabilitado
+      ignored_reason_code: "{% if not learning_enabled %}
+  learning_disabled
 {% elif last_auto_action != 'auto_off' %}
-  última acción no fue auto_off
+  last_action_not_auto_off
 {% elif final_mode not in ['cool','heat'] %}
-  modo final no aprendible
+  final_mode_not_learnable
 {% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}
-  ventana expirada
+  window_expired
+{% else %}
+  no_valid_learning
+{% endif %}"
+      ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
+  aprendizaje deshabilitado
+{% elif ignored_reason_code == 'last_action_not_auto_off' %}
+  última acción no fue auto_off
+{% elif ignored_reason_code == 'final_mode_not_learnable' %}
+  modo final no aprendible
+{% elif ignored_reason_code == 'window_expired' %}
+  ventana expirada (minutes_since_last_auto={{ minutes_since_last_auto }}, feedback_window_min={{ feedback_window_min }})
 {% else %}
   sin aprendizaje válido
 {% endif %}"
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
       presence_effective: 'n/a'
       notify_title_valid: AC Learning ON aplicado
-      notify_title_ignored: AC Learning ignorado
+      notify_title_ignored: "AC Learning ignorado: {{ ignored_reason_code }}"
       notify_message_valid_cool: >-
         1. Evento detectado: encendido manual después de AUTO OFF en cool a las {{ ts }}.
         2. Interpretación del evento: el usuario corrigió un apagado automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
@@ -3224,8 +3235,8 @@
         Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
       notify_message_ignored: >-
         1. Evento detectado: encendido manual a las {{ ts }}.
-        2. Interpretación del evento: {{ ignored_reason_summary }} (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
-        3. Aprendizaje válido: no; learning_type={{ learning_type }}.
+        2. Interpretación del evento: {{ ignored_reason_summary }} (motivo={{ ignored_reason_code }}, branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
+        3. Aprendizaje válido: no; learning_type={{ learning_type }}, minutes_since_last_auto={{ minutes_since_last_auto }}, feedback_window_min={{ feedback_window_min }}.
         4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ cur_bias_cool_on }}, ac_bias_cool_off={{ cur_bias_cool_off }}, ac_bias_cool_setpoint={{ cur_bias_cool_setpoint }}, ac_bias_heat_on={{ cur_bias_heat_on }}, ac_bias_heat_off={{ cur_bias_heat_off }}, ac_bias_heat_setpoint={{ cur_bias_heat_setpoint }}.
         5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
         Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
