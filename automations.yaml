@@ -1701,6 +1701,51 @@
           'cool'\n     or (ac_set | float(0)) != (emergency_setpoint | float)\n     or
           ac_fan != emergency_fan_mode\n   ) }}"
       sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
+          sequence:
+          - data:
+              name: AC AUTO ON bloqueado
+              message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+              entity_id: climate.0200009211c7_climate
+            action: logbook.log
+          - choose:
+            - conditions:
+              - condition: state
+                entity_id: input_boolean.ac_learning_debug
+                state: 'on'
+              sequence:
+              - data:
+                  title: AC DEBUG - AUTO ON abortado
+                  message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+                  data:
+                    ttl: 0
+                    priority: high
+                action: notify.mobile_app_samsung_s24
+            default: []
+          - stop: 'AUTO ON cool_emergency_on abortado: manual OFF < 5 min.'
+        default: []
+      - data:
+          name: AC AUTO ON auditoría
+          message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: input_boolean.ac_learning_debug
+            state: 'on'
+          sequence:
+          - data:
+              title: AC DEBUG - AUTO ON evaluado
+              message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
@@ -2245,6 +2290,51 @@
           < (heat_force_off_outdoor | float)\n   and cur_mode != 'heat'\n   and (not
           locked or last_mode_no_fan not in ['cool','emergency_cool']) }}"
       sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
+          sequence:
+          - data:
+              name: AC AUTO ON bloqueado
+              message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+              entity_id: climate.0200009211c7_climate
+            action: logbook.log
+          - choose:
+            - conditions:
+              - condition: state
+                entity_id: input_boolean.ac_learning_debug
+                state: 'on'
+              sequence:
+              - data:
+                  title: AC DEBUG - AUTO ON abortado
+                  message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+                  data:
+                    ttl: 0
+                    priority: high
+                action: notify.mobile_app_samsung_s24
+            default: []
+          - stop: 'AUTO ON heat_normal_on abortado: manual OFF < 5 min.'
+        default: []
+      - data:
+          name: AC AUTO ON auditoría
+          message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: input_boolean.ac_learning_debug
+            state: 'on'
+          sequence:
+          - data:
+              title: AC DEBUG - AUTO ON evaluado
+              message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
@@ -2363,6 +2453,51 @@
           float)\n   and cur_mode != 'cool'\n   and (not locked or last_mode_no_fan
           != 'heat') }}"
       sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
+          sequence:
+          - data:
+              name: AC AUTO ON bloqueado
+              message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+              entity_id: climate.0200009211c7_climate
+            action: logbook.log
+          - choose:
+            - conditions:
+              - condition: state
+                entity_id: input_boolean.ac_learning_debug
+                state: 'on'
+              sequence:
+              - data:
+                  title: AC DEBUG - AUTO ON abortado
+                  message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+                  data:
+                    ttl: 0
+                    priority: high
+                action: notify.mobile_app_samsung_s24
+            default: []
+          - stop: 'AUTO ON cool_normal_on abortado: manual OFF < 5 min.'
+        default: []
+      - data:
+          name: AC AUTO ON auditoría
+          message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: input_boolean.ac_learning_debug
+            state: 'on'
+          sequence:
+          - data:
+              title: AC DEBUG - AUTO ON evaluado
+              message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
@@ -3150,6 +3285,25 @@
     data:
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
+  - data:
+      name: AC Manual OFF audit
+      message: '{{ ts }} | input_datetime.ac_last_manual_off_ts={{ ts }} | Ventana anti-rebote activada por 5 min antes de cualquier AUTO ON.'
+      entity_id: climate.0200009211c7_climate
+    action: logbook.log
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_learning_debug
+        state: 'on'
+      sequence:
+      - data:
+          title: AC DEBUG - Manual OFF auditado
+          message: '{{ ts }} | input_datetime.ac_last_manual_off_ts={{ ts }} | Ventana anti-rebote activa por 5 min antes de cualquier AUTO ON.'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    default: []
   - target:
       entity_id: input_text.ac_last_manual_event_type
     data:
