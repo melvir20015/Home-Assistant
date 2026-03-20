@@ -29,7 +29,7 @@ ac_on_por_automatizacion:
   icon: mdi:robot
 
 ac_learning_enabled:
-  name: "AC Learning Enabled"
+  name: "AC Learning Enabled (maestro)"
   icon: mdi:brain
   initial: true
 

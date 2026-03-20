@@ -180,16 +180,16 @@ ac_last_manual_final_setpoint:
 
 ac_bias_cool_on:
   name: "AC Bias Cool ON"
-  min: -2
-  max: 2
+  min: -3
+  max: 3
   step: 0.05
   mode: box
   unit_of_measurement: "°C"
 
 ac_bias_cool_off:
   name: "AC Bias Cool OFF"
-  min: -2
-  max: 2
+  min: -3
+  max: 3
   step: 0.05
   mode: box
   unit_of_measurement: "°C"
@@ -204,16 +204,16 @@ ac_bias_cool_setpoint:
 
 ac_bias_heat_on:
   name: "AC Bias Heat ON"
-  min: -2
-  max: 2
+  min: -3
+  max: 3
   step: 0.05
   mode: box
   unit_of_measurement: "°C"
 
 ac_bias_heat_off:
   name: "AC Bias Heat OFF"
-  min: -2
-  max: 2
+  min: -3
+  max: 3
   step: 0.05
   mode: box
   unit_of_measurement: "°C"
@@ -242,9 +242,9 @@ ac_learning_rate_large:
 
 ac_feedback_window_minutes:
   name: "AC Feedback Window Minutes"
-  min: 1
-  max: 120
+  min: 5
+  max: 180
   step: 1
   mode: box
-  initial: 15
+  initial: 45
   unit_of_measurement: "min"

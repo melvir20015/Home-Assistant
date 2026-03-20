@@ -1723,7 +1723,7 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
-      - delay: 00:00:10
+      - delay: 00:00:45
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -1744,20 +1744,6 @@
               message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
               entity_id: climate.0200009211c7_climate
             action: logbook.log
-          - choose:
-            - conditions:
-              - condition: state
-                entity_id: input_boolean.ac_learning_debug
-                state: 'on'
-              sequence:
-              - data:
-                  title: AC DEBUG - AUTO ON abortado
-                  message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
-                  data:
-                    ttl: 0
-                    priority: high
-                action: notify.mobile_app_samsung_s24
-            default: []
           - stop: 'AUTO ON cool_emergency_on abortado: manual OFF < 5 min.'
         default: []
       - data:
@@ -1765,20 +1751,6 @@
           message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
           entity_id: climate.0200009211c7_climate
         action: logbook.log
-      - choose:
-        - conditions:
-          - condition: state
-            entity_id: input_boolean.ac_learning_debug
-            state: 'on'
-          sequence:
-          - data:
-              title: AC DEBUG - AUTO ON evaluado
-              message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
-              data:
-                ttl: 0
-                priority: high
-            action: notify.mobile_app_samsung_s24
-        default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_on
@@ -2014,7 +1986,7 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
-      - delay: 00:00:10
+      - delay: 00:00:45
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -2112,7 +2084,7 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
-      - delay: 00:00:10
+      - delay: 00:00:45
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -2211,7 +2183,7 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
-      - delay: 00:00:10
+      - delay: 00:00:45
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -2343,7 +2315,7 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
-      - delay: 00:00:10
+      - delay: 00:00:45
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -2365,20 +2337,6 @@
               message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
               entity_id: climate.0200009211c7_climate
             action: logbook.log
-          - choose:
-            - conditions:
-              - condition: state
-                entity_id: input_boolean.ac_learning_debug
-                state: 'on'
-              sequence:
-              - data:
-                  title: AC DEBUG - AUTO ON abortado
-                  message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
-                  data:
-                    ttl: 0
-                    priority: high
-                action: notify.mobile_app_samsung_s24
-            default: []
           - stop: 'AUTO ON heat_normal_on abortado: manual OFF < 5 min.'
         default: []
       - data:
@@ -2386,20 +2344,6 @@
           message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
           entity_id: climate.0200009211c7_climate
         action: logbook.log
-      - choose:
-        - conditions:
-          - condition: state
-            entity_id: input_boolean.ac_learning_debug
-            state: 'on'
-          sequence:
-          - data:
-              title: AC DEBUG - AUTO ON evaluado
-              message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
-              data:
-                ttl: 0
-                priority: high
-            action: notify.mobile_app_samsung_s24
-        default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_on
@@ -2540,20 +2484,6 @@
               message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
               entity_id: climate.0200009211c7_climate
             action: logbook.log
-          - choose:
-            - conditions:
-              - condition: state
-                entity_id: input_boolean.ac_learning_debug
-                state: 'on'
-              sequence:
-              - data:
-                  title: AC DEBUG - AUTO ON abortado
-                  message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
-                  data:
-                    ttl: 0
-                    priority: high
-                action: notify.mobile_app_samsung_s24
-            default: []
           - stop: 'AUTO ON cool_normal_on abortado: manual OFF < 5 min.'
         default: []
       - data:
@@ -2561,20 +2491,6 @@
           message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
           entity_id: climate.0200009211c7_climate
         action: logbook.log
-      - choose:
-        - conditions:
-          - condition: state
-            entity_id: input_boolean.ac_learning_debug
-            state: 'on'
-          sequence:
-          - data:
-              title: AC DEBUG - AUTO ON evaluado
-              message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
-              data:
-                ttl: 0
-                priority: high
-            action: notify.mobile_app_samsung_s24
-        default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_on
@@ -2776,10 +2692,10 @@
       \ {{ (base + min(wind*0.05,0.8)) | round(2) }}\n{% endif %}"
     heat_on: "{% if heat_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
       = (heat_on_base | float) + (bias_heat_on if learning_enabled else 0) %}\n  {{
-      [[raw, 23.8] | min, 21.0] | max | round(2) }}\n{% endif %}"
+      [[raw, 24.5] | min, 20.5] | max | round(2) }}\n{% endif %}"
     heat_off: "{% if heat_on is none %}\n  {{ none }}\n{% else %}\n  {% set raw =
       (heat_on | float) + 1.5 + (bias_heat_off if learning_enabled else 0) %}\n  {{
-      [[raw, 25.5] | min, (heat_on | float) + 0.6] | max | round(2) }}\n{% endif %}"
+      [[raw, 26.0] | min, (heat_on | float) + 0.6] | max | round(2) }}\n{% endif %}"
     heat_setpoint: '{% set raw = 28 + (bias_heat_setpoint if learning_enabled else
       0) %} {{ [[raw, 30] | min, 24] | max | round(1) }}'
     cool_on_base: "{% if tout is none %}\n  {{ none }}\n{% elif tout < 17 %}\n  {{
@@ -2791,12 +2707,12 @@
       %}"
     cool_on: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
       = (cool_on_base | float) + (bias_cool_on if learning_enabled else 0) %}\n  {{
-      [[raw, 25.2] | min, 23.8] | max | round(2) }}\n{% endif %}"
+      [[raw, 26.2] | min, 23.6] | max | round(2) }}\n{% endif %}"
     cool_off_base: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_on
       | float) - 0.5) | round(2) }}\n{% endif %}"
     cool_off: "{% if cool_off_base is none %}\n  {{ none }}\n{% else %}\n  {% set
       raw = (cool_off_base | float) + (bias_cool_off if learning_enabled else 0) %}\n
-      \ {% set hi = (cool_on | float) - 0.4 %}\n  {{ [[raw, hi] | min, 22.8] | max
+      \ {% set hi = (cool_on | float) - 0.4 %}\n  {{ [[raw, hi] | min, 22.4] | max
       | round(2) }}\n{% endif %}"
     cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
       raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
@@ -2858,8 +2774,7 @@
     '
   triggers:
   - trigger: state
-    entity_id: climate.0200009211c7_climate
-    to: 'off'
+    entity_id: input_datetime.ac_last_manual_off_ts
   conditions:
   - condition: time
     after: 07:01:00
@@ -2921,7 +2836,7 @@
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
-        | float(30) }}'
+        | float(45) }}'
       last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
         }}'
@@ -2936,14 +2851,14 @@
   {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
         / 60) | round(1) }}
 {% endif %}"
-      quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 8 }}'
+      quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 12 }}'
       valid_feedback: "{{ learning_enabled
    and last_change_origin == 'manual_off'
    and last_auto_action == 'auto_on'
 
         \  and last_auto_mode in ['cool','heat']
    and (minutes_since_last_auto
-        | float(99999)) <= (feedback_window_min | float(30)) }}"
+        | float(99999)) <= (feedback_window_min | float(45)) }}"
       cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
       cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
         }}'
@@ -2971,7 +2886,7 @@
         elif not learning_enabled %}
   manual_off_feedback_ignored_learning_disabled
 {% elif last_change_origin != 'manual_off' %}
-  manual_off_feedback_ignored_ambiguous_origin
+  manual_off_feedback_ignored_not_manual
 {% elif last_auto_action
         != 'auto_on' %}
   manual_off_feedback_ignored_last_action_not_auto_on
@@ -2979,17 +2894,17 @@
         not in ['cool','heat'] %}
   manual_off_feedback_ignored_last_mode_not_learnable
 {% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(30)) %}
+        | float(99999)) > (feedback_window_min | float(45)) %}
   manual_off_feedback_ignored_window_expired
 {%
         else %}
   manual_off_feedback_ignored_no_valid_learning
 {% endif %}"
-      cool_on_after: '{{ [[(cur_bias_cool_on | float) + (step_main | float), 2] | min, -2] | max | round(2) }}'
-      cool_off_after: '{{ [[(cur_bias_cool_off | float) + (step_main | float), 2] | min, -2] | max | round(2) }}'
+      cool_on_after: '{{ [[(cur_bias_cool_on | float) + (step_main | float), 3] | min, -3] | max | round(2) }}'
+      cool_off_after: '{{ [[(cur_bias_cool_off | float) + (step_main | float), 3] | min, -3] | max | round(2) }}'
       cool_setpoint_after: '{{ [[(cur_bias_cool_setpoint | float) + 0.5, 2] | min, -2] | max | round(1) }}'
-      heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 2] | min, -2] | max | round(2) }}'
-      heat_off_after: '{{ [[(cur_bias_heat_off | float) - (step_main | float), 2] | min, -2] | max | round(2) }}'
+      heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
+      heat_off_after: '{{ [[(cur_bias_heat_off | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_setpoint_after: '{{ [[(cur_bias_heat_setpoint | float) - 0.5, 2] | min, -2] | max | round(1) }}'
       cool_setpoint_adjustment: "{% if quick_feedback %}
   setpoint {{ cur_bias_cool_setpoint | float }}→{{ cool_setpoint_after }} (+0.5)
@@ -3011,10 +2926,10 @@
       ignored_reason_code: "{% if not learning_enabled %}
   learning_disabled
 {% elif last_change_origin != 'manual_off' %}
-  ambiguous_origin
+  not_manual
 {% elif last_auto_action != 'auto_on' %}
   last_action_not_auto_on
-{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}
+{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(45)) %}
   window_expired
 {% elif last_auto_mode not in ['cool','heat'] %}
   last_mode_not_learnable
@@ -3023,7 +2938,7 @@
 {% endif %}"
       ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
   Ignorado porque learning_enabled está apagado.
-{% elif ignored_reason_code == 'ambiguous_origin' %}
+{% elif ignored_reason_code == 'not_manual' %}
   Ignorado porque el último cambio no quedó clasificado como manual_off.
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
   Ignorado porque la última acción no fue auto_on.
@@ -3040,8 +2955,8 @@
   ignorado porque learning_enabled está apagado
 {% elif ignored_reason_code == 'window_expired' %}
   ignorado por ventana expirada
-{% elif ignored_reason_code == 'ambiguous_origin' %}
-  ignorado por origen ambiguo
+{% elif ignored_reason_code == 'not_manual' %}
+  ignorado por evento no clasificado como manual_off
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
   ignorado porque la última acción no fue auto_on
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
@@ -3129,13 +3044,13 @@
           entity_id: input_number.ac_bias_cool_on
         data:
           value: '{% set raw = (cur_bias_cool_on | float) + (step_main | float) %}
-            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+            {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_bias_cool_off
         data:
           value: '{% set raw = (cur_bias_cool_off | float) + (step_main | float) %}
-            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+            {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - choose:
         - conditions:
@@ -3174,13 +3089,13 @@
           entity_id: input_number.ac_bias_heat_on
         data:
           value: '{% set raw = (cur_bias_heat_on | float) - (step_main | float) %}
-            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+            {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_bias_heat_off
         data:
           value: '{% set raw = (cur_bias_heat_off | float) - (step_main | float) %}
-            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+            {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - choose:
         - conditions:
@@ -3256,7 +3171,7 @@
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
-        | float(30) }}'
+        | float(45) }}'
       last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
         }}'
@@ -3278,7 +3193,7 @@
 
         \  and final_mode in ['cool','heat']
    and (minutes_since_last_auto | float(99999))
-        <= (feedback_window_min | float(30)) }}"
+        <= (feedback_window_min | float(45)) }}"
       cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
       cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
         }}'
@@ -3309,7 +3224,7 @@
         not in ['cool','heat'] %}
   manual_on_feedback_ignored_final_mode_not_learnable
 {% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(30)) %}
+        | float(99999)) > (feedback_window_min | float(45)) %}
   manual_on_feedback_ignored_window_expired
 {%
         else %}
@@ -3323,7 +3238,7 @@
   last_action_not_auto_off
 {% elif final_mode not in ['cool','heat'] %}
   final_mode_not_learnable
-{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}
+{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(45)) %}
   window_expired
 {% else %}
   no_valid_learning
@@ -3383,13 +3298,13 @@
           entity_id: input_number.ac_bias_cool_on
         data:
           value: '{% set raw = (cur_bias_cool_on | float) - (step_main | float) %}
-            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+            {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_bias_cool_off
         data:
           value: '{% set raw = (cur_bias_cool_off | float) - (step_main | float) %}
-            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+            {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - choose:
         - conditions:
@@ -3428,13 +3343,13 @@
           entity_id: input_number.ac_bias_heat_on
         data:
           value: '{% set raw = (cur_bias_heat_on | float) + (step_main | float) %}
-            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+            {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_bias_heat_off
         data:
           value: '{% set raw = (cur_bias_heat_off | float) + (step_main | float) %}
-            {{ [[raw, 2] | min, -2] | max | round(2) }}'
+            {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - choose:
         - conditions:
@@ -3489,7 +3404,12 @@
       final_mode: 'off'
       final_setpoint: "{% set sp = state_attr('climate.0200009211c7_climate','temperature') %}{{ sp if sp is not none else 'n/a' }}"
       final_fan: "{% set fan = state_attr('climate.0200009211c7_climate','fan_mode') %}{{ fan if fan is not none else 'n/a' }}"
-      minutes_since_last_auto: "{% set last_auto_ts_raw = states('input_datetime.ac_last_auto_ts') %}{% if last_auto_ts_raw in ['unknown','unavailable','none',''] %}99999{% else %}{{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw)) / 60) | round(1) }}{% endif %}"
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
+      last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
+      last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
+      minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none',''] %}99999{% else %}{{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw)) / 60) | round(1) }}{% endif %}"
+      manual_event_type: "{% if last_auto_action == 'auto_on' and last_auto_mode in ['cool','heat'] and (minutes_since_last_auto | float(99999)) <= 45 %}manual_off_detected_after_recent_auto_on_{{ last_auto_mode }}{% else %}manual_off_detected{% endif %}"
       manual_off_block: 'true'
       presence_effective: 'n/a'
       bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
@@ -3510,13 +3430,13 @@
     action: input_text.set_value
   - data:
       name: AC Manual OFF audit
-      message: '{{ ts }} | input_datetime.ac_last_manual_off_ts={{ ts }} | Ventana anti-rebote activada por 5 min antes de cualquier AUTO ON.'
+      message: '{{ ts }} | input_datetime.ac_last_manual_off_ts={{ ts }} | event_type={{ manual_event_type }} | last_auto_action={{ last_auto_action }} | last_auto_mode={{ last_auto_mode }} | last_auto_branch={{ last_auto_branch }} | minutes_since_last_auto={{ minutes_since_last_auto }} | Ventana anti-rebote activada por 5 min antes de cualquier AUTO ON.'
       entity_id: climate.0200009211c7_climate
     action: logbook.log
   - target:
       entity_id: input_text.ac_last_manual_event_type
     data:
-      value: manual_off_detected
+      value: '{{ manual_event_type }}'
     action: input_text.set_value
   - target:
       entity_id: input_select.ac_ultimo_modo_no_fan
