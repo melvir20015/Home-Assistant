@@ -3114,6 +3114,7 @@
       final_fan: "{{ state_attr(climate_ent,'fan_mode')
    if state_attr(climate_ent,'fan_mode')
         is not none else 'n/a' }}"
+      manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'') }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
@@ -3236,7 +3237,7 @@
           sequence:
           - data:
               title: AC Learning - Manual ON corrige COOL OFF
-              message: '{{ ts }} | Learning={{ learning_type }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
+              message: '{{ ts }} | Learning={{ learning_type }} | EventoManual={{ manual_event_type }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
                 }} | step={{ step_main }} | FinalSet={{ final_setpoint }} | Fan={{
                 final_fan }}'
               data:
@@ -3289,7 +3290,7 @@
           sequence:
           - data:
               title: AC Learning - Manual ON corrige HEAT OFF
-              message: '{{ ts }} | Learning={{ learning_type }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
+              message: '{{ ts }} | Learning={{ learning_type }} | EventoManual={{ manual_event_type }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
                 }} | step={{ step_main }} | FinalSet={{ final_setpoint }} | Fan={{
                 final_fan }}'
               data:
@@ -3305,7 +3306,7 @@
         sequence:
         - data:
             title: AC Learning - Manual ON sin ajuste
-            message: '{{ ts }} | Learning={{ learning_type }} | learning={{ learning_enabled
+            message: '{{ ts }} | Learning={{ learning_type }} | EventoManual={{ manual_event_type }} | learning={{ learning_enabled
               }} | last_action={{ last_auto_action }} | last_mode={{ last_auto_mode
               }} | min={{ minutes_since_last_auto }} | branch={{ last_auto_branch
               }} | final_mode={{ final_mode }} | set={{ final_setpoint }} | fan={{
@@ -3458,6 +3459,75 @@
         abs | round(2) }}\n{% else %}\n  {{ 0 }}\n{% endif %}"
       tout: '{{ state_attr(''weather.openweathermap'',''apparent_temperature'') |
         float(none) }}'
+      mov_raw: '{{ states(''binary_sensor.presencia_movimiento_estable'') }}'
+      s24_raw: '{{ states(''device_tracker.samsung_s24'') }}'
+      person_raw: '{{ states(''person.ivan'') }}'
+      presence_ok: '{{ is_state(''binary_sensor.presencia_ok_estable'',''on'') }}'
+      presence_real_now: '{{ mov_raw == ''on'' }}'
+      presence_phone_home: '{{ (s24_raw in [''home'',''on'']) or (person_raw == ''home'')
+        }}'
+      manual_presence_until_raw: '{{ states(''input_datetime.ac_manual_presence_until'')
+        }}'
+      presence_temp_from_manual: "{% if manual_presence_until_raw in ['unknown','unavailable','none','']
+        %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw)
+        }}\n{% endif %}"
+      presence_sensor_strict: '{{ presence_ok and presence_real_now }}'
+      presence_effective: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
+        }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
+        %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
+        / 60) | round(1) }}\n{% endif %}"
+      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
+      learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
+      bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
+      bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') | float(0)
+        }}'
+      bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
+      bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0)
+        }}'
+      wind_kmh: '{{ state_attr(''weather.openweathermap'',''wind_speed'') | float(0)
+        }}'
+      wind: '{{ (wind_kmh / 3.6) | round(2) }}'
+      heat_force_off_outdoor: 20
+      heat_on_base: "{% if tout is none %}\n  {{ none }}\n{% else %}\n  {% set base
+        = 23.0 if tout <= 5 else 22.0 if tout >= 17 else (23.0 - ((tout-5)/12)) %}\n
+        \  {{ (base + min(wind*0.05,0.8)) | round(2) }}\n{% endif %}"
+      heat_on: "{% if heat_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
+        = (heat_on_base | float) + (bias_heat_on if learning_enabled else 0) %}\n  {{
+        [[raw, 23.8] | min, 21.0] | max | round(2) }}\n{% endif %}"
+      heat_setpoint: '{% set raw = 28 + (bias_heat_setpoint if learning_enabled else
+        0) %} {{ [[raw, 30] | min, 24] | max | round(1) }}'
+      cool_on_base: "{% if tout is none %}\n  {{ none }}\n{% elif tout < 17 %}\n  {{
+        none }}\n{% else %}\n  {% set anchor_tout = 18.1 %}\n  {% set anchor_cool_on
+        = 24.0 %}\n  {% set k = 0.10 %}\n  {% set offset = 0.5 %}\n  {% set humidity_adj
+        = 0 if hin is none else (-0.25 if hin >= 65 else -0.10 if hin >= 58 else 0)
+        %}\n  {% set raw = (anchor_cool_on - (k * (tout - anchor_tout))) + offset + humidity_adj
+        %}\n  {{ [[raw, 24.7] | min, 24.0] | max | round(2) }}\n{% endif %}"
+      cool_on: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
+        = (cool_on_base | float) + (bias_cool_on if learning_enabled else 0) %}\n  {{
+        [[raw, 25.2] | min, 23.8] | max | round(2) }}\n{% endif %}"
+      cool_setpoint_base: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {%
+        set flo = (cool_on | float) | int %}\n  {{ [(flo - 1), 16] | max }}\n{% endif
+        %}"
+      cool_setpoint: "{% if cool_setpoint_base is none %}\n  {{ none }}\n{% else
+        %}\n  {% set raw = (cool_setpoint_base | float) + (bias_cool_setpoint if learning_enabled
+        else 0) %}\n  {{ [[raw, 24] | min, 21] | max | round(1) }}\n{% endif %}"
+      auto_on_blocked_by_presence: '{{ not presence_effective }}'
+      cool_auto_blocked_by_threshold: "{{ final_mode == 'cool'
+   and (
+     cool_on is none
+     or tin is none
+     or (tin | float(0)) < (cool_on | float(999))
+   ) }}"
+      heat_auto_blocked_by_threshold: "{{ final_mode == 'heat'
+   and (
+     heat_on is none
+     or tin is none
+     or (tin | float(999)) > (heat_on | float(-999))
+     or (tout | float(99)) >= (heat_force_off_outdoor | float)
+   ) }}"
+      manual_event_type_final: "{% if final_mode in ['cool','heat'] and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap\n{% elif final_mode == 'cool' and cool_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_cool\n{% elif final_mode == 'heat' and heat_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_heat\n{% else %}\n  manual_on_detected\n{% endif %}"
   - target:
       entity_id: input_datetime.ac_last_manual_final_ts
     data:
@@ -3468,6 +3538,11 @@
     data:
       datetime: '{{ manual_presence_until }}'
     action: input_datetime.set_datetime
+  - target:
+      entity_id: input_text.ac_last_manual_event_type
+    data:
+      value: '{{ manual_event_type_final | trim }}'
+    action: input_text.set_value
   - choose:
     - conditions:
       - condition: template
@@ -3533,15 +3608,46 @@
     action: input_number.set_value
   - choose:
     - conditions:
+      - condition: template
+        value_template: '{{ (manual_event_type_final | trim) == ''manual_on_due_to_presence_gap'' }}'
+      sequence:
+      - data:
+          title: AC Manual ON - Falta presencia
+          message: '{{ ts }} | El sistema interpreta que faltó presencia para permitir el AUTO ON. Evento={{ manual_event_type_final | trim }} | presence_effective={{ presence_effective }} | last_auto_action={{ last_auto_action }} | minutes_since_last_auto={{ minutes_since_last_auto }} | final_mode={{ final_mode }} | setpoint_final={{ final_setpoint }} | fan_final={{ final_fan }} | Presencia manual hasta={{ manual_presence_until }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    - conditions:
+      - condition: template
+        value_template: '{{ (manual_event_type_final | trim) == ''manual_on_due_to_comfort_gap_cool'' }}'
+      sequence:
+      - data:
+          title: AC Manual ON - Falta agresividad térmica COOL
+          message: '{{ ts }} | El sistema interpreta que faltó agresividad térmica en cool. Evento={{ manual_event_type_final | trim }} | final_mode={{ final_mode }} | setpoint_final={{ final_setpoint }} | fan_final={{ final_fan }} | tin={{ tin }} | cool_on={{ cool_on }} | cool_setpoint_auto={{ cool_setpoint }} | presence_effective={{ presence_effective }} | last_auto_action={{ last_auto_action }} | minutes_since_last_auto={{ minutes_since_last_auto }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    - conditions:
+      - condition: template
+        value_template: '{{ (manual_event_type_final | trim) == ''manual_on_due_to_comfort_gap_heat'' }}'
+      sequence:
+      - data:
+          title: AC Manual ON - Falta agresividad térmica HEAT
+          message: '{{ ts }} | El sistema interpreta que faltó agresividad térmica en heat. Evento={{ manual_event_type_final | trim }} | final_mode={{ final_mode }} | setpoint_final={{ final_setpoint }} | fan_final={{ final_fan }} | tin={{ tin }} | heat_on={{ heat_on }} | heat_setpoint_auto={{ heat_setpoint }} | tout={{ tout }} | presence_effective={{ presence_effective }} | last_auto_action={{ last_auto_action }} | minutes_since_last_auto={{ minutes_since_last_auto }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    - conditions:
       - condition: state
         entity_id: input_boolean.ac_learning_debug
         state: 'on'
       sequence:
       - data:
           title: AC Manual ON detectado
-          message: '{{ ts }} | Mode={{ final_mode }} | Set={{ final_setpoint }} |
-            Fan={{ final_fan }} | Presencia manual hasta={{ manual_presence_until
-            }}'
+          message: '{{ ts }} | Evento={{ manual_event_type_final | trim }} | Mode={{ final_mode }} | Set={{ final_setpoint }} | Fan={{ final_fan }} | presence_effective={{ presence_effective }} | last_auto_action={{ last_auto_action }} | minutes_since_last_auto={{ minutes_since_last_auto }} | Presencia manual hasta={{ manual_presence_until }}'
           data:
             ttl: 0
             priority: high
