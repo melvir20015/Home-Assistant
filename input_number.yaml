@@ -240,6 +240,14 @@ ac_learning_rate_large:
   step: 0.01
   mode: box
 
+ac_night_cool_last_effective_setpoint:
+  name: "AC Night Cool Last Effective Setpoint"
+  min: 16
+  max: 30
+  step: 0.5
+  mode: box
+  unit_of_measurement: "°C"
+
 ac_feedback_window_minutes:
   name: "AC Feedback Window Minutes"
   min: 5

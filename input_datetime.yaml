@@ -37,3 +37,13 @@ ac_manual_presence_until:
   name: "AC Manual Presence Until"
   has_date: true
   has_time: true
+
+ac_night_cool_last_effective_ts:
+  name: "AC Night Cool Last Effective Timestamp"
+  has_date: true
+  has_time: true
+
+ac_night_cool_last_bootstrap_ts:
+  name: "AC Night Cool Last Bootstrap Timestamp"
+  has_date: true
+  has_time: true

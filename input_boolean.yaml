@@ -37,3 +37,7 @@ ac_learning_debug:
   name: "AC Learning Debug"
   icon: mdi:bug
   initial: true
+
+ac_night_cool_bootstrap_in_progress:
+  name: "AC Night Cool Bootstrap In Progress"
+  icon: mdi:snowflake-thermometer
