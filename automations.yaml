@@ -1710,7 +1710,7 @@
           sequence:
           - data:
               name: AC AUTO ON bloqueado
-              message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+              message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
               entity_id: climate.0200009211c7_climate
             action: logbook.log
           - choose:
@@ -1721,7 +1721,7 @@
               sequence:
               - data:
                   title: AC DEBUG - AUTO ON abortado
-                  message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+                  message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
                   data:
                     ttl: 0
                     priority: high
@@ -1731,7 +1731,7 @@
         default: []
       - data:
           name: AC AUTO ON auditoría
-          message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+          message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - choose:
@@ -1742,7 +1742,7 @@
           sequence:
           - data:
               title: AC DEBUG - AUTO ON evaluado
-              message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+              message: '{{ ts }} | Rama=cool_emergency_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
               data:
                 ttl: 0
                 priority: high
@@ -2299,7 +2299,7 @@
           sequence:
           - data:
               name: AC AUTO ON bloqueado
-              message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+              message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
               entity_id: climate.0200009211c7_climate
             action: logbook.log
           - choose:
@@ -2310,7 +2310,7 @@
               sequence:
               - data:
                   title: AC DEBUG - AUTO ON abortado
-                  message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+                  message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
                   data:
                     ttl: 0
                     priority: high
@@ -2320,7 +2320,7 @@
         default: []
       - data:
           name: AC AUTO ON auditoría
-          message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+          message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - choose:
@@ -2331,7 +2331,7 @@
           sequence:
           - data:
               title: AC DEBUG - AUTO ON evaluado
-              message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+              message: '{{ ts }} | Rama=heat_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
               data:
                 ttl: 0
                 priority: high
@@ -2462,7 +2462,7 @@
           sequence:
           - data:
               name: AC AUTO ON bloqueado
-              message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+              message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
               entity_id: climate.0200009211c7_climate
             action: logbook.log
           - choose:
@@ -2473,7 +2473,7 @@
               sequence:
               - data:
                   title: AC DEBUG - AUTO ON abortado
-                  message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
+                  message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Abortado por ventana anti-rebote < 5 min.'
                   data:
                     ttl: 0
                     priority: high
@@ -2483,7 +2483,7 @@
         default: []
       - data:
           name: AC AUTO ON auditoría
-          message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+          message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - choose:
@@ -2494,7 +2494,7 @@
           sequence:
           - data:
               title: AC DEBUG - AUTO ON evaluado
-              message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
+              message: '{{ ts }} | Rama=cool_normal_on | Trig={{ trig }} | input_datetime.ac_last_manual_off_ts={{ last_manual_off_ts_raw }} | minutes_since_manual_off={{ minutes_since_manual_off }} | manual_off_block={{ manual_off_block }} | auto_on_allowed={{ auto_on_allowed }} | Intento autorizado para continuar.'
               data:
                 ttl: 0
                 priority: high
