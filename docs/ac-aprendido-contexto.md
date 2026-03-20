@@ -212,7 +212,7 @@ Debe preservar cuál fue el último modo útil para confort (`cool`, `heat`, u o
 
 En otras palabras, ayuda a mantener continuidad semántica entre acciones automáticas, acciones manuales y decisiones de aprendizaje.
 
-Opciones válidas exactas del helper:
+Opciones válidas exactas del helper (siempre como texto, nunca como booleanos):
 
 - `off`
 - `cool`
@@ -230,8 +230,9 @@ Semántica funcional vigente del helper:
 
 Regla operativa que no debe romperse:
 
-- `off` es el único estado de reposo permitido para este helper.
-- No debe existir ninguna opción booleana como `False` ni ningún flujo que intente escribirla.
+- `off` es el único estado de reposo permitido para este helper y debe observarse exactamente como texto en `states('input_select.ac_ultimo_modo_no_fan')`.
+- No debe existir ninguna opción booleana como `False`/`false` ni ningún flujo que intente escribirla.
+- Después de `cool_normal_off`, `cool_emergency_off` y de cualquier limpieza de latch de emergencia, el helper debe quedar en `off`.
 
 ## 6. Principios de diseño que no deben romperse
 

@@ -1616,7 +1616,6 @@
         # Limpiar a `off` deja explícito que no se desea conservar memoria operativa
         # del modo previo una vez descartado el latch de emergencia.
         action: input_select.select_option
-        continue_on_error: true
       - choose:
         - conditions:
           - condition: state
@@ -1741,7 +1740,6 @@
           option: 'off'
         # `off` es el reposo del helper; no existe un estado `idle` válido aquí.
         action: input_select.select_option
-        continue_on_error: true
       - data:
           title: AC OFF (sin presencia 30m)
           message: '{{ ts }} | Trig={{ trig }} | Prom={{ tin }}°C | Ext={{ tout }}°C
@@ -2005,7 +2003,6 @@
         # El helper vuelve a `off` cuando la rama apaga por objetivo de emergencia
         # y ya no conviene conservar un modo recordado.
         action: input_select.select_option
-        continue_on_error: true
       - data:
           title: AC OFF (emergencia objetivo)
           message: '{{ ts }} | Prom={{ tin }}°C | Ext={{ tout }}°C | Hum={{ hin }}%
@@ -2105,7 +2102,6 @@
         # `off` representa reposo del helper cuando la lógica descarta conservar el
         # modo previo tras este apagado automático.
         action: input_select.select_option
-        continue_on_error: true
       - data:
           title: AC OFF (heat por exterior)
           message: '{{ ts }} | Tout={{ tout }}°C >= {{ heat_force_off_outdoor }}°C'
@@ -2204,7 +2200,6 @@
         # `off` representa reposo del helper cuando la lógica descarta conservar el
         # modo previo tras este apagado automático.
         action: input_select.select_option
-        continue_on_error: true
       - data:
           title: AC OFF (heat objetivo)
           message: '{{ ts }} | Prom={{ tin }}°C | HeatON={{ heat_on }}°C | HeatOFF={{
@@ -2336,7 +2331,6 @@
         # `off` representa reposo del helper cuando la lógica descarta conservar el
         # modo previo tras este apagado automático.
         action: input_select.select_option
-        continue_on_error: true
       - data:
           title: AC OFF (cool objetivo)
           message: '{{ ts }} | Prom={{ tin }}°C | T1={{ t1 }}°C | T2={{ t2 }}°C |
@@ -3478,7 +3472,6 @@
     # porque ese valor representa reposo explícito y reemplaza cualquier valor
     # legacy inválido como `False` o la noción previa de `idle`.
     action: input_select.select_option
-    continue_on_error: true
   mode: restart
 - id: '1773947560399'
   alias: AC - Manual ON guard + presencia temporal
