@@ -120,15 +120,26 @@ Su utilidad principal es permitir que un evento manual posterior pueda comparars
 
 ### Helpers `input_datetime.ac_last_manual_*`, `input_text.ac_last_manual_*`, `input_number.ac_last_manual_*`
 
-Estos helpers deben almacenar la **traza estructurada de los eventos manuales** reconocidos por el sistema.
+Estos helpers deben almacenar la **traza estructurada de los eventos manuales** reconocidos por el sistema, separando con claridad cada momento semántico.
+
+Contrato recomendado:
+
+- `input_datetime.ac_last_manual_off_ts`: instante de **detección de apagado manual**.
+- `input_datetime.ac_last_manual_on_ts`: instante de **detección de encendido manual**.
+- `input_datetime.ac_last_manual_feedback_ts`: instante del último **feedback manual válido para aprendizaje**; no debe usarse para detección inicial ni para estado final.
+- `input_datetime.ac_last_manual_final_ts`: instante en que quedó consolidado el **estado final manual elegido por el usuario**.
+- `input_text.ac_last_manual_event_type`: clasificación del evento manual detectado (`manual_off_detected`, `manual_on_detected`, etc.).
+- `input_text.ac_last_manual_learning_type`: resultado semántico del análisis de aprendizaje manual (`*_feedback_valid_*`, `*_feedback_ignored_*`, etc.).
+- `input_text.ac_last_manual_final_mode` y `input_text.ac_last_manual_final_fan`: modo y ventilación finales elegidos por el usuario tras estabilizarse el equipo.
+- `input_text.ac_last_manual_feedback_mode` y `input_text.ac_last_manual_feedback_fan`: modo y ventilación que efectivamente sirvieron como evidencia de aprendizaje cuando hubo feedback válido.
 
 Su función incluye:
 
-- registrar cuándo ocurrió el evento manual;
-- clasificar el tipo de feedback detectado;
+- registrar cuándo ocurrió cada momento manual relevante;
+- distinguir entre detección manual, aprendizaje válido y estado final manual;
 - guardar modo, `fan mode`, setpoint y snapshot ambiental asociado;
 - permitir auditoría y recalibración posterior;
-- separar el evento manual inicial del estado final si hubo varios cambios consecutivos.
+- evitar ambigüedad para otra IA o para un humano que inspeccione la telemetría.
 
 En términos prácticos, son la base para aprender del usuario sin depender exclusivamente del historial crudo de estados del clima.
 

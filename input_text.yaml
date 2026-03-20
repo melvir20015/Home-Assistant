@@ -15,15 +15,15 @@ ac_last_auto_fan:
   max: 50
 
 ac_last_manual_event_type:
-  name: "AC Last Manual Event Type"
+  name: "AC Last Manual Detection Type"
   max: 60
 
 ac_last_manual_learning_type:
-  name: "AC Last Manual Learning Type"
+  name: "AC Last Manual Learning Result"
   max: 60
 
 ac_last_manual_feedback_type:
-  name: "AC Last Manual Feedback Type"
+  name: "AC Last Manual Feedback Type (legacy)"
   max: 60
 
 ac_last_manual_feedback_mode:

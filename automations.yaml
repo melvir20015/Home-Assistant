@@ -2668,10 +2668,12 @@
   mode: restart
 - id: '1773894905330'
   alias: AC - Learning - Manual OFF feedback
-  description: 'Si el usuario apaga manualmente el AC y la última acción automática
-    reciente fue AUTO ON, se interpreta como corrección de confort. Ajusta sesgos
-    aprendidos. El helper `input_select.ac_ultimo_modo_no_fan` se limpia a `off`
-    cuando el apagado implica reposo y no conviene conservar memoria operativa.
+  description: 'Evalúa si un apagado manual detectado previamente constituye feedback
+    válido para aprendizaje. Esta automatización sólo escribe telemetría de aprendizaje:
+    `input_datetime.ac_last_manual_feedback_ts` se actualiza exclusivamente cuando
+    el apagado manual corrige un `auto_on` reciente dentro de la ventana de feedback.
+    La detección del apagado manual vive en `input_datetime.ac_last_manual_off_ts`
+    y el resultado del aprendizaje queda clasificado en `input_text.ac_last_manual_learning_type`.
 
     '
   triggers:
@@ -2693,14 +2695,34 @@
         }}'
       h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
       h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'') | float(none) }}'
-      tin: "{% if t1 is not none and t2 is not none %}\n  {{ ((t1 + t2) / 2) | round(2)
-        }}\n{% elif t1 is not none %}\n  {{ t1 | round(2) }}\n{% elif t2 is not none
-        %}\n  {{ t2 | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
-      hin: "{% if h1 is not none and h2 is not none %}\n  {{ ((h1 + h2) / 2) | round(1)
-        }}\n{% elif h1 is not none %}\n  {{ h1 | round(1) }}\n{% elif h2 is not none
-        %}\n  {{ h2 | round(1) }}\n{% else %}\n  {{ none }}\n{% endif %}"
-      sensor_delta: "{% if t1 is not none and t2 is not none %}\n  {{ (t1 - t2) |
-        abs | round(2) }}\n{% else %}\n  {{ 0 }}\n{% endif %}"
+      tin: "{% if t1 is not none and t2 is not none %}
+  {{ ((t1 + t2) / 2) | round(2)
+        }}
+{% elif t1 is not none %}
+  {{ t1 | round(2) }}
+{% elif t2 is not none
+        %}
+  {{ t2 | round(2) }}
+{% else %}
+  {{ none }}
+{% endif %}"
+      hin: "{% if h1 is not none and h2 is not none %}
+  {{ ((h1 + h2) / 2) | round(1)
+        }}
+{% elif h1 is not none %}
+  {{ h1 | round(1) }}
+{% elif h2 is not none
+        %}
+  {{ h2 | round(1) }}
+{% else %}
+  {{ none }}
+{% endif %}"
+      sensor_delta: "{% if t1 is not none and t2 is not none %}
+  {{ (t1 - t2) |
+        abs | round(2) }}
+{% else %}
+  {{ 0 }}
+{% endif %}"
       tout: '{{ state_attr(''weather.openweathermap'',''apparent_temperature'') |
         float(none) }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
@@ -2716,11 +2738,18 @@
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'')
         }}'
       minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
-        %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
-        / 60) | round(1) }}\n{% endif %}"
+        %}
+  99999
+{% else %}
+  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
+        / 60) | round(1) }}
+{% endif %}"
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 8 }}'
-      valid_feedback: "{{ learning_enabled\n   and last_auto_action == 'auto_on'\n
-        \  and last_auto_mode in ['cool','heat']\n   and (minutes_since_last_auto
+      valid_feedback: "{{ learning_enabled
+   and last_auto_action == 'auto_on'
+
+        \  and last_auto_mode in ['cool','heat']
+   and (minutes_since_last_auto
         | float(99999)) <= (feedback_window_min | float(30)) }}"
       cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
       cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
@@ -2735,18 +2764,38 @@
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-      feedback_type: "{% if valid_feedback and last_auto_mode == 'cool' %}\n  manual_off_after_auto_on_cool\n{%
-        elif valid_feedback and last_auto_mode == 'heat' %}\n  manual_off_after_auto_on_heat\n{%
-        elif not learning_enabled %}\n  manual_off_learning_disabled\n{% elif last_auto_action
-        != 'auto_on' %}\n  manual_off_last_action_not_auto_on\n{% elif last_auto_mode
-        not in ['cool','heat'] %}\n  manual_off_last_mode_not_learnable\n{% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(30)) %}\n  manual_off_feedback_window_expired\n{%
-        else %}\n  manual_off_no_valid_learning\n{% endif %}"
-  - target:
-      entity_id: input_datetime.ac_last_manual_feedback_ts
-    data:
-      datetime: '{{ ts }}'
-    action: input_datetime.set_datetime
+      learning_type: "{% if valid_feedback and last_auto_mode == 'cool' %}
+  manual_off_feedback_valid_after_auto_on_cool
+{%
+        elif valid_feedback and last_auto_mode == 'heat' %}
+  manual_off_feedback_valid_after_auto_on_heat
+{%
+        elif not learning_enabled %}
+  manual_off_feedback_ignored_learning_disabled
+{% elif last_auto_action
+        != 'auto_on' %}
+  manual_off_feedback_ignored_last_action_not_auto_on
+{% elif last_auto_mode
+        not in ['cool','heat'] %}
+  manual_off_feedback_ignored_last_mode_not_learnable
+{% elif (minutes_since_last_auto
+        | float(99999)) > (feedback_window_min | float(30)) %}
+  manual_off_feedback_ignored_window_expired
+{%
+        else %}
+  manual_off_feedback_ignored_no_valid_learning
+{% endif %}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ valid_feedback }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_last_manual_feedback_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+    default: []
   - target:
       entity_id: input_number.ac_last_manual_tin
     data:
@@ -2778,9 +2827,9 @@
       value: '{{ sensor_delta }}'
     action: input_number.set_value
   - target:
-      entity_id: input_text.ac_last_manual_feedback_type
+      entity_id: input_text.ac_last_manual_learning_type
     data:
-      value: '{{ feedback_type }}'
+      value: '{{ learning_type }}'
     action: input_text.set_value
   - choose:
     - conditions:
@@ -2868,7 +2917,7 @@
         sequence:
         - data:
             title: AC Learning - Manual OFF sin ajuste
-            message: '{{ ts }} | Type={{ feedback_type }} | learning={{ learning_enabled
+            message: '{{ ts }} | Learning={{ learning_type }} | learning={{ learning_enabled
               }} | last_action={{ last_auto_action }} | last_mode={{ last_auto_mode
               }} | min={{ minutes_since_last_auto }} | branch={{ last_auto_branch
               }}'
@@ -2880,10 +2929,13 @@
   mode: restart
 - id: '1773895045305'
   alias: AC - Learning - Manual ON feedback
-  description: 'Si el usuario enciende manualmente el AC y la última acción automática
-    reciente fue AUTO OFF, se interpreta como corrección. Ajusta sesgos aprendidos.
-    Si el modo final es `cool` o `heat`, ese modo vuelve a ser memoria activa; si
-    no, el helper debe permanecer en `off`.
+  description: 'Evalúa si un encendido manual detectado previamente constituye feedback
+    válido para aprendizaje. Esta automatización sólo clasifica el aprendizaje manual
+    y ajusta sesgos cuando el encendido corrige un `auto_off` reciente dentro de la
+    ventana válida. `input_datetime.ac_last_manual_feedback_ts` se actualiza sólo
+    para feedback válido; la detección del encendido manual se registra aparte en
+    `input_datetime.ac_last_manual_on_ts` y el estado final del usuario en
+    `input_datetime.ac_last_manual_final_ts`.
 
     '
   triggers:
@@ -2908,7 +2960,8 @@
       climate_ent: climate.0200009211c7_climate
       final_mode: '{{ states(climate_ent) }}'
       final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
-      final_fan: "{{ state_attr(climate_ent,'fan_mode')\n   if state_attr(climate_ent,'fan_mode')
+      final_fan: "{{ state_attr(climate_ent,'fan_mode')
+   if state_attr(climate_ent,'fan_mode')
         is not none else 'n/a' }}"
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
@@ -2923,11 +2976,18 @@
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'')
         }}'
       minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
-        %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
-        / 60) | round(1) }}\n{% endif %}"
+        %}
+  99999
+{% else %}
+  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
+        / 60) | round(1) }}
+{% endif %}"
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 10 }}'
-      valid_feedback: "{{ learning_enabled\n   and last_auto_action == 'auto_off'\n
-        \  and final_mode in ['cool','heat']\n   and (minutes_since_last_auto | float(99999))
+      valid_feedback: "{{ learning_enabled
+   and last_auto_action == 'auto_off'
+
+        \  and final_mode in ['cool','heat']
+   and (minutes_since_last_auto | float(99999))
         <= (feedback_window_min | float(30)) }}"
       cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
       cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
@@ -2942,23 +3002,58 @@
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-      feedback_type: "{% if valid_feedback and final_mode == 'cool' %}\n  manual_on_after_auto_off_cool\n{%
-        elif valid_feedback and final_mode == 'heat' %}\n  manual_on_after_auto_off_heat\n{%
-        elif not learning_enabled %}\n  manual_on_learning_disabled\n{% elif last_auto_action
-        != 'auto_off' %}\n  manual_on_last_action_not_auto_off\n{% elif final_mode
-        not in ['cool','heat'] %}\n  manual_on_final_mode_not_learnable\n{% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(30)) %}\n  manual_on_feedback_window_expired\n{%
-        else %}\n  manual_on_no_valid_learning\n{% endif %}"
+      learning_type: "{% if valid_feedback and final_mode == 'cool' %}
+  manual_on_feedback_valid_after_auto_off_cool
+{%
+        elif valid_feedback and final_mode == 'heat' %}
+  manual_on_feedback_valid_after_auto_off_heat
+{%
+        elif not learning_enabled %}
+  manual_on_feedback_ignored_learning_disabled
+{% elif last_auto_action
+        != 'auto_off' %}
+  manual_on_feedback_ignored_last_action_not_auto_off
+{% elif final_mode
+        not in ['cool','heat'] %}
+  manual_on_feedback_ignored_final_mode_not_learnable
+{% elif (minutes_since_last_auto
+        | float(99999)) > (feedback_window_min | float(30)) %}
+  manual_on_feedback_ignored_window_expired
+{%
+        else %}
+  manual_on_feedback_ignored_no_valid_learning
+{% endif %}"
   - target:
-      entity_id: input_text.ac_last_manual_feedback_type
+      entity_id: input_text.ac_last_manual_learning_type
     data:
-      value: '{{ feedback_type }}'
+      value: '{{ learning_type }}'
     action: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ valid_feedback }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_last_manual_feedback_ts
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+    default: []
   - choose:
     - conditions:
       - condition: template
         value_template: '{{ valid_feedback and final_mode == ''cool'' }}'
       sequence:
+      - target:
+          entity_id: input_text.ac_last_manual_feedback_mode
+        data:
+          value: cool
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_manual_feedback_fan
+        data:
+          value: '{{ final_fan }}'
+        action: input_text.set_value
       - target:
           entity_id: input_number.ac_bias_cool_on
         data:
@@ -2990,7 +3085,7 @@
           sequence:
           - data:
               title: AC Learning - Manual ON corrige COOL OFF
-              message: '{{ ts }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
+              message: '{{ ts }} | Learning={{ learning_type }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
                 }} | step={{ step_main }} | FinalSet={{ final_setpoint }} | Fan={{
                 final_fan }}'
               data:
@@ -3002,6 +3097,16 @@
       - condition: template
         value_template: '{{ valid_feedback and final_mode == ''heat'' }}'
       sequence:
+      - target:
+          entity_id: input_text.ac_last_manual_feedback_mode
+        data:
+          value: heat
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_manual_feedback_fan
+        data:
+          value: '{{ final_fan }}'
+        action: input_text.set_value
       - target:
           entity_id: input_number.ac_bias_heat_on
         data:
@@ -3033,7 +3138,7 @@
           sequence:
           - data:
               title: AC Learning - Manual ON corrige HEAT OFF
-              message: '{{ ts }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
+              message: '{{ ts }} | Learning={{ learning_type }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
                 }} | step={{ step_main }} | FinalSet={{ final_setpoint }} | Fan={{
                 final_fan }}'
               data:
@@ -3049,7 +3154,7 @@
         sequence:
         - data:
             title: AC Learning - Manual ON sin ajuste
-            message: '{{ ts }} | Type={{ feedback_type }} | learning={{ learning_enabled
+            message: '{{ ts }} | Learning={{ learning_type }} | learning={{ learning_enabled
               }} | last_action={{ last_auto_action }} | last_mode={{ last_auto_mode
               }} | min={{ minutes_since_last_auto }} | branch={{ last_auto_branch
               }} | final_mode={{ final_mode }} | set={{ final_setpoint }} | fan={{
@@ -3062,9 +3167,12 @@
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
-  description: 'Detecta apagado manual real del AC, registra timestamp de manual off,
-    resetea `input_select.ac_ultimo_modo_no_fan` a `off` (estado de reposo del helper)
-    y activa pausa de 5 minutos para impedir AUTO ON.
+  description: 'Detecta el instante exacto en que el usuario apaga manualmente el AC.
+    Sólo escribe telemetría del evento manual inicial: actualiza
+    `input_datetime.ac_last_manual_off_ts`, clasifica el evento en
+    `input_text.ac_last_manual_event_type`, limpia `input_select.ac_ultimo_modo_no_fan`
+    a `off` y deja la pausa operativa de 5 minutos. No marca feedback de aprendizaje
+    ni estado final manual.
 
     '
   triggers:
@@ -3079,13 +3187,18 @@
     entity_id: input_boolean.ac_off_por_automatizacion
     state: 'off'
   actions:
+  - variables:
+      ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
   - target:
-      entity_id:
-      - input_datetime.ac_last_manual_off_ts
-      - input_datetime.ac_last_manual_feedback_ts
+      entity_id: input_datetime.ac_last_manual_off_ts
     data:
-      datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      datetime: '{{ ts }}'
     action: input_datetime.set_datetime
+  - target:
+      entity_id: input_text.ac_last_manual_event_type
+    data:
+      value: manual_off_detected
+    action: input_text.set_value
   - target:
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
@@ -3102,8 +3215,7 @@
       sequence:
       - data:
           title: AC Manual OFF detectado
-          message: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }} | Se registró apagado
-            manual. AUTO ON bloqueado por 5 min.'
+          message: '{{ ts }} | Evento=manual_off_detected | Se registró apagado manual. AUTO ON bloqueado por 5 min.'
           data:
             ttl: 0
             priority: high
@@ -3112,9 +3224,13 @@
   mode: restart
 - id: '1773947560399'
   alias: AC - Manual ON guard + presencia temporal
-  description: 'Detecta encendido manual del AC, registra timestamps, crea presencia
-    temporal por 60 minutos y guarda datos finales elegidos por el usuario. No depende
-    del learning.
+  description: 'Detecta el encendido manual inicial y, tras estabilizarse el equipo, registra
+    el estado final elegido por el usuario. Esta automatización separa ambos momentos:
+    `input_datetime.ac_last_manual_on_ts` marca la detección del encendido manual,
+    `input_datetime.ac_last_manual_final_ts` marca cuándo quedó consolidado el estado
+    final, `input_text.ac_last_manual_event_type` clasifica el evento y los helpers
+    `ac_last_manual_final_*` guardan la elección final del usuario. No marca feedback
+    de aprendizaje por sí sola.
 
     '
   triggers:
@@ -3134,6 +3250,18 @@
     entity_id: input_boolean.ac_off_por_automatizacion
     state: 'off'
   actions:
+  - variables:
+      detected_ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - target:
+      entity_id: input_datetime.ac_last_manual_on_ts
+    data:
+      datetime: '{{ detected_ts }}'
+    action: input_datetime.set_datetime
+  - target:
+      entity_id: input_text.ac_last_manual_event_type
+    data:
+      value: manual_on_detected
+    action: input_text.set_value
   - delay: 00:00:15
   - variables:
       climate_ent: climate.0200009211c7_climate
@@ -3161,16 +3289,6 @@
       tout: '{{ state_attr(''weather.openweathermap'',''apparent_temperature'') |
         float(none) }}'
   - target:
-      entity_id: input_datetime.ac_last_manual_on_ts
-    data:
-      datetime: '{{ ts }}'
-    action: input_datetime.set_datetime
-  - target:
-      entity_id: input_datetime.ac_last_manual_feedback_ts
-    data:
-      datetime: '{{ ts }}'
-    action: input_datetime.set_datetime
-  - target:
       entity_id: input_datetime.ac_last_manual_final_ts
     data:
       datetime: '{{ ts }}'
@@ -3193,21 +3311,6 @@
         # recordado; cualquier otro resultado debe dejar el helper en `off`.
         action: input_select.select_option
     default: []
-  - target:
-      entity_id: input_text.ac_last_manual_feedback_type
-    data:
-      value: manual_on_detected
-    action: input_text.set_value
-  - target:
-      entity_id: input_text.ac_last_manual_feedback_mode
-    data:
-      value: '{{ final_mode }}'
-    action: input_text.set_value
-  - target:
-      entity_id: input_text.ac_last_manual_feedback_fan
-    data:
-      value: '{{ final_fan }}'
-    action: input_text.set_value
   - target:
       entity_id: input_text.ac_last_manual_final_mode
     data:
