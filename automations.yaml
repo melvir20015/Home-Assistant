@@ -1337,7 +1337,9 @@
           >= (cool_emergency_outdoor_min|float)\n       and (cool_emergency_off is
           not none)\n       and (tin|float) <= (cool_emergency_off|float)\n     )\n
           \    or\n     (\n       (tout|float) >= 17\n       and (cool_off is not
-          none)\n       and (tin|float) <= (cool_off|float)\n     )\n   )\n}}"
+          none)\n       and (\n         (tin|float) <= (cool_off|float)\n         or
+         (cool_sensor_off_temp is not none and (cool_sensor_off_temp|float) <= (cool_sensor_off_trigger|float))\n
+       )\n     )\n   )\n}}"
       sequence:
       - target:
           entity_id: '{{ climate_ent }}'
@@ -1346,9 +1348,9 @@
         action: climate.set_hvac_mode
       - data:
           title: AC OFF (cool objetivo)
-          message: '{{ notif_base }} | Prev=cool | R=cool_off | Ctx={{ ''Emerg'' if
+          message: '{{ notif_base }} | Prev=cool | R={{ ''cool_emergency_off'' if (tout|float) < 17 else ''cool_off/cool_sensor_off'' }} | Ctx={{ ''Emerg'' if
             (tout|float) < 17 else ''Normal'' }} | TargetOff={{ (cool_emergency_off|float)
-            if (tout|float) < 17 else (cool_off|float) }} | EOn={{ cool_emergency_on
+            if (tout|float) < 17 else (cool_off|float) }} | SensorOFF={{ cool_sensor_off_name }}={{ cool_sensor_off_temp }}<= {{ cool_sensor_off_trigger if (tout|float) >= 17 else ''n/a'' }} | EOn={{ cool_emergency_on
             }} EOff={{ cool_emergency_off }} | On={{ cool_on }} Off={{ cool_off }}
             | Set={{ cool_setpoint_emerg if (tout|float) < 17 else cool_setpoint_normal
             }}'
@@ -1448,7 +1450,7 @@
           title: AC COOL ON
           message: '{{ notif_base }} | Act=COOL | Ctx={{ ''Emerg'' if ((tout|float)
             < 17) else ''Normal'' }} | EOn={{ cool_emergency_on }} EOff={{ cool_emergency_off
-            }} | On={{ cool_on }} Off={{ cool_off }} | Set={{ cool_setpoint_emerg
+            }} | On={{ cool_on }} Off={{ cool_off }} | SensorOFF={{ cool_sensor_off_name }}<= {{ cool_sensor_off_trigger }} ({{ cool_sensor_off_temp }}) | Set={{ cool_setpoint_emerg
             if ((tout|float) < 17) else cool_setpoint_normal }} Fan=Low | Prev={{
             cur_mode }}'
         action: '{{ notify_service }}'
@@ -1498,14 +1500,20 @@
     cool_emergency_off: '{{ (cool_emergency_on|float - 0.3) | round(2) }}'
     cool_setpoint_emerg: '{{ max(((cool_emergency_off|float) - 2) | round(0,''floor''),
       16) | int }}'
-    cool_on: "{% if tout is none %}\n  {{ none }}\n{% elif tout >= 17 %}\n  {{ 23.3
+    # Rama COOL nocturna suavizada por confort en recámara: en noches templadas
+    # se mantiene un arranque más estable, se apaga antes usando prioridad al sensor
+    # del cuarto y se sube claramente el setpoint para evitar sensación de frío excesivo
+    # aunque el promedio aún siga arriba del umbral.
+    cool_on: "{% if tout is none %}\n  {{ none }}\n{% elif tout >= 17 %}\n  {{ 23.5
       if month in [11,12,1,2,3] else 22.8 if (month in [6,7,8,9] and tout>=30) else
       23.3 }}\n{% else %}\n  {{ none }}\n{% endif %}"
-    cool_off: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ 22.8 if month
+    cool_off: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ 23.2 if month
       in [11,12,1,2,3] else 21.3 if (month in [6,7,8,9] and tout>=30) else 22.5 }}\n{%
       endif %}"
-    cool_setpoint_normal: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{
-      max(cool_off - 2, 16) | round(1) }}\n{% endif %}"
+    cool_setpoint_normal: "{% if cool_off is none %}\n  {{ none }}\n{% elif month in [11,12,1,2,3] %}\n  {{ 23.5 }}\n{% else %}\n  {{ max((cool_off - 1), 16) | round(1) }}\n{% endif %}"
+    cool_sensor_off_trigger: "{% if cool_off is none %}\n  {{ none }}\n{% elif month in [11,12,1,2,3] %}\n  {{ (cool_off + 0.2) | round(1) }}\n{% else %}\n  {{ cool_off | round(1) }}\n{% endif %}"
+    cool_sensor_off_temp: "{% if t1 is not none %}\n  {{ t1 | round(2) }}\n{% elif hot_temp is not none %}\n  {{ hot_temp | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    cool_sensor_off_name: "{% if t1 is not none %}\n  Cuarto\n{% elif hot_sensor_name is not none %}\n  {{ hot_sensor_name }}\n{% else %}\n  none\n{% endif %}"
     cool_emergency_active: "{{ tout is not none and tin is not none\n   and (tout|float)
       < 17\n   and (tout|float) >= (cool_emergency_outdoor_min|float)\n   and (\n
       \    (tin|float) >= (cool_emergency_on|float)\n     or (cur_mode == 'cool' and
