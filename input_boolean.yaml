@@ -31,7 +31,9 @@ ac_on_por_automatizacion:
 ac_learning_enabled:
   name: "AC Learning Enabled"
   icon: mdi:brain
+  initial: true
 
 ac_learning_debug:
   name: "AC Learning Debug"
   icon: mdi:bug
+  initial: true

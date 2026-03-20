@@ -145,6 +145,26 @@ Su función incluye:
 
 En términos prácticos, son la base para aprender del usuario sin depender exclusivamente del historial crudo de estados del clima.
 
+### `input_boolean.ac_learning_enabled`
+
+Este helper es el **interruptor maestro del aprendizaje**. Mientras permanezca en `on`, los eventos manuales válidos pueden traducirse en ajustes sobre `ac_bias_cool_*` y `ac_bias_heat_*`.
+
+Criterio operativo recomendado:
+
+- en producción, si se espera que los apagados o encendidos manuales del usuario **sí ajusten sesgos**, este helper debe permanecer en `on`;
+- si está en `off`, la automatización todavía puede clasificar el evento como ignorado, pero **bloquea cualquier ajuste de sesgos**;
+- antes de concluir que “no está aprendiendo”, debe revisarse explícitamente este helper.
+
+### `input_boolean.ac_learning_debug`
+
+Este helper controla la **telemetría visible del aprendizaje**: notificaciones, mensajes de depuración y evidencia operativa para validar por qué un feedback sí o no produjo cambios.
+
+Criterio operativo recomendado:
+
+- durante la fase de validación en producción conviene mantenerlo en `on`, incluso si algún evento termina ignorado, para que el usuario reciba la explicación correspondiente;
+- si está en `off`, se **oculta la telemetría/notificaciones de depuración**, aunque el sistema siga evaluando el evento internamente;
+- antes de concluir que “no está aprendiendo”, también debe revisarse este helper, porque una ausencia de notificaciones no implica por sí sola ausencia de evaluación o de aprendizaje.
+
 ### Sesgos `ac_bias_cool_*` y `ac_bias_heat_*`
 
 Estos helpers representan el **aprendizaje acumulado** que modifica la decisión base del sistema.
