@@ -15,7 +15,9 @@
     target:
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
-      option: '{{ to_mode }}'
+      option: '{{ to_mode if to_mode in [''cool'',''heat''] else ''off'' }}'
+    # `input_select.ac_ultimo_modo_no_fan` es un input_select: siempre debe recibir
+    # texto exacto (`off`, `cool`, `heat`, `emergency_cool`), nunca booleanos ni null.
     # Sólo `cool` y `heat` se conservan aquí como memoria operativa útil; si luego
     # el sistema entra en reposo, otra rama debe resetear el helper a `off`.
   - service: input_datetime.set_datetime
@@ -1559,7 +1561,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: off
+          option: 'off'
         # Limpiar a `off` deja explícito que no se desea conservar memoria operativa
         # del modo previo una vez descartado el latch de emergencia.
         action: input_select.select_option
@@ -1679,7 +1681,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: off
+          option: 'off'
         # `off` es el reposo del helper; no existe un estado `idle` válido aquí.
         action: input_select.select_option
       - data:
@@ -1749,7 +1751,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: emergency_cool
+          option: 'emergency_cool'
         # `emergency_cool` sólo se guarda cuando la rama de enfriamiento de emergencia
         # toma control para mitigar calor severo fuera del flujo normal.
         action: input_select.select_option
@@ -1952,7 +1954,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: off
+          option: 'off'
         # El helper vuelve a `off` cuando la rama apaga por objetivo de emergencia
         # y ya no conviene conservar un modo recordado.
         action: input_select.select_option
@@ -2046,7 +2048,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: off
+          option: 'off'
         # `off` representa reposo del helper cuando la lógica descarta conservar el
         # modo previo tras este apagado automático.
         action: input_select.select_option
@@ -2139,7 +2141,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: off
+          option: 'off'
         # `off` representa reposo del helper cuando la lógica descarta conservar el
         # modo previo tras este apagado automático.
         action: input_select.select_option
@@ -2265,7 +2267,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: off
+          option: 'off'
         # `off` representa reposo del helper cuando la lógica descarta conservar el
         # modo previo tras este apagado automático.
         action: input_select.select_option
@@ -2338,7 +2340,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: heat
+          option: 'heat'
         # Guardar `heat` sólo cuando una rama confirma calefacción activa como
         # último modo térmico útil que sí debe recordarse.
         action: input_select.select_option
@@ -2501,7 +2503,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: cool
+          option: 'cool'
         # Guardar `cool` sólo cuando una rama confirma enfriamiento activo como
         # último modo térmico útil que sí debe recordarse.
         action: input_select.select_option
@@ -3448,7 +3450,7 @@
   - target:
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
-      option: off
+      option: 'off'
     # Consistencia del helper: los apagados manuales limpian el estado a `off`,
     # porque ese valor representa reposo explícito y reemplaza cualquier noción
     # previa de `idle`.
@@ -3640,7 +3642,7 @@
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
-          option: '{{ final_mode }}'
+          option: '{{ final_mode if final_mode in [''cool'',''heat''] else ''off'' }}'
         # Si el encendido manual termina en `cool` o `heat`, ese modo sí debe quedar
         # recordado; cualquier otro resultado debe dejar el helper en `off`.
         action: input_select.select_option
