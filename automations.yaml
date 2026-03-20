@@ -2838,13 +2838,21 @@
   - condition: time
     after: 07:01:00
     before: '20:59:00'
-  - condition: state
-    entity_id: input_boolean.ac_off_por_automatizacion
-    state: 'off'
-  - condition: state
-    entity_id: input_boolean.ac_on_por_automatizacion
-    state: 'off'
   actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_on_por_automatizacion
+        state: 'on'
+      sequence:
+      - stop: 'Ignorado: AUTO ON en curso.'
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_off_por_automatizacion
+        state: 'on'
+      sequence:
+      - stop: 'Ignorado: AUTO OFF en curso.'
+    default: []
   - variables:
       t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
         }}'
@@ -2968,11 +2976,11 @@
   sin ajuste setpoint
 {% endif %}"
       learning_summary_valid: "{% if last_auto_mode == 'cool' %}
-  AC aprendió: apagado manual tras AUTO COOL (+{{ step_main }}) on/off{% if quick_feedback %}, +0.5 setpoint{% endif %}
+  AC aprendió: OFF manual tras AUTO COOL | +{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
 {% elif last_auto_mode == 'heat' %}
-  AC aprendió: apagado manual tras AUTO HEAT (-{{ step_main }}) on/off{% if quick_feedback %}, -0.5 setpoint{% endif %}
+  AC aprendió: OFF manual tras AUTO HEAT | -{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
 {% else %}
-  AC aprendió: apagado manual válido
+  AC aprendió: OFF manual válido | {{ minutes_since_last_auto }} min
 {% endif %}"
       ignored_reason_code: "{% if not learning_enabled %}
   learning_disabled
@@ -3115,19 +3123,13 @@
                 2] | min, -2] | max | round(1) }}'
             action: input_number.set_value
         default: []
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ debug_enabled }}'
-          sequence:
-          - data:
-              title: '{{ audit_title }}'
-              message: '{{ learning_summary_valid | trim }}'
-              data:
-                ttl: 0
-                priority: high
-            action: notify.mobile_app_samsung_s24
-        default: []
+      - data:
+          title: AC Learning OFF aplicado
+          message: '{{ learning_summary_valid | trim }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
         value_template: '{{ valid_feedback and last_auto_mode == ''heat'' }}'
@@ -3166,33 +3168,14 @@
                 2] | min, -2] | max | round(1) }}'
             action: input_number.set_value
         default: []
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ debug_enabled }}'
-          sequence:
-          - data:
-              title: '{{ audit_title }}'
-              message: '{{ learning_summary_valid | trim }}'
-              data:
-                ttl: 0
-                priority: high
-            action: notify.mobile_app_samsung_s24
-        default: []
-    default:
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ debug_enabled }}'
-        sequence:
-        - data:
-            title: '{{ audit_title }}'
-            message: '{{ audit_message }}'
-            data:
-              ttl: 0
-              priority: high
-          action: notify.mobile_app_samsung_s24
-      default: []
+      - data:
+          title: AC Learning OFF aplicado
+          message: '{{ learning_summary_valid | trim }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    default: []
   mode: restart
 - id: '1773895045305'
   alias: AC - Learning - Manual ON feedback
@@ -3218,13 +3201,21 @@
   - condition: time
     after: 07:01:00
     before: '20:59:00'
-  - condition: state
-    entity_id: input_boolean.ac_off_por_automatizacion
-    state: 'off'
-  - condition: state
-    entity_id: input_boolean.ac_on_por_automatizacion
-    state: 'off'
   actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_on_por_automatizacion
+        state: 'on'
+      sequence:
+      - stop: 'Ignorado: AUTO ON en curso.'
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_off_por_automatizacion
+        state: 'on'
+      sequence:
+      - stop: 'Ignorado: AUTO OFF en curso.'
+    default: []
   - delay: 00:00:15
   - variables:
       climate_ent: climate.0200009211c7_climate
@@ -3328,9 +3319,9 @@
       presence_effective: 'n/a'
       notify_title_valid: AC Learning ON aplicado
       notify_message_valid_cool: >-
-        AC aprendió: encendido manual tras AUTO OFF COOL (+{{ step_main }}) on/off{% if quick_feedback %}, -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
+        AC aprendió: ON manual tras AUTO OFF COOL | +{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
       notify_message_valid_heat: >-
-        AC aprendió: encendido manual tras AUTO OFF HEAT (+{{ step_main }}) on/off{% if quick_feedback %}, +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
+        AC aprendió: ON manual tras AUTO OFF HEAT | +{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
   - target:
       entity_id: input_text.ac_last_manual_learning_type
     data:
@@ -3386,19 +3377,13 @@
                 2] | min, -2] | max | round(1) }}'
             action: input_number.set_value
         default: []
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ debug_enabled }}'
-          sequence:
-          - data:
-              title: '{{ notify_title_valid }}'
-              message: '{{ notify_message_valid_cool }}'
-              data:
-                ttl: 0
-                priority: high
-            action: notify.mobile_app_samsung_s24
-        default: []
+      - data:
+          title: '{{ notify_title_valid }}'
+          message: '{{ notify_message_valid_cool }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
         value_template: '{{ valid_feedback and final_mode == ''heat'' }}'
@@ -3437,19 +3422,13 @@
                 2] | min, -2] | max | round(1) }}'
             action: input_number.set_value
         default: []
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ debug_enabled }}'
-          sequence:
-          - data:
-              title: '{{ notify_title_valid }}'
-              message: '{{ notify_message_valid_heat }}'
-              data:
-                ttl: 0
-                priority: high
-            action: notify.mobile_app_samsung_s24
-        default: []
+      - data:
+          title: '{{ notify_title_valid }}'
+          message: '{{ notify_message_valid_heat }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
     default: []
   mode: restart
 - id: '1773939304415'
@@ -3470,10 +3449,15 @@
   - condition: time
     after: 07:01:00
     before: '20:59:00'
-  - condition: state
-    entity_id: input_boolean.ac_off_por_automatizacion
-    state: 'off'
   actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_off_por_automatizacion
+        state: 'on'
+      sequence:
+      - stop: 'Ignorado: AUTO OFF en curso.'
+    default: []
   - variables:
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: 'off'
@@ -3516,26 +3500,6 @@
     # porque ese valor representa reposo explícito y reemplaza cualquier noción
     # previa de `idle`.
     action: input_select.select_option
-  - choose:
-    - conditions:
-      - condition: state
-        entity_id: input_boolean.ac_learning_debug
-        state: 'on'
-      sequence:
-      - data:
-          title: AC Manual OFF detectado
-          message: >-
-            1. Evento detectado: apagado manual a las {{ ts }}.
-            2. Interpretación del evento: el usuario apagó el AC y se activa una pausa anti-rebote antes de permitir un AUTO ON.
-            3. Aprendizaje válido: no; esta automatización solo audita el evento manual.
-            4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ bias_cool_on }}, ac_bias_cool_off={{ bias_cool_off }}, ac_bias_cool_setpoint={{ bias_cool_setpoint }}, ac_bias_heat_on={{ bias_heat_on }}, ac_bias_heat_off={{ bias_heat_off }}, ac_bias_heat_setpoint={{ bias_heat_setpoint }}.
-            5. Qué ventana o guarda estuvo involucrada: pausa manual_off_block={{ manual_off_block }} por 5 min, minutes_since_last_auto={{ minutes_since_last_auto }}, presence_effective={{ presence_effective }}.
-            Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
-    default: []
   mode: restart
 - id: '1773947560399'
   alias: AC - Manual ON guard + presencia temporal
@@ -3561,13 +3525,21 @@
   - condition: time
     after: 07:01:00
     before: '20:59:00'
-  - condition: state
-    entity_id: input_boolean.ac_off_por_automatizacion
-    state: 'off'
-  - condition: state
-    entity_id: input_boolean.ac_on_por_automatizacion
-    state: 'off'
   actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_off_por_automatizacion
+        state: 'on'
+      sequence:
+      - stop: 'Ignorado: AUTO OFF en curso.'
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ac_on_por_automatizacion
+        state: 'on'
+      sequence:
+      - stop: 'Ignorado: AUTO ON en curso.'
+    default: []
   - variables:
       detected_ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
   - target:
@@ -3766,18 +3738,4 @@
     data:
       value: '{{ final_setpoint if final_setpoint is not none else 0 }}'
     action: input_number.set_value
-  - choose:
-    - conditions:
-      - condition: state
-        entity_id: input_boolean.ac_learning_debug
-        state: 'on'
-      sequence:
-      - data:
-          title: AC Manual ON detectado
-          message: '{{ notify_message }}'
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
-    default: []
   mode: restart

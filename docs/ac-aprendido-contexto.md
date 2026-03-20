@@ -140,7 +140,7 @@ Contrato recomendado:
 - `input_datetime.ac_last_manual_on_ts`: instante de **detección de encendido manual**.
 - `input_datetime.ac_last_manual_feedback_ts`: instante del último **feedback manual válido para aprendizaje**; no debe usarse para detección inicial ni para estado final.
 - `input_datetime.ac_last_manual_final_ts`: instante en que quedó consolidado el **estado final manual elegido por el usuario**.
-- `input_text.ac_last_manual_event_type`: clasificación del evento manual detectado (`manual_off_detected`, `manual_on_detected`, etc.).
+- `input_text.ac_last_manual_event_type`: detalle semántico del evento manual detectado (`manual_off_detected`, `manual_on_due_to_presence_gap`, etc.). No debe reutilizarse como clasificación simple del origen.
 - `input_text.ac_last_manual_learning_type`: resultado semántico del análisis de aprendizaje manual (`*_feedback_valid_*`, `*_feedback_ignored_*`, etc.).
 - `input_text.ac_last_manual_final_mode` y `input_text.ac_last_manual_final_fan`: modo y ventilación finales elegidos por el usuario tras estabilizarse el equipo.
 - `input_text.ac_last_manual_feedback_mode` y `input_text.ac_last_manual_feedback_fan`: modo y ventilación que efectivamente sirvieron como evidencia de aprendizaje cuando hubo feedback válido.
@@ -171,9 +171,19 @@ Este helper controla la **telemetría visible del aprendizaje**: notificaciones,
 
 Criterio operativo recomendado:
 
-- durante la fase de validación en producción conviene mantenerlo en `on`, incluso si algún evento termina ignorado, para que el usuario reciba la explicación correspondiente;
-- si está en `off`, se **oculta la telemetría/notificaciones de depuración**, aunque el sistema siga evaluando el evento internamente;
-- antes de concluir que “no está aprendiendo”, también debe revisarse este helper, porque una ausencia de notificaciones no implica por sí sola ausencia de evaluación o de aprendizaje.
+- en producción debe limitarse a telemetría de depuración y nunca habilitar notificaciones de aprendizaje ignorado;
+- si está en `off`, se oculta la telemetría de depuración, pero las notificaciones breves de aprendizaje válido siguen siendo las únicas visibles;
+- antes de concluir que “no está aprendiendo”, también debe revisarse este helper, porque una ausencia de mensajes de depuración no implica por sí sola ausencia de evaluación o de aprendizaje.
+
+
+### Notificaciones de producción
+
+Contrato operativo de notificaciones:
+
+- Sólo deben notificarse aprendizajes **válidos**.
+- No deben notificarse eventos ignorados, ambiguos, expirados o con `ac_learning_enabled` apagado.
+- Las detecciones crudas de `Manual ON` y `Manual OFF` deben quedar sólo en logbook/auditoría, no como notificación normal de producción.
+- El formato visible debe ser corto y consistente, por ejemplo: `AC aprendió: OFF manual tras AUTO COOL | +0.10 on/off | +0.5 setpoint | 7.5 min`.
 
 ### Sesgos `ac_bias_cool_*` y `ac_bias_heat_*`
 
