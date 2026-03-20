@@ -10,7 +10,7 @@ La ejecución reproducible quedó automatizada en:
 python3 tools/validate_ac_logic.py
 ```
 
-Resultado actual: **17 chequeos superados**.
+Resultado actual: **17 chequeos superados** tras ajustar el validador para reflejar correctamente que la push de `manual_on` sólo se ejecuta dentro de la rama `presence_gap`, mientras que fuera de esa rama únicamente queda telemetría/logbook.
 
 ## Evidencia base revisada
 
@@ -20,6 +20,18 @@ Resultado actual: **17 chequeos superados**.
 - Aprendizaje por `manual_off`: `AC - Learning - Manual OFF feedback`.
 - Aprendizaje por `manual_on`: `AC - Learning - Manual ON feedback`.
 - Helpers: `input_select.ac_ultimo_modo_no_fan`, `input_boolean.ac_on_por_automatizacion`, `input_boolean.ac_off_por_automatizacion`, `input_datetime.ac_manual_presence_until` e `input_text` de telemetría.
+
+## Método de validación usado
+
+La validación quedó dividida en dos capas:
+
+1. **Chequeo automatizado reproducible** con `python3 tools/validate_ac_logic.py`, que inspecciona contratos críticos de `automations.yaml` y de los helpers.
+2. **Lectura funcional guiada** de las ramas relevantes para reconstruir, por escenario, estados previos, condiciones, acciones, trazas esperables, notificaciones y sesgos que cambian.
+
+Cuando el repositorio no trae una exportación runtime (traces JSON, history o snapshots de estados), este enfoque permite dejar una base verificable sin inventar resultados observados. En consecuencia, este documento diferencia siempre entre:
+
+- **validado por lógica estática reproducible**, y
+- **pendiente de confirmación runtime**.
 
 ## Resultado por escenario
 
@@ -149,3 +161,38 @@ Ejecutar estos mismos seis escenarios en una instancia viva de Home Assistant y 
 4. y capturas de notificaciones móviles.
 
 Con ese material, esta validación puede elevarse de **funcional estática reproducible** a **validación runtime observada** sin reinterpretar síntomas aislados.
+
+## 7) Validación del flujo de snapshot JSON
+
+**Validado: sí, a nivel documental y de reproducibilidad.**
+
+#### Confirmación documental
+- `docs/ac-produccion-manual-auto.md` ya define el contrato funcional de los eventos manuales/automáticos y qué helpers deben revisarse.
+- `docs/ac-aprendido-contexto.md` ya enumera explícitamente los helpers, estados y automatizaciones que una revisión futura debe correlacionar.
+- Se añadió `docs/ac-snapshot-json-debug.md` para dejar un procedimiento concreto de snapshot JSON reutilizable por otra persona o por otra IA.
+
+#### Qué debe contener el snapshot para repetir el análisis
+- Estado actual de `climate.0200009211c7_climate`.
+- Helpers críticos: `input_select.ac_ultimo_modo_no_fan`, `input_boolean.ac_on_por_automatizacion`, `input_boolean.ac_off_por_automatizacion`, `input_datetime.ac_manual_presence_until`, `input_datetime.ac_last_auto_ts`, `input_datetime.ac_last_manual_on_ts`, `input_datetime.ac_last_manual_off_ts`.
+- Telemetría `input_text.ac_last_auto_*`, `input_text.ac_last_manual_*`, `input_number.ac_bias_*`, `input_number.ac_last_manual_*`.
+- Entidades de presencia (`person`, `device_tracker`, `binary_sensor`), clima exterior y cualquier export de traces de las automatizaciones del AC.
+
+#### Reproducibilidad mínima prometida
+Con estos tres insumos:
+1. este documento funcional,
+2. un snapshot JSON con los campos anteriores, y
+3. `automations.yaml` + helpers declarados,
+
+otra persona o IA puede reconstruir:
+- si el origen fue manual o automático;
+- por qué un `manual_on` cayó en `presence_gap` o `comfort_gap`;
+- si un `manual_off` era aprendizaje válido;
+- qué sesgos cambiaron realmente;
+- y si los flags temporales quedaron consistentes o pegados.
+
+#### Qué datos del snapshot explican cada comportamiento
+- **Escenarios 1 y 2 (`manual_on`)**: `ac_last_change_origin`, `ac_last_manual_event_type`, `ac_manual_presence_until`, `ac_last_manual_final_mode`, sensores de presencia y `ac_last_auto_*`.
+- **Escenario 3 (`manual_off` tras `AUTO ON`)**: `ac_last_change_origin`, `ac_last_manual_learning_type`, `ac_last_auto_action`, `ac_last_auto_mode`, `ac_last_auto_ts`, `ac_bias_cool_on`, `ac_bias_cool_off`, `ac_bias_cool_setpoint`.
+- **Escenario 4 (`AUTO OFF` por ausencia)**: `ac_off_por_automatizacion`, `ac_last_auto_action`, `ac_last_auto_branch`, `ac_last_change_origin`, `presence_effective` derivable desde sensores exportados.
+- **Escenario 5 (`emergency_cool`)**: `ac_ultimo_modo_no_fan`, `ac_last_auto_branch`, `ac_last_auto_mode`, temperatura interior/exterior y cualquier trace que muestre entrada/salida del latch.
+- **Escenario 6 (integridad de helpers)**: snapshot de `input_select`, `input_boolean`, `input_datetime`, `input_text` e historial/traces si se quiere cerrar confirmación runtime.

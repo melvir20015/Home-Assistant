@@ -44,8 +44,12 @@ check(
 )
 check(
     'manual_on_no_notifica_fuera_presence_gap',
-    'manual_on_classified_presence_gap' in automations and "default: []" in automations,
-    'La notificación del manual_on quedó confinada a la rama de presence gap.'
+    all(token in automations for token in [
+        "manual_event_type_final | trim) in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat']",
+        'action: notify.mobile_app_samsung_s24',
+        '{% else %}AC manual detectado: {{ final_mode }}{% endif %}',
+    ]),
+    'La única push del manual_on sigue confinada a la rama de presence gap; fuera de ella sólo queda telemetría local.'
 )
 
 # Escenario 3 y 4: manual OFF y auto OFF
