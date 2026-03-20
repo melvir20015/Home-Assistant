@@ -2870,6 +2870,7 @@
       cur_bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') |
         float(0) }}'
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
+      cool_manual_off_step: 0.25
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: 'off'
@@ -2900,8 +2901,8 @@
         else %}
   manual_off_feedback_ignored_no_valid_learning
 {% endif %}"
-      cool_on_after: '{{ [[(cur_bias_cool_on | float) + (step_main | float), 3] | min, -3] | max | round(2) }}'
-      cool_off_after: '{{ [[(cur_bias_cool_off | float) + (step_main | float), 3] | min, -3] | max | round(2) }}'
+      cool_on_after: '{{ [[(cur_bias_cool_on | float) + (cool_manual_off_step | float), 3] | min, -3] | max | round(2) }}'
+      cool_off_after: '{{ [[(cur_bias_cool_off | float) + (cool_manual_off_step | float), 3] | min, -3] | max | round(2) }}'
       cool_setpoint_after: '{{ [[(cur_bias_cool_setpoint | float) + 0.5, 2] | min, -2] | max | round(1) }}'
       heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_off_after: '{{ [[(cur_bias_heat_off | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
@@ -2917,7 +2918,7 @@
   sin ajuste setpoint
 {% endif %}"
       learning_summary_valid: "{% if last_auto_mode == 'cool' %}
-  AC aprendió: OFF manual tras AUTO COOL | +{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
+  AC aprendió: OFF manual tras AUTO COOL | +{{ '%.2f' | format(cool_manual_off_step | float) }} on/off{% if quick_feedback %} | +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
 {% elif last_auto_mode == 'heat' %}
   AC aprendió: OFF manual tras AUTO HEAT | -{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
 {% else %}
@@ -3043,13 +3044,13 @@
       - target:
           entity_id: input_number.ac_bias_cool_on
         data:
-          value: '{% set raw = (cur_bias_cool_on | float) + (step_main | float) %}
+          value: '{% set raw = (cur_bias_cool_on | float) + (cool_manual_off_step | float) %}
             {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_bias_cool_off
         data:
-          value: '{% set raw = (cur_bias_cool_off | float) + (step_main | float) %}
+          value: '{% set raw = (cur_bias_cool_off | float) + (cool_manual_off_step | float) %}
             {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - choose:

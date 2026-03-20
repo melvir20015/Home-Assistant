@@ -49,6 +49,7 @@ Tras detectar ese apagado manual, el sistema debe **aprender de ese feedback** m
 ### Cuando el AC está en `cool`
 
 - Si el AC estaba en `cool` y el usuario lo **apaga manualmente** por un medio distinto a una rama automática, se debe interpretar como una señal probable de que **ya había demasiado frío**, de que el apagado automático debió ocurrir antes o de que la automatización fue demasiado agresiva.
+- Cuando ese apagado manual califica como feedback válido después de un `AUTO ON` en `cool`, debe considerarse una **señal fuerte de “encender más tarde”**: `input_number.ac_bias_cool_on` y `input_number.ac_bias_cool_off` deben subir **`+0.25` fijos por evento** y no quedar atados a las tasas generales `ac_learning_rate_small` o `ac_learning_rate_large`.
 - Si el usuario **enciende manualmente** el AC después de un **apagado automático**, se debe interpretar como una señal probable de que el sistema **apagó demasiado pronto**, perdió el confort deseado o no sostuvo suficientemente las condiciones que el usuario esperaba.
 
 ### Cuando el AC está en `heat`
@@ -183,7 +184,7 @@ Contrato operativo de notificaciones:
 - Sólo deben notificarse aprendizajes **válidos**.
 - No deben notificarse eventos ignorados, ambiguos, expirados o con `ac_learning_enabled` apagado.
 - Las detecciones crudas de `Manual ON` y `Manual OFF` deben quedar sólo en logbook/auditoría, no como notificación normal de producción.
-- El formato visible debe ser corto y consistente, por ejemplo: `AC aprendió: OFF manual tras AUTO COOL | +0.10 on/off | +0.5 setpoint | 7.5 min`.
+- El formato visible debe ser corto y consistente, por ejemplo: `AC aprendió: OFF manual tras AUTO COOL | +0.25 on/off | +0.5 setpoint | 7.5 min`.
 
 ### Sesgos `ac_bias_cool_*` y `ac_bias_heat_*`
 
@@ -194,6 +195,8 @@ Conceptualmente:
 - `ac_bias_cool_on` y `ac_bias_heat_on` ajustan qué tan pronto o qué tan tarde conviene encender;
 - `ac_bias_cool_off` y `ac_bias_heat_off` ajustan qué tan pronto o qué tan tarde conviene apagar;
 - `ac_bias_cool_setpoint` y `ac_bias_heat_setpoint` ajustan el setpoint preferido cuando existe evidencia consistente.
+
+Para evitar sobrecorrecciones, los sesgos deben permanecer saturados dentro de sus topes operativos. En particular, `ac_bias_cool_on` y `ac_bias_cool_off` deben seguir acotados a `+3.00` como máximo, incluso cuando acumulen varios apagados manuales válidos consecutivos en `cool`.
 
 No deben verse como valores arbitrarios, sino como la memoria resumida de un patrón de feedback manual repetido.
 

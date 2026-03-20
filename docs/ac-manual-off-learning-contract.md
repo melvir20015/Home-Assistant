@@ -48,9 +48,11 @@ Sólo hay aprendizaje válido cuando se cumple todo esto:
 
 ### Si el último `AUTO ON` fue `cool`
 
-- subir `input_number.ac_bias_cool_on` para retrasar futuros `AUTO ON` en frío;
-- subir `input_number.ac_bias_cool_off` para apagar antes bajo condiciones equivalentes, cuando ese criterio siga aplicando;
+- subir `input_number.ac_bias_cool_on` en **`+0.25` fijo por evento válido** para retrasar futuros `AUTO ON` en frío;
+- subir `input_number.ac_bias_cool_off` en **`+0.25` fijo por evento válido** para apagar antes bajo condiciones equivalentes, cuando ese criterio siga aplicando;
 - subir `input_number.ac_bias_cool_setpoint` si el apagado manual fue rápido, para enfriar menos agresivamente.
+
+Ese ajuste de `cool` debe tratarse como una **señal fuerte de “encender más tarde”** y, por lo tanto, no debe depender de `input_number.ac_learning_rate_small` ni de `input_number.ac_learning_rate_large`. Las tasas de aprendizaje generales pueden seguir modulando otras ramas, pero esta rama concreta debe producir siempre el mismo resultado real: `+0.25 on/off` por cada apagado manual válido en `cool`.
 
 ### Si el último `AUTO ON` fue `heat`
 
@@ -82,7 +84,17 @@ Sin generar spam de notificaciones push, el sistema debe dejar trazabilidad sufi
 
 En producción sólo deben existir notificaciones breves cuando hubo aprendizaje válido real, por ejemplo:
 
-- `AC aprendió: OFF manual tras AUTO COOL | +0.10 on/off | +0.5 setpoint`
+- `AC aprendió: OFF manual tras AUTO COOL | +0.25 on/off | +0.5 setpoint`
 - `AC aprendió: OFF manual tras AUTO HEAT | -0.10 on/off`
+
+## Límites máximos de seguridad
+
+Los sesgos aprendidos deben permanecer acotados para evitar que varios eventos seguidos vuelvan al sistema excesivamente pasivo o inestable.
+
+- `input_number.ac_bias_cool_on` debe seguir limitado a un máximo de `+3.00`.
+- `input_number.ac_bias_cool_off` debe seguir limitado a un máximo de `+3.00`.
+- Si un nuevo evento intenta superar ese tope, el valor debe saturarse en el límite y no crecer más.
+
+Con ese límite, incluso usando un paso fijo de `+0.25`, el sistema conserva memoria útil del feedback manual sin desbordar la lógica base ni desplazar indefinidamente los umbrales.
 
 No deben enviarse notificaciones push de debug para `AUTO ON evaluado`, `AUTO ON abortado` ni para aprendizajes ignorados.
