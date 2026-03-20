@@ -2897,40 +2897,41 @@
 {% else %}
   sin ajuste setpoint
 {% endif %}"
-      ignored_reason_summary: "{% if not learning_enabled %}
-  aprendizaje deshabilitado
+      ignored_reason_code: "{% if not learning_enabled %}
+  learning_disabled
 {% elif last_auto_action != 'auto_on' %}
-  última acción no fue auto_on
+  last_action_not_auto_on
 {% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}
-  ventana expirada
+  window_expired
 {% elif last_auto_mode not in ['cool','heat'] %}
-  modo previo no aprendible
+  last_mode_not_learnable
 {% else %}
-  sin aprendizaje válido
+  no_valid_learning
 {% endif %}"
-      notify_title_valid: AC Learning OFF aplicado
-      notify_title_ignored: AC Learning ignorado
-      notify_message_valid_cool: >-
-        1. Evento detectado: apagado manual después de AUTO ON en cool a las {{ ts }}.
-        2. Interpretación del evento: el usuario corrigió un encendido automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}).
-        3. Aprendizaje válido: sí; learning_type={{ learning_type }} con step={{ step_main }}.
-        4. Qué sesgos cambiaron: ac_bias_cool_on {{ cur_bias_cool_on }}→{{ cool_on_after }}, ac_bias_cool_off {{ cur_bias_cool_off }}→{{ cool_off_after }}, ac_bias_cool_setpoint {% if quick_feedback %}{{ cur_bias_cool_setpoint }}→{{ cool_setpoint_after }}{% else %}sin cambio ({{ cur_bias_cool_setpoint }}){% endif %}; ac_bias_heat_on {{ cur_bias_heat_on }}, ac_bias_heat_off {{ cur_bias_heat_off }}, ac_bias_heat_setpoint {{ cur_bias_heat_setpoint }}.
-        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
-        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}.
-      notify_message_valid_heat: >-
-        1. Evento detectado: apagado manual después de AUTO ON en heat a las {{ ts }}.
-        2. Interpretación del evento: el usuario corrigió un encendido automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}).
-        3. Aprendizaje válido: sí; learning_type={{ learning_type }} con step={{ step_main }}.
-        4. Qué sesgos cambiaron: ac_bias_heat_on {{ cur_bias_heat_on }}→{{ heat_on_after }}, ac_bias_heat_off {{ cur_bias_heat_off }}→{{ heat_off_after }}, ac_bias_heat_setpoint {% if quick_feedback %}{{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% else %}sin cambio ({{ cur_bias_heat_setpoint }}){% endif %}; ac_bias_cool_on {{ cur_bias_cool_on }}, ac_bias_cool_off {{ cur_bias_cool_off }}, ac_bias_cool_setpoint {{ cur_bias_cool_setpoint }}.
-        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
-        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}.
+      ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
+  No hubo aprendizaje válido porque el aprendizaje está deshabilitado.
+{% elif ignored_reason_code == 'last_action_not_auto_on' %}
+  No hubo aprendizaje válido porque la última acción automática registrada no fue auto_on.
+{% elif ignored_reason_code == 'window_expired' %}
+  No hubo aprendizaje válido porque la ventana de feedback expiró.
+{% elif ignored_reason_code == 'last_mode_not_learnable' %}
+  No hubo aprendizaje válido porque el último modo automático no es aprendible.
+{% else %}
+  No hubo aprendizaje válido por una condición no clasificada.
+{% endif %}"
+      adjusted_biases_valid: "{% if last_auto_mode == 'cool' %}
+  ac_bias_cool_on {{ cur_bias_cool_on }}→{{ cool_on_after }}, ac_bias_cool_off {{ cur_bias_cool_off }}→{{ cool_off_after }}, ac_bias_cool_setpoint {% if quick_feedback %}{{ cur_bias_cool_setpoint }}→{{ cool_setpoint_after }}{% else %}sin cambio ({{ cur_bias_cool_setpoint }}){% endif %}
+{% elif last_auto_mode == 'heat' %}
+  ac_bias_heat_on {{ cur_bias_heat_on }}→{{ heat_on_after }}, ac_bias_heat_off {{ cur_bias_heat_off }}→{{ heat_off_after }}, ac_bias_heat_setpoint {% if quick_feedback %}{{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% else %}sin cambio ({{ cur_bias_heat_setpoint }}){% endif %}
+{% else %}
+  sin cambios aplicados
+{% endif %}"
+      notify_title_valid: AC Learning OFF válido
+      notify_title_ignored: "AC Learning ignorado: {{ ignored_reason_code }}"
+      notify_message_valid: >-
+        Aprendizaje válido por apagado manual detectado. hora={{ ts }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, last_auto_branch={{ last_auto_branch }}, minutes_since_last_auto={{ minutes_since_last_auto }}, learning_type={{ learning_type }}, sesgos_ajustados={{ adjusted_biases_valid }}. Contexto: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
       notify_message_ignored: >-
-        1. Evento detectado: apagado manual a las {{ ts }}.
-        2. Interpretación del evento: {{ ignored_reason_summary }} (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}).
-        3. Aprendizaje válido: no; learning_type={{ learning_type }}.
-        4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ cur_bias_cool_on }}, ac_bias_cool_off={{ cur_bias_cool_off }}, ac_bias_cool_setpoint={{ cur_bias_cool_setpoint }}, ac_bias_heat_on={{ cur_bias_heat_on }}, ac_bias_heat_off={{ cur_bias_heat_off }}, ac_bias_heat_setpoint={{ cur_bias_heat_setpoint }}.
-        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
-        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}.
+        No hubo aprendizaje válido por apagado manual detectado. motivo={{ ignored_reason_code }}. detalle={{ ignored_reason_summary }} hora={{ ts }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, last_auto_branch={{ last_auto_branch }}, minutes_since_last_auto={{ minutes_since_last_auto }}, learning_type={{ learning_type }}. Sesgos sin cambio: ac_bias_cool_on={{ cur_bias_cool_on }}, ac_bias_cool_off={{ cur_bias_cool_off }}, ac_bias_cool_setpoint={{ cur_bias_cool_setpoint }}, ac_bias_heat_on={{ cur_bias_heat_on }}, ac_bias_heat_off={{ cur_bias_heat_off }}, ac_bias_heat_setpoint={{ cur_bias_heat_setpoint }}. Contexto: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
   - choose:
     - conditions:
       - condition: template
@@ -3023,7 +3024,7 @@
           sequence:
           - data:
               title: '{{ notify_title_valid }}'
-              message: '{{ notify_message_valid_cool }}'
+              message: '{{ notify_message_valid }}'
               data:
                 ttl: 0
                 priority: high
@@ -3074,7 +3075,7 @@
           sequence:
           - data:
               title: '{{ notify_title_valid }}'
-              message: '{{ notify_message_valid_heat }}'
+              message: '{{ notify_message_valid }}'
               data:
                 ttl: 0
                 priority: high
