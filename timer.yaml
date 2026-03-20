@@ -1,3 +1,4 @@
-ac_pausa_manual_off_1h:
-  name: AC pausa por apagado manual
-  duration: "01:00:00"
+# Sin timers activos para pausas manuales del AC.
+# La única pausa tras apagado manual quedó integrada en
+# `AC - Día dinámico aprendido (principal)` mediante
+# `input_datetime.ac_last_manual_off_ts` con anti-rebote de 5 minutos.

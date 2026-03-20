@@ -42,7 +42,9 @@ El sistema no debe entenderse como una fórmula fija. La meta real es aproximars
 
 ## 3. Interpretación esperada de acciones manuales
 
-Las acciones manuales son señales de retroalimentación. Deben interpretarse sólo cuando exista suficiente contexto para distinguirlas de eventos automáticos o ambiguos.
+Las acciones manuales son señales de retroalimentación. Deben interpretarse sólo cuando exista suficiente contexto para distinguirlas de eventos automáticos o ambiguos. En particular, un **apagado manual** debe tratarse como **feedback de confort** del usuario: indica que la automatización probablemente sostuvo el equipo más tiempo del deseado, o que la decisión automática previa ya no coincide con el confort percibido.
+
+Tras detectar ese apagado manual, el sistema debe **aprender de ese feedback** mediante la telemetría y la lógica de aprendizaje correspondientes, pero la protección operativa inmediata debe ser mínima: **únicamente una pausa anti-rebote de 5 minutos** basada en `input_datetime.ac_last_manual_off_ts` dentro de la automatización principal `AC - Día dinámico aprendido (principal)`. No debe reintroducirse una pausa larga separada de 1 hora salvo que el diseño funcional cambie explícitamente y la documentación se actualice al mismo tiempo.
 
 ### Cuando el AC está en `cool`
 
@@ -124,7 +126,7 @@ Estos helpers deben almacenar la **traza estructurada de los eventos manuales** 
 
 Contrato recomendado:
 
-- `input_datetime.ac_last_manual_off_ts`: instante de **detección de apagado manual**.
+- `input_datetime.ac_last_manual_off_ts`: instante de **detección de apagado manual** y referencia para la **única pausa breve anti-rebote de 5 minutos** que bloquea un `auto_on` inmediato dentro de `AC - Día dinámico aprendido (principal)`. No sustituye ni representa una pausa larga independiente.
 - `input_datetime.ac_last_manual_on_ts`: instante de **detección de encendido manual**.
 - `input_datetime.ac_last_manual_feedback_ts`: instante del último **feedback manual válido para aprendizaje**; no debe usarse para detección inicial ni para estado final.
 - `input_datetime.ac_last_manual_final_ts`: instante en que quedó consolidado el **estado final manual elegido por el usuario**.
@@ -192,7 +194,8 @@ Antes de cambiar la lógica, debe asumirse que estos supuestos siguen siendo vá
 
 - El AC está físicamente en la recámara, pero el confort objetivo es del apartamento habitable y no sólo del punto de instalación.
 - La sala aporta información crítica porque refleja ocupación y equilibrio térmico fuera de la recámara.
-- Un apagado manual en `cool` o `heat` suele indicar exceso respecto al confort esperado, salvo que el contexto demuestre otra cosa.
+- Un apagado manual en `cool` o `heat` suele indicar exceso respecto al confort esperado, salvo que el contexto demuestre otra cosa; por diseño vigente debe interpretarse como **feedback de confort** y no como disparador de una pausa larga separada.
+- Tras ese apagado manual, la única contención operativa inmediata debe ser el bloqueo anti-rebote de **5 minutos** basado en `input_datetime.ac_last_manual_off_ts` dentro de la automatización principal.
 - Un encendido manual tras apagado automático suele indicar que el sistema se quedó corto para sostener confort.
 - La diferencia entre sensores interiores importa; no es un dato accesorio.
 - Los helpers de última acción automática y último evento manual son parte del contrato operativo del sistema.

@@ -2606,50 +2606,6 @@
       }}={{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
   mode: single
-- id: ac_pausa_1h_si_off_manual_fisico
-  alias: AC - Pausa 1h si apagan físicamente (OFF manual)
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id: climate.0200009211c7_climate
-    to: 'off'
-    for: 00:00:04
-  conditions:
-  - condition: time
-    after: 07:01:00
-    before: '20:59:00'
-  - condition: state
-    entity_id: timer.ac_pausa_manual_off_1h
-    state: idle
-  - condition: state
-    entity_id: input_boolean.ac_off_por_automatizacion
-    state: 'off'
-  - condition: template
-    value_template: "{{ (as_timestamp(now()) -\n    as_timestamp(states.input_boolean.ac_off_por_automatizacion.last_changed))
-      > 8 }}"
-  actions:
-  - action: timer.start
-    target:
-      entity_id: timer.ac_pausa_manual_off_1h
-    data:
-      duration: 01:00:00
-  - action: input_select.select_option
-    target:
-      entity_id: input_select.ac_ultimo_modo_no_fan
-    data:
-      option: 'off'
-  # `off` equivale al estado interno en reposo del helper cuando no se desea
-  # conservar un modo operativo recordado; no usar `idle`.
-  - action: notify.mobile_app_samsung_s24
-    data:
-      title: AC OFF manual
-      message: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }} | Se activó pausa manual
-        1h. El apagado se interpretó como manual porque ac_off_por_automatizacion
-        estaba en OFF desde hace más de 8 segundos.'
-      data:
-        ttl: 0
-        priority: high
-  mode: single
 - id: '1769981375283'
   alias: AC - Iniciar bloqueo 2h al apagarse
   description: ''
