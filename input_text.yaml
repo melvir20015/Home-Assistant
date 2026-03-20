@@ -41,3 +41,7 @@ ac_last_manual_final_mode:
 ac_last_manual_final_fan:
   name: "AC Last Manual Final Fan"
   max: 50
+
+ac_last_change_origin:
+  name: "AC Last Change Origin"
+  max: 40

@@ -106,6 +106,16 @@ Debe usarse para responder preguntas como:
 - “¿El estado `off` actual proviene de una decisión automática?”
 - “¿Un encendido manual posterior debe interpretarse como feedback contra un apagado automático?”
 
+
+### `input_boolean.ac_on_por_automatizacion` y `input_boolean.ac_off_por_automatizacion`
+
+Estas banderas separan el **origen operativo** de los cambios del AC durante una ventana anti-rebote corta.
+
+- `input_boolean.ac_on_por_automatizacion`: debe encenderse inmediatamente antes de cada `AUTO ON`, mantenerse durante toda la secuencia y limpiarse sólo al final con una demora breve para que un cambio provocado por la automatización no dispare `Manual ON` ni `Learning - Manual ON feedback`.
+- `input_boolean.ac_off_por_automatizacion`: debe encenderse inmediatamente antes de cada `AUTO OFF`, mantenerse durante toda la secuencia y limpiarse sólo al final con una demora breve para que un cambio provocado por la automatización no dispare `Manual OFF` ni `Learning - Manual OFF feedback`.
+- Si un usuario enciende o apaga desde el botón físico del AC, control IR, app propia del AC o desde la UI manual de Home Assistant **sin pasar por una automatización**, ese evento sigue siendo manual.
+- Si Home Assistant ejecuta el cambio desde una automatización, aunque el cambio termine reflejándose en la misma entidad `climate`, el evento debe clasificarse como automático y nunca debe contaminar aprendizaje manual.
+
 ### Helpers `input_text.ac_last_auto_*`, `input_number.ac_last_auto_*`, `input_datetime.ac_last_auto_ts`
 
 Estos helpers guardan el **contexto de la última acción automática relevante**. Su objetivo es preservar una fotografía operativa del momento en que la automatización actuó.
@@ -244,3 +254,8 @@ Este archivo debe tomarse como referencia operativa cuando se modifiquen:
 - criterios para interpretar presencia, horario o clima exterior en decisiones de confort.
 
 Si en el futuro cambia la distribución del apartamento, la ubicación de sensores o la estrategia de aprendizaje, este documento debe actualizarse antes o junto con la lógica correspondiente.
+
+
+### `input_text.ac_last_change_origin`
+
+Este helper guarda la clasificación simple del último cambio confirmado del equipo: `auto_on`, `auto_off`, `manual_on` o `manual_off`. Debe actualizarse tanto en automatizaciones automáticas como manuales y sirve para auditoría rápida, para evitar aprendizaje ambiguo y para recordar que la UI manual de Home Assistant cuenta como manual sólo cuando el cambio no fue lanzado por otra automatización.

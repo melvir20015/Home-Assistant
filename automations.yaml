@@ -1629,6 +1629,11 @@
           value: auto_off
         action: input_text.set_value
       - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: '{{ cur_mode }}'
@@ -1749,6 +1754,9 @@
             action: notify.mobile_app_samsung_s24
         default: []
       - target:
+          entity_id: input_boolean.ac_on_por_automatizacion
+        action: input_boolean.turn_on
+      - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: 'emergency_cool'
@@ -1769,6 +1777,11 @@
         action: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_change_origin
         data:
           value: auto_on
         action: input_text.set_value
@@ -1858,6 +1871,10 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_on_por_automatizacion
+        action: input_boolean.turn_off
     - conditions:
       - condition: template
         value_template: "{{ emergency_latched\n   and emergency_off_ready\n   and
@@ -1898,6 +1915,11 @@
         action: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_change_origin
         data:
           value: auto_off
         action: input_text.set_value
@@ -1996,6 +2018,11 @@
           value: auto_off
         action: input_text.set_value
       - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: heat
@@ -2085,6 +2112,11 @@
         action: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_change_origin
         data:
           value: auto_off
         action: input_text.set_value
@@ -2215,6 +2247,11 @@
           value: auto_off
         action: input_text.set_value
       - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: auto_off
+        action: input_text.set_value
+      - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: cool
@@ -2338,6 +2375,9 @@
             action: notify.mobile_app_samsung_s24
         default: []
       - target:
+          entity_id: input_boolean.ac_on_por_automatizacion
+        action: input_boolean.turn_on
+      - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: 'heat'
@@ -2358,6 +2398,11 @@
         action: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_change_origin
         data:
           value: auto_on
         action: input_text.set_value
@@ -2447,6 +2492,10 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_on_por_automatizacion
+        action: input_boolean.turn_off
     - conditions:
       - condition: template
         value_template: "{{ (not emergency_latched)\n   and auto_on_allowed\n   and
@@ -2501,6 +2550,9 @@
             action: notify.mobile_app_samsung_s24
         default: []
       - target:
+          entity_id: input_boolean.ac_on_por_automatizacion
+        action: input_boolean.turn_on
+      - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: 'cool'
@@ -2521,6 +2573,11 @@
         action: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
+        data:
+          value: auto_on
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_change_origin
         data:
           value: auto_on
         action: input_text.set_value
@@ -2611,6 +2668,10 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_on_por_automatizacion
+        action: input_boolean.turn_off
     default: []
   variables:
     climate_ent: climate.0200009211c7_climate
@@ -2780,6 +2841,9 @@
   - condition: state
     entity_id: input_boolean.ac_off_por_automatizacion
     state: 'off'
+  - condition: state
+    entity_id: input_boolean.ac_on_por_automatizacion
+    state: 'off'
   actions:
   - variables:
       t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
@@ -2824,6 +2888,7 @@
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
         | float(30) }}'
+      last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
         }}'
       lr_large: '{{ states(''input_number.ac_learning_rate_large'') | float(0.10)
@@ -2839,6 +2904,7 @@
 {% endif %}"
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 8 }}'
       valid_feedback: "{{ learning_enabled
+   and last_change_origin == 'manual_off'
    and last_auto_action == 'auto_on'
 
         \  and last_auto_mode in ['cool','heat']
@@ -2870,6 +2936,8 @@
 {%
         elif not learning_enabled %}
   manual_off_feedback_ignored_learning_disabled
+{% elif last_change_origin != 'manual_off' %}
+  manual_off_feedback_ignored_ambiguous_origin
 {% elif last_auto_action
         != 'auto_on' %}
   manual_off_feedback_ignored_last_action_not_auto_on
@@ -2899,8 +2967,17 @@
 {% else %}
   sin ajuste setpoint
 {% endif %}"
+      learning_summary_valid: "{% if last_auto_mode == 'cool' %}
+  AC aprendió: apagado manual tras AUTO COOL (+{{ step_main }}) on/off{% if quick_feedback %}, +0.5 setpoint{% endif %}
+{% elif last_auto_mode == 'heat' %}
+  AC aprendió: apagado manual tras AUTO HEAT (-{{ step_main }}) on/off{% if quick_feedback %}, -0.5 setpoint{% endif %}
+{% else %}
+  AC aprendió: apagado manual válido
+{% endif %}"
       ignored_reason_code: "{% if not learning_enabled %}
   learning_disabled
+{% elif last_change_origin != 'manual_off' %}
+  ambiguous_origin
 {% elif last_auto_action != 'auto_on' %}
   last_action_not_auto_on
 {% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}
@@ -2912,6 +2989,8 @@
 {% endif %}"
       ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
   Ignorado porque learning_enabled está apagado.
+{% elif ignored_reason_code == 'ambiguous_origin' %}
+  Ignorado porque el último cambio no quedó clasificado como manual_off.
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
   Ignorado porque la última acción no fue auto_on.
 {% elif ignored_reason_code == 'window_expired' %}
@@ -2927,6 +3006,8 @@
   ignorado porque learning_enabled está apagado
 {% elif ignored_reason_code == 'window_expired' %}
   ignorado por ventana expirada
+{% elif ignored_reason_code == 'ambiguous_origin' %}
+  ignorado por origen ambiguo
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
   ignorado porque la última acción no fue auto_on
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
@@ -3041,7 +3122,7 @@
           sequence:
           - data:
               title: '{{ audit_title }}'
-              message: '{{ audit_message }}'
+              message: '{{ learning_summary_valid | trim }}'
               data:
                 ttl: 0
                 priority: high
@@ -3092,7 +3173,7 @@
           sequence:
           - data:
               title: '{{ audit_title }}'
-              message: '{{ audit_message }}'
+              message: '{{ learning_summary_valid | trim }}'
               data:
                 ttl: 0
                 priority: high
@@ -3140,6 +3221,9 @@
   - condition: state
     entity_id: input_boolean.ac_off_por_automatizacion
     state: 'off'
+  - condition: state
+    entity_id: input_boolean.ac_on_por_automatizacion
+    state: 'off'
   actions:
   - delay: 00:00:15
   - variables:
@@ -3156,6 +3240,7 @@
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
         | float(30) }}'
+      last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
         }}'
       lr_large: '{{ states(''input_number.ac_learning_rate_large'') | float(0.10)
@@ -3171,6 +3256,7 @@
 {% endif %}"
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 10 }}'
       valid_feedback: "{{ learning_enabled
+   and last_change_origin == 'manual_on'
    and last_auto_action == 'auto_off'
 
         \  and final_mode in ['cool','heat']
@@ -3197,6 +3283,8 @@
 {%
         elif not learning_enabled %}
   manual_on_feedback_ignored_learning_disabled
+{% elif last_change_origin != 'manual_on' %}
+  manual_on_feedback_ignored_ambiguous_origin
 {% elif last_auto_action
         != 'auto_off' %}
   manual_on_feedback_ignored_last_action_not_auto_off
@@ -3212,6 +3300,8 @@
 {% endif %}"
       ignored_reason_code: "{% if not learning_enabled %}
   learning_disabled
+{% elif last_change_origin != 'manual_on' %}
+  ambiguous_origin
 {% elif last_auto_action != 'auto_off' %}
   last_action_not_auto_off
 {% elif final_mode not in ['cool','heat'] %}
@@ -3223,6 +3313,8 @@
 {% endif %}"
       ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
   aprendizaje deshabilitado
+{% elif ignored_reason_code == 'ambiguous_origin' %}
+  origen ambiguo: el último cambio no quedó clasificado como manual_on
 {% elif ignored_reason_code == 'last_action_not_auto_off' %}
   última acción no fue auto_off
 {% elif ignored_reason_code == 'final_mode_not_learnable' %}
@@ -3235,28 +3327,10 @@
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
       presence_effective: 'n/a'
       notify_title_valid: AC Learning ON aplicado
-      notify_title_ignored: "AC Learning ignorado: {{ ignored_reason_code }}"
       notify_message_valid_cool: >-
-        1. Evento detectado: encendido manual después de AUTO OFF en cool a las {{ ts }}.
-        2. Interpretación del evento: el usuario corrigió un apagado automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
-        3. Aprendizaje válido: sí; learning_type={{ learning_type }} con step={{ step_main }}.
-        4. Qué sesgos cambiaron: ac_bias_cool_on {{ cur_bias_cool_on }}→{% set raw = (cur_bias_cool_on | float) - (step_main | float) %}{{ [[raw, 2] | min, -2] | max | round(2) }}, ac_bias_cool_off {{ cur_bias_cool_off }}→{% set raw = (cur_bias_cool_off | float) - (step_main | float) %}{{ [[raw, 2] | min, -2] | max | round(2) }}, ac_bias_cool_setpoint {% if quick_feedback %}{{ cur_bias_cool_setpoint }}→{% set raw = (cur_bias_cool_setpoint | float) - 0.5 %}{{ [[raw, 2] | min, -2] | max | round(1) }}{% else %}sin cambio ({{ cur_bias_cool_setpoint }}){% endif %}; ac_bias_heat_on {{ cur_bias_heat_on }}, ac_bias_heat_off {{ cur_bias_heat_off }}, ac_bias_heat_setpoint {{ cur_bias_heat_setpoint }}.
-        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
-        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
+        AC aprendió: encendido manual tras AUTO OFF COOL (+{{ step_main }}) on/off{% if quick_feedback %}, -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
       notify_message_valid_heat: >-
-        1. Evento detectado: encendido manual después de AUTO OFF en heat a las {{ ts }}.
-        2. Interpretación del evento: el usuario corrigió un apagado automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
-        3. Aprendizaje válido: sí; learning_type={{ learning_type }} con step={{ step_main }}.
-        4. Qué sesgos cambiaron: ac_bias_heat_on {{ cur_bias_heat_on }}→{% set raw = (cur_bias_heat_on | float) + (step_main | float) %}{{ [[raw, 2] | min, -2] | max | round(2) }}, ac_bias_heat_off {{ cur_bias_heat_off }}→{% set raw = (cur_bias_heat_off | float) + (step_main | float) %}{{ [[raw, 2] | min, -2] | max | round(2) }}, ac_bias_heat_setpoint {% if quick_feedback %}{{ cur_bias_heat_setpoint }}→{% set raw = (cur_bias_heat_setpoint | float) + 0.5 %}{{ [[raw, 2] | min, -2] | max | round(1) }}{% else %}sin cambio ({{ cur_bias_heat_setpoint }}){% endif %}; ac_bias_cool_on {{ cur_bias_cool_on }}, ac_bias_cool_off {{ cur_bias_cool_off }}, ac_bias_cool_setpoint {{ cur_bias_cool_setpoint }}.
-        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
-        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
-      notify_message_ignored: >-
-        1. Evento detectado: encendido manual a las {{ ts }}.
-        2. Interpretación del evento: {{ ignored_reason_summary }} (motivo={{ ignored_reason_code }}, branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
-        3. Aprendizaje válido: no; learning_type={{ learning_type }}, minutes_since_last_auto={{ minutes_since_last_auto }}, feedback_window_min={{ feedback_window_min }}.
-        4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ cur_bias_cool_on }}, ac_bias_cool_off={{ cur_bias_cool_off }}, ac_bias_cool_setpoint={{ cur_bias_cool_setpoint }}, ac_bias_heat_on={{ cur_bias_heat_on }}, ac_bias_heat_off={{ cur_bias_heat_off }}, ac_bias_heat_setpoint={{ cur_bias_heat_setpoint }}.
-        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
-        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
+        AC aprendió: encendido manual tras AUTO OFF HEAT (+{{ step_main }}) on/off{% if quick_feedback %}, +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
   - target:
       entity_id: input_text.ac_last_manual_learning_type
     data:
@@ -3376,20 +3450,7 @@
                 priority: high
             action: notify.mobile_app_samsung_s24
         default: []
-    default:
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ debug_enabled }}'
-        sequence:
-        - data:
-            title: '{{ notify_title_ignored }}'
-            message: '{{ notify_message_ignored }}'
-            data:
-              ttl: 0
-              priority: high
-          action: notify.mobile_app_samsung_s24
-      default: []
+    default: []
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
@@ -3432,31 +3493,16 @@
     data:
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
+  - target:
+      entity_id: input_text.ac_last_change_origin
+    data:
+      value: manual_off
+    action: input_text.set_value
   - data:
       name: AC Manual OFF audit
       message: '{{ ts }} | input_datetime.ac_last_manual_off_ts={{ ts }} | Ventana anti-rebote activada por 5 min antes de cualquier AUTO ON.'
       entity_id: climate.0200009211c7_climate
     action: logbook.log
-  - choose:
-    - conditions:
-      - condition: state
-        entity_id: input_boolean.ac_learning_debug
-        state: 'on'
-      sequence:
-      - data:
-          title: AC Manual OFF detectado
-          message: >-
-            1. Evento detectado: apagado manual a las {{ ts }}.
-            2. Interpretación del evento: el usuario apagó el AC y se activa una pausa anti-rebote antes de permitir un AUTO ON.
-            3. Aprendizaje válido: no; esta automatización solo audita el evento manual.
-            4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ bias_cool_on }}, ac_bias_cool_off={{ bias_cool_off }}, ac_bias_cool_setpoint={{ bias_cool_setpoint }}, ac_bias_heat_on={{ bias_heat_on }}, ac_bias_heat_off={{ bias_heat_off }}, ac_bias_heat_setpoint={{ bias_heat_setpoint }}.
-            5. Qué ventana o guarda estuvo involucrada: pausa manual_off_block={{ manual_off_block }} por 5 min, minutes_since_last_auto={{ minutes_since_last_auto }}, presence_effective={{ presence_effective }}.
-            Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
-    default: []
   - target:
       entity_id: input_text.ac_last_manual_event_type
     data:
@@ -3518,6 +3564,9 @@
   - condition: state
     entity_id: input_boolean.ac_off_por_automatizacion
     state: 'off'
+  - condition: state
+    entity_id: input_boolean.ac_on_por_automatizacion
+    state: 'off'
   actions:
   - variables:
       detected_ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
@@ -3526,6 +3575,11 @@
     data:
       datetime: '{{ detected_ts }}'
     action: input_datetime.set_datetime
+  - target:
+      entity_id: input_text.ac_last_change_origin
+    data:
+      value: manual_on
+    action: input_text.set_value
   - target:
       entity_id: input_text.ac_last_manual_event_type
     data:
