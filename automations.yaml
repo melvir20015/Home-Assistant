@@ -2911,15 +2911,28 @@
   no_valid_learning
 {% endif %}"
       ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
-  No hubo aprendizaje válido porque el aprendizaje está deshabilitado.
+  Ignorado porque learning_enabled está apagado.
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
-  No hubo aprendizaje válido porque la última acción automática registrada no fue auto_on.
+  Ignorado porque la última acción no fue auto_on.
 {% elif ignored_reason_code == 'window_expired' %}
-  No hubo aprendizaje válido porque la ventana de feedback expiró (minutes_since_last_auto={{ minutes_since_last_auto }}, feedback_window_min={{ feedback_window_min }}).
+  Ignorado por ventana expirada.
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
-  No hubo aprendizaje válido porque el último modo automático no es aprendible.
+  Ignorado porque el modo automático previo no era aprendible.
 {% else %}
-  No hubo aprendizaje válido por una condición no clasificada.
+  Ignorado porque no hubo aprendizaje válido clasificado.
+{% endif %}"
+      learning_status_label: "{% if valid_feedback %}
+  aprendizaje válido aplicado
+{% elif ignored_reason_code == 'learning_disabled' %}
+  ignorado porque learning_enabled está apagado
+{% elif ignored_reason_code == 'window_expired' %}
+  ignorado por ventana expirada
+{% elif ignored_reason_code == 'last_action_not_auto_on' %}
+  ignorado porque la última acción no fue auto_on
+{% elif ignored_reason_code == 'last_mode_not_learnable' %}
+  ignorado porque el modo automático previo no era aprendible
+{% else %}
+  ignorado porque no hubo aprendizaje válido clasificado
 {% endif %}"
       adjusted_biases_valid: "{% if last_auto_mode == 'cool' %}
   ac_bias_cool_on {{ cur_bias_cool_on }}→{{ cool_on_after }}, ac_bias_cool_off {{ cur_bias_cool_off }}→{{ cool_off_after }}, ac_bias_cool_setpoint {% if quick_feedback %}{{ cur_bias_cool_setpoint }}→{{ cool_setpoint_after }}{% else %}sin cambio ({{ cur_bias_cool_setpoint }}){% endif %}
@@ -2928,12 +2941,9 @@
 {% else %}
   sin cambios aplicados
 {% endif %}"
-      notify_title_valid: AC Learning OFF válido
-      notify_title_ignored: "AC Learning ignorado: {{ ignored_reason_code }}"
-      notify_message_valid: >-
-        Aprendizaje válido por apagado manual detectado. hora={{ ts }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, last_auto_branch={{ last_auto_branch }}, minutes_since_last_auto={{ minutes_since_last_auto }}, learning_type={{ learning_type }}, sesgos_ajustados={{ adjusted_biases_valid }}. Contexto: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
-      notify_message_ignored: >-
-        No hubo aprendizaje válido por apagado manual detectado. motivo={{ ignored_reason_code }}. detalle={{ ignored_reason_summary }} hora={{ ts }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, last_auto_branch={{ last_auto_branch }}, minutes_since_last_auto={{ minutes_since_last_auto }}, learning_type={{ learning_type }}. Sesgos sin cambio: ac_bias_cool_on={{ cur_bias_cool_on }}, ac_bias_cool_off={{ cur_bias_cool_off }}, ac_bias_cool_setpoint={{ cur_bias_cool_setpoint }}, ac_bias_heat_on={{ cur_bias_heat_on }}, ac_bias_heat_off={{ cur_bias_heat_off }}, ac_bias_heat_setpoint={{ cur_bias_heat_setpoint }}. Contexto: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
+      audit_title: AC - Learning - Manual OFF feedback
+      audit_message: >-
+        Resultado={{ learning_status_label }}; detalle={{ ignored_reason_summary if not valid_feedback else 'Aprendizaje válido aplicado.' }}; last_auto_action={{ last_auto_action }}; last_auto_mode={{ last_auto_mode }}; last_auto_branch={{ last_auto_branch }}; minutes_since_last_auto={{ minutes_since_last_auto }}; feedback_window_min={{ feedback_window_min }}; learning_enabled={{ learning_enabled }}; debug_enabled={{ debug_enabled }}; learning_type={{ learning_type }}; sesgos={{ adjusted_biases_valid if valid_feedback else 'sin cambios' }}; hora={{ ts }}; quick_feedback={{ quick_feedback }}; modo_final={{ final_mode }}; setpoint={{ final_setpoint }}; fan={{ final_fan }}; tin={{ tin }}; t1={{ t1 }}; t2={{ t2 }}; h={{ hin }}; tout={{ tout }}; manual_off_block={{ manual_off_block }}; presence_effective={{ presence_effective }}.
   - choose:
     - conditions:
       - condition: template
@@ -2945,6 +2955,11 @@
           datetime: '{{ ts }}'
         action: input_datetime.set_datetime
     default: []
+  - data:
+      name: '{{ audit_title }}'
+      message: '{{ audit_message }}'
+      entity_id: climate.0200009211c7_climate
+    action: logbook.log
   - target:
       entity_id: input_number.ac_last_manual_tin
     data:
@@ -3025,8 +3040,8 @@
             value_template: '{{ debug_enabled }}'
           sequence:
           - data:
-              title: '{{ notify_title_valid }}'
-              message: '{{ notify_message_valid }}'
+              title: '{{ audit_title }}'
+              message: '{{ audit_message }}'
               data:
                 ttl: 0
                 priority: high
@@ -3076,8 +3091,8 @@
             value_template: '{{ debug_enabled }}'
           sequence:
           - data:
-              title: '{{ notify_title_valid }}'
-              message: '{{ notify_message_valid }}'
+              title: '{{ audit_title }}'
+              message: '{{ audit_message }}'
               data:
                 ttl: 0
                 priority: high
@@ -3090,8 +3105,8 @@
           value_template: '{{ debug_enabled }}'
         sequence:
         - data:
-            title: '{{ notify_title_ignored }}'
-            message: '{{ notify_message_ignored }}'
+            title: '{{ audit_title }}'
+            message: '{{ audit_message }}'
             data:
               ttl: 0
               priority: high
