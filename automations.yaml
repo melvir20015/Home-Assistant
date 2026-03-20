@@ -2855,6 +2855,11 @@
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      final_mode: 'off'
+      final_setpoint: "{% set sp = state_attr('climate.0200009211c7_climate','temperature') %}{{ sp if sp is not none else 'n/a' }}"
+      final_fan: "{% set fan = state_attr('climate.0200009211c7_climate','fan_mode') %}{{ fan if fan is not none else 'n/a' }}"
+      manual_off_block: 'true'
+      presence_effective: 'n/a'
       learning_type: "{% if valid_feedback and last_auto_mode == 'cool' %}
   manual_off_feedback_valid_after_auto_on_cool
 {%
@@ -2903,6 +2908,29 @@
 {% else %}
   sin aprendizaje válido
 {% endif %}"
+      notify_title_valid: AC Learning OFF aplicado
+      notify_title_ignored: AC Learning ignorado
+      notify_message_valid_cool: >-
+        1. Evento detectado: apagado manual después de AUTO ON en cool a las {{ ts }}.
+        2. Interpretación del evento: el usuario corrigió un encendido automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}).
+        3. Aprendizaje válido: sí; learning_type={{ learning_type }} con step={{ step_main }}.
+        4. Qué sesgos cambiaron: ac_bias_cool_on {{ cur_bias_cool_on }}→{{ cool_on_after }}, ac_bias_cool_off {{ cur_bias_cool_off }}→{{ cool_off_after }}, ac_bias_cool_setpoint {% if quick_feedback %}{{ cur_bias_cool_setpoint }}→{{ cool_setpoint_after }}{% else %}sin cambio ({{ cur_bias_cool_setpoint }}){% endif %}; ac_bias_heat_on {{ cur_bias_heat_on }}, ac_bias_heat_off {{ cur_bias_heat_off }}, ac_bias_heat_setpoint {{ cur_bias_heat_setpoint }}.
+        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
+        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}.
+      notify_message_valid_heat: >-
+        1. Evento detectado: apagado manual después de AUTO ON en heat a las {{ ts }}.
+        2. Interpretación del evento: el usuario corrigió un encendido automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}).
+        3. Aprendizaje válido: sí; learning_type={{ learning_type }} con step={{ step_main }}.
+        4. Qué sesgos cambiaron: ac_bias_heat_on {{ cur_bias_heat_on }}→{{ heat_on_after }}, ac_bias_heat_off {{ cur_bias_heat_off }}→{{ heat_off_after }}, ac_bias_heat_setpoint {% if quick_feedback %}{{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% else %}sin cambio ({{ cur_bias_heat_setpoint }}){% endif %}; ac_bias_cool_on {{ cur_bias_cool_on }}, ac_bias_cool_off {{ cur_bias_cool_off }}, ac_bias_cool_setpoint {{ cur_bias_cool_setpoint }}.
+        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
+        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}.
+      notify_message_ignored: >-
+        1. Evento detectado: apagado manual a las {{ ts }}.
+        2. Interpretación del evento: {{ ignored_reason_summary }} (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}).
+        3. Aprendizaje válido: no; learning_type={{ learning_type }}.
+        4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ cur_bias_cool_on }}, ac_bias_cool_off={{ cur_bias_cool_off }}, ac_bias_cool_setpoint={{ cur_bias_cool_setpoint }}, ac_bias_heat_on={{ cur_bias_heat_on }}, ac_bias_heat_off={{ cur_bias_heat_off }}, ac_bias_heat_setpoint={{ cur_bias_heat_setpoint }}.
+        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
+        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, t1={{ t1 }}, t2={{ t2 }}, h={{ hin }}, tout={{ tout }}.
   - choose:
     - conditions:
       - condition: template
@@ -2994,12 +3022,8 @@
             value_template: '{{ debug_enabled }}'
           sequence:
           - data:
-              title: AC Learning - Manual OFF corrige AUTO ON COOL
-              message: '{{ ts }} | branch={{ last_auto_branch }} | min={{ minutes_since_last_auto
-                }} | learning={{ learning_type }} | step={{ step_main }} | bias_on={{ cur_bias_cool_on
-                }}→{{ cool_on_after }} | bias_off={{ cur_bias_cool_off }}→{{ cool_off_after
-                }} | {{ cool_setpoint_adjustment }} | tin={{ tin }} | t1={{ t1 }} | t2={{ t2
-                }} | h={{ hin }} | tout={{ tout }}'
+              title: '{{ notify_title_valid }}'
+              message: '{{ notify_message_valid_cool }}'
               data:
                 ttl: 0
                 priority: high
@@ -3049,12 +3073,8 @@
             value_template: '{{ debug_enabled }}'
           sequence:
           - data:
-              title: AC Learning - Manual OFF corrige AUTO ON HEAT
-              message: '{{ ts }} | branch={{ last_auto_branch }} | min={{ minutes_since_last_auto
-                }} | learning={{ learning_type }} | step={{ step_main }} | bias_on={{ cur_bias_heat_on
-                }}→{{ heat_on_after }} | bias_off={{ cur_bias_heat_off }}→{{ heat_off_after
-                }} | {{ heat_setpoint_adjustment }} | tin={{ tin }} | t1={{ t1 }} | t2={{ t2
-                }} | h={{ hin }} | tout={{ tout }}'
+              title: '{{ notify_title_valid }}'
+              message: '{{ notify_message_valid_heat }}'
               data:
                 ttl: 0
                 priority: high
@@ -3067,11 +3087,8 @@
           value_template: '{{ debug_enabled }}'
         sequence:
         - data:
-            title: 'AC Learning - Manual OFF ignorado: {% if not learning_enabled %}learning disabled{% elif last_auto_action != ''auto_on'' %}last action not auto_on{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}window expired{% else %}sin ajuste{% endif %}'
-            message: '{{ ts }} | reason={{ ignored_reason_summary }} | learning={{ learning_type
-              }} | branch={{ last_auto_branch }} | last_action={{ last_auto_action
-              }} | last_mode={{ last_auto_mode }} | min={{ minutes_since_last_auto
-              }} | tin={{ tin }} | t1={{ t1 }} | t2={{ t2 }} | h={{ hin }} | tout={{ tout }}'
+            title: '{{ notify_title_ignored }}'
+            message: '{{ notify_message_ignored }}'
             data:
               ttl: 0
               priority: high
@@ -3175,6 +3192,42 @@
         else %}
   manual_on_feedback_ignored_no_valid_learning
 {% endif %}"
+      ignored_reason_summary: "{% if not learning_enabled %}
+  aprendizaje deshabilitado
+{% elif last_auto_action != 'auto_off' %}
+  última acción no fue auto_off
+{% elif final_mode not in ['cool','heat'] %}
+  modo final no aprendible
+{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(30)) %}
+  ventana expirada
+{% else %}
+  sin aprendizaje válido
+{% endif %}"
+      manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
+      presence_effective: 'n/a'
+      notify_title_valid: AC Learning ON aplicado
+      notify_title_ignored: AC Learning ignorado
+      notify_message_valid_cool: >-
+        1. Evento detectado: encendido manual después de AUTO OFF en cool a las {{ ts }}.
+        2. Interpretación del evento: el usuario corrigió un apagado automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
+        3. Aprendizaje válido: sí; learning_type={{ learning_type }} con step={{ step_main }}.
+        4. Qué sesgos cambiaron: ac_bias_cool_on {{ cur_bias_cool_on }}→{% set raw = (cur_bias_cool_on | float) - (step_main | float) %}{{ [[raw, 2] | min, -2] | max | round(2) }}, ac_bias_cool_off {{ cur_bias_cool_off }}→{% set raw = (cur_bias_cool_off | float) - (step_main | float) %}{{ [[raw, 2] | min, -2] | max | round(2) }}, ac_bias_cool_setpoint {% if quick_feedback %}{{ cur_bias_cool_setpoint }}→{% set raw = (cur_bias_cool_setpoint | float) - 0.5 %}{{ [[raw, 2] | min, -2] | max | round(1) }}{% else %}sin cambio ({{ cur_bias_cool_setpoint }}){% endif %}; ac_bias_heat_on {{ cur_bias_heat_on }}, ac_bias_heat_off {{ cur_bias_heat_off }}, ac_bias_heat_setpoint {{ cur_bias_heat_setpoint }}.
+        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
+        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
+      notify_message_valid_heat: >-
+        1. Evento detectado: encendido manual después de AUTO OFF en heat a las {{ ts }}.
+        2. Interpretación del evento: el usuario corrigió un apagado automático reciente (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
+        3. Aprendizaje válido: sí; learning_type={{ learning_type }} con step={{ step_main }}.
+        4. Qué sesgos cambiaron: ac_bias_heat_on {{ cur_bias_heat_on }}→{% set raw = (cur_bias_heat_on | float) + (step_main | float) %}{{ [[raw, 2] | min, -2] | max | round(2) }}, ac_bias_heat_off {{ cur_bias_heat_off }}→{% set raw = (cur_bias_heat_off | float) + (step_main | float) %}{{ [[raw, 2] | min, -2] | max | round(2) }}, ac_bias_heat_setpoint {% if quick_feedback %}{{ cur_bias_heat_setpoint }}→{% set raw = (cur_bias_heat_setpoint | float) + 0.5 %}{{ [[raw, 2] | min, -2] | max | round(1) }}{% else %}sin cambio ({{ cur_bias_heat_setpoint }}){% endif %}; ac_bias_cool_on {{ cur_bias_cool_on }}, ac_bias_cool_off {{ cur_bias_cool_off }}, ac_bias_cool_setpoint {{ cur_bias_cool_setpoint }}.
+        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, quick_feedback={{ quick_feedback }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
+        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
+      notify_message_ignored: >-
+        1. Evento detectado: encendido manual a las {{ ts }}.
+        2. Interpretación del evento: {{ ignored_reason_summary }} (branch={{ last_auto_branch }}, last_auto_action={{ last_auto_action }}, last_auto_mode={{ last_auto_mode }}, manual_event_type={{ manual_event_type }}).
+        3. Aprendizaje válido: no; learning_type={{ learning_type }}.
+        4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ cur_bias_cool_on }}, ac_bias_cool_off={{ cur_bias_cool_off }}, ac_bias_cool_setpoint={{ cur_bias_cool_setpoint }}, ac_bias_heat_on={{ cur_bias_heat_on }}, ac_bias_heat_off={{ cur_bias_heat_off }}, ac_bias_heat_setpoint={{ cur_bias_heat_setpoint }}.
+        5. Qué ventana o guarda estuvo involucrada: ventana_feedback={{ feedback_window_min }} min, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}, presence_effective={{ presence_effective }}.
+        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
   - target:
       entity_id: input_text.ac_last_manual_learning_type
     data:
@@ -3236,10 +3289,8 @@
             value_template: '{{ debug_enabled }}'
           sequence:
           - data:
-              title: AC Learning - Manual ON corrige COOL OFF
-              message: '{{ ts }} | Learning={{ learning_type }} | EventoManual={{ manual_event_type }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
-                }} | step={{ step_main }} | FinalSet={{ final_setpoint }} | Fan={{
-                final_fan }}'
+              title: '{{ notify_title_valid }}'
+              message: '{{ notify_message_valid_cool }}'
               data:
                 ttl: 0
                 priority: high
@@ -3289,10 +3340,8 @@
             value_template: '{{ debug_enabled }}'
           sequence:
           - data:
-              title: AC Learning - Manual ON corrige HEAT OFF
-              message: '{{ ts }} | Learning={{ learning_type }} | EventoManual={{ manual_event_type }} | Branch={{ last_auto_branch }} | Min={{ minutes_since_last_auto
-                }} | step={{ step_main }} | FinalSet={{ final_setpoint }} | Fan={{
-                final_fan }}'
+              title: '{{ notify_title_valid }}'
+              message: '{{ notify_message_valid_heat }}'
               data:
                 ttl: 0
                 priority: high
@@ -3305,12 +3354,8 @@
           value_template: '{{ debug_enabled }}'
         sequence:
         - data:
-            title: AC Learning - Manual ON sin ajuste
-            message: '{{ ts }} | Learning={{ learning_type }} | EventoManual={{ manual_event_type }} | learning={{ learning_enabled
-              }} | last_action={{ last_auto_action }} | last_mode={{ last_auto_mode
-              }} | min={{ minutes_since_last_auto }} | branch={{ last_auto_branch
-              }} | final_mode={{ final_mode }} | set={{ final_setpoint }} | fan={{
-              final_fan }}'
+            title: '{{ notify_title_ignored }}'
+            message: '{{ notify_message_ignored }}'
             data:
               ttl: 0
               priority: high
@@ -3341,6 +3386,18 @@
   actions:
   - variables:
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      final_mode: 'off'
+      final_setpoint: "{% set sp = state_attr('climate.0200009211c7_climate','temperature') %}{{ sp if sp is not none else 'n/a' }}"
+      final_fan: "{% set fan = state_attr('climate.0200009211c7_climate','fan_mode') %}{{ fan if fan is not none else 'n/a' }}"
+      minutes_since_last_auto: "{% set last_auto_ts_raw = states('input_datetime.ac_last_auto_ts') %}{% if last_auto_ts_raw in ['unknown','unavailable','none',''] %}99999{% else %}{{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw)) / 60) | round(1) }}{% endif %}"
+      manual_off_block: 'true'
+      presence_effective: 'n/a'
+      bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
+      bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0) }}'
+      bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') | float(0) }}'
+      bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
+      bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0) }}'
+      bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0) }}'
   - target:
       entity_id: input_datetime.ac_last_manual_off_ts
     data:
@@ -3358,8 +3415,14 @@
         state: 'on'
       sequence:
       - data:
-          title: AC DEBUG - Manual OFF auditado
-          message: '{{ ts }} | input_datetime.ac_last_manual_off_ts={{ ts }} | Ventana anti-rebote activa por 5 min antes de cualquier AUTO ON.'
+          title: AC Manual OFF detectado
+          message: >-
+            1. Evento detectado: apagado manual a las {{ ts }}.
+            2. Interpretación del evento: el usuario apagó el AC y se activa una pausa anti-rebote antes de permitir un AUTO ON.
+            3. Aprendizaje válido: no; esta automatización solo audita el evento manual.
+            4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ bias_cool_on }}, ac_bias_cool_off={{ bias_cool_off }}, ac_bias_cool_setpoint={{ bias_cool_setpoint }}, ac_bias_heat_on={{ bias_heat_on }}, ac_bias_heat_off={{ bias_heat_off }}, ac_bias_heat_setpoint={{ bias_heat_setpoint }}.
+            5. Qué ventana o guarda estuvo involucrada: pausa manual_off_block={{ manual_off_block }} por 5 min, minutes_since_last_auto={{ minutes_since_last_auto }}, presence_effective={{ presence_effective }}.
+            Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
           data:
             ttl: 0
             priority: high
@@ -3386,7 +3449,13 @@
       sequence:
       - data:
           title: AC Manual OFF detectado
-          message: '{{ ts }} | Evento=manual_off_detected | Se registró apagado manual. AUTO ON bloqueado por 5 min.'
+          message: >-
+            1. Evento detectado: apagado manual a las {{ ts }}.
+            2. Interpretación del evento: el usuario apagó el AC y se activa una pausa anti-rebote antes de permitir un AUTO ON.
+            3. Aprendizaje válido: no; esta automatización solo audita el evento manual.
+            4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ bias_cool_on }}, ac_bias_cool_off={{ bias_cool_off }}, ac_bias_cool_setpoint={{ bias_cool_setpoint }}, ac_bias_heat_on={{ bias_heat_on }}, ac_bias_heat_off={{ bias_heat_off }}, ac_bias_heat_setpoint={{ bias_heat_setpoint }}.
+            5. Qué ventana o guarda estuvo involucrada: pausa manual_off_block={{ manual_off_block }} por 5 min, minutes_since_last_auto={{ minutes_since_last_auto }}, presence_effective={{ presence_effective }}.
+            Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}.
           data:
             ttl: 0
             priority: high
@@ -3528,6 +3597,14 @@
      or (tout | float(99)) >= (heat_force_off_outdoor | float)
    ) }}"
       manual_event_type_final: "{% if final_mode in ['cool','heat'] and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap\n{% elif final_mode == 'cool' and cool_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_cool\n{% elif final_mode == 'heat' and heat_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_heat\n{% else %}\n  manual_on_detected\n{% endif %}"
+      manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
+      notify_message: >-
+        1. Evento detectado: encendido manual a las {{ ts }}.
+        2. Interpretación del evento: {% if (manual_event_type_final | trim) == 'manual_on_due_to_presence_gap' %}el sistema interpreta una brecha de presencia para habilitar AUTO ON.{% elif (manual_event_type_final | trim) == 'manual_on_due_to_comfort_gap_cool' %}el sistema interpreta falta de agresividad térmica en cool.{% elif (manual_event_type_final | trim) == 'manual_on_due_to_comfort_gap_heat' %}el sistema interpreta falta de agresividad térmica en heat.{% else %}el usuario encendió manualmente el equipo sin una brecha clara que ajustar.{% endif %}
+        3. Aprendizaje válido: no; esta automatización solo registra el evento manual final.
+        4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ bias_cool_on }}, ac_bias_cool_off={{ states('input_number.ac_bias_cool_off') | float(0) }}, ac_bias_cool_setpoint={{ bias_cool_setpoint }}, ac_bias_heat_on={{ bias_heat_on }}, ac_bias_heat_off={{ states('input_number.ac_bias_heat_off') | float(0) }}, ac_bias_heat_setpoint={{ bias_heat_setpoint }}.
+        5. Qué ventana o guarda estuvo involucrada: presencia_temporal_hasta={{ manual_presence_until }}, presence_effective={{ presence_effective }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}.
+        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, tout={{ tout }}.
   - target:
       entity_id: input_datetime.ac_last_manual_final_ts
     data:
@@ -3608,46 +3685,13 @@
     action: input_number.set_value
   - choose:
     - conditions:
-      - condition: template
-        value_template: '{{ (manual_event_type_final | trim) == ''manual_on_due_to_presence_gap'' }}'
-      sequence:
-      - data:
-          title: AC Manual ON - Falta presencia
-          message: '{{ ts }} | El sistema interpreta que faltó presencia para permitir el AUTO ON. Evento={{ manual_event_type_final | trim }} | presence_effective={{ presence_effective }} | last_auto_action={{ last_auto_action }} | minutes_since_last_auto={{ minutes_since_last_auto }} | final_mode={{ final_mode }} | setpoint_final={{ final_setpoint }} | fan_final={{ final_fan }} | Presencia manual hasta={{ manual_presence_until }}'
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
-    - conditions:
-      - condition: template
-        value_template: '{{ (manual_event_type_final | trim) == ''manual_on_due_to_comfort_gap_cool'' }}'
-      sequence:
-      - data:
-          title: AC Manual ON - Falta agresividad térmica COOL
-          message: '{{ ts }} | El sistema interpreta que faltó agresividad térmica en cool. Evento={{ manual_event_type_final | trim }} | final_mode={{ final_mode }} | setpoint_final={{ final_setpoint }} | fan_final={{ final_fan }} | tin={{ tin }} | cool_on={{ cool_on }} | cool_setpoint_auto={{ cool_setpoint }} | presence_effective={{ presence_effective }} | last_auto_action={{ last_auto_action }} | minutes_since_last_auto={{ minutes_since_last_auto }}'
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
-    - conditions:
-      - condition: template
-        value_template: '{{ (manual_event_type_final | trim) == ''manual_on_due_to_comfort_gap_heat'' }}'
-      sequence:
-      - data:
-          title: AC Manual ON - Falta agresividad térmica HEAT
-          message: '{{ ts }} | El sistema interpreta que faltó agresividad térmica en heat. Evento={{ manual_event_type_final | trim }} | final_mode={{ final_mode }} | setpoint_final={{ final_setpoint }} | fan_final={{ final_fan }} | tin={{ tin }} | heat_on={{ heat_on }} | heat_setpoint_auto={{ heat_setpoint }} | tout={{ tout }} | presence_effective={{ presence_effective }} | last_auto_action={{ last_auto_action }} | minutes_since_last_auto={{ minutes_since_last_auto }}'
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
-    - conditions:
       - condition: state
         entity_id: input_boolean.ac_learning_debug
         state: 'on'
       sequence:
       - data:
           title: AC Manual ON detectado
-          message: '{{ ts }} | Evento={{ manual_event_type_final | trim }} | Mode={{ final_mode }} | Set={{ final_setpoint }} | Fan={{ final_fan }} | presence_effective={{ presence_effective }} | last_auto_action={{ last_auto_action }} | minutes_since_last_auto={{ minutes_since_last_auto }} | Presencia manual hasta={{ manual_presence_until }}'
+          message: '{{ notify_message }}'
           data:
             ttl: 0
             priority: high
