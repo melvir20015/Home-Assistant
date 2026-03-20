@@ -16,7 +16,8 @@ ac_modo_noche_2200:
 
 ac_ultimo_modo_no_fan:
   name: "AC - Último modo no fan"
-  # Semántica: `off` es el estado de reposo/sin modo operativo recordado.
+  # Semántica: `off` es el estado de reposo del helper cuando no se desea
+  # conservar un modo operativo recordado.
   # No usar `idle` en este helper; cuando el AC está apagado o se limpia un latch,
   # la lógica actual lo normaliza a `off`.
   options:

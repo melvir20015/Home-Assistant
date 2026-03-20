@@ -16,6 +16,8 @@
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
       option: '{{ to_mode }}'
+    # Sólo `cool` y `heat` se conservan aquí como memoria operativa útil; si luego
+    # el sistema entra en reposo, otra rama debe resetear el helper a `off`.
   - service: input_datetime.set_datetime
     target:
       entity_id: input_datetime.ac_ultimo_cambio_modo
@@ -1558,6 +1560,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: off
+        # Limpiar a `off` deja explícito que no se desea conservar memoria operativa
+        # del modo previo una vez descartado el latch de emergencia.
         action: input_select.select_option
       - choose:
         - conditions:
@@ -1701,6 +1705,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: emergency_cool
+        # `emergency_cool` sólo se guarda cuando la rama de enfriamiento de emergencia
+        # toma control para mitigar calor severo fuera del flujo normal.
         action: input_select.select_option
       - target:
           entity_id:
@@ -1902,6 +1908,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: off
+        # El helper vuelve a `off` cuando la rama apaga por objetivo de emergencia
+        # y ya no conviene conservar un modo recordado.
         action: input_select.select_option
       - data:
           title: AC OFF (emergencia objetivo)
@@ -1994,6 +2002,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: off
+        # `off` representa reposo del helper cuando la lógica descarta conservar el
+        # modo previo tras este apagado automático.
         action: input_select.select_option
       - data:
           title: AC OFF (heat por exterior)
@@ -2085,6 +2095,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: off
+        # `off` representa reposo del helper cuando la lógica descarta conservar el
+        # modo previo tras este apagado automático.
         action: input_select.select_option
       - data:
           title: AC OFF (heat objetivo)
@@ -2209,6 +2221,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: off
+        # `off` representa reposo del helper cuando la lógica descarta conservar el
+        # modo previo tras este apagado automático.
         action: input_select.select_option
       - data:
           title: AC OFF (cool objetivo)
@@ -2235,6 +2249,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: heat
+        # Guardar `heat` sólo cuando una rama confirma calefacción activa como
+        # último modo térmico útil que sí debe recordarse.
         action: input_select.select_option
       - target:
           entity_id:
@@ -2351,6 +2367,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: cool
+        # Guardar `cool` sólo cuando una rama confirma enfriamiento activo como
+        # último modo térmico útil que sí debe recordarse.
         action: input_select.select_option
       - target:
           entity_id:
@@ -2620,7 +2638,8 @@
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
       option: 'off'
-  # `off` equivale al estado interno en reposo del helper; no usar `idle`.
+  # `off` equivale al estado interno en reposo del helper cuando no se desea
+  # conservar un modo operativo recordado; no usar `idle`.
   - action: notify.mobile_app_samsung_s24
     data:
       title: AC OFF manual
@@ -2651,7 +2670,8 @@
   alias: AC - Learning - Manual OFF feedback
   description: 'Si el usuario apaga manualmente el AC y la última acción automática
     reciente fue AUTO ON, se interpreta como corrección de confort. Ajusta sesgos
-    aprendidos.
+    aprendidos. El helper `input_select.ac_ultimo_modo_no_fan` se limpia a `off`
+    cuando el apagado implica reposo y no conviene conservar memoria operativa.
 
     '
   triggers:
@@ -2862,6 +2882,8 @@
   alias: AC - Learning - Manual ON feedback
   description: 'Si el usuario enciende manualmente el AC y la última acción automática
     reciente fue AUTO OFF, se interpreta como corrección. Ajusta sesgos aprendidos.
+    Si el modo final es `cool` o `heat`, ese modo vuelve a ser memoria activa; si
+    no, el helper debe permanecer en `off`.
 
     '
   triggers:
@@ -3069,7 +3091,8 @@
     data:
       option: off
     # Consistencia del helper: los apagados manuales limpian el estado a `off`,
-    # que reemplaza cualquier noción previa de `idle`.
+    # porque ese valor representa reposo explícito y reemplaza cualquier noción
+    # previa de `idle`.
     action: input_select.select_option
   - choose:
     - conditions:
@@ -3166,6 +3189,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: '{{ final_mode }}'
+        # Si el encendido manual termina en `cool` o `heat`, ese modo sí debe quedar
+        # recordado; cualquier otro resultado debe dejar el helper en `off`.
         action: input_select.select_option
     default: []
   - target:
