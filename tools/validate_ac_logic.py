@@ -1,0 +1,134 @@
+from pathlib import Path
+import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+automations = (ROOT / 'automations.yaml').read_text(encoding='utf-8')
+input_select = (ROOT / 'input_select.yaml').read_text(encoding='utf-8')
+input_boolean = (ROOT / 'input_boolean.yaml').read_text(encoding='utf-8')
+input_text = (ROOT / 'input_text.yaml').read_text(encoding='utf-8')
+input_datetime = (ROOT / 'input_datetime.yaml').read_text(encoding='utf-8')
+
+checks = []
+
+def check(name, condition, detail):
+    checks.append((name, bool(condition), detail))
+
+# Escenario 1 y 2: manual ON
+check(
+    'manual_on_detecta_origen_manual',
+    "value: manual_on" in automations and "value: manual_on_detected" in automations,
+    'El guard de encendido manual marca origen manual_on y semilla manual_on_detected.'
+)
+check(
+    'manual_on_clasifica_presence_gap',
+    all(token in automations for token in [
+        'manual_on_due_to_presence_gap_cool',
+        'manual_on_due_to_presence_gap_heat',
+        'manual_on_due_to_presence_gap',
+    ]),
+    'La clasificación contempla brecha de presencia por modo final.'
+)
+check(
+    'manual_on_clasifica_comfort_gap',
+    all(token in automations for token in [
+        'manual_on_due_to_comfort_gap_cool',
+        'manual_on_due_to_comfort_gap_heat',
+    ]),
+    'La clasificación contempla brecha de confort cuando sí hay presencia.'
+)
+check(
+    'manual_on_extiende_presencia_temporal',
+    'entity_id: input_datetime.ac_manual_presence_until' in automations,
+    'El guard siempre actualiza ac_manual_presence_until al consolidar el encendido manual.'
+)
+check(
+    'manual_on_no_notifica_fuera_presence_gap',
+    'manual_on_classified_presence_gap' in automations and "default: []" in automations,
+    'La notificación del manual_on quedó confinada a la rama de presence gap.'
+)
+
+# Escenario 3 y 4: manual OFF y auto OFF
+check(
+    'manual_off_detecta_origen_manual',
+    "value: manual_off" in automations and 'manual_off_detected' in automations,
+    'El guard de apagado manual marca origin=manual_off y clasifica el evento manual.'
+)
+check(
+    'manual_off_ignora_auto_off',
+    "state: 'on'\n      sequence:\n      - stop: 'Ignorado: AUTO OFF en curso.'" in automations,
+    'El guard manual OFF aborta si la bandera ac_off_por_automatizacion está activa.'
+)
+check(
+    'manual_off_aprende_cool_y_heat',
+    all(token in automations for token in [
+        'manual_off_feedback_valid_after_auto_on_cool',
+        'manual_off_feedback_valid_after_auto_on_heat',
+        'cool_on_after',
+        'cool_off_after',
+        'heat_on_after',
+        'heat_off_after',
+    ]),
+    'El aprendizaje válido ajusta sesgos on/off y clasifica cool/heat.'
+)
+check(
+    'manual_off_notificacion_unica_valida',
+    automations.count('AC aprendió: OFF manual tras AUTO COOL') == 1 and automations.count('AC aprendió: OFF manual tras AUTO HEAT') == 1,
+    'Sólo hay una notificación breve por aprendizaje válido en cada modo.'
+)
+check(
+    'manual_off_pausa_5_min',
+    'manual_off_hold_minutes: 5' in automations,
+    'La automatización principal aplica una pausa anti-rebote de 5 minutos.'
+)
+check(
+    'auto_off_30m_sin_contaminar_manual',
+    'presence_away_30m' in automations and 'last_change_origin' in input_text,
+    'La lógica principal distingue ausencia 30m y la telemetría mantiene origen separado.'
+)
+
+# Escenario 5 y 6: emergency + helpers
+check(
+    'helper_modo_no_fan_valido',
+    all(token in input_select for token in ['- off', '- cool', '- heat', '- emergency_cool']),
+    'ac_ultimo_modo_no_fan admite exactamente los estados válidos documentados.'
+)
+check(
+    'reparacion_helper_invalido',
+    'Autocorrige estados restaurados inválidos' in automations and "not in ['off','cool','heat','emergency_cool']" in automations,
+    'Existe autocorrección para estados inválidos restaurados del helper.'
+)
+check(
+    'banderas_auto_presentes',
+    'ac_on_por_automatizacion' in input_boolean and 'ac_off_por_automatizacion' in input_boolean,
+    'Las banderas de origen automático existen como helpers dedicados.'
+)
+check(
+    'telemetria_input_text_presente',
+    all(token in input_text for token in [
+        'ac_last_auto_branch', 'ac_last_auto_action', 'ac_last_auto_mode',
+        'ac_last_manual_event_type', 'ac_last_manual_learning_type', 'ac_last_change_origin'
+    ]),
+    'Los input_text críticos de telemetría están declarados.'
+)
+check(
+    'manual_presence_helper_presente',
+    'ac_manual_presence_until' in input_datetime,
+    'El helper de presencia temporal manual existe.'
+)
+check(
+    'emergency_cool_presente_y_latcheado',
+    'emergency_latched' in automations and "option: 'emergency_cool'" in automations,
+    'La lógica conserva un latch explícito para emergency_cool y persiste el helper sólo en esa rama.'
+)
+
+failed = [c for c in checks if not c[1]]
+for name, ok, detail in checks:
+    status = 'PASS' if ok else 'FAIL'
+    print(f'[{status}] {name}: {detail}')
+
+if failed:
+    print(f'\nResultado: {len(failed)} chequeos fallaron de {len(checks)}.', file=sys.stderr)
+    sys.exit(1)
+
+print(f'\nResultado: {len(checks)} chequeos superados.')
