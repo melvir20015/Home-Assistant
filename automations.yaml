@@ -1,3 +1,28 @@
+- id: ac_normaliza_helper_ultimo_modo_no_fan
+  alias: AC - Normaliza helper último modo no fan
+  description: 'Autocorrige estados restaurados inválidos de `input_select.ac_ultimo_modo_no_fan`.
+    El helper sólo admite `off`, `cool`, `heat` o `emergency_cool`; si Home Assistant
+    restaura un valor legacy como `False`, se fuerza a `off` para evitar errores posteriores.
+
+    '
+  mode: single
+  trigger:
+  - platform: homeassistant
+    event: start
+  - platform: state
+    entity_id: input_select.ac_ultimo_modo_no_fan
+  condition:
+  - condition: template
+    value_template: "{{ states('input_select.ac_ultimo_modo_no_fan') not in ['off','cool','heat','emergency_cool'] }}"
+  action:
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.ac_ultimo_modo_no_fan
+    data:
+      option: 'off'
+    # Si Home Assistant restaura un valor histórico inválido como `False`, se
+    # normaliza inmediatamente a `off` para mantener el contrato del helper.
+
 - id: ac_memoria_y_bloqueo_2h_cool_heat
   alias: AC - Memoria último modo + Bloqueo 2h Cool/Heat (rolling, a prueba de fan_only)
   mode: single

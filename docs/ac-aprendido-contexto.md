@@ -215,6 +215,7 @@ En otras palabras, ayuda a mantener continuidad semántica entre acciones autom�
 Semántica funcional vigente del helper:
 
 - `off` significa **reposo explícito del helper**: no hay un modo térmico recordado que convenga conservar. No es un sinónimo de `idle`; `idle` no debe usarse como valor de este helper.
+- Nunca deben persistirse booleanos como `False` o `false` en `input_select.ac_ultimo_modo_no_fan`. Si aparece un valor legacy de ese tipo tras una restauración de estado, debe normalizarse inmediatamente a `off` antes de que cualquier automatización compare o escriba el helper.
 - `cool` debe guardarse cuando una automatización o una intervención manual deja al AC operando efectivamente en enfriamiento y ese enfriamiento sí debe quedar como último modo térmico útil.
 - `heat` debe guardarse cuando una automatización o una intervención manual deja al AC operando efectivamente en calefacción y esa calefacción sí debe quedar como último modo térmico útil.
 - `emergency_cool` debe guardarse únicamente cuando entra en acción la rama de enfriamiento de emergencia por calor severo y se necesita distinguir ese contexto del flujo normal de `cool`.
