@@ -23,6 +23,41 @@
     # Si Home Assistant restaura un valor histórico inválido como `False`, se
     # normaliza inmediatamente a `off` para mantener el contrato del helper.
 
+- id: ac_saneamiento_banderas_auto_ac
+  alias: AC - Saneamiento defensivo banderas auto
+  description: 'Evita que `input_boolean.ac_on_por_automatizacion` o `input_boolean.ac_off_por_automatizacion`
+    queden pegadas más allá de una ventana operativa razonable y refuerza la clasificación
+    del último origen de cambio sin generar ruido al usuario.
+
+    '
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /1
+  variables:
+    last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+    minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none',''] %}99999{% else %}{{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw)) / 60) | round(1) }}{% endif %}"
+    on_stuck: '{{ is_state(''input_boolean.ac_on_por_automatizacion'',''on'') and (minutes_since_last_auto | float(99999)) >= 2 }}'
+    off_stuck: '{{ is_state(''input_boolean.ac_off_por_automatizacion'',''on'') and (minutes_since_last_auto | float(99999)) >= 10 }}'
+  action:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ on_stuck or off_stuck }}'
+      sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+          - input_boolean.ac_on_por_automatizacion
+          - input_boolean.ac_off_por_automatizacion
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            saneamiento_banderas_auto | on_stuck={{ on_stuck }} | off_stuck={{ off_stuck }} | minutes_since_last_auto={{ minutes_since_last_auto }}
+          entity_id: climate.0200009211c7_climate
+    default: []
+
 - id: ac_memoria_y_bloqueo_2h_cool_heat
   alias: AC - Memoria último modo + Bloqueo 2h Cool/Heat (rolling, a prueba de fan_only)
   mode: single
@@ -1351,7 +1386,7 @@
           hvac_mode: 'off'
         action: climate.set_hvac_mode
       - data:
-          title: AC OFF (heat objetivo)
+          title: AC AUTO OFF
           message: '{{ notif_base }} | Prev=heat | R=heat_off | On={{ heat_on }} Off={{
             heat_off }}'
         action: '{{ notify_service }}'
@@ -1366,7 +1401,7 @@
           hvac_mode: 'off'
         action: climate.set_hvac_mode
       - data:
-          title: AC OFF (cool objetivo)
+          title: AC AUTO OFF
           message: '{{ notif_base }} | Prev=cool | R={{ ''cool_emergency_off'' if
             (tout|float) < 17 else ''cool_off/cool_sensor_off'' }} | Source={{ cool_off_reason
             | trim }} | Ctx={{ ''Emerg'' if (tout|float) < 17 else ''Normal'' }} |
@@ -1616,24 +1651,15 @@
         # Limpiar a `off` deja explícito que no se desea conservar memoria operativa
         # del modo previo una vez descartado el latch de emergencia.
         action: input_select.select_option
-      - choose:
-        - conditions:
-          - condition: state
-            entity_id: input_boolean.ac_learning_debug
-            state: 'on'
-          sequence:
-          - data:
-              title: AC DEBUG - Limpieza latch emergencia
-              message: '{{ ts }} | Se limpió emergency_cool atascado porque el AC
-                ya estaba OFF.'
-              data:
-                ttl: 0
-                priority: high
-            action: notify.mobile_app_samsung_s24
-        default: []
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            latch_emergency_cleared | reason=ac_off | last_mode_no_fan={{ last_mode_no_fan }}
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ presence_away_30m and cur_mode != ''off'' }}'
+        value_template: '{{ presence_away_30m and cur_mode != ''off'' and (not manual_on_guard_active) and (not manual_presence_override_active) }}'
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -1741,9 +1767,8 @@
         # `off` es el reposo del helper; no existe un estado `idle` válido aquí.
         action: input_select.select_option
       - data:
-          title: AC OFF (sin presencia 30m)
-          message: '{{ ts }} | Trig={{ trig }} | Prom={{ tin }}°C | Ext={{ tout }}°C
-            | Hum={{ hin }}% | ModoPrev={{ cur_mode }} | Away30m={{ away30_txt }}'
+          title: AC AUTO OFF
+          message: 'AC AUTO OFF: ausencia 30m | modo {{ cur_mode }}'
           data:
             ttl: 0
             priority: high
@@ -1886,10 +1911,8 @@
             action: climate.set_fan_mode
         default: []
       - data:
-          title: AC ON (emergencia COOL)
-          message: '{{ ts }} | Prom={{ tin }}°C | Ext={{ tout }}°C | Hum={{ hin }}%
-            | Ventana={{ emergency_window }} | Set={{ emergency_setpoint }}°C | Fan={{
-            emergency_fan_mode }} | ManualBlock={{ manual_off_block_txt }}'
+          title: AC AUTO ON
+          message: 'AC AUTO ON: COOL emergencia | set {{ emergency_setpoint }} | fan {{ emergency_fan_mode }}'
           data:
             ttl: 0
             priority: high
@@ -1901,7 +1924,7 @@
     - conditions:
       - condition: template
         value_template: "{{ emergency_latched\n   and emergency_off_ready\n   and
-          cur_mode != 'off' }}"
+          cur_mode != 'off'\n   and (not manual_on_guard_active) }}"
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2004,9 +2027,8 @@
         # y ya no conviene conservar un modo recordado.
         action: input_select.select_option
       - data:
-          title: AC OFF (emergencia objetivo)
-          message: '{{ ts }} | Prom={{ tin }}°C | Ext={{ tout }}°C | Hum={{ hin }}%
-            | ObjOFF={{ emergency_off_avg }}°C'
+          title: AC AUTO OFF
+          message: 'AC AUTO OFF: fin de COOL emergencia'
           data:
             ttl: 0
             priority: high
@@ -2018,7 +2040,7 @@
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'heat'\n   and tout is not none\n   and tout
-          >= heat_force_off_outdoor }}"
+          >= heat_force_off_outdoor\n   and (not manual_on_guard_active) }}"
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2103,8 +2125,8 @@
         # modo previo tras este apagado automático.
         action: input_select.select_option
       - data:
-          title: AC OFF (heat por exterior)
-          message: '{{ ts }} | Tout={{ tout }}°C >= {{ heat_force_off_outdoor }}°C'
+          title: AC AUTO OFF
+          message: 'AC AUTO OFF: calor exterior en HEAT'
           data:
             ttl: 0
             priority: high
@@ -2116,7 +2138,8 @@
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'heat'\n   and heat_off is not none\n   and
-          tin is not none\n   and (tin | float) >= (heat_off | float) }}"
+          tin is not none\n   and (tin | float) >= (heat_off | float)\n   and (not
+          manual_on_guard_active) }}"
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2201,9 +2224,8 @@
         # modo previo tras este apagado automático.
         action: input_select.select_option
       - data:
-          title: AC OFF (heat objetivo)
-          message: '{{ ts }} | Prom={{ tin }}°C | HeatON={{ heat_on }}°C | HeatOFF={{
-            heat_off }}°C'
+          title: AC AUTO OFF
+          message: 'AC AUTO OFF: objetivo HEAT alcanzado'
           data:
             ttl: 0
             priority: high
@@ -2216,7 +2238,7 @@
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
           cool_setpoint is not none\n   and ac_set is not none\n   and (ac_set | float)
-          != (cool_setpoint | float) }}"
+          != (cool_setpoint | float)\n   and (not manual_on_guard_active) }}"
       sequence:
       - target:
           entity_id: climate.0200009211c7_climate
@@ -2226,10 +2248,10 @@
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
-          (\n     (cool_off is not none and tin is not none and (tin | float) <= (cool_off
-          | float))\n     or (t1 is not none and (t1 | float) <= (cool_sensor_off
-          | float))\n     or (t2 is not none and (t2 | float) <= (cool_sensor_off
-          | float))\n   ) }}"
+          (not manual_on_guard_active)\n   and (\n     (cool_off is not none and tin
+          is not none and (tin | float) <= (cool_off | float))\n     or (t1 is not
+          none and (t1 | float) <= (cool_sensor_off | float))\n     or (t2 is not
+          none and (t2 | float) <= (cool_sensor_off | float))\n   ) }}"
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2332,10 +2354,8 @@
         # modo previo tras este apagado automático.
         action: input_select.select_option
       - data:
-          title: AC OFF (cool objetivo)
-          message: '{{ ts }} | Prom={{ tin }}°C | T1={{ t1 }}°C | T2={{ t2 }}°C |
-            CoolON={{ cool_on }}°C | CoolOFF={{ cool_off }}°C | SensorOFF={{ cool_sensor_off
-            }}°C | Set={{ cool_setpoint }}°C'
+          title: AC AUTO OFF
+          message: 'AC AUTO OFF: objetivo COOL alcanzado'
           data:
             ttl: 0
             priority: high
@@ -2479,10 +2499,8 @@
             action: climate.set_fan_mode
         default: []
       - data:
-          title: AC ON (heat)
-          message: '{{ ts }} | Prom={{ tin }}°C | Ext={{ tout }}°C | Hum={{ hin }}%
-            | HeatON={{ heat_on }}°C | HeatOFF={{ heat_off }}°C | Set={{ heat_setpoint
-            }}°C | Lock2h={{ lock_txt }} | ManualBlock={{ manual_off_block_txt }}'
+          title: AC AUTO ON
+          message: 'AC AUTO ON: HEAT | set {{ heat_setpoint }}'
           data:
             ttl: 0
             priority: high
@@ -2626,11 +2644,8 @@
             action: climate.set_fan_mode
         default: []
       - data:
-          title: AC ON (cool)
-          message: '{{ ts }} | Prom={{ tin }}°C | T1={{ t1 }}°C | T2={{ t2 }}°C |
-            Ext={{ tout }}°C | Hum={{ hin }}% | CoolON={{ cool_on }}°C | CoolOFF={{
-            cool_off }}°C | Set={{ cool_setpoint }}°C | SensorOFF={{ cool_sensor_off
-            }}°C | Lock2h={{ lock_txt }} | ManualBlock={{ manual_off_block_txt }}'
+          title: AC AUTO ON
+          message: 'AC AUTO ON: COOL | set {{ cool_setpoint }} | fan Low'
           data:
             ttl: 0
             priority: high
@@ -2699,10 +2714,10 @@
     fan_day_mode: '{{ ''Low'' if now().hour < 9 else ''Auto'' }}'
     emergency_window: "{% set t = now().strftime('%H:%M:%S') %} {% if '10:00:00' <=
       t < '16:00:00' %}\n  10-16\n{% else %}\n  07-10/16-21\n{% endif %}"
-    emergency_on_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 24.5 if ''10:00:00''
-      <= t < ''16:00:00'' else 25.0 }}'
-    emergency_off_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 23.5 if ''10:00:00''
-      <= t < ''16:00:00'' else 24.0 }}'
+    emergency_on_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 25.1 if ''10:00:00''
+      <= t < ''16:00:00'' else 25.5 }}'
+    emergency_off_avg: '{% set t = now().strftime(''%H:%M:%S'') %} {{ 24.0 if ''10:00:00''
+      <= t < ''16:00:00'' else 24.4 }}'
     emergency_setpoint: 22
     emergency_fan_mode: '{% set t = now().strftime(''%H:%M:%S'') %} {{ ''Auto'' if
       ''10:00:00'' <= t < ''16:00:00'' else ''Low'' }}'
@@ -2757,6 +2772,16 @@
     last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
     recent_any_auto_on: "{{ last_auto_action == 'auto_on'\n   and (minutes_since_last_auto
       | float(99999)) <= 2 }}"
+    last_manual_on_ts_raw: '{{ states(''input_datetime.ac_last_manual_on_ts'') }}'
+    manual_on_hold_minutes: 12
+    minutes_since_manual_on: "{% if last_manual_on_ts_raw in ['unknown','unavailable','none',''] %}
+  99999
+{% else %}
+  {{ ((as_timestamp(now()) - as_timestamp(last_manual_on_ts_raw)) / 60) | round(1) }}
+{% endif %}"
+    manual_on_guard_active: '{{ (minutes_since_manual_on | float(99999)) < (manual_on_hold_minutes | float) }}'
+    last_manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'') }}'
+    manual_presence_override_active: "{{ last_manual_event_type in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] and presence_temp_from_manual }}"
     last_manual_off_ts_raw: '{{ states(''input_datetime.ac_last_manual_off_ts'') }}'
     manual_off_hold_minutes: 5
     minutes_since_manual_off: "{% if last_manual_off_ts_raw in ['unknown','unavailable','none','']
@@ -3651,15 +3676,10 @@
      or (tin | float(999)) > (heat_on | float(-999))
      or (tout | float(99)) >= (heat_force_off_outdoor | float)
    ) }}"
-      manual_event_type_final: "{% if final_mode in ['cool','heat'] and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap\n{% elif final_mode == 'cool' and cool_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_cool\n{% elif final_mode == 'heat' and heat_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_heat\n{% else %}\n  manual_on_detected\n{% endif %}"
+      manual_event_type_final: "{% if final_mode == 'cool' and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap_cool\n{% elif final_mode == 'heat' and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap_heat\n{% elif final_mode in ['cool','heat'] and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap\n{% elif final_mode == 'cool' and cool_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_cool\n{% elif final_mode == 'heat' and heat_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_heat\n{% else %}\n  manual_on_detected\n{% endif %}"
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
       notify_message: >-
-        1. Evento detectado: encendido manual a las {{ ts }}.
-        2. Interpretación del evento: {% if (manual_event_type_final | trim) == 'manual_on_due_to_presence_gap' %}el sistema interpreta una brecha de presencia para habilitar AUTO ON.{% elif (manual_event_type_final | trim) == 'manual_on_due_to_comfort_gap_cool' %}el sistema interpreta falta de agresividad térmica en cool.{% elif (manual_event_type_final | trim) == 'manual_on_due_to_comfort_gap_heat' %}el sistema interpreta falta de agresividad térmica en heat.{% else %}el usuario encendió manualmente el equipo sin una brecha clara que ajustar.{% endif %}
-        3. Aprendizaje válido: no; esta automatización solo registra el evento manual final.
-        4. Qué sesgos cambiaron: sin cambios; ac_bias_cool_on={{ bias_cool_on }}, ac_bias_cool_off={{ states('input_number.ac_bias_cool_off') | float(0) }}, ac_bias_cool_setpoint={{ bias_cool_setpoint }}, ac_bias_heat_on={{ bias_heat_on }}, ac_bias_heat_off={{ states('input_number.ac_bias_heat_off') | float(0) }}, ac_bias_heat_setpoint={{ bias_heat_setpoint }}.
-        5. Qué ventana o guarda estuvo involucrada: presencia_temporal_hasta={{ manual_presence_until }}, presence_effective={{ presence_effective }}, minutes_since_last_auto={{ minutes_since_last_auto }}, manual_off_block={{ manual_off_block }}.
-        Datos: hora={{ ts }}, modo_final={{ final_mode }}, setpoint={{ final_setpoint }}, fan={{ final_fan }}, tin={{ tin }}, tout={{ tout }}.
+        {% if (manual_event_type_final | trim) in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] %}AC aprendió: ON manual por ausencia | presencia temporal activada{% else %}AC manual detectado: {{ final_mode }}{% endif %}
   - target:
       entity_id: input_datetime.ac_last_manual_final_ts
     data:
@@ -3678,7 +3698,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: "{{ (manual_event_type_final | trim) == 'manual_on_due_to_presence_gap' }}"
+        value_template: "{{ (manual_event_type_final | trim) in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] }}"
       sequence:
       - action: logbook.log
         data:
@@ -3686,6 +3706,13 @@
           message: >-
             manual_on_classified_presence_gap | final_mode={{ final_mode }} | presence_effective={{ presence_effective }} | phone_home={{ presence_phone_home }} | sensor_strict={{ presence_sensor_strict }} | manual_presence_temp={{ presence_temp_from_manual }} | minutes_since_last_auto={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
+      - data:
+          title: AC manual importante
+          message: '{{ notify_message }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
     default: []
   - choose:
     - conditions:

@@ -185,6 +185,12 @@ Contrato operativo de notificaciones:
 - No deben notificarse eventos ignorados, ambiguos, expirados o con `ac_learning_enabled` apagado.
 - Las detecciones crudas de `Manual ON` y `Manual OFF` deben quedar sólo en logbook/auditoría, no como notificación normal de producción.
 - El formato visible debe ser corto y consistente, por ejemplo: `AC aprendió: OFF manual tras AUTO COOL | +0.25 on/off | +0.5 setpoint | 7.5 min`.
+- Los únicos push normales de producción deben limitarse a:
+  - `AC AUTO ON: ...`
+  - `AC AUTO OFF: ...`
+  - `AC aprendió: ...`
+  - `AC aprendió: ON manual por ausencia | presencia temporal activada`
+- La telemetría detallada, los abortos, los ignorados y las limpiezas defensivas deben permanecer en logbook/helpers y no en notificación push masiva.
 
 ### Sesgos `ac_bias_cool_*` y `ac_bias_heat_*`
 
@@ -234,7 +240,83 @@ Regla operativa que no debe romperse:
 - No debe existir ninguna opción booleana como `False`/`false` ni ningún flujo que intente escribirla.
 - Después de `cool_normal_off`, `cool_emergency_off` y de cualquier limpieza de latch de emergencia, el helper debe quedar en `off`.
 
-## 6. Principios de diseño que no deben romperse
+## 6. Clasificación operativa de origen y protección tras intervención manual
+
+### Origen canónico del último cambio
+
+`input_text.ac_last_change_origin` debe guardar siempre una clasificación simple y estable del origen del último cambio:
+
+- `auto_on`
+- `auto_off`
+- `manual_on`
+- `manual_off`
+
+Ese helper no sustituye a `input_text.ac_last_manual_event_type`; ambos deben coexistir:
+
+- `ac_last_change_origin` responde **quién originó el cambio**;
+- `ac_last_manual_event_type` responde **cómo debe interpretarse semánticamente** ese evento manual.
+
+### Qué cuenta como evento manual
+
+Debe tratarse como manual cualquier cambio real del `climate` que no ocurra mientras una bandera automática correspondiente siga activa:
+
+- botón físico del AC;
+- control IR;
+- app nativa del AC;
+- cambio manual desde la interfaz de Home Assistant.
+
+Si el cambio fue emitido desde una automatización propia del sistema y la bandera automática seguía activa en ese instante, el evento **no** debe entrar en los flujos manuales ni de aprendizaje.
+
+### Ventana de estabilización tras `manual_on`
+
+Después de detectar un `manual_on`, la automatización principal debe respetar una ventana corta de estabilización/manual override basada en `input_datetime.ac_last_manual_on_ts` e `input_datetime.ac_last_manual_final_ts`.
+
+Durante esa ventana:
+
+- no debe cambiar inmediatamente el `hvac_mode`;
+- no debe corregir `fan_mode`;
+- no debe apagar el AC por ramas automáticas de `presence_off`, `cool_normal_off`, `cool_emergency_off`, `heat_normal_off` o equivalentes.
+
+La finalidad es permitir que el equipo termine de estabilizar el estado elegido manualmente antes de que la lógica principal vuelva a intervenir.
+
+### Presencia temporal por encendido manual durante ausencia
+
+Si `presence_effective` es `false` y el usuario enciende manualmente el AC, el sistema debe interpretarlo como señal válida de presencia real o brecha de confort.
+
+Contrato:
+
+- clasificar el evento como `manual_on_due_to_presence_gap`, `manual_on_due_to_presence_gap_cool` o `manual_on_due_to_presence_gap_heat`, según el modo final;
+- extender `input_datetime.ac_manual_presence_until` con una presencia temporal coherente;
+- usar esa presencia temporal para impedir que la rama principal apague enseguida por ausencia;
+- permitir que el aprendizaje posterior siga funcionando normalmente.
+
+## 7. Emergency cool: dominancia y límites
+
+`emergency_cool` existe para calor realmente severo, no como reemplazo permanente del flujo normal de `cool`.
+
+Principios:
+
+- `emergency_on_avg` debe ser claramente más exigente que `cool_on`;
+- `emergency_off_avg` debe liberar antes el latch sólo cuando ya se alivió el calor fuerte;
+- `emergency_latched` sirve para mantener continuidad semántica de la emergencia, pero debe limpiarse cuando el equipo ya está en `off` y el contexto extremo desapareció;
+- un `manual_on` reciente no debe quedar inmediatamente pisado por una secuencia de `emergency_cool` que lo mande a `fan_only` u `off` sin dar tiempo a estabilizar la intervención del usuario.
+
+## 8. Helpers críticos que deben existir también en runtime
+
+Además de estar definidos en el repositorio, en runtime deben existir al menos estos helpers de telemetría:
+
+- `ac_last_auto_branch`
+- `ac_last_auto_action`
+- `ac_last_auto_mode`
+- `ac_last_auto_fan`
+- `ac_last_manual_event_type`
+- `ac_last_manual_learning_type`
+- `ac_last_manual_feedback_mode`
+- `ac_last_change_origin`
+
+Si uno falta en runtime, la causa más probable no es la lógica del AC sino un problema de carga parcial del paquete/configuración de Home Assistant. Desde el repositorio puede verificarse que los helpers están declarados; la comprobación contra la instancia viva requiere revisar **Estados / Helpers** o el arranque real de HA.
+
+## 9. Principios de diseño que no deben romperse
 
 Cualquier modificación futura debe preservar estos principios:
 
