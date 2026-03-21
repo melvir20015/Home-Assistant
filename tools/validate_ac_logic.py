@@ -97,6 +97,41 @@ check(
     'La lógica principal distingue ausencia 30m y la telemetría mantiene origen separado.'
 )
 
+
+# Escenario 7: feedback manual de setpoint en cool
+check(
+    'manual_sp_feedback_detecta_cambio_temperature',
+    all(token in automations for token in [
+        'ac_cool_manual_setpoint_feedback',
+        'attribute: temperature',
+        'manual_sp_lower_than_auto',
+        'manual_sp_higher_than_auto',
+    ]),
+    'Existe una ruta dedicada para cambios manuales de setpoint con clasificación arriba/abajo respecto al auto.'
+)
+check(
+    'manual_sp_feedback_guarda_contexto_y_bucket',
+    all(token in automations for token in [
+        'cool_bucket_selected',
+        'compact_context',
+        'input_text.ac_cool_effective_setpoint_map',
+        'SP auto=',
+        'SP manual=',
+        'ΔSP=',
+    ]),
+    'El feedback manual registra contexto resumido y persiste el bucket afectado para futuros autoencendidos.'
+)
+check(
+    'manual_sp_feedback_distingue_fases_y_refuerzo',
+    all(token in automations for token in [
+        'ajuste_inmediato_post_auto_on',
+        'ajuste_20_40_min',
+        'refuerzo=sp_efectivo',
+        'input_text.ac_cool_contextual_learning_map',
+    ]),
+    'La ruta diferencia feedback inmediato vs 20-40 min y refuerza el mapa contextual cuando bajar el SP revela falta de progreso.'
+)
+
 # Escenario 5 y 6: emergency + helpers
 check(
     'helper_modo_no_fan_valido',
