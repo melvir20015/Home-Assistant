@@ -2571,17 +2571,6 @@
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
-          cool_setpoint is not none\n   and ac_set is not none\n   and (ac_set | float)
-          != (cool_setpoint | float)\n   and (not manual_override_active) }}"
-      sequence:
-      - target:
-          entity_id: climate.0200009211c7_climate
-        data:
-          temperature: '{{ cool_setpoint }}'
-        action: climate.set_temperature
-    - conditions:
-      - condition: template
-        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
           (not manual_override_active)\n   and (\n     (cool_off is not none and tin
           is not none and (tin | float) <= (cool_off | float))\n     or (t1 is not
           none and (t1 | float) <= (cool_sensor_off | float))\n     or (t2 is not
@@ -2968,6 +2957,17 @@
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_off
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
+          cool_setpoint is not none\n   and ac_set is not none\n   and (ac_set | float)
+          != (cool_setpoint | float)\n   and (not manual_override_active) }}"
+      sequence:
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ cool_setpoint }}'
+        action: climate.set_temperature
     default: []
   variables:
     climate_ent: climate.0200009211c7_climate

@@ -240,6 +240,17 @@ Regla operativa que no debe romperse:
 - No debe existir ninguna opción booleana como `False`/`false` ni ningún flujo que intente escribirla.
 - Después de `cool_normal_off`, `cool_emergency_off` y de cualquier limpieza de latch de emergencia, el helper debe quedar en `off`.
 
+Prioridad operativa correcta dentro del `choose` principal de `AC - Día dinámico aprendido (principal)`:
+
+1. **Apagados**: primero deben evaluarse `cool_emergency_off`, `cool_normal_off`, `heat_normal_off` y cualquier otra rama de apagado equivalente. Si el equipo ya cumple condición de apagado, debe apagarse antes de cualquier otra corrección fina.
+2. **Encendidos**: después se evalúan los `auto_on` normales o de emergencia cuando el sistema todavía decidió permanecer apagado y corresponde arrancar.
+3. **Ajustes finos de operación**: sólo al final deben ejecutarse correcciones no terminales, como ajuste de `setpoint` o `fan`, y únicamente cuando el sistema ya decidió permanecer encendido.
+
+Caso de validación que no debe romperse:
+
+- Si `cur_mode = cool`, `emergency_latched = false`, `tin <= cool_off` **o** algún sensor relevante está en `<= cool_sensor_off`, y además `ac_set != cool_setpoint`, la rama que debe ganar es `cool_normal_off`.
+- En ese escenario no debe ejecutarse la corrección fina de `setpoint`, porque el sistema ya decidió apagar el AC.
+
 ## 6. Clasificación operativa de origen y protección tras intervención manual
 
 ### Origen canónico del último cambio
