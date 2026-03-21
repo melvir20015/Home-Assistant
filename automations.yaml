@@ -2930,11 +2930,14 @@
         data:
           temperature: '{{ cool_setpoint_effective }}'
         action: climate.set_temperature
+      - variables:
+          cool_auto_reason: >-
+            {{ 'auto emergency' if emergency_hot else 'auto_on_cool' }}
       - action: logbook.log
         data:
           name: AC Auto Trace
           message: >-
-            cool_normalized | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=on manual por calor | Min={{ minutes_since_last_auto }}
+            cool_normalized | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot={{ cool_auto_reason }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -2960,7 +2963,7 @@
         default: []
       - data:
           title: Cool↑
-          message: 'Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ cool_setpoint_effective }} | Mot=on manual por calor | Min={{ minutes_since_last_auto }}'
+          message: 'Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ cool_setpoint_effective }} | Mot={{ cool_auto_reason }} | Min={{ minutes_since_last_auto }}'
           data:
             ttl: 0
             priority: high
