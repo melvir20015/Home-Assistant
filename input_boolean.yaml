@@ -46,3 +46,7 @@ ac_cool_sync_push_enabled:
   name: "AC Cool Sync Push Enabled"
   icon: mdi:bell-sync
   initial: false
+
+ac_cool_adaptive_cycle_active:
+  name: "AC Cool Adaptive Cycle Active"
+  icon: mdi:snowflake-alert

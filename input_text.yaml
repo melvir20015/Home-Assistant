@@ -53,3 +53,7 @@ ac_cool_contextual_learning_map:
 ac_last_auto_context_bucket:
   name: "AC Last Auto Context Bucket"
   max: 120
+
+ac_cool_effective_setpoint_map:
+  name: "AC Cool Effective Setpoint Map"
+  max: 1024

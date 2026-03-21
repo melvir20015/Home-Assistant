@@ -52,3 +52,13 @@ ac_night_cool_last_bootstrap_ts:
   name: "AC Night Cool Last Bootstrap Timestamp"
   has_date: true
   has_time: true
+
+ac_cool_cycle_started_at:
+  name: "AC Cool Cycle Started At"
+  has_date: true
+  has_time: true
+
+ac_cool_cycle_last_step_at:
+  name: "AC Cool Cycle Last Step At"
+  has_date: true
+  has_time: true

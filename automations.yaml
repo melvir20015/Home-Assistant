@@ -2255,6 +2255,26 @@
           value: '{{ sensor_delta }}'
         action: input_number.set_value
       - target:
+          entity_id:
+          - input_datetime.ac_cool_cycle_started_at
+          - input_datetime.ac_cool_cycle_last_step_at
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_number.ac_cool_cycle_start_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+        data:
+          value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_boolean.ac_cool_adaptive_cycle_active
+        action: input_boolean.turn_on
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: cool
@@ -2508,6 +2528,42 @@
         data:
           value: '{{ sensor_delta }}'
         action: input_number.set_value
+      - variables:
+          cycle_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
+          effective_map_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
+          effective_bucket: "{% set raw = cycle_bucket %}
+{% if raw in ['', 'unknown', 'unavailable', 'none'] %}
+  global_fallback:humedad_normal:day:presencia:estable
+{% else %}
+  {{ raw }}
+{% endif %}"
+          effective_map_after: >-
+            {% set ns = namespace(parts=[]) %}
+            {% set raw = effective_map_raw %}
+            {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
+            {% if cleaned | trim != '' %}
+              {% for part in cleaned.split(',') %}
+                {% set item = part | trim %}
+                {% if item and not item.startswith('"' ~ effective_bucket ~ '":') %}
+                  {% set ns.parts = ns.parts + [item] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {% set ns.parts = ns.parts + ['"' ~ effective_bucket ~ '":' ~ ('%.2f' | format(ac_set | float(0)))] %}
+            {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
+      - target:
+          entity_id: input_text.ac_cool_effective_setpoint_map
+        data:
+          value: '{{ effective_map_after }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+        data:
+          value: '{{ ac_set if ac_set is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_boolean.ac_cool_adaptive_cycle_active
+        action: input_boolean.turn_off
       - target:
           entity_id: climate.0200009211c7_climate
         data:
@@ -2747,7 +2803,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_off | Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | Demand={{ cool_demand_score }} | Bucket={{ cool_context_detail }} | On={{ cool_on_target }} | Off={{ cool_off_target }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ ac_set }} | Mot={{ cool_off_reason if cool_off_reason != 'none' else 'off temprano' }} | Min={{ minutes_since_last_auto }}
+            cool_off | Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | Demand={{ cool_demand_score }} | Bucket={{ cool_context_detail }} | On={{ cool_on_target }} | Off={{ cool_off_target }} | SPt={{ cool_setpoint_theoretical }} | SPf={{ ac_set }} | Mot={{ cool_off_reason if cool_off_reason != 'none' else 'off temprano' }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - variables:
           cool_push_kind: off
@@ -3003,6 +3059,26 @@
           value: '{{ sensor_delta }}'
         action: input_number.set_value
       - target:
+          entity_id:
+          - input_datetime.ac_cool_cycle_started_at
+          - input_datetime.ac_cool_cycle_last_step_at
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_number.ac_cool_cycle_start_tin
+        data:
+          value: '{{ tin if tin is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+        data:
+          value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_boolean.ac_cool_adaptive_cycle_active
+        action: input_boolean.turn_on
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: cool
@@ -3019,7 +3095,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_normalized | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot={{ cool_auto_reason }} | Min={{ minutes_since_last_auto }}
+            cool_normalized | {{ cool_ctx_brief }} | SPt={{ cool_setpoint_theoretical }} | SPh={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | SPe={{ cool_setpoint_effective }} | Mot={{ cool_auto_reason }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -3046,7 +3122,7 @@
       - variables:
           cool_push_kind: on
           cool_push_reason: Mot=auto umbral
-          cool_push_summary: 'Bucket={{ cool_context_detail }} | Dem={{ cool_demand_score }} | SP={{ cool_setpoint_effective }} | On={{ cool_on_target }} | Off={{ cool_off_target }} | Fan=Low'
+          cool_push_summary: "Bucket={{ cool_context_detail }} | Dem={{ cool_demand_score }} | SPi={{ cool_setpoint_effective }} | SPt={{ cool_setpoint_theoretical }} | SPh={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | On={{ cool_on_target }} | Off={{ cool_off_target }} | Fan=Low"
           # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
           cool_mobile_title_local: 'Cool↑'
           cool_mobile_message_local: >-
@@ -3163,6 +3239,7 @@
     learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
     cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
     cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
+    cool_effective_sp_map_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') }}'
     cool_tod_bucket: "{% set hour = now().hour %}\n{% if 7 <= hour < 13 %}\n  day\n{% elif 13 <= hour < 20 %}\n  tarde\n{% else %}\n  noche\n{% endif %}"
     cool_outdoor_bucket: "{% if tout is none %}\n  exterior_templado\n{% elif (tout | float) >= 29 %}\n  exterior_caliente\n{% else %}\n  exterior_templado\n{% endif %}"
     cool_humidity_bucket: "{% if hin is not none and (hin | float) >= 60 %}\n  humedad_alta\n{% else %}\n  humedad_normal\n{% endif %}"
@@ -3172,6 +3249,7 @@
     cool_context_detail: "{{ cool_context_bucket ~ ':' ~ cool_thermal_trend_bucket }}"
     cool_contextual_base_off: "{% if tout is none %}\n  {{ none }}\n{% elif (tout | float) < 17 %}\n  {{ none }}\n{% else %}\n  {% set base = 24.2 %}\n  {% set base = base - (0.35 if cool_outdoor_bucket == 'exterior_caliente' else 0) %}\n  {% set base = base - (0.20 if cool_humidity_bucket == 'humedad_alta' else 0) %}\n  {% set base = base - (0.15 if cool_tod_bucket == 'day' else 0.05 if cool_tod_bucket == 'tarde' else 0) %}\n  {% set base = base + (0.25 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set base = base - (0.20 if cool_thermal_trend_bucket == 'subiendo' else -0.10 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {% if tin is not none %}\n    {% set demand = ((tin | float) - 23.6) * 0.35 %}\n    {% set base = base - ([demand, 0.45] | min) %}\n  {% endif %}\n  {% if tout is not none %}\n    {% set outdoor_push = ((tout | float) - 24) * 0.03 %}\n    {% set base = base - ([outdoor_push, 0.30] | min) %}\n  {% endif %}\n  {{ [[base, 25.4] | min, 22.4] | max | round(2) }}\n{% endif %}"
     cool_context_learning_entry: "{% set raw = cool_learning_map_raw | trim %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ none }}\n{% else %}\n  {% set token = '\"' ~ cool_context_bucket ~ '\":' %}\n  {% if token in raw %}\n    {% set tail = raw.split(token, 1)[1] %}\n    {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n    {{ value | float(none) }}\n  {% else %}\n    {{ none }}\n  {% endif %}\n{% endif %}"
+    cool_effective_sp_entry: "{% set raw = cool_effective_sp_map_raw | trim %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ none }}\n{% else %}\n  {% set token = '\"' ~ cool_context_bucket ~ '\":' %}\n  {% if token in raw %}\n    {% set tail = raw.split(token, 1)[1] %}\n    {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n    {{ value | float(none) }}\n  {% else %}\n    {{ none }}\n  {% endif %}\n{% endif %}"
     # Cool deja de aprender una única rama universal.
     # Desde este rediseño el aprendizaje manual se aplica por bucket contextual
     # (`exterior × humedad × franja × presencia`) para no mezclar confort de
@@ -3232,7 +3310,8 @@
     # efectivo (`SPe`) para auditar diferencias esperables entre HA y el display.
     cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
     cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min, 21] | max | round(2) }}\n{% endif %}"
-    cool_setpoint_f: "{% if cool_setpoint is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((cool_setpoint | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 70] | max | int }}\n{% endif %}"
+    cool_setpoint_learned_blended: "{% if cool_setpoint is none %}\n  {{ none }}\n{% else %}\n  {% set historical = cool_effective_sp_entry %}\n  {% if historical is none %}\n    {{ cool_setpoint | float | round(2) }}\n  {% else %}\n    {% set blended = ((cool_setpoint | float) * 0.6) + ((historical | float) * 0.4) %}\n    {{ [[blended, 24] | min, 20] | max | round(2) }}\n  {% endif %}\n{% endif %}"
+    cool_setpoint_f: "{% if cool_setpoint_learned_blended is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((cool_setpoint_learned_blended | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 68] | max | int }}\n{% endif %}"
     cool_setpoint_effective: "{% if cool_setpoint_f is none %}\n  {{ none }}\n{% else %}\n  {{ (((cool_setpoint_f | float) - 32) * 5 / 9) | round(2) }}\n{% endif %}"
     ac_set_normalized_f: "{% if ac_set is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((ac_set | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 70] | max | int }}\n{% endif %}"
     ac_set_effective_normalized: "{% if ac_set_normalized_f is none %}\n  {{ none }}\n{% else %}\n  {{ (((ac_set_normalized_f | float) - 32) * 5 / 9) | round(2) }}\n{% endif %}"
@@ -4309,3 +4388,140 @@
       value: '{{ final_setpoint if final_setpoint is not none else 0 }}'
     action: input_number.set_value
   mode: restart
+
+- id: ac_cool_adaptive_setpoint_runtime
+  alias: AC - Cool setpoint adaptativo en ciclo activo
+  trigger:
+  - platform: time_pattern
+    minutes: '/5'
+  - platform: state
+    entity_id: climate.0200009211c7_climate
+  condition: []
+  action:
+  - variables:
+      climate_ent: climate.0200009211c7_climate
+      t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none) }}'
+      t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
+      tin: >-
+        {% if t1 is not none and t2 is not none %}{{ ((t1 + t2) / 2) | round(2) }}
+        {% elif t1 is not none %}{{ t1 | round(2) }}
+        {% elif t2 is not none %}{{ t2 | round(2) }}
+        {% else %}{{ none }}{% endif %}
+      cycle_active: '{{ is_state(''input_boolean.ac_cool_adaptive_cycle_active'',''on'') }}'
+      cur_mode: '{{ states(climate_ent) }}'
+      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
+      last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
+      active_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
+      cool_off_target: '{{ states(''input_number.ac_last_auto_tin'') | float(0) - (states(''input_number.ac_last_auto_setpoint'') | float(0) - 0.5) if states(''input_number.ac_last_auto_setpoint'') not in [''unknown'',''unavailable'',''none'',''''] else none }}'
+      start_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_started_at'') }}'
+      last_step_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_last_step_at'') }}'
+      start_temp: '{{ states(''input_number.ac_cool_cycle_start_tin'') | float(none) }}'
+      current_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(states(''input_number.ac_cool_cycle_last_applied_setpoint'') | float(0)) }}'
+      window_min: '{{ states(''input_number.ac_cool_adaptive_window_minutes'') | float(30) }}'
+      initial_delay_min: '{{ states(''input_number.ac_cool_adaptive_initial_delay_minutes'') | float(30) }}'
+      step_size: '{{ states(''input_number.ac_cool_adaptive_step'') | float(0.5) }}'
+      min_setpoint: '{{ states(''input_number.ac_cool_adaptive_min_setpoint'') | float(20) }}'
+      min_progress_per_window: '{{ states(''input_number.ac_cool_adaptive_min_progress_per_window'') | float(0.3) }}'
+      close_enough_delta: '{{ states(''input_number.ac_cool_adaptive_close_enough_delta'') | float(0.2) }}'
+      runtime_min: >-
+        {% if start_ts_raw in ['unknown','unavailable','none',''] %}0
+        {% else %}{{ ((as_timestamp(now()) - as_timestamp(start_ts_raw)) / 60) | round(1) }}{% endif %}
+      minutes_since_last_step: >-
+        {% if last_step_ts_raw in ['unknown','unavailable','none',''] %}99999
+        {% else %}{{ ((as_timestamp(now()) - as_timestamp(last_step_ts_raw)) / 60) | round(1) }}{% endif %}
+      progress_temp: >-
+        {% if start_temp is none or tin is none %}{{ none }}
+        {% else %}{{ ((start_temp | float) - (tin | float)) | round(2) }}{% endif %}
+      remaining_delta: >-
+        {% if tin is none or cool_off_target is none %}{{ none }}
+        {% else %}{{ ((tin | float) - (cool_off_target | float)) | round(2) }}{% endif %}
+      windows_elapsed: '{{ [((runtime_min | float(0)) / (window_min | float(30))), 0] | max | round(2) }}'
+      expected_progress: '{{ ((windows_elapsed | float(0)) * (min_progress_per_window | float(0.3))) | round(2) }}'
+      insufficient_progress: "{{ progress_temp is not none and remaining_delta is not none and (runtime_min | float(0)) >= (initial_delay_min | float(30)) and (minutes_since_last_step | float(99999)) >= (window_min | float(30)) and (remaining_delta | float(0)) > (close_enough_delta | float(0.2)) and ((progress_temp | float(0)) + 0.05) < (expected_progress | float(0)) }}"
+      next_setpoint: '{{ [((current_setpoint | float(99)) - (step_size | float(0.5))), (min_setpoint | float(20))] | max | round(1) }}'
+      can_reduce: '{{ (current_setpoint | float(99)) > (min_setpoint | float(20)) and (next_setpoint | float(99)) < (current_setpoint | float(99)) }}'
+      effective_map_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
+      effective_bucket: >-
+        {% set raw = active_bucket %}
+        {% if raw in ['','unknown','unavailable','none'] %}global_fallback:humedad_normal:day:presencia:estable
+        {% else %}{{ raw }}{% endif %}
+      effective_map_after: >-
+        {% set ns = namespace(parts=[]) %}
+        {% set raw = effective_map_raw %}
+        {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
+        {% if cleaned | trim != '' %}
+          {% for part in cleaned.split(',') %}
+            {% set item = part | trim %}
+            {% if item and not item.startswith('"' ~ effective_bucket ~ '":') %}
+              {% set ns.parts = ns.parts + [item] %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% set ns.parts = ns.parts + ['"' ~ effective_bucket ~ '":' ~ ('%.2f' | format(current_setpoint | float))] %}
+        {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ cycle_active and (cur_mode != ''cool'' or last_auto_mode != ''cool'' or last_auto_action != ''auto_on'') }}'
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_cool_adaptive_cycle_active
+        action: input_boolean.turn_off
+      - stop: Ciclo adaptativo limpiado por cambio de modo.
+    - conditions:
+      - condition: template
+        value_template: '{{ cycle_active and cur_mode == ''cool'' and remaining_delta is not none and (remaining_delta | float(999)) <= (close_enough_delta | float(0.2)) }}'
+      sequence:
+      - target:
+          entity_id: input_text.ac_cool_effective_setpoint_map
+        data:
+          value: '{{ effective_map_after }}'
+        action: input_text.set_value
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_adaptive_effective | bucket={{ effective_bucket }} | init={{ start_temp }} | now={{ tin }} | remain={{ remaining_delta }} | sp_final={{ current_setpoint }} | runtime={{ runtime_min }}
+          entity_id: '{{ climate_ent }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ cycle_active and cur_mode == ''cool'' and insufficient_progress and can_reduce }}'
+      sequence:
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ next_setpoint }}'
+        action: climate.set_temperature
+      - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ next_setpoint }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+        data:
+          value: '{{ next_setpoint }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_datetime.ac_cool_cycle_last_step_at
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_adaptive_step | bucket={{ effective_bucket }} | init={{ start_temp }} | now={{ tin }} | prog={{ progress_temp }} | remain={{ remaining_delta }} | run={{ runtime_min }} | exp={{ expected_progress }} | sp={{ current_setpoint }}→{{ next_setpoint }}
+          entity_id: '{{ climate_ent }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ cycle_active and cur_mode == ''cool'' and insufficient_progress and (not can_reduce) }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_adaptive_floor | bucket={{ effective_bucket }} | init={{ start_temp }} | now={{ tin }} | prog={{ progress_temp }} | remain={{ remaining_delta }} | run={{ runtime_min }} | sp_min={{ min_setpoint }}
+          entity_id: '{{ climate_ent }}'
+    default: []
+  mode: single
