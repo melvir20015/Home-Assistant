@@ -41,3 +41,8 @@ ac_learning_debug:
 ac_night_cool_bootstrap_in_progress:
   name: "AC Night Cool Bootstrap In Progress"
   icon: mdi:snowflake-thermometer
+
+ac_cool_sync_push_enabled:
+  name: "AC Cool Sync Push Enabled"
+  icon: mdi:bell-sync
+  initial: false

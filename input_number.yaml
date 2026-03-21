@@ -265,3 +265,11 @@ ac_feedback_window_minutes:
   mode: box
   initial: 120
   unit_of_measurement: "min"
+
+ac_last_cool_sp_sync_notified:
+  name: "AC Last Cool Sync Notified Setpoint"
+  min: 16
+  max: 30
+  step: 0.01
+  mode: box
+  unit_of_measurement: "°C"

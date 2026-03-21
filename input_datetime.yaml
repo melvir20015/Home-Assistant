@@ -13,6 +13,11 @@ ac_last_auto_ts:
   has_date: true
   has_time: true
 
+ac_last_cool_sp_sync_notify_ts:
+  name: "AC Last Cool Sync Notify Timestamp"
+  has_date: true
+  has_time: true
+
 ac_last_manual_feedback_ts:
   name: "AC Last Manual Valid Feedback Timestamp"
   has_date: true

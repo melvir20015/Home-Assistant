@@ -3056,9 +3056,7 @@
         action: input_boolean.turn_off
     - conditions:
       - condition: template
-        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
-          cool_setpoint is not none\n   and ac_set is not none\n   and (ac_set | float)
-          != (cool_setpoint_effective | float)\n   and (not manual_override_active) }}"
+        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and cool_setpoint_effective is not none\n   and ac_set_effective_normalized is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (not manual_override_active) }}"
       sequence:
       - target:
           entity_id: climate.0200009211c7_climate
@@ -3069,25 +3067,41 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_sp_sync | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=sync | Min={{ minutes_since_last_auto }}
+            cool_sp_sync | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=sync | Δ={{ cool_sync_delta }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
-      - variables:
-          cool_push_kind: sync
-          cool_push_reason: Mot=sync
-          cool_push_summary: 'Sync SP={{ ac_set }}→{{ cool_setpoint_effective }} | SPf={{ cool_setpoint_f }}'
-          # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
-          cool_mobile_title_local: 'Cool↺'
-          cool_mobile_message_local: >-
-            {% set reason = cool_push_reason | default('', true) | trim %}
-            {% set summary = cool_push_summary | default('', true) | trim %}
-            {{ (reason if reason else 'Mot=sync') ~ ' | ' ~ (summary if summary else 'Sin detalle') }}
-      - data:
-          title: '{{ cool_mobile_title_local }}'
-          message: '{{ cool_mobile_message_local }}'
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_sync_should_notify }}'
+          sequence:
+          - target:
+              entity_id: input_datetime.ac_last_cool_sp_sync_notify_ts
+            data:
+              datetime: '{{ ts }}'
+            action: input_datetime.set_datetime
+          - target:
+              entity_id: input_number.ac_last_cool_sp_sync_notified
+            data:
+              value: '{{ cool_setpoint_effective }}'
+            action: input_number.set_value
+          - variables:
+              cool_push_kind: sync
+              cool_push_reason: Mot=sync
+              cool_push_summary: 'SP {{ ac_set_effective_normalized }}→{{ cool_setpoint_effective }} | Δ={{ cool_sync_delta }} | SPf={{ cool_setpoint_f }}'
+              # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
+              cool_mobile_title_local: 'Cool↺'
+              cool_mobile_message_local: >-
+                {% set reason = cool_push_reason | default('', true) | trim %}
+                {% set summary = cool_push_summary | default('', true) | trim %}
+                {{ (reason if reason else 'Mot=sync') ~ ' | ' ~ (summary if summary else 'Sin detalle') }}
+          - data:
+              title: '{{ cool_mobile_title_local }}'
+              message: '{{ cool_mobile_message_local }}'
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
     default: []
   variables:
     climate_ent: climate.0200009211c7_climate
@@ -3198,7 +3212,17 @@
     cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min, 21] | max | round(2) }}\n{% endif %}"
     cool_setpoint_f: "{% if cool_setpoint is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((cool_setpoint | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 70] | max | int }}\n{% endif %}"
     cool_setpoint_effective: "{% if cool_setpoint_f is none %}\n  {{ none }}\n{% else %}\n  {{ (((cool_setpoint_f | float) - 32) * 5 / 9) | round(2) }}\n{% endif %}"
-    cool_ctx_brief: '{{ "Tin=" ~ tin ~ " | Tout=" ~ tout ~ " | H=" ~ hin ~ " | On=" ~ cool_on ~ " | Off=" ~ cool_off ~ " | SPt=" ~ cool_setpoint_theoretical ~ " | SPe=" ~ cool_setpoint_effective }}'
+    ac_set_normalized_f: "{% if ac_set is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((ac_set | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 70] | max | int }}\n{% endif %}"
+    ac_set_effective_normalized: "{% if ac_set_normalized_f is none %}\n  {{ none }}\n{% else %}\n  {{ (((ac_set_normalized_f | float) - 32) * 5 / 9) | round(2) }}\n{% endif %}"
+    cool_sync_delta: "{% if ac_set_effective_normalized is none or cool_setpoint_effective is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_setpoint_effective | float) - (ac_set_effective_normalized | float)) | abs | round(2) }}\n{% endif %}"
+    cool_sync_push_enabled: '{{ is_state(''input_boolean.ac_cool_sync_push_enabled'',''on'') }}'
+    cool_sync_notify_window_min: 20
+    last_cool_sync_notify_ts_raw: '{{ states(''input_datetime.ac_last_cool_sp_sync_notify_ts'') }}'
+    minutes_since_cool_sync_notify: "{% if last_cool_sync_notify_ts_raw in ['unknown','unavailable','none',''] %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_cool_sync_notify_ts_raw)) / 60) | round(1) }}\n{% endif %}"
+    last_cool_sync_notified_sp: '{{ states(''input_number.ac_last_cool_sp_sync_notified'') | float(none) }}'
+    cool_sync_recent_auto_on: "{{ states('input_text.ac_last_auto_action') == 'auto_on'
+   and states('input_text.ac_last_auto_branch') == 'cool_normal_on'
+   and (minutes_since_last_auto | float(99999)) <= 3 }}"
     last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
     minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
       %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
@@ -3208,6 +3232,7 @@
     last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
     recent_any_auto_on: "{{ last_auto_action == 'auto_on'\n   and (minutes_since_last_auto
       | float(99999)) <= 2 }}"
+    cool_sync_should_notify: "{{ cool_sync_push_enabled\n   and cool_sync_delta is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (\n     cool_sync_recent_auto_on\n     or last_cool_sync_notified_sp is none\n     or ((last_cool_sync_notified_sp | float) - (cool_setpoint_effective | float)) | abs >= 0.2\n     or (minutes_since_cool_sync_notify | float(99999)) >= (cool_sync_notify_window_min | float(20))\n   ) }}"
     last_manual_on_ts_raw: '{{ states(''input_datetime.ac_last_manual_on_ts'') }}'
     last_manual_final_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'') }}'
     manual_on_hold_minutes: 12
