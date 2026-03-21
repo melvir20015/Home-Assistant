@@ -3017,10 +3017,11 @@
       \  and (person_raw != 'home')\n   and (s24_raw not in ['home','on']) }}"
     away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
     learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
-    bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
-    bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0) }}'
-    bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') | float(0)
-      }}'
+    cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
+    # Cool mantiene geometría fija por ahora:
+    #   on = off + 0.5
+    #   setpoint = off - 0.5
+    # El aprendizaje principal vive sólo en `input_number.ac_cool_off_learned`.
     bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
     bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0) }}'
     bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0)
@@ -3059,24 +3060,20 @@
       %}\n  {% set raw = (anchor_cool_on - (k * (tout - anchor_tout))) + offset +
       humidity_adj %}\n  {{ [[raw, 24.7] | min, 24.0] | max | round(2) }}\n{% endif
       %}"
-    cool_on: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
-      = (cool_on_base | float) + (bias_cool_on if learning_enabled else 0) %}\n  {{
-      [[raw, 26.2] | min, 23.6] | max | round(2) }}\n{% endif %}"
-    cool_off_base: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_on
-      | float) - 0.5) | round(2) }}\n{% endif %}"
-    cool_off: "{% if cool_off_base is none %}\n  {{ none }}\n{% else %}\n  {% set
-      raw = (cool_off_base | float) + (bias_cool_off if learning_enabled else 0) %}\n
-      \ {% set hi = (cool_on | float) - 0.4 %}\n  {{ [[raw, hi] | min, 22.4] | max
-      | round(2) }}\n{% endif %}"
+    cool_off: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
+      = cool_off_learned_raw %}\n  {{ [[raw, 25.7] | min, 22.4] | max | round(2) }}\n{%
+      endif %}"
+    cool_on: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {% set raw =
+      (cool_off | float) + 0.5 %}\n  {{ [[raw, 26.2] | min, 22.9] | max | round(2)
+      }}\n{% endif %}"
     cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
       raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
       }}\n{% endif %}"
-    cool_setpoint_base: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {%
-      set flo = (cool_off | float) | int %}\n  {{ [(flo - 1), 16] | max }}\n{% endif
-      %}"
-    cool_setpoint: "{% if cool_setpoint_base is none %}\n  {{ none }}\n{% else %}\n
-      \ {% set raw = (cool_setpoint_base | float) + (bias_cool_setpoint if learning_enabled
-      else 0) %}\n  {{ [[raw, 24] | min, 21] | max | round(1) }}\n{% endif %}"
+    cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else
+      %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
+    cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else
+      %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min,
+      21] | max | round(1) }}\n{% endif %}"
     last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
     minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
       %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
@@ -3230,11 +3227,7 @@
         \  and last_auto_mode in ['cool','heat']
    and (minutes_since_last_auto
         | float(99999)) <= (feedback_window_min | float(120)) }}"
-      cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
-      cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
-        }}'
-      cur_bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') |
-        float(0) }}'
+      cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
         }}'
@@ -3272,24 +3265,19 @@
         else %}
   manual_off_feedback_ignored_no_valid_learning
 {% endif %}"
-      cool_on_after: '{{ [[(cur_bias_cool_on | float) + (cool_manual_off_step | float), 3] | min, -3] | max | round(2) }}'
-      cool_off_after: '{{ [[(cur_bias_cool_off | float) + (cool_manual_off_step | float), 3] | min, -3] | max | round(2) }}'
-      cool_setpoint_after: '{{ [[(cur_bias_cool_setpoint | float) + 0.5, 2] | min, -2] | max | round(1) }}'
+      cool_off_learned_after: '{{ [[(cur_cool_off_learned | float) + (cool_manual_off_step | float), 25.7] | min, 22.4] | max | round(2) }}'
       heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_off_after: '{{ [[(cur_bias_heat_off | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_setpoint_after: '{{ [[(cur_bias_heat_setpoint | float) - 0.5, 2] | min, -2] | max | round(1) }}'
-      cool_setpoint_adjustment: "{% if quick_feedback %}
-  setpoint {{ cur_bias_cool_setpoint | float }}→{{ cool_setpoint_after }} (+0.5)
-{% else %}
-  sin ajuste setpoint
-{% endif %}"
+      cool_setpoint_adjustment: >-
+        geometría fija derivada desde off {{ cur_cool_off_learned | float }}→{{ cool_off_learned_after }}
       heat_setpoint_adjustment: "{% if quick_feedback %}
   setpoint {{ cur_bias_heat_setpoint | float }}→{{ heat_setpoint_after }} (-0.5)
 {% else %}
   sin ajuste setpoint
 {% endif %}"
       learning_summary_valid: "{% if last_auto_mode == 'cool' %}
-  AC aprendió: OFF manual tras AUTO COOL | +{{ '%.2f' | format(cool_manual_off_step | float) }} on/off{% if quick_feedback %} | +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
+  AC aprendió: OFF manual tras AUTO COOL | off aprendido {{ cur_cool_off_learned | round(2) }}→{{ cool_off_learned_after }} | geometría fija on=off+0.5, setpoint=off-0.5 | {{ minutes_since_last_auto }} min
 {% elif last_auto_mode == 'heat' %}
   AC aprendió: OFF manual tras AUTO HEAT | -{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
 {% else %}
@@ -3337,7 +3325,7 @@
   ignorado porque no hubo aprendizaje válido clasificado
 {% endif %}"
       adjusted_biases_valid: "{% if last_auto_mode == 'cool' %}
-  ac_bias_cool_on {{ cur_bias_cool_on }}→{{ cool_on_after }}, ac_bias_cool_off {{ cur_bias_cool_off }}→{{ cool_off_after }}, ac_bias_cool_setpoint {% if quick_feedback %}{{ cur_bias_cool_setpoint }}→{{ cool_setpoint_after }}{% else %}sin cambio ({{ cur_bias_cool_setpoint }}){% endif %}
+  ac_cool_off_learned {{ cur_cool_off_learned }}→{{ cool_off_learned_after }}; cool derivado con geometría fija
 {% elif last_auto_mode == 'heat' %}
   ac_bias_heat_on {{ cur_bias_heat_on }}→{{ heat_on_after }}, ac_bias_heat_off {{ cur_bias_heat_off }}→{{ heat_off_after }}, ac_bias_heat_setpoint {% if quick_feedback %}{{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% else %}sin cambio ({{ cur_bias_heat_setpoint }}){% endif %}
 {% else %}
@@ -3413,32 +3401,13 @@
           value: 'off'
         action: input_text.set_value
       - target:
-          entity_id: input_number.ac_bias_cool_on
+          entity_id: input_number.ac_cool_off_learned
         data:
-          value: '{% set raw = (cur_bias_cool_on | float) + (cool_manual_off_step | float) %}
-            {{ [[raw, 3] | min, -3] | max | round(2) }}'
+          value: '{{ cool_off_learned_after }}'
         action: input_number.set_value
-      - target:
-          entity_id: input_number.ac_bias_cool_off
-        data:
-          value: '{% set raw = (cur_bias_cool_off | float) + (cool_manual_off_step | float) %}
-            {{ [[raw, 3] | min, -3] | max | round(2) }}'
-        action: input_number.set_value
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ quick_feedback }}'
-          sequence:
-          - target:
-              entity_id: input_number.ac_bias_cool_setpoint
-            data:
-              value: '{% set raw = (cur_bias_cool_setpoint | float) + 0.5 %} {{ [[raw,
-                2] | min, -2] | max | round(1) }}'
-            action: input_number.set_value
-        default: []
       - data:
           title: AC Learning OFF aplicado
-          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | +0.25 on/off | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
+          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | off aprendido {{ cur_cool_off_learned | round(2) }}→{{ cool_off_learned_after }} | geometría fija | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
           data:
             ttl: 0
             priority: high
@@ -3483,7 +3452,7 @@
         default: []
       - data:
           title: AC Learning OFF aplicado
-          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | +0.25 on/off | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
+          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | off aprendido {{ cur_cool_off_learned | round(2) }}→{{ cool_off_learned_after }} | geometría fija | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
           data:
             ttl: 0
             priority: high
@@ -3566,11 +3535,7 @@
         \  and final_mode in ['cool','heat']
    and (minutes_since_last_auto | float(99999))
         <= (feedback_window_min | float(120)) }}"
-      cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
-      cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
-        }}'
-      cur_bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') |
-        float(0) }}'
+      cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
         }}'
@@ -3632,7 +3597,7 @@
       presence_effective: 'n/a'
       notify_title_valid: AC Learning ON aplicado
       notify_message_valid_cool: >-
-        AC aprendió: ON manual tras AUTO OFF COOL | +{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
+        AC aprendió: ON manual tras AUTO OFF COOL | off aprendido {{ cur_cool_off_learned | round(2) }}→{{ [[(cur_cool_off_learned | float) - (step_main | float), 25.7] | min, 22.4] | max | round(2) }} | geometría fija | {{ minutes_since_last_auto }} min
       notify_message_valid_heat: >-
         AC aprendió: ON manual tras AUTO OFF HEAT | +{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
   - target:
@@ -3689,29 +3654,10 @@
           value: '{{ final_fan }}'
         action: input_text.set_value
       - target:
-          entity_id: input_number.ac_bias_cool_on
+          entity_id: input_number.ac_cool_off_learned
         data:
-          value: '{% set raw = (cur_bias_cool_on | float) - (step_main | float) %}
-            {{ [[raw, 3] | min, -3] | max | round(2) }}'
+          value: '{% set raw = (cur_cool_off_learned | float) - (step_main | float) %} {{ [[raw, 25.7] | min, 22.4] | max | round(2) }}'
         action: input_number.set_value
-      - target:
-          entity_id: input_number.ac_bias_cool_off
-        data:
-          value: '{% set raw = (cur_bias_cool_off | float) - (step_main | float) %}
-            {{ [[raw, 3] | min, -3] | max | round(2) }}'
-        action: input_number.set_value
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ quick_feedback }}'
-          sequence:
-          - target:
-              entity_id: input_number.ac_bias_cool_setpoint
-            data:
-              value: '{% set raw = (cur_bias_cool_setpoint | float) - 0.5 %} {{ [[raw,
-                2] | min, -2] | max | round(1) }}'
-            action: input_number.set_value
-        default: []
       - data:
           title: '{{ notify_title_valid }}'
           message: '{{ notify_message_valid_cool }}'
@@ -3807,9 +3753,7 @@
       manual_event_type: "{% if last_auto_action == 'auto_on' and last_auto_mode in ['cool','heat'] and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120)) %}manual_off_detected_after_recent_auto_on_{{ last_auto_mode }}{% else %}manual_off_detected{% endif %}"
       manual_off_block: 'true'
       presence_effective: 'n/a'
-      bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
-      bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0) }}'
-      bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') | float(0) }}'
+      cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
       bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0) }}'
       bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0) }}'
@@ -3954,9 +3898,11 @@
         / 60) | round(1) }}\n{% endif %}"
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
-      bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
-      bias_cool_setpoint: '{{ states(''input_number.ac_bias_cool_setpoint'') | float(0)
-        }}'
+      cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
+      # Cool mantiene geometría fija por ahora:
+      #   on = off + 0.5
+      #   setpoint = off - 0.5
+      # Heat queda separado y sin cambios en esta automatización.
       bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0)
         }}'
@@ -3978,15 +3924,17 @@
         = 0 if hin is none else (-0.25 if hin >= 65 else -0.10 if hin >= 58 else 0)
         %}\n  {% set raw = (anchor_cool_on - (k * (tout - anchor_tout))) + offset + humidity_adj
         %}\n  {{ [[raw, 24.7] | min, 24.0] | max | round(2) }}\n{% endif %}"
-      cool_on: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
-        = (cool_on_base | float) + (bias_cool_on if learning_enabled else 0) %}\n  {{
-        [[raw, 25.2] | min, 23.8] | max | round(2) }}\n{% endif %}"
-      cool_setpoint_base: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {%
-        set flo = (cool_on | float) | int %}\n  {{ [(flo - 1), 16] | max }}\n{% endif
-        %}"
-      cool_setpoint: "{% if cool_setpoint_base is none %}\n  {{ none }}\n{% else
-        %}\n  {% set raw = (cool_setpoint_base | float) + (bias_cool_setpoint if learning_enabled
-        else 0) %}\n  {{ [[raw, 24] | min, 21] | max | round(1) }}\n{% endif %}"
+      cool_off: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
+        = cool_off_learned_raw %}\n  {{ [[raw, 25.7] | min, 22.4] | max | round(2) }}\n{%
+        endif %}"
+      cool_on: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {% set raw =
+        (cool_off | float) + 0.5 %}\n  {{ [[raw, 26.2] | min, 22.9] | max | round(2)
+        }}\n{% endif %}"
+      cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else
+        %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
+      cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else
+        %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min,
+        21] | max | round(1) }}\n{% endif %}"
       auto_on_blocked_by_presence: '{{ not presence_effective }}'
       cool_auto_blocked_by_threshold: "{{ final_mode == 'cool'
    and (
