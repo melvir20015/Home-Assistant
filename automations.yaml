@@ -1562,27 +1562,27 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: cool_night_bootstrap_start
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: bootstrap_start
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: cool
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: Low
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
@@ -1649,12 +1649,12 @@
               entity_id: input_text.ac_last_auto_branch
             data:
               value: cool_night_bootstrap_no_power_sensor
-            action: input_text.set_value
+            service: input_text.set_value
           - target:
               entity_id: input_text.ac_last_auto_action
             data:
               value: bootstrap_sensor_missing
-            action: input_text.set_value
+            service: input_text.set_value
           - action: logbook.log
             data:
               name: AC Auto Trace
@@ -1705,12 +1705,12 @@
                     entity_id: input_text.ac_last_auto_branch
                   data:
                     value: cool_night_bootstrap_success
-                  action: input_text.set_value
+                  service: input_text.set_value
                 - target:
                     entity_id: input_text.ac_last_auto_action
                   data:
                     value: bootstrap_success
-                  action: input_text.set_value
+                  service: input_text.set_value
                 - action: logbook.log
                   data:
                     name: AC Auto Trace
@@ -1759,12 +1759,12 @@
                     entity_id: input_text.ac_last_auto_branch
                   data:
                     value: cool_night_bootstrap_aborted
-                  action: input_text.set_value
+                  service: input_text.set_value
                 - target:
                     entity_id: input_text.ac_last_auto_action
                   data:
                     value: bootstrap_abort
-                  action: input_text.set_value
+                  service: input_text.set_value
                 - action: logbook.log
                   data:
                     name: AC Auto Trace
@@ -1798,12 +1798,12 @@
                     entity_id: input_text.ac_last_auto_branch
                   data:
                     value: cool_night_bootstrap_step
-                  action: input_text.set_value
+                  service: input_text.set_value
                 - target:
                     entity_id: input_text.ac_last_auto_action
                   data:
                     value: bootstrap_step
-                  action: input_text.set_value
+                  service: input_text.set_value
                 - action: logbook.log
                   data:
                     name: AC Auto Trace
@@ -1819,12 +1819,12 @@
                   entity_id: input_text.ac_last_auto_branch
                 data:
                   value: cool_night_bootstrap_exhausted
-                action: input_text.set_value
+                service: input_text.set_value
               - target:
                   entity_id: input_text.ac_last_auto_action
                 data:
                   value: bootstrap_exhausted
-                action: input_text.set_value
+                service: input_text.set_value
               - action: logbook.log
                 data:
                   name: AC Auto Trace
@@ -2075,27 +2075,27 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: presence_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: '{{ cur_mode }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: '{{ ac_fan }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
@@ -2198,27 +2198,27 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: cool_emergency_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: cool
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: '{{ emergency_fan_mode }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
@@ -2364,27 +2364,27 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: cool_emergency_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: cool
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: '{{ ac_fan }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
@@ -2472,27 +2472,27 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: heat_force_off_outdoor
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: heat
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: '{{ ac_fan }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
@@ -2555,7 +2555,7 @@
           entity_id: input_text.ac_cool_effective_setpoint_map
         data:
           value: '{{ effective_map_after }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
@@ -2607,27 +2607,27 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: heat_normal_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: heat
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: '{{ ac_fan }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
@@ -2726,32 +2726,32 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: cool_normal_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_context_bucket
         data:
           value: '{{ cool_context_detail }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_off
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: cool
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: '{{ ac_fan }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
@@ -2862,27 +2862,27 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: heat_normal_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: heat
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: '{{ fan_day_mode }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
@@ -2997,32 +2997,32 @@
           entity_id: input_text.ac_last_auto_branch
         data:
           value: cool_normal_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_context_bucket
         data:
           value: '{{ cool_context_detail }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: auto_on
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: cool
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: Low
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
@@ -3661,7 +3661,7 @@
       entity_id: input_text.ac_last_manual_learning_type
     data:
       value: '{{ learning_type }}'
-    action: input_text.set_value
+    service: input_text.set_value
   - choose:
     - conditions:
       - condition: template
@@ -3671,12 +3671,12 @@
           entity_id: input_text.ac_last_manual_feedback_mode
         data:
           value: cool
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_manual_feedback_fan
         data:
           value: 'off'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_cool_off_learned
         data:
@@ -3686,7 +3686,7 @@
           entity_id: input_text.ac_cool_contextual_learning_map
         data:
           value: '{{ cool_learning_map_after }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - data:
           title: AC Learning OFF aplicado
           message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
@@ -3702,12 +3702,12 @@
           entity_id: input_text.ac_last_manual_feedback_mode
         data:
           value: heat
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_manual_feedback_fan
         data:
           value: 'off'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_bias_heat_on
         data:
@@ -3923,7 +3923,7 @@
       entity_id: input_text.ac_last_manual_learning_type
     data:
       value: '{{ learning_type }}'
-    action: input_text.set_value
+    service: input_text.set_value
   - choose:
     - conditions:
       - condition: template
@@ -3966,12 +3966,12 @@
           entity_id: input_text.ac_last_manual_feedback_mode
         data:
           value: cool
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_manual_feedback_fan
         data:
           value: '{{ final_fan }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_cool_off_learned
         data:
@@ -3981,7 +3981,7 @@
           entity_id: input_text.ac_cool_contextual_learning_map
         data:
           value: '{{ cool_learning_map_after }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - data:
           title: '{{ notify_title_valid }}'
           message: '{{ notify_message_valid_cool }}'
@@ -3997,12 +3997,12 @@
           entity_id: input_text.ac_last_manual_feedback_mode
         data:
           value: heat
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_manual_feedback_fan
         data:
           value: '{{ final_fan }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_number.ac_bias_heat_on
         data:
@@ -4091,16 +4091,17 @@
     data:
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
+  # Compatibilidad: input_text.set_value se mantiene como service: en esta instancia actual.
   - target:
       entity_id: input_text.ac_last_change_origin
     data:
       value: manual_off
-    action: input_text.set_value
+    service: input_text.set_value
   - target:
       entity_id: input_text.ac_last_manual_event_type
     data:
       value: '{{ manual_event_type }}'
-    action: input_text.set_value
+    service: input_text.set_value
   - target:
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
@@ -4165,12 +4166,12 @@
       entity_id: input_text.ac_last_change_origin
     data:
       value: manual_on
-    action: input_text.set_value
+    service: input_text.set_value
   - target:
       entity_id: input_text.ac_last_manual_event_type
     data:
       value: manual_on_detected
-    action: input_text.set_value
+    service: input_text.set_value
   - action: logbook.log
     data:
       name: AC Manual Trace
@@ -4304,7 +4305,7 @@
       entity_id: input_text.ac_last_manual_event_type
     data:
       value: '{{ manual_event_type_final | trim }}'
-    action: input_text.set_value
+    service: input_text.set_value
   - choose:
     - conditions:
       - condition: template
@@ -4341,12 +4342,12 @@
       entity_id: input_text.ac_last_manual_final_mode
     data:
       value: '{{ final_mode }}'
-    action: input_text.set_value
+    service: input_text.set_value
   - target:
       entity_id: input_text.ac_last_manual_final_fan
     data:
       value: '{{ final_fan }}'
-    action: input_text.set_value
+    service: input_text.set_value
   - target:
       entity_id: input_number.ac_last_manual_tin
     data:
@@ -4631,17 +4632,17 @@
           entity_id: input_text.ac_last_change_origin
         data:
           value: manual_sp_feedback
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_manual_learning_type
         data:
           value: '{{ manual_feedback_kind }}:{{ feedback_phase }}{% if reinforce_effective_needed %}:refuerzo{% endif %}'
-        action: input_text.set_value
+        service: input_text.set_value
       - target:
           entity_id: input_text.ac_cool_effective_setpoint_map
         data:
           value: '{{ effective_map_after }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - choose:
         - conditions:
           - condition: template
@@ -4651,7 +4652,7 @@
               entity_id: input_text.ac_cool_contextual_learning_map
             data:
               value: '{{ cool_learning_map_after }}'
-            action: input_text.set_value
+            service: input_text.set_value
         default: []
       - target:
           entity_id: input_number.ac_last_manual_setpoint
@@ -4765,7 +4766,7 @@
           entity_id: input_text.ac_cool_effective_setpoint_map
         data:
           value: '{{ effective_map_after }}'
-        action: input_text.set_value
+        service: input_text.set_value
       - action: logbook.log
         data:
           name: AC Auto Trace
