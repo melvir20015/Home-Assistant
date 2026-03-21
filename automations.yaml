@@ -1449,15 +1449,16 @@
         action: climate.set_hvac_mode
       - data:
           title: AC AUTO OFF
-          message: '{{ notif_base }} | Prev=cool | R={{ ''cool_emergency_off'' if
-            (tout|float) < 17 else ''cool_off/cool_sensor_off'' }} | Source={{ cool_off_reason
-            | trim }} | Ctx={{ ''Emerg'' if (tout|float) < 17 else ''Normal'' }} |
-            TargetOff={{ (cool_emergency_off|float) if (tout|float) < 17 else (cool_off|float)
-            }} | Bedroom={{ bedroom_temp }} | Cold={{ cold_sensor_name }}={{ cold_temp
-            }} | SensorOFF={{ cool_sensor_off_name }}={{ cool_sensor_off_temp }}<=
-            {{ cool_sensor_off_trigger if (tout|float) >= 17 else ''n/a'' }} | EOn={{
-            cool_emergency_on }} EOff={{ cool_emergency_off }} | On={{ cool_on }}
-            Off={{ cool_off }} | Set={{ cool_setpoint_emerg if (tout|float) < 17
+          message: '{{ notif_base }} | Prev=cool | Act=Off | Stop={{ (cool_emergency_off|float)
+            if (tout|float) < 17 else (cool_stop_threshold|float) }} | R={{ ''cool_emergency_off''
+            if (tout|float) < 17 else ''cool_off/cool_sensor_off'' }} | Source={{
+            cool_off_reason | trim }} | TriggerSensor={{ cool_sensor_off_name if (cool_off_reason
+            | trim) != ''Promedio'' else ''Promedio'' }} | Ctx={{ ''Emerg'' if (tout|float)
+            < 17 else ''Normal'' }} | On={{ cool_on }} | Off={{ cool_off }} | Bedroom={{
+            bedroom_temp }} | Cold={{ cold_sensor_name }}={{ cold_temp }} | SensorOFF={{
+            cool_sensor_off_name }}={{ cool_sensor_off_temp }}<= {{ cool_sensor_off_trigger
+            if (tout|float) >= 17 else ''n/a'' }} | EOn={{ cool_emergency_on }} EOff={{
+            cool_emergency_off }} | Set={{ cool_setpoint_emerg if (tout|float) < 17
             else cool_setpoint_normal }}'
         action: '{{ notify_service }}'
     - conditions:
@@ -1700,10 +1701,13 @@
                     entity_id: '{{ climate_ent }}'
                 - data:
                     title: AC COOL ON
-                    message: '{{ notif_base }} | Act=COOL | Bootstrap=OK | Ctx={{ cool_context
-                      }} | Stop={{ cool_stop_threshold_selected }} | Init={{ cool_bootstrap_initial_setpoint_selected
-                      }} | Final={{ loop_setpoint }} | Power={{ loop_power }} | Steps={{
-                      repeat.index - 1 }} | Fan=Low | Prev={{ cur_mode }}'
+                    message: '{{ notif_base }} | Act=COOL | On={{ cool_on }} | Off={{ cool_off
+                      }} | Stop={{ cool_stop_threshold_selected }} | Bootstrap=OK | Ctx={{
+                      cool_context }} | Init={{ cool_bootstrap_initial_setpoint_selected }}
+                      | Final={{ loop_setpoint }} | Power={{ loop_power }} | Steps={{
+                      repeat.index - 1 }} | Fan=Low | Prev={{ cur_mode }} | TriggerSensor={{
+                      cool_sensor_off_name }}<= {{ cool_sensor_off_trigger if cool_sensor_off_trigger
+                      is not none else ''n/a'' }}'
                   action: '{{ notify_service }}'
                 - target:
                     entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
@@ -1886,10 +1890,13 @@
     # Rama COOL nocturna suavizada por confort en recámara: el arranque puede
     # seguir usando el promedio, pero el apagado prioriza confort local del cuarto
     # para evitar sobreenfriamiento nocturno aunque el promedio aún siga arriba.
+    # Histéresis promedio nocturna ampliada a 0.5 °C en meses templados
+    # [11,12,1,2,3] para reducir ciclos frecuentes y mejorar estabilidad térmica
+    # en recámara sin acercar demasiado el setpoint inicial al umbral de apagado.
     cool_on: "{% if tout is none %}\n  {{ none }}\n{% elif tout >= 17 %}\n  {{ 23.5
       if month in [11,12,1,2,3] else 22.8 if (month in [6,7,8,9] and tout>=30) else
       23.3 }}\n{% else %}\n  {{ none }}\n{% endif %}"
-    cool_off: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ 23.2 if month
+    cool_off: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ 23.0 if month
       in [11,12,1,2,3] else 21.3 if (month in [6,7,8,9] and tout>=30) else 22.5 }}\n{%
       endif %}"
     cool_stop_threshold: '{{ cool_off }}'
@@ -1911,7 +1918,10 @@
       | float, (cool_stop_threshold | float) - 1.0] | min %}\n  {{ [preferred, cool_bootstrap_min_setpoint]
       | max | round(1) }}\n{% endif %}"
     cool_setpoint_normal: '{{ cool_bootstrap_reference }}'
-    cool_sensor_off_trigger: "{% if cool_off is none %}\n  {{ none }}\n{% elif month in [11,12,1,2,3] %}\n  {{ (cool_off + 0.2) | round(1) }}\n{% else %}\n  {{ cool_off | round(1) }}\n{% endif %}"
+    # En meses templados se conserva un corte protector explícito de recámara a
+    # 23.2 °C (0.2 °C arriba del apagado por promedio de 23.0 °C) para seguir
+    # priorizando confort local / sensor más frío sin perder la nueva histéresis.
+    cool_sensor_off_trigger: "{% if cool_off is none %}\n  {{ none }}\n{% elif month in [11,12,1,2,3] %}\n  {{ 23.2 }}\n{% else %}\n  {{ cool_off | round(1) }}\n{% endif %}"
     cool_sensor_off_temp: "{% if bedroom_temp is not none %}\n  {{ bedroom_temp |
       round(2) }}\n{% elif cold_temp is not none %}\n  {{ cold_temp | round(2) }}\n{%
       else %}\n  {{ none }}\n{% endif %}"
