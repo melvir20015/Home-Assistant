@@ -3207,7 +3207,7 @@
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
-        | float(45) }}'
+        | float(120) }}'
       last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
         }}'
@@ -3229,7 +3229,7 @@
 
         \  and last_auto_mode in ['cool','heat']
    and (minutes_since_last_auto
-        | float(99999)) <= (feedback_window_min | float(45)) }}"
+        | float(99999)) <= (feedback_window_min | float(120)) }}"
       cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
       cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
         }}'
@@ -3266,7 +3266,7 @@
         not in ['cool','heat'] %}
   manual_off_feedback_ignored_last_mode_not_learnable
 {% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(45)) %}
+        | float(99999)) > (feedback_window_min | float(120)) %}
   manual_off_feedback_ignored_window_expired
 {%
         else %}
@@ -3301,7 +3301,7 @@
   not_manual
 {% elif last_auto_action != 'auto_on' %}
   last_action_not_auto_on
-{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(45)) %}
+{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(120)) %}
   window_expired
 {% elif last_auto_mode not in ['cool','heat'] %}
   last_mode_not_learnable
@@ -3438,7 +3438,7 @@
         default: []
       - data:
           title: AC Learning OFF aplicado
-          message: '{{ learning_summary_valid | trim }}'
+          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | +0.25 on/off | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
           data:
             ttl: 0
             priority: high
@@ -3483,7 +3483,7 @@
         default: []
       - data:
           title: AC Learning OFF aplicado
-          message: '{{ learning_summary_valid | trim }}'
+          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | +0.25 on/off | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
           data:
             ttl: 0
             priority: high
@@ -3543,7 +3543,7 @@
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
-        | float(45) }}'
+        | float(120) }}'
       last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
         }}'
@@ -3565,7 +3565,7 @@
 
         \  and final_mode in ['cool','heat']
    and (minutes_since_last_auto | float(99999))
-        <= (feedback_window_min | float(45)) }}"
+        <= (feedback_window_min | float(120)) }}"
       cur_bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
       cur_bias_cool_off: '{{ states(''input_number.ac_bias_cool_off'') | float(0)
         }}'
@@ -3802,8 +3802,9 @@
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
+      feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'') | float(120) }}'
       minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none',''] %}99999{% else %}{{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw)) / 60) | round(1) }}{% endif %}"
-      manual_event_type: "{% if last_auto_action == 'auto_on' and last_auto_mode in ['cool','heat'] and (minutes_since_last_auto | float(99999)) <= 45 %}manual_off_detected_after_recent_auto_on_{{ last_auto_mode }}{% else %}manual_off_detected{% endif %}"
+      manual_event_type: "{% if last_auto_action == 'auto_on' and last_auto_mode in ['cool','heat'] and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120)) %}manual_off_detected_after_recent_auto_on_{{ last_auto_mode }}{% else %}manual_off_detected{% endif %}"
       manual_off_block: 'true'
       presence_effective: 'n/a'
       bias_cool_on: '{{ states(''input_number.ac_bias_cool_on'') | float(0) }}'
@@ -3827,11 +3828,6 @@
     data:
       value: manual_off
     action: input_text.set_value
-  - data:
-      name: AC Manual OFF
-      message: 'manual_off | tipo={{ manual_event_type }} | last_auto={{ last_auto_action }}/{{ last_auto_mode }} | {{ minutes_since_last_auto }} min'
-      entity_id: climate.0200009211c7_climate
-    action: logbook.log
   - target:
       entity_id: input_text.ac_last_manual_event_type
     data:
@@ -3845,6 +3841,11 @@
     # porque ese valor representa reposo explícito y reemplaza cualquier valor
     # legacy inválido como `False` o la noción previa de `idle`.
     action: input_select.select_option
+  - data:
+      name: AC Manual OFF
+      message: 'manual_off | tipo={{ manual_event_type }} | last_auto={{ last_auto_action }}/{{ last_auto_mode }} | {{ minutes_since_last_auto }} min | helper=off'
+      entity_id: climate.0200009211c7_climate
+    action: logbook.log
   mode: restart
 - id: '1773947560399'
   alias: AC - Manual ON guard + presencia temporal

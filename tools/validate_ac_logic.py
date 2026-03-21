@@ -76,6 +76,12 @@ check(
     'El aprendizaje válido ajusta sesgos on/off y clasifica cool/heat.'
 )
 check(
+    'manual_off_window_extendida',
+    "ac_feedback_window_minutes:\n" in (ROOT / 'input_number.yaml').read_text(encoding='utf-8') and 'initial: 120' in (ROOT / 'input_number.yaml').read_text(encoding='utf-8') and "feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')" in automations,
+    'La ventana de feedback OFF arranca en 120 minutos y las automatizaciones consumen el helper configurado.'
+)
+
+check(
     'manual_off_notificacion_unica_valida',
     automations.count('AC aprendió: OFF manual tras AUTO COOL') == 1 and automations.count('AC aprendió: OFF manual tras AUTO HEAT') == 1,
     'Sólo hay una notificación breve por aprendizaje válido en cada modo.'

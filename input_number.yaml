@@ -254,5 +254,5 @@ ac_feedback_window_minutes:
   max: 180
   step: 1
   mode: box
-  initial: 45
+  initial: 120
   unit_of_measurement: "min"
