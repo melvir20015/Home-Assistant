@@ -3234,7 +3234,9 @@
       cur_bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') |
         float(0) }}'
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
-      cool_manual_off_step: 0.25
+      # Fase cool: mover toda la rama térmica desde `ac_cool_off_learned`.
+      # Fase heat: se mantiene intacta y se revisará por separado.
+      cool_branch_step: 0.25
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: 'off'
@@ -3265,19 +3267,22 @@
         else %}
   manual_off_feedback_ignored_no_valid_learning
 {% endif %}"
-      cool_off_learned_after: '{{ [[(cur_cool_off_learned | float) + (cool_manual_off_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      cool_off_learned_after: '{{ [[(cur_cool_off_learned | float) + (cool_branch_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      cool_on_before: '{{ ((cur_cool_off_learned | float) + 0.5) | round(2) }}'
+      cool_on_after: '{{ ((cool_off_learned_after | float) + 0.5) | round(2) }}'
+      cool_setpoint_after: '{{ ((cool_off_learned_after | float) - 0.5) | round(2) }}'
       heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_off_after: '{{ [[(cur_bias_heat_off | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_setpoint_after: '{{ [[(cur_bias_heat_setpoint | float) - 0.5, 2] | min, -2] | max | round(1) }}'
-      cool_setpoint_adjustment: >-
-        geometría fija derivada desde off {{ cur_cool_off_learned | float }}→{{ cool_off_learned_after }}
+      cool_branch_audit: >-
+        RamaCool +0.25 | Off {{ '%.2f' | format(cur_cool_off_learned | float) }}→{{ '%.2f' | format(cool_off_learned_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
       heat_setpoint_adjustment: "{% if quick_feedback %}
   setpoint {{ cur_bias_heat_setpoint | float }}→{{ heat_setpoint_after }} (-0.5)
 {% else %}
   sin ajuste setpoint
 {% endif %}"
       learning_summary_valid: "{% if last_auto_mode == 'cool' %}
-  AC aprendió: OFF manual tras AUTO COOL | off aprendido {{ cur_cool_off_learned | round(2) }}→{{ cool_off_learned_after }} | geometría fija on=off+0.5, setpoint=off-0.5 | {{ minutes_since_last_auto }} min
+  AC aprendió: OFF manual tras AUTO COOL | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min
 {% elif last_auto_mode == 'heat' %}
   AC aprendió: OFF manual tras AUTO HEAT | -{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
 {% else %}
@@ -3325,7 +3330,7 @@
   ignorado porque no hubo aprendizaje válido clasificado
 {% endif %}"
       adjusted_biases_valid: "{% if last_auto_mode == 'cool' %}
-  ac_cool_off_learned {{ cur_cool_off_learned }}→{{ cool_off_learned_after }}; cool derivado con geometría fija
+  {{ cool_branch_audit }}
 {% elif last_auto_mode == 'heat' %}
   ac_bias_heat_on {{ cur_bias_heat_on }}→{{ heat_on_after }}, ac_bias_heat_off {{ cur_bias_heat_off }}→{{ heat_off_after }}, ac_bias_heat_setpoint {% if quick_feedback %}{{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% else %}sin cambio ({{ cur_bias_heat_setpoint }}){% endif %}
 {% else %}
@@ -3407,7 +3412,7 @@
         action: input_number.set_value
       - data:
           title: AC Learning OFF aplicado
-          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | off aprendido {{ cur_cool_off_learned | round(2) }}→{{ cool_off_learned_after }} | geometría fija | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
+          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
           data:
             ttl: 0
             priority: high
@@ -3452,7 +3457,7 @@
         default: []
       - data:
           title: AC Learning OFF aplicado
-          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | off aprendido {{ cur_cool_off_learned | round(2) }}→{{ cool_off_learned_after }} | geometría fija | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
+          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
           data:
             ttl: 0
             priority: high
@@ -3528,13 +3533,16 @@
         / 60) | round(1) }}
 {% endif %}"
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 10 }}'
+      cool_comfort_gap_feedback: '{{ manual_event_type == ''manual_on_due_to_comfort_gap_cool'' }}'
       valid_feedback: "{{ learning_enabled
    and last_change_origin == 'manual_on'
    and last_auto_action == 'auto_off'
 
         \  and final_mode in ['cool','heat']
    and (minutes_since_last_auto | float(99999))
-        <= (feedback_window_min | float(120)) }}"
+        <= (feedback_window_min | float(120))
+   and ((final_mode == 'cool' and cool_comfort_gap_feedback)
+        or final_mode == 'heat') }}"
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
@@ -3542,6 +3550,9 @@
       cur_bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') |
         float(0) }}'
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
+      # Fase cool: mover toda la rama térmica desde `ac_cool_off_learned`.
+      # Fase heat: se mantiene intacta y se revisará por separado.
+      cool_branch_step: 0.25
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       learning_type: "{% if valid_feedback and final_mode == 'cool' %}
@@ -3563,6 +3574,8 @@
 {% elif (minutes_since_last_auto
         | float(99999)) > (feedback_window_min | float(45)) %}
   manual_on_feedback_ignored_window_expired
+{% elif final_mode == 'cool' and not cool_comfort_gap_feedback %}
+  manual_on_feedback_ignored_cool_not_before_auto_on
 {%
         else %}
   manual_on_feedback_ignored_no_valid_learning
@@ -3577,6 +3590,8 @@
   final_mode_not_learnable
 {% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(45)) %}
   window_expired
+{% elif final_mode == 'cool' and not cool_comfort_gap_feedback %}
+  cool_not_before_auto_on
 {% else %}
   no_valid_learning
 {% endif %}"
@@ -3590,14 +3605,22 @@
   modo final no aprendible
 {% elif ignored_reason_code == 'window_expired' %}
   ventana expirada (minutes_since_last_auto={{ minutes_since_last_auto }}, feedback_window_min={{ feedback_window_min }})
+{% elif ignored_reason_code == 'cool_not_before_auto_on' %}
+  cool manual sin clasificar como calor antes de auto_on
 {% else %}
   sin aprendizaje válido
 {% endif %}"
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
       presence_effective: 'n/a'
+      cool_off_learned_after: '{{ [[(cur_cool_off_learned | float) - (cool_branch_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      cool_on_before: '{{ ((cur_cool_off_learned | float) + 0.5) | round(2) }}'
+      cool_on_after: '{{ ((cool_off_learned_after | float) + 0.5) | round(2) }}'
+      cool_setpoint_after: '{{ ((cool_off_learned_after | float) - 0.5) | round(2) }}'
+      cool_branch_audit: >-
+        RamaCool -0.25 | Off {{ '%.2f' | format(cur_cool_off_learned | float) }}→{{ '%.2f' | format(cool_off_learned_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
       notify_title_valid: AC Learning ON aplicado
       notify_message_valid_cool: >-
-        AC aprendió: ON manual tras AUTO OFF COOL | off aprendido {{ cur_cool_off_learned | round(2) }}→{{ [[(cur_cool_off_learned | float) - (step_main | float), 25.7] | min, 22.4] | max | round(2) }} | geometría fija | {{ minutes_since_last_auto }} min
+        AC aprendió: ON manual tras AUTO OFF COOL | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min
       notify_message_valid_heat: >-
         AC aprendió: ON manual tras AUTO OFF HEAT | +{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
   - target:
@@ -3625,7 +3648,7 @@
         data:
           name: AC Manual Trace
           message: >-
-            manual_on_learning_valid | final_mode={{ final_mode }} | learning_type={{ learning_type }} | minutes_since_last_auto={{ minutes_since_last_auto }} | feedback_window_min={{ feedback_window_min }} | last_auto_action={{ last_auto_action }}
+            manual_on_learning_valid | final_mode={{ final_mode }} | learning_type={{ learning_type }} | detail={% if final_mode == 'cool' %}{{ cool_branch_audit }}{% else %}heat fase actual sin cambios estructurales{% endif %} | minutes_since_last_auto={{ minutes_since_last_auto }} | feedback_window_min={{ feedback_window_min }} | last_auto_action={{ last_auto_action }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3656,7 +3679,7 @@
       - target:
           entity_id: input_number.ac_cool_off_learned
         data:
-          value: '{% set raw = (cur_cool_off_learned | float) - (step_main | float) %} {{ [[raw, 25.7] | min, 22.4] | max | round(2) }}'
+          value: '{{ cool_off_learned_after }}'
         action: input_number.set_value
       - data:
           title: '{{ notify_title_valid }}'
