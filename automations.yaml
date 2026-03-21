@@ -2676,9 +2676,15 @@
         # `off` representa reposo del helper cuando la lógica descarta conservar el
         # modo previo tras este apagado automático.
         action: input_select.select_option
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off | Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ ac_set }} | Mot={{ cool_off_reason if cool_off_reason != 'none' else 'off temprano' }} | Min={{ minutes_since_last_auto }}
+          entity_id: climate.0200009211c7_climate
       - data:
-          title: AC AUTO OFF
-          message: 'AC AUTO OFF: objetivo COOL alcanzado'
+          title: Cool↓
+          message: 'Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ ac_set }} | Mot={{ cool_off_reason if cool_off_reason != ''none'' else ''off temprano'' }} | Min={{ minutes_since_last_auto }}'
           data:
             ttl: 0
             priority: high
@@ -2907,7 +2913,7 @@
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
-          value: '{{ cool_setpoint }}'
+          value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
@@ -2922,8 +2928,14 @@
       - target:
           entity_id: climate.0200009211c7_climate
         data:
-          temperature: '{{ cool_setpoint }}'
+          temperature: '{{ cool_setpoint_effective }}'
         action: climate.set_temperature
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_normalized | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=on manual por calor | Min={{ minutes_since_last_auto }}
+          entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
           - condition: template
@@ -2947,8 +2959,8 @@
             action: climate.set_fan_mode
         default: []
       - data:
-          title: AC AUTO ON
-          message: 'AC AUTO ON: COOL | set {{ cool_setpoint }} | fan Low'
+          title: Cool↑
+          message: 'Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ cool_setpoint_effective }} | Mot=on manual por calor | Min={{ minutes_since_last_auto }}'
           data:
             ttl: 0
             priority: high
@@ -2961,13 +2973,19 @@
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and
           cool_setpoint is not none\n   and ac_set is not none\n   and (ac_set | float)
-          != (cool_setpoint | float)\n   and (not manual_override_active) }}"
+          != (cool_setpoint_effective | float)\n   and (not manual_override_active) }}"
       sequence:
       - target:
           entity_id: climate.0200009211c7_climate
         data:
-          temperature: '{{ cool_setpoint }}'
+          temperature: '{{ cool_setpoint_effective }}'
         action: climate.set_temperature
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_sp_sync | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=sync | Min={{ minutes_since_last_auto }}
+          entity_id: climate.0200009211c7_climate
     default: []
   variables:
     climate_ent: climate.0200009211c7_climate
@@ -3069,11 +3087,16 @@
     cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
       raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
       }}\n{% endif %}"
-    cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else
-      %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
-    cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else
-      %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min,
-      21] | max | round(1) }}\n{% endif %}"
+    # El panel del AC opera con pasos efectivos de 1 °F. Por eso Home Assistant
+    # puede mostrar un valor en °C distinto al que redondea visualmente el equipo:
+    # primero calculamos el setpoint teórico (`SPt`), luego lo normalizamos al entero
+    # en °F realmente aceptado por el equipo (`SPf`) y finalmente reconvertimos a °C
+    # efectivo (`SPe`) para auditar diferencias esperables entre HA y el display.
+    cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
+    cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min, 21] | max | round(2) }}\n{% endif %}"
+    cool_setpoint_f: "{% if cool_setpoint is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((cool_setpoint | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 70] | max | int }}\n{% endif %}"
+    cool_setpoint_effective: "{% if cool_setpoint_f is none %}\n  {{ none }}\n{% else %}\n  {{ (((cool_setpoint_f | float) - 32) * 5 / 9) | round(2) }}\n{% endif %}"
+    cool_ctx_brief: '{{ "Tin=" ~ tin ~ " | Tout=" ~ tout ~ " | H=" ~ hin ~ " | On=" ~ cool_on ~ " | Off=" ~ cool_off ~ " | SPt=" ~ cool_setpoint_theoretical ~ " | SPe=" ~ cool_setpoint_effective }}'
     last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
     minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
       %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
@@ -3302,32 +3325,32 @@
   no_valid_learning
 {% endif %}"
       ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
-  Ignorado porque learning_enabled está apagado.
+  Ign: learning off.
 {% elif ignored_reason_code == 'not_manual' %}
-  Ignorado porque el último cambio no quedó clasificado como manual_off.
+  Ign: origen.
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
-  Ignorado porque la última acción no fue auto_on.
+  Ign: sin auto previa.
 {% elif ignored_reason_code == 'window_expired' %}
-  Ignorado por ventana expirada.
+  Ign: ventana.
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
-  Ignorado porque el modo automático previo no era aprendible.
+  Ign: modo.
 {% else %}
-  Ignorado porque no hubo aprendizaje válido clasificado.
+  Ign: sin match.
 {% endif %}"
       learning_status_label: "{% if valid_feedback %}
   aprendizaje válido aplicado
 {% elif ignored_reason_code == 'learning_disabled' %}
-  ignorado porque learning_enabled está apagado
+  Ign: learning off
 {% elif ignored_reason_code == 'window_expired' %}
-  ignorado por ventana expirada
+  Ign: ventana
 {% elif ignored_reason_code == 'not_manual' %}
-  ignorado por evento no clasificado como manual_off
+  Ign: origen
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
-  ignorado porque la última acción no fue auto_on
+  Ign: sin auto previa
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
-  ignorado porque el modo automático previo no era aprendible
+  Ign: modo
 {% else %}
-  ignorado porque no hubo aprendizaje válido clasificado
+  Ign: sin match
 {% endif %}"
       adjusted_biases_valid: "{% if last_auto_mode == 'cool' %}
   {{ cool_branch_audit }}
@@ -3596,19 +3619,19 @@
   no_valid_learning
 {% endif %}"
       ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
-  aprendizaje deshabilitado
+  Ign: learning off
 {% elif ignored_reason_code == 'ambiguous_origin' %}
-  origen ambiguo: el último cambio no quedó clasificado como manual_on
+  Ign: origen
 {% elif ignored_reason_code == 'last_action_not_auto_off' %}
-  última acción no fue auto_off
+  Ign: sin auto previa
 {% elif ignored_reason_code == 'final_mode_not_learnable' %}
-  modo final no aprendible
+  Ign: modo
 {% elif ignored_reason_code == 'window_expired' %}
-  ventana expirada (minutes_since_last_auto={{ minutes_since_last_auto }}, feedback_window_min={{ feedback_window_min }})
+  Ign: ventana
 {% elif ignored_reason_code == 'cool_not_before_auto_on' %}
-  cool manual sin clasificar como calor antes de auto_on
+  Ign: sin auto previa
 {% else %}
-  sin aprendizaje válido
+  Ign: sin match
 {% endif %}"
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
       presence_effective: 'n/a'
