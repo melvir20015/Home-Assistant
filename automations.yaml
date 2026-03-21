@@ -1620,11 +1620,25 @@
             }} | fan_only_max={{ ac_power_fan_only_max }} | max_search_min={{ cool_bootstrap_max_search_min
             }} | power_available={{ ac_power_sensor_available }}
           entity_id: '{{ climate_ent }}'
+      - variables:
+          cool_push_kind: on
+          cool_push_reason: >-
+            {{ 'Mot=auto emergencia' if cool_context == 'emergency' else 'Mot=auto umbral' }}
+          cool_push_summary: 'Bootstrap | Ctx={{ cool_context | title }} | Init={{ cool_bootstrap_initial_setpoint_selected }} | Stop={{ cool_stop_threshold_selected }}'
+      - data:
+          title: '{{ cool_mobile_title }}'
+          message: '{{ cool_mobile_message }}'
+          data:
+            ttl: 0
+            priority: high
+        action: '{{ notify_service }}'
       - choose:
         - conditions:
           - condition: template
             value_template: '{{ not ac_power_sensor_available }}'
           sequence:
+          # Sin push intencional: el bootstrap ya notificó el arranque y aquí sólo
+          # se registra que no hubo telemetría suficiente para confirmar compresor.
           - target:
               entity_id: input_text.ac_last_auto_branch
             data:
@@ -1699,15 +1713,17 @@
                       }} | power={{ loop_power }} | threshold={{ ac_power_condenser_on_threshold
                       }} | steps={{ repeat.index - 1 }}
                     entity_id: '{{ climate_ent }}'
+                - variables:
+                    cool_push_kind: on
+                    cool_push_reason: >-
+                      {{ 'Mot=auto emergencia' if cool_context == 'emergency' else 'Mot=auto umbral' }}
+                    cool_push_summary: 'Bootstrap OK | Ctx={{ cool_context | title }} | Final={{ loop_setpoint }} | Steps={{ repeat.index - 1 }}'
                 - data:
-                    title: AC COOL ON
-                    message: '{{ notif_base }} | Act=COOL | On={{ cool_on }} | Off={{ cool_off
-                      }} | Stop={{ cool_stop_threshold_selected }} | Bootstrap=OK | Ctx={{
-                      cool_context }} | Init={{ cool_bootstrap_initial_setpoint_selected }}
-                      | Final={{ loop_setpoint }} | Power={{ loop_power }} | Steps={{
-                      repeat.index - 1 }} | Fan=Low | Prev={{ cur_mode }} | TriggerSensor={{
-                      cool_sensor_off_name }}<= {{ cool_sensor_off_trigger if cool_sensor_off_trigger
-                      is not none else ''n/a'' }}'
+                    title: '{{ cool_mobile_title }}'
+                    message: '{{ cool_mobile_message }}'
+                    data:
+                      ttl: 0
+                      priority: high
                   action: '{{ notify_service }}'
                 - target:
                     entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
@@ -1720,6 +1736,8 @@
                 - condition: template
                   value_template: '{{ loop_abort_presence or loop_abort_temp }}'
                 sequence:
+                # Sin push intencional: evita ruido en reducciones/abortos internos
+                # del bootstrap; la ruta relevante para móvil es el arranque/éxito.
                 - target:
                     entity_id: '{{ climate_ent }}'
                   data:
@@ -1783,6 +1801,8 @@
                       ac_power_condenser_on_threshold }}
                     entity_id: '{{ climate_ent }}'
               default:
+              # Sin push intencional: agotó la búsqueda del bootstrap sin validar
+              # compresor; queda sólo en trazas para diagnóstico.
               - target:
                   entity_id: input_text.ac_last_auto_branch
                 data:
@@ -1953,6 +1973,17 @@
       hin }}% | DP={{ dewpoint }}°C | Ext={{ tout }}°C V={{ wind }}m/s | Pres={{ ''ON''
       if presence_ok else ''OFF'' }} | Lock={{ ''ON'' if locked else ''OFF'' }} |
       Last={{ last_mode_no_fan }}'
+    cool_mobile_title: "{% set kind = cool_push_kind | default('', true) %}\n{% if kind == 'on' %}\n  Cool↑\n{% elif kind == 'off' %}\n  Cool↓\n{% else %}\n  Cool↺\n{% endif %}"
+    cool_mobile_message: >-
+      {% set reason = cool_push_reason | default('', true) | trim %}
+      {% set summary = cool_push_summary | default('', true) | trim %}
+      {% if reason and summary %}
+        {{ reason }} | {{ summary }}
+      {% elif reason %}
+        {{ reason }}
+      {% else %}
+        {{ summary }}
+      {% endif %}
 - id: '1768159303322'
   alias: AC - Día dinámico aprendido (principal)
   description: 'Automatización principal diurna 07:01–20:59. Usa fórmula base + sesgos
@@ -2110,9 +2141,13 @@
           option: 'off'
         # `off` es el reposo del helper; no existe un estado `idle` válido aquí.
         action: input_select.select_option
+      - variables:
+          cool_push_kind: off
+          cool_push_reason: Mot=auto ausencia
+          cool_push_summary: 'Modo={{ cur_mode }} | Aus=30m'
       - data:
-          title: AC AUTO OFF
-          message: 'AC AUTO OFF: ausencia 30m | modo {{ cur_mode }}'
+          title: '{{ cool_mobile_title }}'
+          message: '{{ cool_mobile_message }}'
           data:
             ttl: 0
             priority: high
@@ -2244,9 +2279,13 @@
               fan_mode: Auto
             action: climate.set_fan_mode
         default: []
+      - variables:
+          cool_push_kind: on
+          cool_push_reason: Mot=auto emergencia
+          cool_push_summary: 'SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode }} | Vent={{ emergency_window }}'
       - data:
-          title: AC AUTO ON
-          message: 'AC AUTO ON: COOL emergencia | set {{ emergency_setpoint }} | fan {{ emergency_fan_mode }}'
+          title: '{{ cool_mobile_title }}'
+          message: '{{ cool_mobile_message }}'
           data:
             ttl: 0
             priority: high
@@ -2360,9 +2399,13 @@
         # El helper vuelve a `off` cuando la rama apaga por objetivo de emergencia
         # y ya no conviene conservar un modo recordado.
         action: input_select.select_option
+      - variables:
+          cool_push_kind: off
+          cool_push_reason: Mot=auto emergencia
+          cool_push_summary: 'Fin emergencia | Tin={{ tin }} | Off={{ emergency_off_avg }}'
       - data:
-          title: AC AUTO OFF
-          message: 'AC AUTO OFF: fin de COOL emergencia'
+          title: '{{ cool_mobile_title }}'
+          message: '{{ cool_mobile_message }}'
           data:
             ttl: 0
             priority: high
@@ -2682,9 +2725,13 @@
           message: >-
             cool_off | Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ ac_set }} | Mot={{ cool_off_reason if cool_off_reason != 'none' else 'off temprano' }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
+      - variables:
+          cool_push_kind: off
+          cool_push_reason: Mot=auto umbral
+          cool_push_summary: 'Ctx=Normal | Src={{ cool_off_reason if cool_off_reason != ''none'' else ''off_temprano'' }} | Sensor={{ cool_sensor_off_name }} | Stop={{ cool_off }}'
       - data:
-          title: Cool↓
-          message: 'Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ ac_set }} | Mot={{ cool_off_reason if cool_off_reason != ''none'' else ''off temprano'' }} | Min={{ minutes_since_last_auto }}'
+          title: '{{ cool_mobile_title }}'
+          message: '{{ cool_mobile_message }}'
           data:
             ttl: 0
             priority: high
@@ -2961,9 +3008,13 @@
               fan_mode: Auto
             action: climate.set_fan_mode
         default: []
+      - variables:
+          cool_push_kind: on
+          cool_push_reason: Mot=auto umbral
+          cool_push_summary: 'SP={{ cool_setpoint_effective }} | On={{ cool_on }} | Off={{ cool_off }} | Fan=Low'
       - data:
-          title: Cool↑
-          message: 'Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ cool_setpoint_effective }} | Mot={{ cool_auto_reason }} | Min={{ minutes_since_last_auto }}'
+          title: '{{ cool_mobile_title }}'
+          message: '{{ cool_mobile_message }}'
           data:
             ttl: 0
             priority: high
@@ -2989,6 +3040,17 @@
           message: >-
             cool_sp_sync | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=sync | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
+      - variables:
+          cool_push_kind: on
+          cool_push_reason: Mot=auto umbral
+          cool_push_summary: 'Sync SP={{ ac_set }}→{{ cool_setpoint_effective }} | SPf={{ cool_setpoint_f }}'
+      - data:
+          title: '{{ cool_mobile_title }}'
+          message: '{{ cool_mobile_message }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
     default: []
   variables:
     climate_ent: climate.0200009211c7_climate
@@ -3139,6 +3201,17 @@
       %}\n    /5min\n  {% elif trigger.platform == 'state' %}\n    {{ trigger.entity_id
       }}={{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
+    cool_mobile_title: "{% set kind = cool_push_kind | default('', true) %}\n{% if kind == 'on' %}\n  Cool↑\n{% elif kind == 'off' %}\n  Cool↓\n{% else %}\n  Cool↺\n{% endif %}"
+    cool_mobile_message: >-
+      {% set reason = cool_push_reason | default('', true) | trim %}
+      {% set summary = cool_push_summary | default('', true) | trim %}
+      {% if reason and summary %}
+        {{ reason }} | {{ summary }}
+      {% elif reason %}
+        {{ reason }}
+      {% else %}
+        {{ summary }}
+      {% endif %}
   mode: single
 - id: '1769981375283'
   alias: AC - Iniciar bloqueo 2h al apagarse
