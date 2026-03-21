@@ -45,3 +45,11 @@ ac_last_manual_final_fan:
 ac_last_change_origin:
   name: "AC Last Change Origin"
   max: 40
+
+ac_cool_contextual_learning_map:
+  name: "AC Cool Contextual Learning Map"
+  max: 1024
+
+ac_last_auto_context_bucket:
+  name: "AC Last Auto Context Bucket"
+  max: 120

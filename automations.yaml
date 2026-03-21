@@ -2672,6 +2672,11 @@
           value: cool_normal_off
         action: input_text.set_value
       - target:
+          entity_id: input_text.ac_last_auto_context_bucket
+        data:
+          value: '{{ cool_context_detail }}'
+        action: input_text.set_value
+      - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_off
@@ -2742,7 +2747,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_off | Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | On={{ cool_on }} | Off={{ cool_off }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ ac_set }} | Mot={{ cool_off_reason if cool_off_reason != 'none' else 'off temprano' }} | Min={{ minutes_since_last_auto }}
+            cool_off | Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | Demand={{ cool_demand_score }} | Bucket={{ cool_context_detail }} | On={{ cool_on_target }} | Off={{ cool_off_target }} | SPt={{ cool_setpoint_theoretical }} | SPe={{ ac_set }} | Mot={{ cool_off_reason if cool_off_reason != 'none' else 'off temprano' }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - variables:
           cool_push_kind: off
@@ -2938,6 +2943,11 @@
           value: cool_normal_on
         action: input_text.set_value
       - target:
+          entity_id: input_text.ac_last_auto_context_bucket
+        data:
+          value: '{{ cool_context_detail }}'
+        action: input_text.set_value
+      - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_on
@@ -3036,7 +3046,7 @@
       - variables:
           cool_push_kind: on
           cool_push_reason: Mot=auto umbral
-          cool_push_summary: 'SP={{ cool_setpoint_effective }} | On={{ cool_on }} | Off={{ cool_off }} | Fan=Low'
+          cool_push_summary: 'Bucket={{ cool_context_detail }} | Dem={{ cool_demand_score }} | SP={{ cool_setpoint_effective }} | On={{ cool_on_target }} | Off={{ cool_off_target }} | Fan=Low'
           # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
           cool_mobile_title_local: 'Cool↑'
           cool_mobile_message_local: >-
@@ -3152,10 +3162,23 @@
     away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
     learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
     cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
-    # Cool mantiene geometría fija por ahora:
-    #   on = off + 0.5
-    #   setpoint = off - 0.5
-    # El aprendizaje principal vive sólo en `input_number.ac_cool_off_learned`.
+    cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
+    cool_tod_bucket: "{% set hour = now().hour %}\n{% if 7 <= hour < 13 %}\n  day\n{% elif 13 <= hour < 20 %}\n  tarde\n{% else %}\n  noche\n{% endif %}"
+    cool_outdoor_bucket: "{% if tout is none %}\n  exterior_templado\n{% elif (tout | float) >= 29 %}\n  exterior_caliente\n{% else %}\n  exterior_templado\n{% endif %}"
+    cool_humidity_bucket: "{% if hin is not none and (hin | float) >= 60 %}\n  humedad_alta\n{% else %}\n  humedad_normal\n{% endif %}"
+    cool_presence_bucket: '{{ ''presencia'' if presence_effective else ''ausencia'' }}'
+    cool_thermal_trend_bucket: "{% set prev = states('input_number.ac_last_auto_tin') | float(none) %}\n{% set last_auto_ts = states('input_datetime.ac_last_auto_ts') %}\n{% set recent = last_auto_ts not in ['unknown','unavailable','none',''] and ((as_timestamp(now()) - as_timestamp(last_auto_ts)) / 60) <= 20 %}\n{% if tin is none or prev is none or prev == 0 or not recent %}\n  estable\n{% else %}\n  {% set delta = (tin | float) - prev %}\n  {{ 'subiendo' if delta >= 0.3 else 'bajando' if delta <= -0.3 else 'estable' }}\n{% endif %}"
+    cool_context_bucket: "{{ cool_outdoor_bucket ~ ':' ~ cool_humidity_bucket ~ ':' ~ cool_tod_bucket ~ ':' ~ cool_presence_bucket }}"
+    cool_context_detail: "{{ cool_context_bucket ~ ':' ~ cool_thermal_trend_bucket }}"
+    cool_contextual_base_off: "{% if tout is none %}\n  {{ none }}\n{% elif (tout | float) < 17 %}\n  {{ none }}\n{% else %}\n  {% set base = 24.2 %}\n  {% set base = base - (0.35 if cool_outdoor_bucket == 'exterior_caliente' else 0) %}\n  {% set base = base - (0.20 if cool_humidity_bucket == 'humedad_alta' else 0) %}\n  {% set base = base - (0.15 if cool_tod_bucket == 'day' else 0.05 if cool_tod_bucket == 'tarde' else 0) %}\n  {% set base = base + (0.25 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set base = base - (0.20 if cool_thermal_trend_bucket == 'subiendo' else -0.10 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {% if tin is not none %}\n    {% set demand = ((tin | float) - 23.6) * 0.35 %}\n    {% set base = base - ([demand, 0.45] | min) %}\n  {% endif %}\n  {% if tout is not none %}\n    {% set outdoor_push = ((tout | float) - 24) * 0.03 %}\n    {% set base = base - ([outdoor_push, 0.30] | min) %}\n  {% endif %}\n  {{ [[base, 25.4] | min, 22.4] | max | round(2) }}\n{% endif %}"
+    cool_context_learning_entry: "{% set raw = cool_learning_map_raw | trim %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ none }}\n{% else %}\n  {% set token = '\"' ~ cool_context_bucket ~ '\":' %}\n  {% if token in raw %}\n    {% set tail = raw.split(token, 1)[1] %}\n    {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n    {{ value | float(none) }}\n  {% else %}\n    {{ none }}\n  {% endif %}\n{% endif %}"
+    # Cool deja de aprender una única rama universal.
+    # Desde este rediseño el aprendizaje manual se aplica por bucket contextual
+    # (`exterior × humedad × franja × presencia`) para no mezclar confort de
+    # horas o calores distintos. Se mantiene geometría simple:
+    #   cool_on_target = cool_off_target + 0.5
+    #   cool_setpoint = cool_off_target - 0.5
+    # Heat queda explícitamente fuera de este rediseño para no contaminar reglas futuras.
     bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
     bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0) }}'
     bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0)
@@ -3194,12 +3217,11 @@
       %}\n  {% set raw = (anchor_cool_on - (k * (tout - anchor_tout))) + offset +
       humidity_adj %}\n  {{ [[raw, 24.7] | min, 24.0] | max | round(2) }}\n{% endif
       %}"
-    cool_off: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
-      = cool_off_learned_raw %}\n  {{ [[raw, 25.7] | min, 22.4] | max | round(2) }}\n{%
-      endif %}"
-    cool_on: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {% set raw =
-      (cool_off | float) + 0.5 %}\n  {{ [[raw, 26.2] | min, 22.9] | max | round(2)
-      }}\n{% endif %}"
+    cool_demand_score: "{% if cool_contextual_base_off is none %}\n  {{ none }}\n{% else %}\n  {% set score = 0 %}\n  {% if tin is not none %}\n    {% set score = score + ((((tin | float) - 23.0) * 18) | round(0) | int) %}\n  {% endif %}\n  {% if tout is not none %}\n    {% set score = score + ((((tout | float) - 24.0) * 7) | round(0) | int) %}\n  {% endif %}\n  {% if hin is not none %}\n    {% set score = score + ((((hin | float) - 55.0) * 0.8) | round(0) | int) %}\n  {% endif %}\n  {% set score = score + (8 if cool_tod_bucket == 'day' else 4 if cool_tod_bucket == 'tarde' else 0) %}\n  {% set score = score + (-8 if cool_presence_bucket == 'ausencia' else 6) %}\n  {% set score = score + (6 if cool_thermal_trend_bucket == 'subiendo' else -4 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {{ score | int }}\n{% endif %}"
+    cool_off_target: "{% if cool_contextual_base_off is none %}\n  {{ none }}\n{% else %}\n  {% set learned = cool_context_learning_entry %}\n  {% set raw = learned if learned is not none else cool_contextual_base_off %}\n  {{ [[raw, 25.7] | min, 22.4] | max | round(2) }}\n{% endif %}"
+    cool_off: '{{ cool_off_target }}'
+    cool_on_target: "{% if cool_off_target is none %}\n  {{ none }}\n{% else %}\n  {% set raw = (cool_off_target | float) + 0.5 %}\n  {{ [[raw, 26.2] | min, 22.9] | max | round(2) }}\n{% endif %}"
+    cool_on: '{{ cool_on_target }}'
     cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
       raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
       }}\n{% endif %}"
@@ -3378,15 +3400,21 @@
    and (minutes_since_last_auto
         | float(99999)) <= (feedback_window_min | float(120)) }}"
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
+      cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
+      last_auto_context_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
+      cool_learning_bucket: "{% set raw = last_auto_context_bucket %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  global_fallback:humedad_normal:day:presencia:estable\n{% else %}\n  {{ raw }}\n{% endif %}"
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
         }}'
       cur_bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') |
         float(0) }}'
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
-      # Fase cool: mover toda la rama térmica desde `ac_cool_off_learned`.
+      # Fase cool: mover sólo el bucket contextual correspondiente.
+      # Cool ya no aprende de forma universal; el bucket de la última acción auto
+      # evita mezclar confort de franjas, humedad o calor exterior distintos.
       # Fase heat: se mantiene intacta y se revisará por separado.
       cool_branch_step: 0.25
+      cool_bucket_previous_value: "{% set raw = cool_learning_map_raw | trim %}\n{% set token = '\"' ~ cool_learning_bucket ~ '\":' %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ cur_cool_off_learned }}\n{% elif token in raw %}\n  {% set tail = raw.split(token, 1)[1] %}\n  {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n  {{ value | float(cur_cool_off_learned) }}\n{% else %}\n  {{ cur_cool_off_learned }}\n{% endif %}"
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: 'off'
@@ -3417,15 +3445,30 @@
         else %}
   manual_off_feedback_ignored_no_valid_learning
 {% endif %}"
-      cool_off_learned_after: '{{ [[(cur_cool_off_learned | float) + (cool_branch_step | float), 25.7] | min, 22.4] | max | round(2) }}'
-      cool_on_before: '{{ ((cur_cool_off_learned | float) + 0.5) | round(2) }}'
-      cool_on_after: '{{ ((cool_off_learned_after | float) + 0.5) | round(2) }}'
-      cool_setpoint_after: '{{ ((cool_off_learned_after | float) - 0.5) | round(2) }}'
+      cool_off_after: '{{ [[(cool_bucket_previous_value | float) + (cool_branch_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      cool_off_learned_after: '{{ cool_off_after }}'
+      cool_on_before: '{{ ((cool_bucket_previous_value | float) + 0.5) | round(2) }}'
+      cool_on_after: '{{ ((cool_off_after | float) + 0.5) | round(2) }}'
+      cool_setpoint_after: '{{ ((cool_off_after | float) - 0.5) | round(2) }}'
+      cool_learning_map_after: >-
+        {% set ns = namespace(parts=[]) %}
+        {% set raw = cool_learning_map_raw | trim %}
+        {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
+        {% if cleaned | trim != '' %}
+          {% for part in cleaned.split(',') %}
+            {% set item = part | trim %}
+            {% if item and not item.startswith('"' ~ cool_learning_bucket ~ '":') %}
+              {% set ns.parts = ns.parts + [item] %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% set ns.parts = ns.parts + ['"' ~ cool_learning_bucket ~ '":' ~ ('%.2f' | format(cool_off_after | float))] %}
+        {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
       heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_off_after: '{{ [[(cur_bias_heat_off | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_setpoint_after: '{{ [[(cur_bias_heat_setpoint | float) - 0.5, 2] | min, -2] | max | round(1) }}'
       cool_branch_audit: >-
-        RamaCool +0.25 | Off {{ '%.2f' | format(cur_cool_off_learned | float) }}→{{ '%.2f' | format(cool_off_learned_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
+        RamaCool +0.25 | Bucket {{ cool_learning_bucket }} | Off {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
       heat_setpoint_adjustment: "{% if quick_feedback %}
   setpoint {{ cur_bias_heat_setpoint | float }}→{{ heat_setpoint_after }} (-0.5)
 {% else %}
@@ -3560,6 +3603,11 @@
         data:
           value: '{{ cool_off_learned_after }}'
         action: input_number.set_value
+      - target:
+          entity_id: input_text.ac_cool_contextual_learning_map
+        data:
+          value: '{{ cool_learning_map_after }}'
+        action: input_text.set_value
       - data:
           title: AC Learning OFF aplicado
           message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
@@ -3694,15 +3742,19 @@
    and ((final_mode == 'cool' and cool_comfort_gap_feedback)
         or final_mode == 'heat') }}"
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
+      cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
+      last_auto_context_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
+      cool_learning_bucket: "{% set raw = last_auto_context_bucket %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  global_fallback:humedad_normal:day:presencia:estable\n{% else %}\n  {{ raw }}\n{% endif %}"
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
         }}'
       cur_bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') |
         float(0) }}'
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
-      # Fase cool: mover toda la rama térmica desde `ac_cool_off_learned`.
-      # Fase heat: se mantiene intacta y se revisará por separado.
+      # Fase cool: mover sólo el bucket contextual correspondiente.
+      # Heat se mantiene intacta y fuera de este rediseño para no contaminar reglas futuras.
       cool_branch_step: 0.25
+      cool_bucket_previous_value: "{% set raw = cool_learning_map_raw | trim %}\n{% set token = '\"' ~ cool_learning_bucket ~ '\":' %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ cur_cool_off_learned }}\n{% elif token in raw %}\n  {% set tail = raw.split(token, 1)[1] %}\n  {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n  {{ value | float(cur_cool_off_learned) }}\n{% else %}\n  {{ cur_cool_off_learned }}\n{% endif %}"
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       learning_type: "{% if valid_feedback and final_mode == 'cool' %}
@@ -3762,12 +3814,27 @@
 {% endif %}"
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
       presence_effective: 'n/a'
-      cool_off_learned_after: '{{ [[(cur_cool_off_learned | float) - (cool_branch_step | float), 25.7] | min, 22.4] | max | round(2) }}'
-      cool_on_before: '{{ ((cur_cool_off_learned | float) + 0.5) | round(2) }}'
-      cool_on_after: '{{ ((cool_off_learned_after | float) + 0.5) | round(2) }}'
-      cool_setpoint_after: '{{ ((cool_off_learned_after | float) - 0.5) | round(2) }}'
+      cool_off_after: '{{ [[(cool_bucket_previous_value | float) - (cool_branch_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      cool_off_learned_after: '{{ cool_off_after }}'
+      cool_on_before: '{{ ((cool_bucket_previous_value | float) + 0.5) | round(2) }}'
+      cool_on_after: '{{ ((cool_off_after | float) + 0.5) | round(2) }}'
+      cool_setpoint_after: '{{ ((cool_off_after | float) - 0.5) | round(2) }}'
+      cool_learning_map_after: >-
+        {% set ns = namespace(parts=[]) %}
+        {% set raw = cool_learning_map_raw | trim %}
+        {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
+        {% if cleaned | trim != '' %}
+          {% for part in cleaned.split(',') %}
+            {% set item = part | trim %}
+            {% if item and not item.startswith('"' ~ cool_learning_bucket ~ '":') %}
+              {% set ns.parts = ns.parts + [item] %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {% set ns.parts = ns.parts + ['"' ~ cool_learning_bucket ~ '":' ~ ('%.2f' | format(cool_off_after | float))] %}
+        {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
       cool_branch_audit: >-
-        RamaCool -0.25 | Off {{ '%.2f' | format(cur_cool_off_learned | float) }}→{{ '%.2f' | format(cool_off_learned_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
+        RamaCool -0.25 | Bucket {{ cool_learning_bucket }} | Off {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
       notify_title_valid: AC Learning ON aplicado
       notify_message_valid_cool: >-
         AC aprendió: ON manual tras AUTO OFF COOL | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min
@@ -3831,6 +3898,11 @@
         data:
           value: '{{ cool_off_learned_after }}'
         action: input_number.set_value
+      - target:
+          entity_id: input_text.ac_cool_contextual_learning_map
+        data:
+          value: '{{ cool_learning_map_after }}'
+        action: input_text.set_value
       - data:
           title: '{{ notify_title_valid }}'
           message: '{{ notify_message_valid_cool }}'
@@ -4072,10 +4144,18 @@
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
       cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
-      # Cool mantiene geometría fija por ahora:
-      #   on = off + 0.5
-      #   setpoint = off - 0.5
-      # Heat queda separado y sin cambios en esta automatización.
+      cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
+      cool_tod_bucket: "{% set hour = now().hour %}\n{% if 7 <= hour < 13 %}\n  day\n{% elif 13 <= hour < 20 %}\n  tarde\n{% else %}\n  noche\n{% endif %}"
+      cool_outdoor_bucket: "{% if tout is none %}\n  exterior_templado\n{% elif (tout | float) >= 29 %}\n  exterior_caliente\n{% else %}\n  exterior_templado\n{% endif %}"
+      cool_humidity_bucket: "{% if hin is not none and (hin | float) >= 60 %}\n  humedad_alta\n{% else %}\n  humedad_normal\n{% endif %}"
+      cool_presence_bucket: '{{ ''presencia'' if presence_effective else ''ausencia'' }}'
+      cool_thermal_trend_bucket: "{% set prev = states('input_number.ac_last_auto_tin') | float(none) %}\n{% if tin is none or prev is none or prev == 0 or (minutes_since_last_auto | float(99999)) > 20 %}\n  estable\n{% else %}\n  {% set delta = (tin | float) - prev %}\n  {{ 'subiendo' if delta >= 0.3 else 'bajando' if delta <= -0.3 else 'estable' }}\n{% endif %}"
+      cool_context_bucket: "{{ cool_outdoor_bucket ~ ':' ~ cool_humidity_bucket ~ ':' ~ cool_tod_bucket ~ ':' ~ cool_presence_bucket }}"
+      cool_context_detail: "{{ cool_context_bucket ~ ':' ~ cool_thermal_trend_bucket }}"
+      cool_contextual_base_off: "{% if tout is none %}\n  {{ none }}\n{% elif (tout | float) < 17 %}\n  {{ none }}\n{% else %}\n  {% set base = 24.2 %}\n  {% set base = base - (0.35 if cool_outdoor_bucket == 'exterior_caliente' else 0) %}\n  {% set base = base - (0.20 if cool_humidity_bucket == 'humedad_alta' else 0) %}\n  {% set base = base - (0.15 if cool_tod_bucket == 'day' else 0.05 if cool_tod_bucket == 'tarde' else 0) %}\n  {% set base = base + (0.25 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set base = base - (0.20 if cool_thermal_trend_bucket == 'subiendo' else -0.10 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {% if tin is not none %}\n    {% set demand = ((tin | float) - 23.6) * 0.35 %}\n    {% set base = base - ([demand, 0.45] | min) %}\n  {% endif %}\n  {% if tout is not none %}\n    {% set outdoor_push = ((tout | float) - 24) * 0.03 %}\n    {% set base = base - ([outdoor_push, 0.30] | min) %}\n  {% endif %}\n  {{ [[base, 25.4] | min, 22.4] | max | round(2) }}\n{% endif %}"
+      cool_context_learning_entry: "{% set raw = cool_learning_map_raw | trim %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ none }}\n{% else %}\n  {% set token = '\"' ~ cool_context_bucket ~ '\":' %}\n  {% if token in raw %}\n    {% set tail = raw.split(token, 1)[1] %}\n    {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n    {{ value | float(none) }}\n  {% else %}\n    {{ none }}\n  {% endif %}\n{% endif %}"
+      # Cool mantiene geometría simple, pero ahora su base es contextual y el aprendizaje
+      # manual se evalúa por bucket. Heat queda fuera de este rediseño por ahora.
       bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0)
         }}'
@@ -4097,12 +4177,10 @@
         = 0 if hin is none else (-0.25 if hin >= 65 else -0.10 if hin >= 58 else 0)
         %}\n  {% set raw = (anchor_cool_on - (k * (tout - anchor_tout))) + offset + humidity_adj
         %}\n  {{ [[raw, 24.7] | min, 24.0] | max | round(2) }}\n{% endif %}"
-      cool_off: "{% if cool_on_base is none %}\n  {{ none }}\n{% else %}\n  {% set raw
-        = cool_off_learned_raw %}\n  {{ [[raw, 25.7] | min, 22.4] | max | round(2) }}\n{%
-        endif %}"
-      cool_on: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {% set raw =
-        (cool_off | float) + 0.5 %}\n  {{ [[raw, 26.2] | min, 22.9] | max | round(2)
-        }}\n{% endif %}"
+      cool_off_target: "{% if cool_contextual_base_off is none %}\n  {{ none }}\n{% else %}\n  {% set learned = cool_context_learning_entry %}\n  {% set raw = learned if learned is not none else cool_contextual_base_off %}\n  {{ [[raw, 25.7] | min, 22.4] | max | round(2) }}\n{% endif %}"
+      cool_off: '{{ cool_off_target }}'
+      cool_on_target: "{% if cool_off_target is none %}\n  {{ none }}\n{% else %}\n  {% set raw = (cool_off_target | float) + 0.5 %}\n  {{ [[raw, 26.2] | min, 22.9] | max | round(2) }}\n{% endif %}"
+      cool_on: '{{ cool_on_target }}'
       cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else
         %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
       cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else
