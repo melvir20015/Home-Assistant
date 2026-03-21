@@ -59,6 +59,12 @@ Reglas:
 - si Home Assistant restaura un valor legacy inválido, debe normalizarse inmediatamente a `off`;
 - `states('input_select.ac_ultimo_modo_no_fan')` debe devolver siempre texto válido del conjunto anterior.
 
+Verificación y reconciliación en runtime/UI:
+
+1. En **Developer Tools → States**, `input_select.ac_ultimo_modo_no_fan` debe exponer únicamente `off`, `cool`, `heat`, `emergency_cool`.
+2. Si todavía aparece la opción legacy `False`, el runtime no quedó sincronizado con `input_select.yaml`; en ese caso hay que **recargar helpers YAML o recrear la entidad persistida** hasta que desaparezca `False`.
+3. La automatización `AC - Normaliza helper último modo no fan` debe conservarse como red de seguridad, pero no sustituye la corrección del helper cargado: primero debe existir la opción `off` en runtime y sólo después esa automatización puede reparar estados restaurados inválidos.
+
 ## Presencia temporal por encendido manual
 
 Si el usuario enciende manualmente el AC cuando `presence_effective` era falsa, eso se interpreta como señal válida de:

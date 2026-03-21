@@ -14,6 +14,30 @@ checks = []
 def check(name, condition, detail):
     checks.append((name, bool(condition), detail))
 
+def extract_input_select_options(entity_id):
+    match = re.search(
+        rf'^{re.escape(entity_id)}:\n(?P<body>(?:^[ \t].*\n?)*)',
+        input_select,
+        re.MULTILINE,
+    )
+    if not match:
+        return None
+
+    body = match.group('body')
+    options_match = re.search(
+        r'^\s+options:\n(?P<options>(?:^\s+- .*\n)+)',
+        body,
+        re.MULTILINE,
+    )
+    if not options_match:
+        return []
+
+    return [
+        line.strip()[2:]
+        for line in options_match.group('options').splitlines()
+        if line.strip().startswith('- ')
+    ]
+
 # Escenario 1 y 2: manual ON
 check(
     'manual_on_detecta_origen_manual',
@@ -135,8 +159,8 @@ check(
 # Escenario 5 y 6: emergency + helpers
 check(
     'helper_modo_no_fan_valido',
-    all(token in input_select for token in ['- off', '- cool', '- heat', '- emergency_cool']),
-    'ac_ultimo_modo_no_fan admite exactamente los estados válidos documentados.'
+    extract_input_select_options('ac_ultimo_modo_no_fan') == ['off', 'cool', 'heat', 'emergency_cool'],
+    'ac_ultimo_modo_no_fan admite exactamente y en orden `off`, `cool`, `heat`, `emergency_cool`.'
 )
 check(
     'reparacion_helper_invalido',
