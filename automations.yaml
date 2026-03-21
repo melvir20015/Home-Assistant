@@ -2530,31 +2530,23 @@
         action: input_number.set_value
       - variables:
           cycle_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
-          effective_map_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
           effective_bucket: "{% set raw = cycle_bucket %}
 {% if raw in ['', 'unknown', 'unavailable', 'none'] %}
-  global_fallback:humedad_normal:day:presencia:estable
+  exterior_templado:humedad_normal:day:presencia
 {% else %}
-  {{ raw }}
+  {{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0] }}
 {% endif %}"
-          effective_map_after: >-
-            {% set ns = namespace(parts=[]) %}
-            {% set raw = effective_map_raw %}
-            {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
-            {% if cleaned | trim != '' %}
-              {% for part in cleaned.split(',') %}
-                {% set item = part | trim %}
-                {% if item and not item.startswith('"' ~ effective_bucket ~ '":') %}
-                  {% set ns.parts = ns.parts + [item] %}
-                {% endif %}
-              {% endfor %}
-            {% endif %}
-            {% set ns.parts = ns.parts + ['"' ~ effective_bucket ~ '":' ~ ('%.2f' | format(ac_set | float(0)))] %}
-            {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
+          effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (effective_bucket | replace('':'',''_'') ) }}'
+          effective_summary: '{{ effective_bucket ~ ''='' ~ (''%.2f'' | format(ac_set | float(0))) }}'
+      - target:
+          entity_id: '{{ effective_bucket_helper }}'
+        data:
+          value: '{{ ac_set if ac_set is not none else 0 }}'
+        action: input_number.set_value
       - target:
           entity_id: input_text.ac_cool_effective_setpoint_map
         data:
-          value: '{{ effective_map_after }}'
+          value: '{{ effective_summary }}'
         service: input_text.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
@@ -3238,8 +3230,8 @@
     away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
     learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
     cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
-    cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
-    cool_effective_sp_map_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') }}'
+    cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
+    cool_effective_sp_summary_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
     cool_tod_bucket: "{% set hour = now().hour %}\n{% if 7 <= hour < 13 %}\n  day\n{% elif 13 <= hour < 20 %}\n  tarde\n{% else %}\n  noche\n{% endif %}"
     cool_outdoor_bucket: "{% if tout is none %}\n  exterior_templado\n{% elif (tout | float) >= 29 %}\n  exterior_caliente\n{% else %}\n  exterior_templado\n{% endif %}"
     cool_humidity_bucket: "{% if hin is not none and (hin | float) >= 60 %}\n  humedad_alta\n{% else %}\n  humedad_normal\n{% endif %}"
@@ -3248,8 +3240,16 @@
     cool_context_bucket: "{{ cool_outdoor_bucket ~ ':' ~ cool_humidity_bucket ~ ':' ~ cool_tod_bucket ~ ':' ~ cool_presence_bucket }}"
     cool_context_detail: "{{ cool_context_bucket ~ ':' ~ cool_thermal_trend_bucket }}"
     cool_contextual_base_off: "{% if tout is none %}\n  {{ none }}\n{% elif (tout | float) < 17 %}\n  {{ none }}\n{% else %}\n  {% set base = 24.2 %}\n  {% set base = base - (0.35 if cool_outdoor_bucket == 'exterior_caliente' else 0) %}\n  {% set base = base - (0.20 if cool_humidity_bucket == 'humedad_alta' else 0) %}\n  {% set base = base - (0.15 if cool_tod_bucket == 'day' else 0.05 if cool_tod_bucket == 'tarde' else 0) %}\n  {% set base = base + (0.25 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set base = base - (0.20 if cool_thermal_trend_bucket == 'subiendo' else -0.10 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {% if tin is not none %}\n    {% set demand = ((tin | float) - 23.6) * 0.35 %}\n    {% set base = base - ([demand, 0.45] | min) %}\n  {% endif %}\n  {% if tout is not none %}\n    {% set outdoor_push = ((tout | float) - 24) * 0.03 %}\n    {% set base = base - ([outdoor_push, 0.30] | min) %}\n  {% endif %}\n  {{ [[base, 25.4] | min, 22.4] | max | round(2) }}\n{% endif %}"
-    cool_context_learning_entry: "{% set raw = cool_learning_map_raw | trim %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ none }}\n{% else %}\n  {% set token = '\"' ~ cool_context_bucket ~ '\":' %}\n  {% if token in raw %}\n    {% set tail = raw.split(token, 1)[1] %}\n    {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n    {{ value | float(none) }}\n  {% else %}\n    {{ none }}\n  {% endif %}\n{% endif %}"
-    cool_effective_sp_entry: "{% set raw = cool_effective_sp_map_raw | trim %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ none }}\n{% else %}\n  {% set token = '\"' ~ cool_context_bucket ~ '\":' %}\n  {% if token in raw %}\n    {% set tail = raw.split(token, 1)[1] %}\n    {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n    {{ value | float(none) }}\n  {% else %}\n    {{ none }}\n  {% endif %}\n{% endif %}"
+    cool_learning_summary_note: >-
+      {% if cool_learning_summary_raw in ['', 'unknown', 'unavailable', 'none'] %}sin_resumen
+      {% else %}{{ cool_learning_summary_raw }}{% endif %}
+    cool_effective_sp_summary_note: >-
+      {% if cool_effective_sp_summary_raw in ['', 'unknown', 'unavailable', 'none'] %}sin_resumen
+      {% else %}{{ cool_effective_sp_summary_raw }}{% endif %}
+    cool_context_learning_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
+    cool_effective_sp_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
+    cool_context_learning_entry: '{{ states(cool_context_learning_helper) | float(none) }}'
+    cool_effective_sp_entry: '{{ states(cool_effective_sp_helper) | float(none) }}'
     # Cool deja de aprender una única rama universal.
     # Desde este rediseño el aprendizaje manual se aplica por bucket contextual
     # (`exterior × humedad × franja × presencia`) para no mezclar confort de
@@ -3479,9 +3479,10 @@
    and (minutes_since_last_auto
         | float(99999)) <= (feedback_window_min | float(120)) }}"
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
-      cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
+      cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
       last_auto_context_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
-      cool_learning_bucket: "{% set raw = last_auto_context_bucket %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  global_fallback:humedad_normal:day:presencia:estable\n{% else %}\n  {{ raw }}\n{% endif %}"
+      cool_learning_bucket: "{% set raw = last_auto_context_bucket %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  exterior_templado:humedad_normal:day:presencia\n{% else %}\n  {{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0] }}\n{% endif %}"
+      cool_learning_bucket_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_learning_bucket | replace('':'',''_'') ) }}'
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
         }}'
@@ -3493,7 +3494,7 @@
       # evita mezclar confort de franjas, humedad o calor exterior distintos.
       # Fase heat: se mantiene intacta y se revisará por separado.
       cool_branch_step: 0.25
-      cool_bucket_previous_value: "{% set raw = cool_learning_map_raw | trim %}\n{% set token = '\"' ~ cool_learning_bucket ~ '\":' %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ cur_cool_off_learned }}\n{% elif token in raw %}\n  {% set tail = raw.split(token, 1)[1] %}\n  {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n  {{ value | float(cur_cool_off_learned) }}\n{% else %}\n  {{ cur_cool_off_learned }}\n{% endif %}"
+      cool_bucket_previous_value: '{{ states(cool_learning_bucket_helper) | float(cur_cool_off_learned) }}'
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: 'off'
@@ -3529,20 +3530,7 @@
       cool_on_before: '{{ ((cool_bucket_previous_value | float) + 0.5) | round(2) }}'
       cool_on_after: '{{ ((cool_off_after | float) + 0.5) | round(2) }}'
       cool_setpoint_after: '{{ ((cool_off_after | float) - 0.5) | round(2) }}'
-      cool_learning_map_after: >-
-        {% set ns = namespace(parts=[]) %}
-        {% set raw = cool_learning_map_raw | trim %}
-        {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
-        {% if cleaned | trim != '' %}
-          {% for part in cleaned.split(',') %}
-            {% set item = part | trim %}
-            {% if item and not item.startswith('"' ~ cool_learning_bucket ~ '":') %}
-              {% set ns.parts = ns.parts + [item] %}
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        {% set ns.parts = ns.parts + ['"' ~ cool_learning_bucket ~ '":' ~ ('%.2f' | format(cool_off_after | float))] %}
-        {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
+      cool_learning_summary: '{{ cool_learning_bucket ~ ''='' ~ (''%.2f'' | format(cool_off_after | float)) }}'
       heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_off_after: '{{ [[(cur_bias_heat_off | float) - (step_main | float), 3] | min, -3] | max | round(2) }}'
       heat_setpoint_after: '{{ [[(cur_bias_heat_setpoint | float) - 0.5, 2] | min, -2] | max | round(1) }}'
@@ -3683,9 +3671,14 @@
           value: '{{ cool_off_learned_after }}'
         action: input_number.set_value
       - target:
+          entity_id: '{{ cool_learning_bucket_helper }}'
+        data:
+          value: '{{ cool_off_after }}'
+        action: input_number.set_value
+      - target:
           entity_id: input_text.ac_cool_contextual_learning_map
         data:
-          value: '{{ cool_learning_map_after }}'
+          value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - data:
           title: AC Learning OFF aplicado
@@ -3821,9 +3814,10 @@
    and ((final_mode == 'cool' and cool_comfort_gap_feedback)
         or final_mode == 'heat') }}"
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
-      cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
+      cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
       last_auto_context_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
-      cool_learning_bucket: "{% set raw = last_auto_context_bucket %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  global_fallback:humedad_normal:day:presencia:estable\n{% else %}\n  {{ raw }}\n{% endif %}"
+      cool_learning_bucket: "{% set raw = last_auto_context_bucket %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  exterior_templado:humedad_normal:day:presencia\n{% else %}\n  {{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0] }}\n{% endif %}"
+      cool_learning_bucket_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_learning_bucket | replace('':'',''_'') ) }}'
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
         }}'
@@ -3833,7 +3827,7 @@
       # Fase cool: mover sólo el bucket contextual correspondiente.
       # Heat se mantiene intacta y fuera de este rediseño para no contaminar reglas futuras.
       cool_branch_step: 0.25
-      cool_bucket_previous_value: "{% set raw = cool_learning_map_raw | trim %}\n{% set token = '\"' ~ cool_learning_bucket ~ '\":' %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ cur_cool_off_learned }}\n{% elif token in raw %}\n  {% set tail = raw.split(token, 1)[1] %}\n  {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n  {{ value | float(cur_cool_off_learned) }}\n{% else %}\n  {{ cur_cool_off_learned }}\n{% endif %}"
+      cool_bucket_previous_value: '{{ states(cool_learning_bucket_helper) | float(cur_cool_off_learned) }}'
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       learning_type: "{% if valid_feedback and final_mode == 'cool' %}
@@ -3898,20 +3892,7 @@
       cool_on_before: '{{ ((cool_bucket_previous_value | float) + 0.5) | round(2) }}'
       cool_on_after: '{{ ((cool_off_after | float) + 0.5) | round(2) }}'
       cool_setpoint_after: '{{ ((cool_off_after | float) - 0.5) | round(2) }}'
-      cool_learning_map_after: >-
-        {% set ns = namespace(parts=[]) %}
-        {% set raw = cool_learning_map_raw | trim %}
-        {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
-        {% if cleaned | trim != '' %}
-          {% for part in cleaned.split(',') %}
-            {% set item = part | trim %}
-            {% if item and not item.startswith('"' ~ cool_learning_bucket ~ '":') %}
-              {% set ns.parts = ns.parts + [item] %}
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        {% set ns.parts = ns.parts + ['"' ~ cool_learning_bucket ~ '":' ~ ('%.2f' | format(cool_off_after | float))] %}
-        {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
+      cool_learning_summary: '{{ cool_learning_bucket ~ ''='' ~ (''%.2f'' | format(cool_off_after | float)) }}'
       cool_branch_audit: >-
         RamaCool -0.25 | Bucket {{ cool_learning_bucket }} | Off {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
       notify_title_valid: AC Learning ON aplicado
@@ -3978,9 +3959,14 @@
           value: '{{ cool_off_learned_after }}'
         action: input_number.set_value
       - target:
+          entity_id: '{{ cool_learning_bucket_helper }}'
+        data:
+          value: '{{ cool_off_after }}'
+        action: input_number.set_value
+      - target:
           entity_id: input_text.ac_cool_contextual_learning_map
         data:
-          value: '{{ cool_learning_map_after }}'
+          value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - data:
           title: '{{ notify_title_valid }}'
@@ -4224,7 +4210,7 @@
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
       cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
-      cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') }}'
+      cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
       cool_tod_bucket: "{% set hour = now().hour %}\n{% if 7 <= hour < 13 %}\n  day\n{% elif 13 <= hour < 20 %}\n  tarde\n{% else %}\n  noche\n{% endif %}"
       cool_outdoor_bucket: "{% if tout is none %}\n  exterior_templado\n{% elif (tout | float) >= 29 %}\n  exterior_caliente\n{% else %}\n  exterior_templado\n{% endif %}"
       cool_humidity_bucket: "{% if hin is not none and (hin | float) >= 60 %}\n  humedad_alta\n{% else %}\n  humedad_normal\n{% endif %}"
@@ -4233,7 +4219,8 @@
       cool_context_bucket: "{{ cool_outdoor_bucket ~ ':' ~ cool_humidity_bucket ~ ':' ~ cool_tod_bucket ~ ':' ~ cool_presence_bucket }}"
       cool_context_detail: "{{ cool_context_bucket ~ ':' ~ cool_thermal_trend_bucket }}"
       cool_contextual_base_off: "{% if tout is none %}\n  {{ none }}\n{% elif (tout | float) < 17 %}\n  {{ none }}\n{% else %}\n  {% set base = 24.2 %}\n  {% set base = base - (0.35 if cool_outdoor_bucket == 'exterior_caliente' else 0) %}\n  {% set base = base - (0.20 if cool_humidity_bucket == 'humedad_alta' else 0) %}\n  {% set base = base - (0.15 if cool_tod_bucket == 'day' else 0.05 if cool_tod_bucket == 'tarde' else 0) %}\n  {% set base = base + (0.25 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set base = base - (0.20 if cool_thermal_trend_bucket == 'subiendo' else -0.10 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {% if tin is not none %}\n    {% set demand = ((tin | float) - 23.6) * 0.35 %}\n    {% set base = base - ([demand, 0.45] | min) %}\n  {% endif %}\n  {% if tout is not none %}\n    {% set outdoor_push = ((tout | float) - 24) * 0.03 %}\n    {% set base = base - ([outdoor_push, 0.30] | min) %}\n  {% endif %}\n  {{ [[base, 25.4] | min, 22.4] | max | round(2) }}\n{% endif %}"
-      cool_context_learning_entry: "{% set raw = cool_learning_map_raw | trim %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  {{ none }}\n{% else %}\n  {% set token = '\"' ~ cool_context_bucket ~ '\":' %}\n  {% if token in raw %}\n    {% set tail = raw.split(token, 1)[1] %}\n    {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('\"', '') | trim %}\n    {{ value | float(none) }}\n  {% else %}\n    {{ none }}\n  {% endif %}\n{% endif %}"
+      cool_context_learning_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
+      cool_context_learning_entry: '{{ states(cool_context_learning_helper) | float(none) }}'
       # Cool mantiene geometría simple, pero ahora su base es contextual y el aprendizaje
       # manual se evalúa por bucket. Heat queda fuera de este rediseño por ahora.
       bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
@@ -4537,19 +4524,9 @@
         {% else %}ajuste_intermedio
         {% endif %}
       apply_feedback: '{{ ignore_reason == ''none'' and manual_feedback_kind in [''manual_sp_lower_than_auto'',''manual_sp_higher_than_auto''] }}'
-      effective_map_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
-      effective_bucket_previous_value: >-
-        {% set raw = effective_map_raw %}
-        {% set token = '"' ~ cool_bucket_selected ~ '":' %}
-        {% if raw in ['', 'unknown', 'unavailable', 'none'] %}
-          {{ last_auto_setpoint if last_auto_setpoint is not none else new_sp_num }}
-        {% elif token in raw %}
-          {% set tail = raw.split(token, 1)[1] %}
-          {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('"', '') | trim %}
-          {{ value | float(last_auto_setpoint if last_auto_setpoint is not none else new_sp_num) }}
-        {% else %}
-          {{ last_auto_setpoint if last_auto_setpoint is not none else new_sp_num }}
-        {% endif %}
+      effective_summary_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
+      effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (cool_bucket_selected | replace('':'',''_'') ) }}'
+      effective_bucket_previous_value: '{{ states(effective_bucket_helper) | float(last_auto_setpoint if last_auto_setpoint is not none else new_sp_num) }}'
       feedback_weight: >-
         {% if feedback_phase == 'ajuste_inmediato_post_auto_on' %}0.30
         {% elif feedback_phase == 'ajuste_20_40_min' %}0.55
@@ -4564,33 +4541,10 @@
           {% set blended = (base * (1 - weight)) + (manual * weight) %}
           {{ [[blended, 24] | min, 20] | max | round(2) }}
         {% endif %}
-      effective_map_after: >-
-        {% set ns = namespace(parts=[]) %}
-        {% set raw = effective_map_raw %}
-        {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
-        {% if cleaned | trim != '' %}
-          {% for part in cleaned.split(',') %}
-            {% set item = part | trim %}
-            {% if item and not item.startswith('"' ~ cool_bucket_selected ~ '":') %}
-              {% set ns.parts = ns.parts + [item] %}
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        {% set ns.parts = ns.parts + ['"' ~ cool_bucket_selected ~ '":' ~ ('%.2f' | format(effective_sp_after | float(0)))] %}
-        {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
-      cool_learning_map_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
-      cool_learning_previous_value: >-
-        {% set raw = cool_learning_map_raw %}
-        {% set token = '"' ~ cool_bucket_selected ~ '":' %}
-        {% if raw in ['', 'unknown', 'unavailable', 'none'] %}
-          {{ (last_auto_setpoint | float(new_sp_num | float(24))) + 0.5 }}
-        {% elif token in raw %}
-          {% set tail = raw.split(token, 1)[1] %}
-          {% set value = tail.split(',', 1)[0].split('}', 1)[0] | replace('"', '') | trim %}
-          {{ value | float((last_auto_setpoint | float(new_sp_num | float(24))) + 0.5) }}
-        {% else %}
-          {{ (last_auto_setpoint | float(new_sp_num | float(24))) + 0.5 }}
-        {% endif %}
+      effective_summary: '{{ cool_bucket_selected ~ ''='' ~ (''%.2f'' | format(effective_sp_after | float(0))) }}'
+      cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
+      cool_learning_bucket_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_bucket_selected | replace('':'',''_'') ) }}'
+      cool_learning_previous_value: '{{ states(cool_learning_bucket_helper) | float((last_auto_setpoint | float(new_sp_num | float(24))) + 0.5) }}'
       reinforce_effective_needed: '{{ apply_feedback and manual_feedback_kind == ''manual_sp_lower_than_auto'' and insufficient_progress }}'
       cool_learning_after: >-
         {% if not reinforce_effective_needed %}
@@ -4600,21 +4554,9 @@
           {% set lowered = ((cool_learning_previous_value | float(target)) * 0.65) + (target * 0.35) %}
           {{ [[lowered, 25.7] | min, 22.4] | max | round(2) }}
         {% endif %}
-      cool_learning_map_after: >-
-        {% set ns = namespace(parts=[]) %}
-        {% set raw = cool_learning_map_raw %}
-        {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
-        {% if cleaned | trim != '' %}
-          {% for part in cleaned.split(',') %}
-            {% set item = part | trim %}
-            {% if item and not item.startswith('"' ~ cool_bucket_selected ~ '":') %}
-              {% set ns.parts = ns.parts + [item] %}
-            {% endif %}
-          {% endfor %}
-        {% endif %}
+      cool_learning_summary: >-
         {% set final_value = cool_learning_after if reinforce_effective_needed else cool_learning_previous_value %}
-        {% set ns.parts = ns.parts + ['"' ~ cool_bucket_selected ~ '":' ~ ('%.2f' | format(final_value | float(0)))] %}
-        {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
+        {{ cool_bucket_selected ~ '=' ~ ('%.2f' | format(final_value | float(0))) }}
       compact_context: >-
         tin={{ tin if tin is not none else 'na' }},tout={{ tout if tout is not none else 'na' }},h={{ hin if hin is not none else 'na' }},hr={{ now().strftime('%H:%M') }},p={{ '1' if presence_effective else '0' }},m={{ runtime_min }}
       audit_message: >-
@@ -4639,9 +4581,14 @@
           value: '{{ manual_feedback_kind }}:{{ feedback_phase }}{% if reinforce_effective_needed %}:refuerzo{% endif %}'
         service: input_text.set_value
       - target:
+          entity_id: '{{ effective_bucket_helper }}'
+        data:
+          value: '{{ effective_sp_after }}'
+        action: input_number.set_value
+      - target:
           entity_id: input_text.ac_cool_effective_setpoint_map
         data:
-          value: '{{ effective_map_after }}'
+          value: '{{ effective_summary }}'
         service: input_text.set_value
       - choose:
         - conditions:
@@ -4649,9 +4596,14 @@
             value_template: '{{ reinforce_effective_needed }}'
           sequence:
           - target:
+              entity_id: '{{ cool_learning_bucket_helper }}'
+            data:
+              value: '{{ cool_learning_after }}'
+            action: input_number.set_value
+          - target:
               entity_id: input_text.ac_cool_contextual_learning_map
             data:
-              value: '{{ cool_learning_map_after }}'
+              value: '{{ cool_learning_summary }}'
             service: input_text.set_value
         default: []
       - target:
@@ -4730,25 +4682,12 @@
       insufficient_progress: "{{ progress_temp is not none and remaining_delta is not none and (runtime_min | float(0)) >= (initial_delay_min | float(30)) and (minutes_since_last_step | float(99999)) >= (window_min | float(30)) and (remaining_delta | float(0)) > (close_enough_delta | float(0.2)) and ((progress_temp | float(0)) + 0.05) < (expected_progress | float(0)) }}"
       next_setpoint: '{{ [((current_setpoint | float(99)) - (step_size | float(0.5))), (min_setpoint | float(20))] | max | round(1) }}'
       can_reduce: '{{ (current_setpoint | float(99)) > (min_setpoint | float(20)) and (next_setpoint | float(99)) < (current_setpoint | float(99)) }}'
-      effective_map_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
       effective_bucket: >-
         {% set raw = active_bucket %}
-        {% if raw in ['','unknown','unavailable','none'] %}global_fallback:humedad_normal:day:presencia:estable
-        {% else %}{{ raw }}{% endif %}
-      effective_map_after: >-
-        {% set ns = namespace(parts=[]) %}
-        {% set raw = effective_map_raw %}
-        {% set cleaned = raw[1:-1] if raw.startswith('{') and raw.endswith('}') else '' %}
-        {% if cleaned | trim != '' %}
-          {% for part in cleaned.split(',') %}
-            {% set item = part | trim %}
-            {% if item and not item.startswith('"' ~ effective_bucket ~ '":') %}
-              {% set ns.parts = ns.parts + [item] %}
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        {% set ns.parts = ns.parts + ['"' ~ effective_bucket ~ '":' ~ ('%.2f' | format(current_setpoint | float))] %}
-        {{ '{' ~ (ns.parts | join(',')) ~ '}' }}
+        {% if raw in ['','unknown','unavailable','none'] %}exterior_templado:humedad_normal:day:presencia
+        {% else %}{{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0] }}{% endif %}
+      effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (effective_bucket | replace('':'',''_'') ) }}'
+      effective_summary: '{{ effective_bucket ~ ''='' ~ (''%.2f'' | format(current_setpoint | float)) }}'
   - choose:
     - conditions:
       - condition: template
@@ -4763,9 +4702,14 @@
         value_template: '{{ cycle_active and cur_mode == ''cool'' and remaining_delta is not none and (remaining_delta | float(999)) <= (close_enough_delta | float(0.2)) }}'
       sequence:
       - target:
+          entity_id: '{{ effective_bucket_helper }}'
+        data:
+          value: '{{ current_setpoint }}'
+        action: input_number.set_value
+      - target:
           entity_id: input_text.ac_cool_effective_setpoint_map
         data:
-          value: '{{ effective_map_after }}'
+          value: '{{ effective_summary }}'
         service: input_text.set_value
       - action: logbook.log
         data:

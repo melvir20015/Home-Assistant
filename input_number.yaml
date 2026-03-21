@@ -343,3 +343,440 @@ ac_cool_cycle_last_applied_setpoint:
   step: 0.5
   mode: box
   unit_of_measurement: "°C"
+
+# Persistencia contextual compacta por bucket.
+# `input_text` solo guarda resúmenes cortos; los valores completos viven aquí
+# para evitar exceder el límite de 255 caracteres de la integración.
+
+ac_cool_learning_bucket_exterior_caliente_humedad_alta_day_ausencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_alta/day/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_alta_day_presencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_alta/day/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_alta_tarde_ausencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_alta/tarde/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_alta_tarde_presencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_alta/tarde/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_alta_noche_ausencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_alta/noche/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_alta_noche_presencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_alta/noche/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_normal_day_ausencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_normal/day/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_normal_day_presencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_normal/day/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_normal_tarde_ausencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_normal/tarde/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_normal_tarde_presencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_normal/tarde/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_normal_noche_ausencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_normal/noche/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_caliente_humedad_normal_noche_presencia:
+  name: "AC Cool Learning Bucket exterior_caliente/humedad_normal/noche/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_alta_day_ausencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_alta/day/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_alta_day_presencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_alta/day/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_alta_tarde_ausencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_alta/tarde/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_alta_tarde_presencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_alta/tarde/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_alta_noche_ausencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_alta/noche/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_alta_noche_presencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_alta/noche/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_normal_day_ausencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_normal/day/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_normal_day_presencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_normal/day/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_normal_tarde_ausencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_normal/tarde/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_normal_tarde_presencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_normal/tarde/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_normal_noche_ausencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_normal/noche/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_learning_bucket_exterior_templado_humedad_normal_noche_presencia:
+  name: "AC Cool Learning Bucket exterior_templado/humedad_normal/noche/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_day_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_alta/day/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_day_presencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_alta/day/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_tarde_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_alta/tarde/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_tarde_presencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_alta/tarde/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_noche_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_alta/noche/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_noche_presencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_alta/noche/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_day_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_normal/day/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_day_presencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_normal/day/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_tarde_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_normal/tarde/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_tarde_presencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_normal/tarde/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_noche_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_normal/noche/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_noche_presencia:
+  name: "AC Cool Effective SP Bucket exterior_caliente/humedad_normal/noche/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_day_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_alta/day/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_day_presencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_alta/day/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_tarde_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_alta/tarde/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_tarde_presencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_alta/tarde/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_noche_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_alta/noche/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_noche_presencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_alta/noche/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_day_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_normal/day/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_day_presencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_normal/day/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_tarde_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_normal/tarde/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_tarde_presencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_normal/tarde/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_noche_ausencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_normal/noche/ausencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_noche_presencia:
+  name: "AC Cool Effective SP Bucket exterior_templado/humedad_normal/noche/presencia"
+  min: 20
+  max: 26
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+

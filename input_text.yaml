@@ -47,13 +47,16 @@ ac_last_change_origin:
   max: 40
 
 ac_cool_contextual_learning_map:
-  name: "AC Cool Contextual Learning Map"
-  max: 1024
+  # `input_text` solo conserva un resumen corto del último bucket persistido.
+  # El estado contextual completo vive en helpers numéricos por bucket.
+  name: "AC Cool Contextual Learning Summary"
+  max: 255
 
 ac_last_auto_context_bucket:
   name: "AC Last Auto Context Bucket"
   max: 120
 
 ac_cool_effective_setpoint_map:
-  name: "AC Cool Effective Setpoint Map"
-  max: 1024
+  # `input_text` no debe guardar mapas JSON largos; aquí solo queda un resumen compacto.
+  name: "AC Cool Effective Setpoint Summary"
+  max: 255
