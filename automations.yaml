@@ -3364,13 +3364,20 @@
     last_cool_sync_notify_ts_raw: '{{ states(''input_datetime.ac_last_cool_sp_sync_notify_ts'') }}'
     minutes_since_cool_sync_notify: "{% if last_cool_sync_notify_ts_raw in ['unknown','unavailable','none',''] %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_cool_sync_notify_ts_raw)) / 60) | round(1) }}\n{% endif %}"
     last_cool_sync_notified_sp: '{{ states(''input_number.ac_last_cool_sp_sync_notified'') | float(none) }}'
+    # Depende de `input_datetime.ac_last_auto_ts` para compuertas de recencia y auditoría.
+    last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+    minutes_since_last_auto: >-
+      {% set raw = last_auto_ts_raw | default('', true) | trim %}
+      {% set raw_lower = raw | lower %}
+      {% if raw_lower in ['unknown', 'unavailable', 'none', ''] %}
+        99999
+      {% else %}
+        {% set ts = as_timestamp(raw, default=none) %}
+        {{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}
+      {% endif %}
     cool_sync_recent_auto_on: "{{ states('input_text.ac_last_auto_action') == 'auto_on'
    and states('input_text.ac_last_auto_branch') == 'cool_normal_on'
    and (minutes_since_last_auto | float(99999)) <= 3 }}"
-    last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
-    minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
-      %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
-      / 60) | round(1) }}\n{% endif %}"
     last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
     last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
     last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
