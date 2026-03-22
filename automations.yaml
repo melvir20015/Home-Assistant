@@ -3184,6 +3184,11 @@
         data:
           temperature: '{{ cool_setpoint_effective }}'
         action: climate.set_temperature
+      - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: cool_sp_sync
+        service: input_text.set_value
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -4599,31 +4604,60 @@
            and ((progress_temp | float(0)) + 0.05) < (expected_progress | float(0)) }}
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
-      last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
+      last_change_origin: '{{ states(''input_text.ac_last_change_origin'') | default('''', true) | trim }}'
+      last_change_origin_normalized: >-
+        {% set origin = last_change_origin | lower %}
+        {% if origin in ['unknown','unavailable','none',''] %}none{% else %}{{ origin }}{% endif %}
+      change_matches_last_auto_sp: >-
+        {{ last_auto_setpoint is not none
+           and new_sp_num is not none
+           and (((new_sp_num | float) - (last_auto_setpoint | float)) | abs) <= 0.11 }}
+      change_matches_cycle_step_sp: >-
+        {{ cycle_last_applied_setpoint is not none
+           and new_sp_num is not none
+           and (((new_sp_num | float) - (cycle_last_applied_setpoint | float)) | abs) <= 0.11 }}
+      recent_auto_cycle_window: >-
+        {{ last_auto_mode == 'cool'
+           and (
+             (minutes_since_last_auto | float(99999)) <= 4
+             or (minutes_since_last_step | float(99999)) <= 4
+             or (runtime_min | float(99999)) <= 6
+           ) }}
       auto_setpoint_recent: >-
-        {{ (
-             last_auto_mode == 'cool'
-             and last_auto_action in ['auto_on','bootstrap_start']
-             and (minutes_since_last_auto | float(99999)) <= 2
-             and last_auto_setpoint is not none
-             and new_sp_num is not none
-             and (((new_sp_num | float) - (last_auto_setpoint | float)) | abs) <= 0.11
-           )
-           or (
-             last_auto_mode == 'cool'
-             and (minutes_since_last_step | float(99999)) <= 2
-             and cycle_last_applied_setpoint is not none
-             and new_sp_num is not none
-             and (((new_sp_num | float) - (cycle_last_applied_setpoint | float)) | abs) <= 0.11
+        {{ last_auto_mode == 'cool'
+           and (
+             (
+               last_auto_action in ['auto_on','bootstrap_start']
+               and (minutes_since_last_auto | float(99999)) <= 4
+               and change_matches_last_auto_sp
+             )
+             or (
+               (minutes_since_last_step | float(99999)) <= 4
+               and change_matches_cycle_step_sp
+             )
+             or (
+               recent_auto_cycle_window
+               and change_matches_last_auto_sp
+             )
            ) }}
       ignore_reason: >-
         {% if prev_sp_num is none or new_sp_num is none or (((new_sp_num | float) - (prev_sp_num | float)) | abs) < 0.09 %}
           sin_cambio_real
         {% elif is_state('input_boolean.ac_on_por_automatizacion','on') or is_state('input_boolean.ac_off_por_automatizacion','on') %}
           bandera_auto_activa
+        {# El equipo/integración puede reflejar con retraso o cuantización el setpoint aplicado.
+           Esos ecos/reportes tardíos no deben alimentar aprendizaje manual automáticamente. #}
+        {% elif auto_setpoint_recent and last_change_origin_normalized in ['auto_on','auto_off','manual_sp_feedback','cool_cycle_step','cool_sp_sync'] %}
+          post_auto_sync
+        {% elif auto_setpoint_recent and (minutes_since_last_step | float(99999)) <= 4 and change_matches_cycle_step_sp %}
+          setpoint_echo_from_device
+        {% elif auto_setpoint_recent and recent_auto_cycle_window and change_matches_last_auto_sp %}
+          device_report_lag
         {% elif auto_setpoint_recent %}
           autoaccion_reciente
-        {% elif last_change_origin in ['auto_on','auto_off'] and (minutes_since_last_auto | float(99999)) <= 0.5 %}
+        {% elif last_change_origin_normalized in ['auto_on','auto_off','cool_cycle_step','cool_sp_sync'] and recent_auto_cycle_window %}
+          post_auto_sync
+        {% elif last_change_origin_normalized in ['auto_on','auto_off'] and (minutes_since_last_auto | float(99999)) <= 0.5 %}
           origen_auto_reciente
         {% else %}
           none
@@ -4878,6 +4912,11 @@
         data:
           value: '{{ next_setpoint }}'
         action: input_number.set_value
+      - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: cool_cycle_step
+        service: input_text.set_value
       - target:
           entity_id: input_datetime.ac_cool_cycle_last_step_at
         data:
