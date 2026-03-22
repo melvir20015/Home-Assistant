@@ -380,3 +380,24 @@ Si en el futuro cambia la distribución del apartamento, la ubicación de sensor
 ### `input_text.ac_last_change_origin`
 
 Este helper guarda la clasificación simple del último cambio confirmado del equipo: `auto_on`, `auto_off`, `manual_on` o `manual_off`. Debe actualizarse tanto en automatizaciones automáticas como manuales y sirve para auditoría rápida, para evitar aprendizaje ambiguo y para recordar que la UI manual de Home Assistant cuenta como manual sólo cuando el cambio no fue lanzado por otra automatización.
+
+## 6. Contrato de persistencia para aprendizaje contextual en `cool`
+
+Para `cool`, la persistencia del aprendizaje contextual **no debe volver a usar** `input_text` como almacén de mapas JSON largos. Home Assistant limita `input_text` a un máximo de **255 caracteres**, por lo que un diccionario serializado por bucket termina truncado o rechazado cuando el aprendizaje crece.
+
+### Diseño vigente
+
+- Los valores efectivos de aprendizaje contextual viven en helpers numéricos dedicados por bucket, por ejemplo `input_number.ac_cool_learning_bucket_*` y `input_number.ac_cool_effective_sp_bucket_*`.
+- `input_text.ac_cool_contextual_learning_map` sólo conserva un **resumen corto del último bucket escrito**, con formato `bucket=valor`.
+- `input_text.ac_cool_effective_setpoint_map` sólo conserva un **resumen corto del último setpoint efectivo persistido**, también con formato `bucket=valor`.
+- Las plantillas operativas deben leer el valor real desde el `input_number` del bucket correspondiente; los `input_text` se consideran únicamente telemetría resumida o ayuda de auditoría rápida.
+
+### Regla de evolución
+
+Si en el futuro se necesita guardar más contexto de `cool`, se debe elegir una de estas rutas compatibles:
+
+1. más helpers pequeños por bucket o por dimensión;
+2. un resumen corto adicional en `input_text`;
+3. una persistencia alternativa fuera de `input_text` si realmente se requiere una estructura amplia.
+
+No se debe reintroducir un patrón de “mapa JSON completo en `input_text`”, aunque parezca temporal, porque rompe el contrato de tamaño y hace frágiles las plantillas que dependen de esa memoria.

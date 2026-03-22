@@ -2580,7 +2580,7 @@
   {{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0] }}
 {% endif %}"
           effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (effective_bucket | replace('':'',''_'') ) }}'
-          effective_summary: '{{ effective_bucket ~ ''='' ~ (''%.2f'' | format(ac_set | float(0))) }}'
+          effective_summary: '{{ ((effective_bucket ~ ''='' ~ (''%.2f'' | format(ac_set | float(0))))[:255]) }}'
       - target:
           entity_id: '{{ effective_bucket_helper }}'
         data:
@@ -4591,7 +4591,7 @@
           {% set blended = (base * (1 - weight)) + (manual * weight) %}
           {{ [[blended, 24] | min, 20] | max | round(2) }}
         {% endif %}
-      effective_summary: '{{ cool_bucket_selected ~ ''='' ~ (''%.2f'' | format(effective_sp_after | float(0))) }}'
+      effective_summary: '{{ ((cool_bucket_selected ~ ''='' ~ (''%.2f'' | format(effective_sp_after | float(0))))[:255]) }}'
       cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
       cool_learning_bucket_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_bucket_selected | replace('':'',''_'') ) }}'
       cool_learning_previous_value: '{{ states(cool_learning_bucket_helper) | float((last_auto_setpoint | float(new_sp_num | float(24))) + 0.5) }}'
@@ -4606,7 +4606,7 @@
         {% endif %}
       cool_learning_summary: >-
         {% set final_value = cool_learning_after if reinforce_effective_needed else cool_learning_previous_value %}
-        {{ cool_bucket_selected ~ '=' ~ ('%.2f' | format(final_value | float(0))) }}
+        {{ ((cool_bucket_selected ~ '=' ~ ('%.2f' | format(final_value | float(0))))[:255]) }}
       compact_context: >-
         tin={{ tin if tin is not none else 'na' }},tout={{ tout if tout is not none else 'na' }},h={{ hin if hin is not none else 'na' }},hr={{ now().strftime('%H:%M') }},p={{ '1' if presence_effective else '0' }},m={{ runtime_min }}
       audit_message: >-
@@ -4737,7 +4737,7 @@
         {% if raw in ['','unknown','unavailable','none'] %}exterior_templado:humedad_normal:day:presencia
         {% else %}{{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0] }}{% endif %}
       effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (effective_bucket | replace('':'',''_'') ) }}'
-      effective_summary: '{{ effective_bucket ~ ''='' ~ (''%.2f'' | format(current_setpoint | float)) }}'
+      effective_summary: '{{ ((effective_bucket ~ ''='' ~ (''%.2f'' | format(current_setpoint | float)))[:255]) }}'
   - choose:
     - conditions:
       - condition: template
