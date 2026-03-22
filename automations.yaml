@@ -2060,6 +2060,31 @@
   - choose:
     - conditions:
       - condition: template
+        value_template: '{{ cool_main_control_error }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Main
+          message: '{{ cool_main_control_audit }}'
+          entity_id: climate.0200009211c7_climate
+      - data:
+          title: AC ctrl!
+          message: '{{ cool_main_control_audit }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    - conditions:
+      - condition: template
+        value_template: '{{ cool_main_control_blocked }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Main
+          message: '{{ cool_main_control_audit }}'
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
         value_template: '{{ cur_mode == ''off'' and last_mode_no_fan == ''emergency_cool''
           and (minutes_since_last_auto | float(99999)) > 2 }}'
       sequence:
@@ -3460,6 +3485,41 @@
     manual_off_block: '{{ (minutes_since_manual_off | float(99999)) < (manual_off_hold_minutes
       | float) }}'
     manual_off_block_txt: '{{ ''ON'' if manual_off_block else ''OFF'' }}'
+    cool_main_control_demand: >-
+      {{ (not emergency_latched)
+         and cur_mode != 'cool'
+         and tin is not none
+         and cool_on is not none
+         and (tin | float) >= (cool_on | float) }}
+    cool_main_control_error: >-
+      {{ cool_main_control_demand
+         and auto_on_allowed
+         and (not recent_any_auto_on)
+         and (not locked or last_mode_no_fan != 'heat')
+         and (cool_setpoint is none or cool_setpoint_effective is none) }}
+    cool_main_control_ready: >-
+      {{ cool_main_control_demand
+         and auto_on_allowed
+         and (not recent_any_auto_on)
+         and cool_setpoint is not none
+         and cool_setpoint_effective is not none
+         and (not locked or last_mode_no_fan != 'heat') }}
+    cool_main_control_blocked: >-
+      {{ cool_main_control_demand and (not cool_main_control_ready) and (not cool_main_control_error) }}
+    cool_main_control_block_reason: >-
+      {% if not presence_effective %}sin_pres
+      {% elif manual_off_block %}pausa_manual
+      {% elif recent_any_auto_on %}auto_reciente
+      {% elif locked and last_mode_no_fan == 'heat' %}lock_heat
+      {% else %}compuerta{% endif %}
+    cool_main_control_audit: >-
+      {% if cool_main_control_error %}
+        main_control_error | branch=cool | reason=sp_template | Tin={{ tin if tin is not none else 'na' }} | On={{ cool_on if cool_on is not none else 'na' }} | SPt={{ cool_setpoint if cool_setpoint is not none else 'na' }} | SPe={{ cool_setpoint_effective if cool_setpoint_effective is not none else 'na' }} | Bucket={{ cool_context_detail }} | Trig={{ trig }}
+      {% elif cool_main_control_blocked %}
+        main_control_blocked | branch=cool | reason={{ cool_main_control_block_reason }} | Tin={{ tin if tin is not none else 'na' }} | On={{ cool_on if cool_on is not none else 'na' }} | Bucket={{ cool_context_detail }} | Trig={{ trig }}
+      {% else %}
+        none
+      {% endif %}
     ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    /5min\n  {% elif trigger.platform == 'state' %}\n    {{ trigger.entity_id
@@ -3654,13 +3714,6 @@
 {% else %}
   sin ajuste setpoint
 {% endif %}"
-      learning_summary_valid: "{% if last_auto_mode == 'cool' %}
-  AC aprendió: OFF manual tras AUTO COOL | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min
-{% elif last_auto_mode == 'heat' %}
-  AC aprendió: OFF manual tras AUTO HEAT | -{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | -0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
-{% else %}
-  AC aprendió: OFF manual válido | {{ minutes_since_last_auto }} min
-{% endif %}"
       ignored_reason_code: "{% if not learning_enabled %}
   learning_disabled
 {% elif last_change_origin != 'manual_off' %}
@@ -3711,7 +3764,11 @@
 {% endif %}"
       audit_title: AC - Learning - Manual OFF feedback
       audit_message: >-
-        Resultado={{ learning_status_label }}; detalle={{ ignored_reason_summary if not valid_feedback else 'Aprendizaje válido aplicado.' }}; last_auto_action={{ last_auto_action }}; last_auto_mode={{ last_auto_mode }}; last_auto_branch={{ last_auto_branch }}; minutes_since_last_auto={{ minutes_since_last_auto }}; feedback_window_min={{ feedback_window_min }}; learning_enabled={{ learning_enabled }}; debug_enabled={{ debug_enabled }}; learning_type={{ learning_type }}; sesgos={{ adjusted_biases_valid if valid_feedback else 'sin cambios' }}; hora={{ ts }}; quick_feedback={{ quick_feedback }}; modo_final={{ final_mode }}; setpoint={{ final_setpoint }}; fan={{ final_fan }}; tin={{ tin }}; t1={{ t1 }}; t2={{ t2 }}; h={{ hin }}; tout={{ tout }}; manual_off_block={{ manual_off_block }}; presence_effective={{ presence_effective }}.
+        {% if valid_feedback %}
+          learning_ok | src=manual_off | mode={{ last_auto_mode }} | type={{ learning_type }} | detail={{ adjusted_biases_valid }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
+        {% else %}
+          learning_skip | src=manual_off | type={{ learning_type }} | reason={{ ignored_reason_code }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
+        {% endif %}
   - choose:
     - conditions:
       - condition: template
@@ -3794,8 +3851,8 @@
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - data:
-          title: AC Learning OFF aplicado
-          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
+          title: AC learn✓
+          message: 'learning_ok | src=manual_off | mode={{ last_auto_mode }} | {% if last_auto_mode == ''cool'' %}{{ cool_branch_audit }}{% elif last_auto_mode == ''heat'' %}heat_bias_ok{% else %}valid_feedback{% endif %} | min={{ minutes_since_last_auto }}'
           data:
             ttl: 0
             priority: high
@@ -3839,8 +3896,8 @@
             action: input_number.set_value
         default: []
       - data:
-          title: AC Learning OFF aplicado
-          message: '{% if last_auto_mode == ''cool'' %}OFF manual válido en cool | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min{% elif last_auto_mode == ''heat'' %}OFF manual válido en heat | ajuste aplicado | {{ minutes_since_last_auto }} min{% else %}OFF manual válido | {{ minutes_since_last_auto }} min{% endif %}'
+          title: AC learn✓
+          message: 'learning_ok | src=manual_off | mode={{ last_auto_mode }} | {% if last_auto_mode == ''cool'' %}{{ cool_branch_audit }}{% elif last_auto_mode == ''heat'' %}heat_bias_ok{% else %}valid_feedback{% endif %} | min={{ minutes_since_last_auto }}'
           data:
             ttl: 0
             priority: high
@@ -4020,11 +4077,17 @@
       cool_learning_summary: '{{ cool_learning_bucket ~ ''='' ~ (''%.2f'' | format(cool_off_after | float)) }}'
       cool_branch_audit: >-
         RamaCool -0.25 | Bucket {{ cool_learning_bucket }} | Off {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
-      notify_title_valid: AC Learning ON aplicado
+      notify_title_valid: AC learn✓
       notify_message_valid_cool: >-
-        AC aprendió: ON manual tras AUTO OFF COOL | {{ cool_branch_audit }} | {{ minutes_since_last_auto }} min
+        learning_ok | src=manual_on | mode=cool | {{ cool_branch_audit }} | min={{ minutes_since_last_auto }}
       notify_message_valid_heat: >-
-        AC aprendió: ON manual tras AUTO OFF HEAT | +{{ '%.2f' | format(step_main | float) }} on/off{% if quick_feedback %} | +0.5 setpoint{% endif %} | {{ minutes_since_last_auto }} min
+        learning_ok | src=manual_on | mode=heat | heat_bias_ok{% if quick_feedback %}:fast{% endif %} | min={{ minutes_since_last_auto }}
+      learning_audit_message: >-
+        {% if valid_feedback %}
+          learning_ok | src=manual_on | mode={{ final_mode }} | type={{ learning_type }} | detail={% if final_mode == 'cool' %}{{ cool_branch_audit }}{% else %}heat_bias_ok{% endif %} | min={{ minutes_since_last_auto }}
+        {% else %}
+          learning_skip | src=manual_on | type={{ learning_type }} | reason={{ ignored_reason_code }} | min={{ minutes_since_last_auto }}
+        {% endif %}
   - target:
       entity_id: input_text.ac_last_manual_learning_type
     data:
@@ -4048,9 +4111,8 @@
       sequence:
       - action: logbook.log
         data:
-          name: AC Manual Trace
-          message: >-
-            manual_on_learning_valid | final_mode={{ final_mode }} | learning_type={{ learning_type }} | detail={% if final_mode == 'cool' %}{{ cool_branch_audit }}{% else %}heat fase actual sin cambios estructurales{% endif %} | minutes_since_last_auto={{ minutes_since_last_auto }} | feedback_window_min={{ feedback_window_min }} | last_auto_action={{ last_auto_action }}
+          name: AC Learn
+          message: '{{ learning_audit_message }}'
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -4058,9 +4120,8 @@
       sequence:
       - action: logbook.log
         data:
-          name: AC Manual Trace
-          message: >-
-            manual_on_learning_ignored | learning_type={{ learning_type }} | reason={{ ignored_reason_code }} | summary={{ ignored_reason_summary }} | manual_event_type={{ manual_event_type }} | final_mode={{ final_mode }} | minutes_since_last_auto={{ minutes_since_last_auto }} | feedback_window_min={{ feedback_window_min }} | last_auto_action={{ last_auto_action }} | last_change_origin={{ last_change_origin }}
+          name: AC Learn
+          message: '{{ learning_audit_message }}'
           entity_id: climate.0200009211c7_climate
     default: []
   - choose:
