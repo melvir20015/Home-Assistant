@@ -2176,6 +2176,9 @@
         data:
           hvac_mode: 'off'
         action: climate.set_hvac_mode
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:15
+        continue_on_timeout: true
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
@@ -2192,11 +2195,18 @@
             {% set reason = cool_push_reason | default('', true) | trim %}
             {% set summary = cool_push_summary | default('', true) | trim %}
             {{ (reason if reason else 'Mot=sin detalle') ~ ' | ' ~ (summary if summary else 'Sin detalle') }}
-      - target:
-          entity_id: input_text.ac_pending_cool_off_message
+      - data:
+          title: '{{ cool_mobile_title_local }}'
+          message: '{{ cool_mobile_message_local }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - action: logbook.log
         data:
-          value: '{{ cool_mobile_message_local }}'
-        service: input_text.set_value
+          name: AC Auto Trace
+          message: 'cool_off_notify_sent | branch=presence_off | {{ cool_mobile_message_local }}'
+          entity_id: climate.0200009211c7_climate
       - delay: 00:00:45
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2482,6 +2492,9 @@
         data:
           hvac_mode: 'off'
         action: climate.set_hvac_mode
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:15
+        continue_on_timeout: true
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
@@ -2505,11 +2518,18 @@
             {% set reason = cool_push_reason | default('', true) | trim %}
             {% set summary = cool_push_summary | default('', true) | trim %}
             {{ (reason if reason else 'Mot=sin detalle') ~ ' | ' ~ (summary if summary else 'Sin detalle') }}
-      - target:
-          entity_id: input_text.ac_pending_cool_off_message
+      - data:
+          title: '{{ cool_mobile_title_local }}'
+          message: '{{ cool_mobile_message_local }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - action: logbook.log
         data:
-          value: '{{ cool_mobile_message_local }}'
-        service: input_text.set_value
+          name: AC Auto Trace
+          message: 'cool_off_notify_sent | branch=cool_emergency_off | {{ cool_mobile_message_local }}'
+          entity_id: climate.0200009211c7_climate
       - delay: 00:00:45
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -2622,6 +2642,9 @@
         data:
           hvac_mode: 'off'
         action: climate.set_hvac_mode
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:15
+        continue_on_timeout: true
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
@@ -2721,6 +2744,9 @@
         data:
           hvac_mode: 'off'
         action: climate.set_hvac_mode
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:15
+        continue_on_timeout: true
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
@@ -2878,11 +2904,18 @@
             {% set reason = cool_push_reason | default('', true) | trim %}
             {% set summary = cool_push_summary | default('', true) | trim %}
             {{ (reason if reason else 'Mot=sin detalle') ~ ' | ' ~ (summary if summary else 'Sin detalle') }}
-      - target:
-          entity_id: input_text.ac_pending_cool_off_message
+      - data:
+          title: '{{ cool_mobile_title_local }}'
+          message: '{{ cool_mobile_message_local }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - action: logbook.log
         data:
-          value: '{{ cool_mobile_message_local }}'
-        service: input_text.set_value
+          name: AC Auto Trace
+          message: 'cool_off_notify_sent | branch=cool_normal_off | {{ cool_mobile_message_local }}'
+          entity_id: climate.0200009211c7_climate
       - delay: 00:00:45
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
@@ -3673,46 +3706,6 @@
       %}\n    /5min\n  {% elif trigger.platform == 'state' %}\n    {{ trigger.entity_id
       }}={{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
-  mode: single
-- id: ac_notifica_cool_off_despues_secado
-  alias: AC - Notifica cool OFF al terminar secado
-  description: 'Envía la notificación de apagado de COOL únicamente cuando el clima
-    ya quedó realmente en `off`, después del paso temporal por `fan_only` para secado.
-    Reutiliza el mensaje preparado por la rama automática correspondiente y lo limpia
-    al finalizar para evitar duplicados o arrastres entre ciclos.
-
-    '
-  triggers:
-  - trigger: state
-    entity_id: climate.0200009211c7_climate
-    to: 'off'
-  conditions:
-  - condition: state
-    entity_id: input_boolean.ac_off_por_automatizacion
-    state: 'on'
-  - condition: template
-    value_template: "{{ states('input_text.ac_last_auto_mode') == 'cool'\n   and states('input_text.ac_last_auto_branch') in ['presence_off','cool_emergency_off','cool_normal_off']\n   and states('input_text.ac_pending_cool_off_message') | trim not in ['', 'unknown', 'unavailable', 'none'] }}"
-  actions:
-  - variables:
-      cool_mobile_title_local: 'Cool↓'
-      cool_mobile_message_local: '{{ states(''input_text.ac_pending_cool_off_message'') | trim }}'
-  - data:
-      title: '{{ cool_mobile_title_local }}'
-      message: '{{ cool_mobile_message_local }}'
-      data:
-        ttl: 0
-        priority: high
-    action: notify.mobile_app_samsung_s24
-  - action: logbook.log
-    data:
-      name: AC Auto Trace
-      message: 'cool_off_notify_sent | branch={{ states(''input_text.ac_last_auto_branch'') }} | {{ cool_mobile_message_local }}'
-      entity_id: climate.0200009211c7_climate
-  - target:
-      entity_id: input_text.ac_pending_cool_off_message
-    data:
-      value: ''
-    service: input_text.set_value
   mode: single
 - id: '1769981375283'
   alias: AC - Iniciar bloqueo 2h al apagarse

@@ -109,7 +109,9 @@ check(
 
 check(
     'manual_off_notificacion_unica_valida',
-    automations.count('AC aprendió: OFF manual tras AUTO COOL') == 1 and automations.count('AC aprendió: OFF manual tras AUTO HEAT') == 1,
+    "title: AC learn✓" in automations
+    and automations.count("value_template: '{{ valid_feedback and last_auto_mode == ''cool'' }}'") == 1
+    and automations.count("value_template: '{{ valid_feedback and last_auto_mode == ''heat'' }}'") == 1,
     'Sólo hay una notificación breve por aprendizaje válido en cada modo.'
 )
 check(
@@ -121,6 +123,16 @@ check(
     'auto_off_30m_sin_contaminar_manual',
     'presence_away_30m' in automations and 'last_change_origin' in input_text,
     'La lógica principal distingue ausencia 30m y la telemetría mantiene origen separado.'
+)
+check(
+    'cool_off_notificacion_transaccional',
+    all(token in automations for token in [
+        "wait_template: \"{{ is_state('climate.0200009211c7_climate', 'off') }}\"",
+        'cool_off_notify_sent | branch=presence_off',
+        'cool_off_notify_sent | branch=cool_emergency_off',
+        'cool_off_notify_sent | branch=cool_normal_off',
+    ]) and 'AC - Notifica cool OFF al terminar secado' not in automations,
+    'Las ramas COOL OFF notifican dentro de la misma secuencia tras confirmar `off`, sin automatización separada.'
 )
 
 
@@ -197,7 +209,7 @@ check(
     all(token in input_text for token in [
         'ac_last_auto_branch', 'ac_last_auto_action', 'ac_last_auto_mode',
         'ac_last_manual_event_type', 'ac_last_manual_learning_type', 'ac_last_change_origin'
-    ]),
+    ]) and 'ac_pending_cool_off_message' not in input_text,
     'Los input_text críticos de telemetría están declarados.'
 )
 check(
