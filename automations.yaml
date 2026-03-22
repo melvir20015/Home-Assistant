@@ -3147,6 +3147,49 @@
           value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
         action: input_number.set_value
       - target:
+          entity_id: input_number.ac_cool_effective_sp_inconsistency_hits
+        data:
+          value: '{{ cool_effective_sp_reset_hits if cool_effective_sp_ignored else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_text.ac_cool_effective_sp_last_inconsistent_bucket
+        data:
+          value: '{{ cool_context_bucket if cool_effective_sp_ignored else '''' }}'
+        service: input_text.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_effective_sp_reset_bucket }}'
+          sequence:
+          - target:
+              entity_id: '{{ cool_effective_sp_helper }}'
+            data:
+              value: '{{ cool_setpoint | float(0) }}'
+            action: input_number.set_value
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ cool_related_daytime_helper is not none }}'
+              sequence:
+              - target:
+                  entity_id: '{{ cool_related_daytime_helper }}'
+                data:
+                  value: '{{ cool_setpoint | float(0) }}'
+                action: input_number.set_value
+            default: []
+          - target:
+              entity_id: input_text.ac_cool_effective_setpoint_map
+            data:
+              value: '{{ ((cool_context_bucket ~ ''='' ~ (''%.2f'' | format(cool_setpoint | float(0))))[:255]) }}'
+            service: input_text.set_value
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                cool_sph_reset | bucket={{ cool_context_bucket }} | bucket_rel={{ cool_related_daytime_bucket if cool_related_daytime_bucket is not none else 'none' }} | SPt={{ cool_setpoint }} | SPh_prev={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | reason={{ cool_effective_sp_inconsistency_reason }} | hits={{ cool_effective_sp_reset_hits }}
+              entity_id: climate.0200009211c7_climate
+        default: []
+      - target:
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
         action: input_boolean.turn_on
       - target:
@@ -3166,8 +3209,20 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_normalized | SPsrc=auto_on | {{ cool_ctx_brief }} | SPt={{ cool_setpoint_theoretical }} | SPh={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | SPe={{ cool_setpoint_effective }} | Mot={{ cool_auto_reason }} | Min={{ minutes_since_last_auto }}
+            cool_normalized | SPsrc=auto_on | {{ cool_ctx_brief }} | SPt={{ cool_setpoint_theoretical }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{ cool_setpoint_effective }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_effective_sp_ignored }}'
+          sequence:
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                cool_sph_ignored_inconsistency | bucket={{ cool_context_bucket }} | SPt={{ cool_setpoint }} | SPh_prev={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | Δ={{ cool_effective_sp_delta if cool_effective_sp_delta is not none else 'none' }} | reason={{ cool_effective_sp_inconsistency_reason }} | hits={{ cool_effective_sp_reset_hits }}
+              entity_id: climate.0200009211c7_climate
+        default: []
       - choose:
         - conditions:
           - condition: template
@@ -3193,7 +3248,7 @@
       - variables:
           cool_push_kind: on
           cool_push_reason: Mot=auto umbral
-          cool_push_summary: "Bucket={{ cool_context_detail }} | Dem={{ cool_demand_score }} | SPi={{ cool_setpoint_effective }} | SPt={{ cool_setpoint_theoretical }} | SPh={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | On={{ cool_on_target }} | Off={{ cool_off_target }} | Fan=Low"
+          cool_push_summary: "Bucket={{ cool_context_detail }} | Dem={{ cool_demand_score }} | SPi={{ cool_setpoint_effective }} | SPt={{ cool_setpoint_theoretical }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | On={{ cool_on_target }} | Off={{ cool_off_target }} | Fan=Low"
           # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
           cool_mobile_title_local: 'Cool↑'
           cool_mobile_message_local: >-
@@ -3326,6 +3381,7 @@
     cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
     cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
     cool_effective_sp_summary_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
+    last_manual_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'') }}'
     cool_tod_bucket: "{% set hour = now().hour %}\n{% if 7 <= hour < 13 %}\n  day\n{% elif 13 <= hour < 20 %}\n  tarde\n{% else %}\n  noche\n{% endif %}"
     cool_outdoor_bucket: "{% if tout is none %}\n  exterior_templado\n{% elif (tout | float) >= 29 %}\n  exterior_caliente\n{% else %}\n  exterior_templado\n{% endif %}"
     cool_humidity_bucket: "{% if hin is not none and (hin | float) >= 60 %}\n  humedad_alta\n{% else %}\n  humedad_normal\n{% endif %}"
@@ -3424,12 +3480,84 @@
       }}\n{% endif %}"
     # El panel del AC opera con pasos efectivos de 1 °F. Por eso Home Assistant
     # puede mostrar un valor en °C distinto al que redondea visualmente el equipo:
-    # primero calculamos el setpoint teórico (`SPt`), luego lo normalizamos al entero
-    # en °F realmente aceptado por el equipo (`SPf`) y finalmente reconvertimos a °C
-    # efectivo (`SPe`) para auditar diferencias esperables entre HA y el display.
+    # primero calculamos el setpoint teórico (`SPt`), luego validamos el setpoint
+    # histórico efectivo por bucket (`SPh`) y recién después normalizamos al entero
+    # en °F realmente aceptado por el equipo (`SPf`) para obtener el efectivo final
+    # (`SPe`). `SPh` es histórico/contextual, no el valor enviado directamente.
     cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
     cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min, 21] | max | round(2) }}\n{% endif %}"
-    cool_setpoint_learned_blended: "{% if cool_setpoint is none %}\n  {{ none }}\n{% else %}\n  {% set historical = cool_effective_sp_entry %}\n  {% if historical is none %}\n    {{ cool_setpoint | float | round(2) }}\n  {% else %}\n    {% set blended = ((cool_setpoint | float) * 0.6) + ((historical | float) * 0.4) %}\n    {{ [[blended, 24] | min, 20] | max | round(2) }}\n  {% endif %}\n{% endif %}"
+    cool_effective_sp_soft_gap: '{{ states(''input_number.ac_cool_effective_sp_soft_gap'') | float(0.8) }}'
+    cool_effective_sp_hard_gap: '{{ states(''input_number.ac_cool_effective_sp_hard_gap'') | float(1.4) }}'
+    cool_effective_sp_recent_guard_minutes: '{{ states(''input_number.ac_cool_effective_sp_recent_guard_minutes'') | float(90) }}'
+    cool_effective_sp_reset_repeat_limit: '{{ states(''input_number.ac_cool_effective_sp_reset_repeat_limit'') | float(2) | round(0) | int }}'
+    cool_last_manual_learning_type: '{{ states(''input_text.ac_last_manual_learning_type'') | default('''', true) | trim }}'
+    cool_last_inconsistent_bucket: '{{ states(''input_text.ac_cool_effective_sp_last_inconsistent_bucket'') | default('''', true) | trim }}'
+    cool_inconsistency_hits: '{{ states(''input_number.ac_cool_effective_sp_inconsistency_hits'') | float(0) | round(0) | int }}'
+    cool_related_daytime_bucket: >-
+      {% if cool_presence_bucket == 'presencia' and cool_tod_bucket == 'noche' %}
+        {{ cool_outdoor_bucket ~ ':' ~ cool_humidity_bucket ~ ':day:' ~ cool_presence_bucket }}
+      {% elif cool_presence_bucket == 'presencia' and cool_tod_bucket == 'day' %}
+        {{ cool_outdoor_bucket ~ ':' ~ cool_humidity_bucket ~ ':noche:' ~ cool_presence_bucket }}
+      {% else %}
+        {{ none }}
+      {% endif %}
+    cool_related_daytime_helper: >-
+      {% if cool_related_daytime_bucket is not none %}
+        {{ 'input_number.ac_cool_effective_sp_bucket_' ~ (cool_related_daytime_bucket | replace(':','_')) }}
+      {% else %}
+        {{ none }}
+      {% endif %}
+    cool_effective_sp_delta: >-
+      {% if cool_setpoint is none or cool_effective_sp_entry is none %}
+        {{ none }}
+      {% else %}
+        {{ ((cool_setpoint | float) - (cool_effective_sp_entry | float)) | abs | round(2) }}
+      {% endif %}
+    cool_effective_sp_doubtful_recent_feedback: >-
+      {% set recent_manual = last_manual_ts_raw not in ['unknown','unavailable','none','']
+         and ((as_timestamp(now()) - as_timestamp(last_manual_ts_raw)) / 60) <= (cool_effective_sp_recent_guard_minutes | float(90)) %}
+      {% set learning = cool_last_manual_learning_type | lower %}
+      {{ recent_manual and ('ajuste_inmediato_post_auto_on' in learning or 'ignored' in learning or 'manual_sp_without_auto_reference' in learning) }}
+    cool_effective_sp_inconsistency_reason: >-
+      {% if cool_effective_sp_entry is none %}
+        none
+      {% elif cool_effective_sp_delta is none %}
+        none
+      {% elif (cool_effective_sp_delta | float(0)) >= (cool_effective_sp_hard_gap | float(1.4)) and cool_effective_sp_doubtful_recent_feedback %}
+        hard_recent_feedback
+      {% elif (cool_effective_sp_delta | float(0)) >= (cool_effective_sp_hard_gap | float(1.4)) %}
+        hard_gap
+      {% elif (cool_effective_sp_delta | float(0)) >= (cool_effective_sp_soft_gap | float(0.8)) and cool_effective_sp_doubtful_recent_feedback %}
+        soft_recent_feedback
+      {% elif (cool_effective_sp_delta | float(0)) >= (cool_effective_sp_soft_gap | float(0.8)) %}
+        soft_gap
+      {% else %}
+        none
+      {% endif %}
+    cool_effective_sp_hist_weight: >-
+      {% if cool_effective_sp_entry is none %}
+        0
+      {% elif cool_effective_sp_inconsistency_reason in ['hard_recent_feedback','hard_gap'] %}
+        0
+      {% elif cool_effective_sp_inconsistency_reason in ['soft_recent_feedback','soft_gap'] %}
+        0.15
+      {% else %}
+        0.40
+      {% endif %}
+    cool_effective_sp_ignored: '{{ cool_effective_sp_entry is not none and (cool_effective_sp_hist_weight | float(0)) == 0 }}'
+    cool_effective_sp_reset_hits: >-
+      {% if not cool_effective_sp_ignored %}
+        0
+      {% elif cool_last_inconsistent_bucket == cool_context_bucket %}
+        {{ (cool_inconsistency_hits | int(0)) + 1 }}
+      {% else %}
+        1
+      {% endif %}
+    cool_effective_sp_reset_bucket: >-
+      {{ cool_effective_sp_ignored
+         and cool_effective_sp_inconsistency_reason == 'hard_recent_feedback'
+         and (cool_effective_sp_reset_hits | int(0)) >= (cool_effective_sp_reset_repeat_limit | int(2)) }}
+    cool_setpoint_learned_blended: "{% if cool_setpoint is none %}\n  {{ none }}\n{% else %}\n  {% set historical = cool_effective_sp_entry %}\n  {% set hist_weight = cool_effective_sp_hist_weight | float(0) %}\n  {% if historical is none or hist_weight <= 0 %}\n    {{ cool_setpoint | float | round(2) }}\n  {% else %}\n    {% set theory_weight = 1 - hist_weight %}\n    {% set blended = ((cool_setpoint | float) * theory_weight) + ((historical | float) * hist_weight) %}\n    {{ [[blended, 24] | min, 20] | max | round(2) }}\n  {% endif %}\n{% endif %}"
     cool_setpoint_f: "{% if cool_setpoint_learned_blended is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((cool_setpoint_learned_blended | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 68] | max | int }}\n{% endif %}"
     cool_setpoint_effective: "{% if cool_setpoint_f is none %}\n  {{ none }}\n{% else %}\n  {{ (((cool_setpoint_f | float) - 32) * 5 / 9) | round(2) }}\n{% endif %}"
     ac_set_normalized_f: "{% if ac_set is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((ac_set | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 70] | max | int }}\n{% endif %}"
@@ -4775,17 +4903,44 @@
         {% set helper_raw = states(effective_bucket_helper) %}
         {% set helper_value = helper_raw | float(none) %}
         {{ helper_value if helper_value is not none else (effective_bucket_summary_value if effective_bucket_summary_value is not none else (last_auto_setpoint if last_auto_setpoint is not none else new_sp_num)) }}
+      effective_sp_soft_gap: '{{ states(''input_number.ac_cool_effective_sp_soft_gap'') | float(0.8) }}'
+      effective_sp_hard_gap: '{{ states(''input_number.ac_cool_effective_sp_hard_gap'') | float(1.4) }}'
+      effective_sp_previous_delta_from_auto: >-
+        {% if effective_bucket_previous_value is none or last_auto_setpoint is none %}
+          {{ none }}
+        {% else %}
+          {{ ((effective_bucket_previous_value | float) - (last_auto_setpoint | float)) | abs | round(2) }}
+        {% endif %}
+      effective_sp_inconsistency_reason: >-
+        {% if effective_sp_previous_delta_from_auto is none %}
+          none
+        {% elif (effective_sp_previous_delta_from_auto | float(0)) >= (effective_sp_hard_gap | float(1.4)) and feedback_phase == 'ajuste_inmediato_post_auto_on' %}
+          hard_recent_feedback
+        {% elif (effective_sp_previous_delta_from_auto | float(0)) >= (effective_sp_hard_gap | float(1.4)) %}
+          hard_gap
+        {% elif (effective_sp_previous_delta_from_auto | float(0)) >= (effective_sp_soft_gap | float(0.8)) %}
+          soft_gap
+        {% else %}
+          none
+        {% endif %}
       feedback_weight: >-
         {% if feedback_phase == 'ajuste_inmediato_post_auto_on' %}0.30
         {% elif feedback_phase == 'ajuste_20_40_min' %}0.55
         {% else %}0.40{% endif %}
+      effective_sp_feedback_weight: >-
+        {% if effective_sp_inconsistency_reason in ['hard_recent_feedback','hard_gap'] %}0
+        {% elif effective_sp_inconsistency_reason == 'soft_gap' %}{{ [feedback_weight | float(0.4), 0.20] | min }}
+        {% else %}{{ feedback_weight }}
+        {% endif %}
       effective_sp_after: >-
         {% if not apply_feedback %}
           {{ effective_bucket_previous_value | float(none) }}
+        {% elif (effective_sp_feedback_weight | float(0)) <= 0 %}
+          {{ last_auto_setpoint | float(new_sp_num | float(0)) | round(2) }}
         {% else %}
-          {% set base = effective_bucket_previous_value | float(new_sp_num | float(0)) %}
+          {% set base = effective_bucket_previous_value | float(last_auto_setpoint | float(new_sp_num | float(0))) %}
           {% set manual = new_sp_num | float(base) %}
-          {% set weight = feedback_weight | float(0.4) %}
+          {% set weight = effective_sp_feedback_weight | float(0.4) %}
           {% set blended = (base * (1 - weight)) + (manual * weight) %}
           {{ [[blended, 24] | min, 20] | max | round(2) }}
         {% endif %}
@@ -4820,9 +4975,9 @@
         tin={{ tin if tin is not none else 'na' }},tout={{ tout if tout is not none else 'na' }},h={{ hin if hin is not none else 'na' }},hr={{ now().strftime('%H:%M') }},p={{ '1' if presence_effective else '0' }},m={{ runtime_min }}
       audit_message: >-
         {% if apply_feedback %}
-          sp_manual_feedback | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}
+          sp_manual_feedback | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}
         {% else %}
-          sp_manual_feedback_ignored | SPsrc={{ 'device_echo' if ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] else 'manual_candidate' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | reason={{ ignore_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}
+          sp_manual_feedback_ignored | SPsrc={{ 'device_echo' if ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] else 'manual_candidate' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | reason={{ ignore_reason if ignore_reason != 'none' else effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}
         {% endif %}
   - choose:
     - conditions:
@@ -4837,7 +4992,7 @@
       - target:
           entity_id: input_text.ac_last_manual_learning_type
         data:
-          value: '{{ manual_feedback_kind }}:{{ feedback_phase }}{% if reinforce_effective_needed %}:refuerzo{% endif %}'
+          value: '{{ manual_feedback_kind }}:{{ feedback_phase }}:{{ effective_sp_inconsistency_reason }}{% if reinforce_effective_needed %}:refuerzo{% endif %}'
         service: input_text.set_value
       - target:
           entity_id: '{{ effective_bucket_helper }}'

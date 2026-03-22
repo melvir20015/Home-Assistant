@@ -60,3 +60,7 @@ ac_cool_effective_setpoint_map:
   # `input_text` no debe guardar mapas JSON largos; aquí solo queda un resumen compacto.
   name: "AC Cool Effective Setpoint Summary"
   max: 255
+
+ac_cool_effective_sp_last_inconsistent_bucket:
+  name: "AC Cool Effective SP Last Inconsistent Bucket"
+  max: 120
