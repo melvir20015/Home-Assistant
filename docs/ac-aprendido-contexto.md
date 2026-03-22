@@ -252,6 +252,30 @@ Caso de validación que no debe romperse:
 - Si `cur_mode = cool`, `emergency_latched = false`, `tin <= cool_off` **o** algún sensor relevante está en `<= cool_sensor_off`, y además `ac_set != cool_setpoint`, la rama que debe ganar es `cool_normal_off`.
 - En ese escenario no debe ejecutarse la corrección fina de `setpoint`, porque el sistema ya decidió apagar el AC.
 
+### Contrato operativo latcheado del ciclo `cool`
+
+Desde el momento en que entra `cool_normal_on`, la automatización debe **latchear** y persistir el contrato operativo completo del ciclo en helpers dedicados:
+
+- `cool_on` real del ciclo;
+- `cool_off` real del ciclo;
+- `cool_sensor_off` real del ciclo;
+- `cool_setpoint` teórico comprometido para ese arranque;
+- `cool_setpoint_effective` realmente aplicado al equipo;
+- bucket contextual del ciclo;
+- motivo del cálculo: `base_contextual` o `aprendizaje`.
+
+Ese snapshot persistente pasa a ser la referencia canónica del ciclo activo para tres usos obligatorios:
+
+1. **Notificación de encendido**: lo mostrado al arrancar debe reflejar los valores efectivamente comprometidos para ese ciclo, no una re-evaluación posterior del contexto.
+2. **Apagado normal del mismo ciclo**: `cool_normal_off` debe comparar primero contra el `cool_off` latcheado del ciclo, no contra un `cool_off` recalculado en vivo.
+3. **Auditoría posterior**: logbook/helpers deben permitir reconstruir exactamente con qué contrato arrancó el ciclo y por qué.
+
+Reglas adicionales que no deben romperse:
+
+- el par `cool_on` / `cool_off` mostrado al encender es el **contrato operativo del ciclo**;
+- la histéresis entre ambos se mantiene en **0.5 °C**;
+- si el apagado ocurre porque `t1` o `t2` cae por debajo de `cool_sensor_off`, la causa debe quedar registrada como **corte preventivo** separado y no como `meta_alcanzada`.
+
 ## 6. Clasificación operativa de origen y protección tras intervención manual
 
 ### Origen canónico del último cambio

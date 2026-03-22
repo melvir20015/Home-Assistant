@@ -67,3 +67,8 @@ ac_cool_cycle_last_step_at:
   name: "AC Cool Cycle Last Step At"
   has_date: true
   has_time: true
+
+ac_cool_cycle_contract_started_at:
+  name: "AC Cool Cycle Contract Started At"
+  has_date: true
+  has_time: true

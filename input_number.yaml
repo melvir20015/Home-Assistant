@@ -391,6 +391,46 @@ ac_cool_cycle_last_applied_setpoint:
   mode: box
   unit_of_measurement: "°C"
 
+ac_cool_cycle_contract_on:
+  name: "AC Cool Cycle Contract On"
+  min: 20
+  max: 27
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_cool_cycle_contract_off:
+  name: "AC Cool Cycle Contract Off"
+  min: 20
+  max: 27
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_cool_cycle_contract_sensor_off:
+  name: "AC Cool Cycle Contract Sensor Off"
+  min: 20
+  max: 27
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_cool_cycle_contract_setpoint:
+  name: "AC Cool Cycle Contract Setpoint"
+  min: 16
+  max: 30
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_cool_cycle_contract_setpoint_effective:
+  name: "AC Cool Cycle Contract Setpoint Effective"
+  min: 16
+  max: 30
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+
 # Persistencia contextual compacta por bucket.
 # `input_text` solo guarda resúmenes cortos; los valores completos viven aquí
 # para evitar exceder el límite de 255 caracteres de la integración.

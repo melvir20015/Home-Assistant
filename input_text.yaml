@@ -64,3 +64,11 @@ ac_cool_effective_setpoint_map:
 ac_cool_effective_sp_last_inconsistent_bucket:
   name: "AC Cool Effective SP Last Inconsistent Bucket"
   max: 120
+
+ac_cool_cycle_contract_bucket:
+  name: "AC Cool Cycle Contract Bucket"
+  max: 120
+
+ac_cool_cycle_contract_reason:
+  name: "AC Cool Cycle Contract Reason"
+  max: 80
