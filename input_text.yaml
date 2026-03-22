@@ -56,6 +56,10 @@ ac_last_auto_context_bucket:
   name: "AC Last Auto Context Bucket"
   max: 120
 
+ac_pending_cool_off_message:
+  name: "AC Pending Cool OFF Message"
+  max: 255
+
 ac_cool_effective_setpoint_map:
   # `input_text` no debe guardar mapas JSON largos; aquí solo queda un resumen compacto.
   name: "AC Cool Effective Setpoint Summary"
