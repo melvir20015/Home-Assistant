@@ -3319,11 +3319,12 @@
     cool_effective_sp_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
     # Dependencia crítica: si un helper contextual todavía no cargó tras reinicio,
     # el resumen `bucket=valor` evita que una rama auto/manual quede sin fallback.
+    # En plantillas HA/Jinja no usar len(); parsear el bucket con replace()/split() compatibles.
     cool_context_learning_summary_value: >-
       {% set raw = cool_learning_summary_note | default('', true) | trim %}
       {% set prefix = cool_context_bucket ~ '=' %}
       {% if raw.startswith(prefix) %}
-        {{ raw[len(prefix):] | float(none) }}
+        {{ raw | replace(prefix, '', 1) | float(none) }}
       {% else %}
         {{ none }}
       {% endif %}
@@ -3331,7 +3332,7 @@
       {% set raw = cool_effective_sp_summary_note | default('', true) | trim %}
       {% set prefix = cool_context_bucket ~ '=' %}
       {% if raw.startswith(prefix) %}
-        {{ raw[len(prefix):] | float(none) }}
+        {{ raw | replace(prefix, '', 1) | float(none) }}
       {% else %}
         {{ none }}
       {% endif %}
@@ -3588,7 +3589,7 @@
         {% set raw = cool_learning_summary_raw | default('', true) | trim %}
         {% set prefix = cool_learning_bucket ~ '=' %}
         {% if raw.startswith(prefix) %}
-          {{ raw[len(prefix):] | float(none) }}
+          {{ raw | replace(prefix, '', 1) | float(none) }}
         {% else %}
           {{ none }}
         {% endif %}
@@ -3935,7 +3936,7 @@
         {% set raw = cool_learning_summary_raw | default('', true) | trim %}
         {% set prefix = cool_learning_bucket ~ '=' %}
         {% if raw.startswith(prefix) %}
-          {{ raw[len(prefix):] | float(none) }}
+          {{ raw | replace(prefix, '', 1) | float(none) }}
         {% else %}
           {{ none }}
         {% endif %}
@@ -4355,7 +4356,7 @@
         {% set raw = cool_learning_summary_raw | default('', true) | trim %}
         {% set prefix = cool_context_bucket ~ '=' %}
         {% if raw.startswith(prefix) %}
-          {{ raw[len(prefix):] | float(none) }}
+          {{ raw | replace(prefix, '', 1) | float(none) }}
         {% else %}
           {{ none }}
         {% endif %}
@@ -4705,7 +4706,7 @@
         {% set raw = effective_summary_raw | default('', true) | trim %}
         {% set prefix = cool_bucket_selected ~ '=' %}
         {% if raw.startswith(prefix) %}
-          {{ raw[len(prefix):] | float(none) }}
+          {{ raw | replace(prefix, '', 1) | float(none) }}
         {% else %}
           {{ none }}
         {% endif %}
@@ -4734,7 +4735,7 @@
         {% set raw = cool_learning_summary_raw | default('', true) | trim %}
         {% set prefix = cool_bucket_selected ~ '=' %}
         {% if raw.startswith(prefix) %}
-          {{ raw[len(prefix):] | float(none) }}
+          {{ raw | replace(prefix, '', 1) | float(none) }}
         {% else %}
           {{ none }}
         {% endif %}
