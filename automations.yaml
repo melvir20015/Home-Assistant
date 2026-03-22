@@ -1657,7 +1657,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_bootstrap_start | ctx={{ cool_context }} | stop={{ cool_stop_threshold_selected
+            cool_bootstrap_start | SPsrc=bootstrap | ctx={{ cool_context }} | stop={{ cool_stop_threshold_selected
             }} | base={{ cool_bootstrap_reference_selected }} | init={{ cool_bootstrap_initial_setpoint_selected
             }} | power_entity={{ ac_power_entity }} | threshold={{ ac_power_condenser_on_threshold
             }} | fan_only_max={{ ac_power_fan_only_max }} | max_search_min={{ cool_bootstrap_max_search_min
@@ -1758,7 +1758,7 @@
                   data:
                     name: AC Auto Trace
                     message: >-
-                      cool_bootstrap_success | ctx={{ cool_context }} | set={{ loop_setpoint
+                      cool_bootstrap_success | SPsrc=bootstrap | ctx={{ cool_context }} | set={{ loop_setpoint
                       }} | power={{ loop_power }} | threshold={{ ac_power_condenser_on_threshold
                       }} | steps={{ repeat.index - 1 }}
                     entity_id: '{{ climate_ent }}'
@@ -1851,7 +1851,7 @@
                   data:
                     name: AC Auto Trace
                     message: >-
-                      cool_bootstrap_step | idx={{ repeat.index }} | from={{ loop_setpoint
+                      cool_bootstrap_step | SPsrc=bootstrap | idx={{ repeat.index }} | from={{ loop_setpoint
                       }} | to={{ loop_next_setpoint }} | power={{ loop_power }} | threshold={{
                       ac_power_condenser_on_threshold }}
                     entity_id: '{{ climate_ent }}'
@@ -2312,7 +2312,7 @@
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
-          value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
+          value: '{{ emergency_setpoint if emergency_setpoint is not none else 0 }}'
         action: input_number.set_value
       - target:
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
@@ -2323,10 +2323,21 @@
           hvac_mode: cool
         action: climate.set_hvac_mode
       - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: cool_emergency_on
+        service: input_text.set_value
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           temperature: '{{ emergency_setpoint }}'
         action: climate.set_temperature
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_emergency_on | SPsrc=emergency | SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode }} | Vent={{ emergency_window }} | Tin={{ tin }} | Tout={{ tout }}
+          entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
           - condition: template
@@ -3130,7 +3141,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_normalized | {{ cool_ctx_brief }} | SPt={{ cool_setpoint_theoretical }} | SPh={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | SPe={{ cool_setpoint_effective }} | Mot={{ cool_auto_reason }} | Min={{ minutes_since_last_auto }}
+            cool_normalized | SPsrc=auto_on | {{ cool_ctx_brief }} | SPt={{ cool_setpoint_theoretical }} | SPh={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | SPe={{ cool_setpoint_effective }} | Mot={{ cool_auto_reason }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -3185,6 +3196,16 @@
           temperature: '{{ cool_setpoint_effective }}'
         action: climate.set_temperature
       - target:
+          entity_id: input_number.ac_last_auto_setpoint
+        data:
+          value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
+        action: input_number.set_value
+      - target:
+          entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+        data:
+          value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
+        action: input_number.set_value
+      - target:
           entity_id: input_text.ac_last_change_origin
         data:
           value: cool_sp_sync
@@ -3193,7 +3214,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_sp_sync | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=sync | Δ={{ cool_sync_delta }} | Min={{ minutes_since_last_auto }}
+            cool_sp_sync | SPsrc=sync | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=sync | Δ={{ cool_sync_delta }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -4739,7 +4760,7 @@
         {% if apply_feedback %}
           sp_manual_feedback | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}
         {% else %}
-          sp_manual_feedback_ignored | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | reason={{ ignore_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}
+          sp_manual_feedback_ignored | SPsrc={{ 'device_echo' if ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] else 'manual_candidate' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | reason={{ ignore_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}
         {% endif %}
   - choose:
     - conditions:
@@ -4800,6 +4821,17 @@
             priority: high
         action: notify.mobile_app_samsung_s24
     default:
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: "{{ ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] }}"
+        sequence:
+        - target:
+            entity_id: input_text.ac_last_change_origin
+          data:
+            value: device_echo
+          service: input_text.set_value
+      default: []
     - action: logbook.log
       data:
         name: AC Manual SP
@@ -4926,7 +4958,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_adaptive_step | bucket={{ effective_bucket }} | init={{ start_temp }} | now={{ tin }} | prog={{ progress_temp }} | remain={{ remaining_delta }} | run={{ runtime_min }} | exp={{ expected_progress }} | sp={{ current_setpoint }}→{{ next_setpoint }}
+            cool_adaptive_step | SPsrc=adaptive | bucket={{ effective_bucket }} | init={{ start_temp }} | now={{ tin }} | prog={{ progress_temp }} | remain={{ remaining_delta }} | run={{ runtime_min }} | exp={{ expected_progress }} | sp={{ current_setpoint }}→{{ next_setpoint }}
           entity_id: '{{ climate_ent }}'
     - conditions:
       - condition: template
