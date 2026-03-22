@@ -38,6 +38,11 @@ ac_last_manual_off_ts:
   has_date: true
   has_time: true
 
+ac_manual_setpoint_override_until:
+  name: "AC Manual Setpoint Override Until"
+  has_date: true
+  has_time: true
+
 ac_manual_presence_until:
   name: "AC Manual Presence Until"
   has_date: true

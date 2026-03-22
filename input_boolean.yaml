@@ -50,3 +50,7 @@ ac_cool_sync_push_enabled:
 ac_cool_adaptive_cycle_active:
   name: "AC Cool Adaptive Cycle Active"
   icon: mdi:snowflake-alert
+
+ac_manual_setpoint_override_active:
+  name: "AC Manual Setpoint Override Activo"
+  icon: mdi:hand-back-right

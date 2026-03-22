@@ -2340,6 +2340,14 @@
           value: '{{ emergency_setpoint if emergency_setpoint is not none else 0 }}'
         action: input_number.set_value
       - target:
+          entity_id: input_boolean.ac_manual_setpoint_override_active
+        action: input_boolean.turn_off
+      - target:
+          entity_id: input_datetime.ac_manual_setpoint_override_until
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
         action: input_boolean.turn_on
       - target:
@@ -3190,6 +3198,14 @@
               entity_id: climate.0200009211c7_climate
         default: []
       - target:
+          entity_id: input_boolean.ac_manual_setpoint_override_active
+        action: input_boolean.turn_off
+      - target:
+          entity_id: input_datetime.ac_manual_setpoint_override_until
+        data:
+          datetime: '{{ ts }}'
+        action: input_datetime.set_datetime
+      - target:
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
         action: input_boolean.turn_on
       - target:
@@ -3268,7 +3284,7 @@
         action: input_boolean.turn_off
     - conditions:
       - condition: template
-        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and cool_setpoint_effective is not none\n   and ac_set_effective_normalized is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (not manual_override_active) }}"
+        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and cool_setpoint_effective is not none\n   and ac_set_effective_normalized is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (not manual_override_active)\n   and (not manual_sp_override_active) }}"
       sequence:
       - target:
           entity_id: climate.0200009211c7_climate
@@ -3587,7 +3603,26 @@
     last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
     recent_any_auto_on: "{{ last_auto_action == 'auto_on'\n   and (minutes_since_last_auto
       | float(99999)) <= 2 }}"
-    cool_sync_should_notify: "{{ cool_sync_push_enabled\n   and cool_sync_delta is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (\n     cool_sync_recent_auto_on\n     or last_cool_sync_notified_sp is none\n     or ((last_cool_sync_notified_sp | float) - (cool_setpoint_effective | float)) | abs >= 0.2\n     or (minutes_since_cool_sync_notify | float(99999)) >= (cool_sync_notify_window_min | float(20))\n   ) }}"
+    manual_sp_override_hold_minutes: '{{ states(''input_number.ac_manual_setpoint_override_hold_minutes'') | float(12) }}'
+    manual_sp_override_until_raw: '{{ states(''input_datetime.ac_manual_setpoint_override_until'') }}'
+    manual_sp_override_until_ts: >-
+      {% set raw = manual_sp_override_until_raw | default('', true) | trim %}
+      {% set raw_lower = raw | lower %}
+      {% if raw_lower in ['unknown', 'unavailable', 'none', ''] %}
+        0
+      {% else %}
+        {{ as_timestamp(raw, default=0) | float(0) }}
+      {% endif %}
+    manual_sp_override_minutes_left: >-
+      {% if (manual_sp_override_until_ts | float(0)) <= 0 %}
+        0
+      {% else %}
+        {{ [(((manual_sp_override_until_ts | float(0)) - as_timestamp(now())) / 60), 0] | max | round(1) }}
+      {% endif %}
+    manual_sp_override_active: >-
+      {{ is_state('input_boolean.ac_manual_setpoint_override_active','on')
+         and (manual_sp_override_until_ts | float(0)) > as_timestamp(now()) }}
+    cool_sync_should_notify: "{{ cool_sync_push_enabled\n   and (not manual_sp_override_active)\n   and cool_sync_delta is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (\n     cool_sync_recent_auto_on\n     or last_cool_sync_notified_sp is none\n     or ((last_cool_sync_notified_sp | float) - (cool_setpoint_effective | float)) | abs >= 0.2\n     or (minutes_since_cool_sync_notify | float(99999)) >= (cool_sync_notify_window_min | float(20))\n   ) }}"
     last_manual_on_ts_raw: '{{ states(''input_datetime.ac_last_manual_on_ts'') }}'
     last_manual_final_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'') }}'
     manual_on_hold_minutes: 12
@@ -4851,6 +4886,24 @@
                and change_matches_last_auto_sp
              )
            ) }}
+      manual_override_candidate: >-
+        {{ last_auto_mode == 'cool'
+           and last_auto_action == 'auto_on'
+           and new_sp_num is not none
+           and prev_sp_num is not none
+           and ((((new_sp_num | float) - (prev_sp_num | float)) | abs) >= 0.09)
+           and last_auto_setpoint is not none
+           and ((((new_sp_num | float) - (last_auto_setpoint | float)) | abs) >= 0.2)
+           and (minutes_since_last_auto | float(99999)) <= 12
+           and (not change_matches_last_auto_sp)
+           and (not change_matches_cycle_step_sp) }}
+      manual_override_until_ts: >-
+        {{ (as_timestamp(now()) + ((states('input_number.ac_manual_setpoint_override_hold_minutes') | float(12)) * 60)) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+      manual_override_notify_message: >-
+        SP respetado en este ciclo | manual={{ new_sp_num if new_sp_num is not none else 'na' }}
+        | auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }}
+        | pausa_sync={{ states('input_number.ac_manual_setpoint_override_hold_minutes') | float(12) }} min
+        | aprendizaje={{ 'sí' if apply_feedback else 'pendiente' }}
       ignore_reason: >-
         {% if prev_sp_num is none or new_sp_num is none or (((new_sp_num | float) - (prev_sp_num | float)) | abs) < 0.09 %}
           sin_cambio_real
@@ -4858,7 +4911,7 @@
           bandera_auto_activa
         {# El equipo/integración puede reflejar con retraso o cuantización el setpoint aplicado.
            Esos ecos/reportes tardíos no deben alimentar aprendizaje manual automáticamente. #}
-        {% elif auto_setpoint_recent and last_change_origin_normalized in ['auto_on','auto_off','manual_sp_feedback','cool_cycle_step','cool_sp_sync'] %}
+        {% elif auto_setpoint_recent and (not manual_override_candidate) and last_change_origin_normalized in ['auto_on','auto_off','manual_sp_feedback','cool_cycle_step','cool_sp_sync'] %}
           post_auto_sync
         {% elif auto_setpoint_recent and (minutes_since_last_step | float(99999)) <= 4 and change_matches_cycle_step_sp %}
           setpoint_echo_from_device
@@ -4887,6 +4940,9 @@
         {% else %}ajuste_intermedio
         {% endif %}
       apply_feedback: '{{ ignore_reason == ''none'' and manual_feedback_kind in [''manual_sp_lower_than_auto'',''manual_sp_higher_than_auto''] }}'
+      manual_override_should_activate: '{{ apply_feedback and manual_override_candidate }}'
+      learning_applied_this_cycle: '{{ apply_feedback }}'
+      manual_sp_override_active: '{{ is_state(''input_boolean.ac_manual_setpoint_override_active'',''on'') }}'
       effective_summary_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
       effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (cool_bucket_selected | replace('':'',''_'') ) }}'
       # Dependencia crítica: el aprendizaje avanzado de setpoint toma primero el
@@ -4975,7 +5031,7 @@
         tin={{ tin if tin is not none else 'na' }},tout={{ tout if tout is not none else 'na' }},h={{ hin if hin is not none else 'na' }},hr={{ now().strftime('%H:%M') }},p={{ '1' if presence_effective else '0' }},m={{ runtime_min }}
       audit_message: >-
         {% if apply_feedback %}
-          sp_manual_feedback | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}
+          sp_manual_feedback | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}{% if manual_override_should_activate %} | ciclo_actual=manual_override{% endif %}
         {% else %}
           sp_manual_feedback_ignored | SPsrc={{ 'device_echo' if ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] else 'manual_candidate' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | reason={{ ignore_reason if ignore_reason != 'none' else effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}
         {% endif %}
@@ -4987,8 +5043,27 @@
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
-          value: manual_sp_feedback
+          value: '{{ ''manual_override'' if manual_override_should_activate else ''manual_sp_feedback'' }}'
         service: input_text.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ manual_override_should_activate }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_manual_setpoint_override_active
+            action: input_boolean.turn_on
+          - target:
+              entity_id: input_datetime.ac_manual_setpoint_override_until
+            data:
+              datetime: '{{ manual_override_until_ts }}'
+            action: input_datetime.set_datetime
+          - target:
+              entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+            data:
+              value: '{{ new_sp_num if new_sp_num is not none else 0 }}'
+            action: input_number.set_value
+        default: []
       - target:
           entity_id: input_text.ac_last_manual_learning_type
         data:
@@ -5031,14 +5106,28 @@
           message: '{{ audit_message }}'
           entity_id: '{{ climate_ent }}'
       - data:
-          title: AC feedback SP
-          message: '{{ audit_message }}'
+          title: '{{ ''AC SP respetado'' if manual_override_should_activate else ''AC feedback SP'' }}'
+          message: >-
+            {% if manual_override_should_activate %}
+              {{ manual_override_notify_message }}{% if learning_applied_this_cycle %} || SP aprendido para próxima vez | {{ audit_message }}{% endif %}
+            {% else %}
+              SP aprendido para próxima vez | {{ audit_message }}
+            {% endif %}
           data:
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
     default:
     - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ manual_sp_override_active }}'
+        sequence:
+        - target:
+            entity_id: input_text.ac_last_change_origin
+          data:
+            value: manual_override
+          service: input_text.set_value
       - conditions:
         - condition: template
           value_template: "{{ ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] }}"
@@ -5084,6 +5173,11 @@
       last_step_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_last_step_at'') }}'
       start_temp: '{{ states(''input_number.ac_cool_cycle_start_tin'') | float(none) }}'
       current_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(states(''input_number.ac_cool_cycle_last_applied_setpoint'') | float(0)) }}'
+      manual_sp_override_active: '{{ is_state(''input_boolean.ac_manual_setpoint_override_active'',''on'') }}'
+      manual_sp_override_until_raw: '{{ states(''input_datetime.ac_manual_setpoint_override_until'') }}'
+      manual_sp_override_minutes_left: >-
+        {% if manual_sp_override_until_raw in ['unknown','unavailable','none',''] %}0
+        {% else %}{{ [((as_timestamp(manual_sp_override_until_raw) - as_timestamp(now())) / 60), 0] | max | round(1) }}{% endif %}
       window_min: '{{ states(''input_number.ac_cool_adaptive_window_minutes'') | float(30) }}'
       initial_delay_min: '{{ states(''input_number.ac_cool_adaptive_initial_delay_minutes'') | float(30) }}'
       step_size: '{{ states(''input_number.ac_cool_adaptive_step'') | float(0.5) }}'
@@ -5124,6 +5218,19 @@
       - stop: Ciclo adaptativo limpiado por cambio de modo.
     - conditions:
       - condition: template
+        value_template: '{{ manual_sp_override_active and (manual_sp_override_minutes_left | float(0)) <= 0 }}'
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_manual_setpoint_override_active
+        action: input_boolean.turn_off
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            manual_override_expirado | ciclo_adaptativo_rehabilitado
+          entity_id: '{{ climate_ent }}'
+    - conditions:
+      - condition: template
         value_template: '{{ cycle_active and cur_mode == ''cool'' and remaining_delta is not none and (remaining_delta | float(999)) <= (close_enough_delta | float(0.2)) }}'
       sequence:
       - target:
@@ -5144,7 +5251,22 @@
           entity_id: '{{ climate_ent }}'
     - conditions:
       - condition: template
-        value_template: '{{ cycle_active and cur_mode == ''cool'' and insufficient_progress and can_reduce }}'
+        value_template: '{{ cycle_active and cur_mode == ''cool'' and manual_sp_override_active }}'
+      sequence:
+      - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: manual_override
+        service: input_text.set_value
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_adaptive_suspendido | origen=manual_override | min_restantes={{ manual_sp_override_minutes_left }} | sp_actual={{ current_setpoint }}
+          entity_id: '{{ climate_ent }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ cycle_active and cur_mode == ''cool'' and insufficient_progress and can_reduce and (not manual_sp_override_active) }}'
       sequence:
       - target:
           entity_id: climate.0200009211c7_climate
