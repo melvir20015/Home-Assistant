@@ -1496,13 +1496,15 @@
             if (tout|float) < 17 else (cool_stop_threshold|float) }} | R={{ ''cool_emergency_off''
             if (tout|float) < 17 else ''cool_off/cool_sensor_off'' }} | Source={{
             cool_off_reason | trim }} | TriggerSensor={{ cool_sensor_off_name if (cool_off_reason
-            | trim) != ''Promedio'' else ''Promedio'' }} | Ctx={{ ''Emerg'' if (tout|float)
-            < 17 else ''Normal'' }} | On={{ cool_on }} | Off={{ cool_off }} | Bedroom={{
-            bedroom_temp }} | Cold={{ cold_sensor_name }}={{ cold_temp }} | SensorOFF={{
-            cool_sensor_off_name }}={{ cool_sensor_off_temp }}<= {{ cool_sensor_off_trigger
-            if (tout|float) >= 17 else ''n/a'' }} | EOn={{ cool_emergency_on }} EOff={{
-            cool_emergency_off }} | Set={{ cool_setpoint_emerg if (tout|float) < 17
-            else cool_setpoint_normal }}'
+            | trim) != ''Promedio'' else ''Promedio'' }} | SensorDelta={{ sensor_temp_delta
+            }} | SensorColdEnabled={{ ''ON'' if cool_sensor_off_enabled else ''OFF''
+            }} | Ctx={{ ''Emerg'' if (tout|float) < 17 else ''Normal'' }} | On={{
+            cool_on }} | Off={{ cool_off }} | Bedroom={{ bedroom_temp }} | Cold={{
+            cold_sensor_name }}={{ cold_temp }} | SensorOFF={{ cool_sensor_off_name
+            }}={{ cool_sensor_off_temp }}<= {{ cool_sensor_off_trigger if (tout|float)
+            >= 17 else ''n/a'' }} | EOn={{ cool_emergency_on }} EOff={{ cool_emergency_off
+            }} | LastUseful={{ last_effective_setpoint }} | Set={{ cool_setpoint_emerg
+            if (tout|float) < 17 else cool_setpoint_normal }}'
         action: '{{ notify_service }}'
     - conditions:
       - condition: template
@@ -1571,17 +1573,17 @@
           \    or\n     (\n       (tout|float) >= 17\n       and cool_on is not none\n
           \      and (tin|float) >= (cool_on|float)\n     )\n   )\n   and (not locked
           or last_mode_no_fan == 'cool' or last_mode_no_fan not in ['cool','heat'])\n
-          and (not night_bootstrap_in_progress)\n   and ((minutes_since_last_off |
-          float(99999)) >= cool_bootstrap_short_cycle_guard_min)\n}}"
+          and (not night_ramp_in_progress)\n   and ((minutes_since_last_off | float(99999))
+          >= cool_ramp_short_cycle_guard_min)\n}}"
       sequence:
       - variables:
           cool_context: "{{ 'emergency' if ((tout|float) < 17) else 'normal' }}"
           cool_stop_threshold_selected: "{{ cool_emergency_off if ((tout|float) <
             17) else cool_stop_threshold }}"
-          cool_bootstrap_reference_selected: "{{ cool_setpoint_emerg if ((tout|float)
-            < 17) else cool_bootstrap_reference }}"
-          cool_bootstrap_initial_setpoint_selected: "{{ cool_setpoint_emerg if ((tout|float)
-            < 17) else cool_bootstrap_initial_setpoint }}"
+          cool_initial_setpoint_selected: "{{ cool_setpoint_emerg if ((tout|float)
+            < 17) else cool_ramp_initial_setpoint }}"
+          cool_learning_reference_selected: "{{ cool_setpoint_emerg if ((tout|float)
+            < 17) else cool_last_useful_setpoint }}"
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_on
@@ -1604,12 +1606,12 @@
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
-          value: cool_night_bootstrap_start
+          value: cool_night_ramp_start
         service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
-          value: bootstrap_start
+          value: ramp_start
         service: input_text.set_value
       - target:
           entity_id: input_text.ac_last_change_origin
@@ -1629,7 +1631,7 @@
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
-          value: '{{ cool_bootstrap_initial_setpoint_selected | float }}'
+          value: '{{ cool_initial_setpoint_selected | float }}'
         action: input_number.set_value
       - target:
           entity_id: '{{ climate_ent }}'
@@ -1639,7 +1641,7 @@
       - target:
           entity_id: '{{ climate_ent }}'
         data:
-          temperature: '{{ cool_bootstrap_initial_setpoint_selected }}'
+          temperature: '{{ cool_initial_setpoint_selected }}'
         action: climate.set_temperature
       - choose:
         - conditions:
@@ -1657,19 +1659,16 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_bootstrap_start | SPsrc=bootstrap | ctx={{ cool_context }} | stop={{ cool_stop_threshold_selected
-            }} | base={{ cool_bootstrap_reference_selected }} | init={{ cool_bootstrap_initial_setpoint_selected
-            }} | power_entity={{ ac_power_entity }} | threshold={{ ac_power_condenser_on_threshold
-            }} | fan_only_max={{ ac_power_fan_only_max }} | max_search_min={{ cool_bootstrap_max_search_min
-            }} | power_available={{ ac_power_sensor_available }}
+            cool_night_ramp_start | ctx={{ cool_context }} | init={{ cool_initial_setpoint_selected
+            }} | stop={{ cool_stop_threshold_selected }} | learn_ref={{ cool_learning_reference_selected
+            }} | wait_initial={{ cool_ramp_initial_wait_min }}m | wait_step={{ cool_ramp_followup_wait_min
+            }}m
           entity_id: '{{ climate_ent }}'
       - variables:
-          cool_push_kind: on
           cool_push_reason: >-
             {{ 'Mot=auto emergencia' if cool_context == 'emergency' else 'Mot=auto umbral' }}
-          cool_push_summary: 'Bootstrap | Ctx={{ cool_context | title }} | Init={{ cool_bootstrap_initial_setpoint_selected }} | Stop={{ cool_stop_threshold_selected }}'
-          # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
-          cool_mobile_title_local: 'Cool↑'
+          cool_push_summary: 'Rampa térmica | Init={{ cool_initial_setpoint_selected }} | Espera={{ cool_ramp_initial_wait_min }}m/{{ cool_ramp_followup_wait_min }}m | Stop={{ cool_stop_threshold_selected }} | Learn={{ cool_learning_reference_selected }}'
+          cool_mobile_title_local: Cool noche
           cool_mobile_message_local: >-
             {% set reason = cool_push_reason | default('', true) | trim %}
             {% set summary = cool_push_summary | default('', true) | trim %}
@@ -1681,200 +1680,45 @@
             ttl: 0
             priority: high
         action: '{{ notify_service }}'
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ not ac_power_sensor_available }}'
+      - repeat:
           sequence:
-          # Sin push intencional: el bootstrap ya notificó el arranque y aquí sólo
-          # se registra que no hubo telemetría suficiente para confirmar compresor.
-          - target:
-              entity_id: input_text.ac_last_auto_branch
-            data:
-              value: cool_night_bootstrap_no_power_sensor
-            service: input_text.set_value
-          - target:
-              entity_id: input_text.ac_last_auto_action
-            data:
-              value: bootstrap_sensor_missing
-            service: input_text.set_value
-          - action: logbook.log
-            data:
-              name: AC Auto Trace
-              message: >-
-                cool_bootstrap_skipped | reason=power_sensor_missing | entity={{ ac_power_entity
-                }}
-              entity_id: '{{ climate_ent }}'
-        default:
-        - repeat:
-            count: '{{ cool_bootstrap_max_reductions + 1 }}'
-            sequence:
-            - delay: '{{ ''00:05:00'' if repeat.index == 1 else ''00:01:00'' }}'
-            - variables:
-                loop_setpoint: '{{ state_attr(climate_ent, ''temperature'') | float(cool_bootstrap_initial_setpoint_selected)
-                  }}'
-                loop_power: '{{ states(ac_power_entity) | float(0) }}'
-                loop_condenser_active: '{{ ac_power_sensor_available and (loop_power
-                  | float(0)) > (ac_power_fan_only_max | float(0)) and (loop_power
-                  | float(0)) >= (ac_power_condenser_on_threshold | float(0)) }}'
-                loop_can_reduce: '{{ (loop_setpoint | float(99)) > (cool_bootstrap_min_setpoint
-                  | float(0)) and repeat.index <= cool_bootstrap_max_reductions }}'
-                loop_next_setpoint: '{{ [((loop_setpoint | float) - cool_bootstrap_step),
-                  cool_bootstrap_min_setpoint] | max | round(1) }}'
-                loop_abort_presence: '{{ not presence_ok }}'
-                loop_abort_temp: '{{ tin is not none and (tin | float) <= (cool_stop_threshold_selected
-                  | float) }}'
-            - choose:
-              - conditions:
-                - condition: template
-                  value_template: '{{ loop_condenser_active }}'
-                sequence:
-                - target:
-                    entity_id: input_number.ac_night_cool_last_effective_setpoint
-                  data:
-                    value: '{{ loop_setpoint }}'
-                  action: input_number.set_value
-                - target:
-                    entity_id: input_datetime.ac_night_cool_last_effective_ts
-                  data:
-                    datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-                  action: input_datetime.set_datetime
-                - target:
-                    entity_id: input_number.ac_last_auto_setpoint
-                  data:
-                    value: '{{ loop_setpoint }}'
-                  action: input_number.set_value
-                - target:
-                    entity_id: input_text.ac_last_auto_branch
-                  data:
-                    value: cool_night_bootstrap_success
-                  service: input_text.set_value
-                - target:
-                    entity_id: input_text.ac_last_auto_action
-                  data:
-                    value: bootstrap_success
-                  service: input_text.set_value
-                - action: logbook.log
-                  data:
-                    name: AC Auto Trace
-                    message: >-
-                      cool_bootstrap_success | SPsrc=bootstrap | ctx={{ cool_context }} | set={{ loop_setpoint
-                      }} | power={{ loop_power }} | threshold={{ ac_power_condenser_on_threshold
-                      }} | steps={{ repeat.index - 1 }}
-                    entity_id: '{{ climate_ent }}'
-                - variables:
-                    cool_push_kind: on
-                    cool_push_reason: >-
-                      {{ 'Mot=auto emergencia' if cool_context == 'emergency' else 'Mot=auto umbral' }}
-                    cool_push_summary: 'Bootstrap OK | Ctx={{ cool_context | title }} | Final={{ loop_setpoint }} | Steps={{ repeat.index - 1 }}'
-                    # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
-                    cool_mobile_title_local: 'Cool↑'
-                    cool_mobile_message_local: >-
-                      {% set reason = cool_push_reason | default('', true) | trim %}
-                      {% set summary = cool_push_summary | default('', true) | trim %}
-                      {{ (reason if reason else 'Mot=sin detalle') ~ ' | ' ~ (summary if summary else 'Sin detalle') }}
-                - data:
-                    title: '{{ cool_mobile_title_local }}'
-                    message: '{{ cool_mobile_message_local }}'
-                    data:
-                      ttl: 0
-                      priority: high
-                  action: '{{ notify_service }}'
-                - target:
-                    entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-                  action: input_boolean.turn_off
-                - target:
-                    entity_id: input_boolean.ac_on_por_automatizacion
-                  action: input_boolean.turn_off
-                - stop: Bootstrap completado.
-              - conditions:
-                - condition: template
-                  value_template: '{{ loop_abort_presence or loop_abort_temp }}'
-                sequence:
-                # Sin push intencional: evita ruido en reducciones/abortos internos
-                # del bootstrap; la ruta relevante para móvil es el arranque/éxito.
-                - target:
-                    entity_id: '{{ climate_ent }}'
-                  data:
-                    hvac_mode: 'off'
-                  action: climate.set_hvac_mode
-                - target:
-                    entity_id: input_text.ac_last_auto_branch
-                  data:
-                    value: cool_night_bootstrap_aborted
-                  service: input_text.set_value
-                - target:
-                    entity_id: input_text.ac_last_auto_action
-                  data:
-                    value: bootstrap_abort
-                  service: input_text.set_value
-                - action: logbook.log
-                  data:
-                    name: AC Auto Trace
-                    message: >-
-                      cool_bootstrap_abort | presence={{ loop_abort_presence }} | temp_reached={{
-                      loop_abort_temp }} | stop={{ cool_stop_threshold_selected }} |
-                      set={{ loop_setpoint }} | power={{ loop_power }}
-                    entity_id: '{{ climate_ent }}'
-                - target:
-                    entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-                  action: input_boolean.turn_off
-                - target:
-                    entity_id: input_boolean.ac_on_por_automatizacion
-                  action: input_boolean.turn_off
-                - stop: Bootstrap abortado.
-              - conditions:
-                - condition: template
-                  value_template: '{{ loop_can_reduce }}'
-                sequence:
-                - target:
-                    entity_id: '{{ climate_ent }}'
-                  data:
-                    temperature: '{{ loop_next_setpoint }}'
-                  action: climate.set_temperature
-                - target:
-                    entity_id: input_number.ac_last_auto_setpoint
-                  data:
-                    value: '{{ loop_next_setpoint }}'
-                  action: input_number.set_value
-                - target:
-                    entity_id: input_text.ac_last_auto_branch
-                  data:
-                    value: cool_night_bootstrap_step
-                  service: input_text.set_value
-                - target:
-                    entity_id: input_text.ac_last_auto_action
-                  data:
-                    value: bootstrap_step
-                  service: input_text.set_value
-                - action: logbook.log
-                  data:
-                    name: AC Auto Trace
-                    message: >-
-                      cool_bootstrap_step | SPsrc=bootstrap | idx={{ repeat.index }} | from={{ loop_setpoint
-                      }} | to={{ loop_next_setpoint }} | power={{ loop_power }} | threshold={{
-                      ac_power_condenser_on_threshold }}
-                    entity_id: '{{ climate_ent }}'
-              default:
-              # Sin push intencional: agotó la búsqueda del bootstrap sin validar
-              # compresor; queda sólo en trazas para diagnóstico.
+          - variables:
+              ramp_wait_minutes: '{{ cool_ramp_initial_wait_min if repeat.index ==
+                1 else cool_ramp_followup_wait_min }}'
+          - delay:
+              minutes: '{{ ramp_wait_minutes | int }}'
+          - variables:
+              loop_hvac_mode: '{{ states(climate_ent) }}'
+              loop_setpoint: '{{ state_attr(climate_ent, ''temperature'') | float(cool_initial_setpoint_selected)
+                }}'
+              loop_cycle_active: "{{ loop_hvac_mode == 'cool' and presence_ok and tin
+                is not none and cool_stop_threshold_selected is not none and (tin|float)
+                > (cool_stop_threshold_selected|float) }}"
+              loop_can_reduce: '{{ loop_cycle_active and (loop_setpoint | float(99))
+                > (cool_ramp_min_setpoint | float(0)) }}'
+              loop_next_setpoint: '{{ [((loop_setpoint | float) - cool_ramp_step),
+                cool_ramp_min_setpoint] | max | round(1) }}'
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ not presence_ok }}'
+              sequence:
               - target:
                   entity_id: input_text.ac_last_auto_branch
                 data:
-                  value: cool_night_bootstrap_exhausted
+                  value: cool_night_ramp_presence_exit
                 service: input_text.set_value
               - target:
                   entity_id: input_text.ac_last_auto_action
                 data:
-                  value: bootstrap_exhausted
+                  value: ramp_presence_exit
                 service: input_text.set_value
               - action: logbook.log
                 data:
                   name: AC Auto Trace
                   message: >-
-                    cool_bootstrap_exhausted | ctx={{ cool_context }} | set={{ loop_setpoint
-                    }} | power={{ loop_power }} | min={{ cool_bootstrap_min_setpoint
-                    }} | max_steps={{ cool_bootstrap_max_reductions }}
+                    cool_night_ramp_presence_exit | idx={{ repeat.index }} | set={{
+                    loop_setpoint }}
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
@@ -1882,7 +1726,134 @@
               - target:
                   entity_id: input_boolean.ac_on_por_automatizacion
                 action: input_boolean.turn_off
-              - stop: Bootstrap sin condensador.
+              - stop: Rampa detenida por pérdida de presencia.
+            - conditions:
+              - condition: template
+                value_template: '{{ loop_hvac_mode != ''cool'' }}'
+              sequence:
+              - target:
+                  entity_id: input_text.ac_last_auto_branch
+                data:
+                  value: cool_night_ramp_hvac_exit
+                service: input_text.set_value
+              - target:
+                  entity_id: input_text.ac_last_auto_action
+                data:
+                  value: ramp_hvac_exit
+                service: input_text.set_value
+              - action: logbook.log
+                data:
+                  name: AC Auto Trace
+                  message: >-
+                    cool_night_ramp_hvac_exit | idx={{ repeat.index }} | hvac={{ loop_hvac_mode
+                    }} | set={{ loop_setpoint }}
+                  entity_id: '{{ climate_ent }}'
+              - target:
+                  entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
+                action: input_boolean.turn_off
+              - target:
+                  entity_id: input_boolean.ac_on_por_automatizacion
+                action: input_boolean.turn_off
+              - stop: Rampa detenida porque el equipo salió de cool.
+            - conditions:
+              - condition: template
+                value_template: '{{ tin is not none and cool_stop_threshold_selected
+                  is not none and (tin|float) <= (cool_stop_threshold_selected|float)
+                  }}'
+              sequence:
+              - target:
+                  entity_id: input_number.ac_night_cool_last_effective_setpoint
+                data:
+                  value: '{{ loop_setpoint }}'
+                action: input_number.set_value
+              - target:
+                  entity_id: input_datetime.ac_night_cool_last_effective_ts
+                data:
+                  datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+                action: input_datetime.set_datetime
+              - target:
+                  entity_id: input_number.ac_last_auto_setpoint
+                data:
+                  value: '{{ loop_setpoint }}'
+                action: input_number.set_value
+              - target:
+                  entity_id: input_text.ac_last_auto_branch
+                data:
+                  value: cool_night_ramp_ready_for_comfort_off
+                service: input_text.set_value
+              - target:
+                  entity_id: input_text.ac_last_auto_action
+                data:
+                  value: ramp_ready_for_off
+                service: input_text.set_value
+              - action: logbook.log
+                data:
+                  name: AC Auto Trace
+                  message: >-
+                    cool_night_ramp_ready_for_comfort_off | idx={{ repeat.index }}
+                    | useful_set={{ loop_setpoint }} | tin={{ tin }} | stop={{ cool_stop_threshold_selected
+                    }}
+                  entity_id: '{{ climate_ent }}'
+              - target:
+                  entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
+                action: input_boolean.turn_off
+              - target:
+                  entity_id: input_boolean.ac_on_por_automatizacion
+                action: input_boolean.turn_off
+              - stop: Rampa detenida; sigue apagado normal por confort.
+            - conditions:
+              - condition: template
+                value_template: '{{ loop_can_reduce }}'
+              sequence:
+              - target:
+                  entity_id: '{{ climate_ent }}'
+                data:
+                  temperature: '{{ loop_next_setpoint }}'
+                action: climate.set_temperature
+              - target:
+                  entity_id: input_number.ac_last_auto_setpoint
+                data:
+                  value: '{{ loop_next_setpoint }}'
+                action: input_number.set_value
+              - target:
+                  entity_id: input_text.ac_last_auto_branch
+                data:
+                  value: cool_night_ramp_step
+                service: input_text.set_value
+              - target:
+                  entity_id: input_text.ac_last_auto_action
+                data:
+                  value: ramp_step
+                service: input_text.set_value
+              - action: logbook.log
+                data:
+                  name: AC Auto Trace
+                  message: >-
+                    cool_night_ramp_step | idx={{ repeat.index }} | wait={{ ramp_wait_minutes
+                    }}m | from={{ loop_setpoint }} | to={{ loop_next_setpoint }} |
+                    tin={{ tin }} | stop={{ cool_stop_threshold_selected }}
+                  entity_id: '{{ climate_ent }}'
+            default:
+            - target:
+                entity_id: input_text.ac_last_auto_branch
+              data:
+                value: cool_night_ramp_hold
+              service: input_text.set_value
+            - target:
+                entity_id: input_text.ac_last_auto_action
+              data:
+                value: ramp_hold
+              service: input_text.set_value
+            - action: logbook.log
+              data:
+                name: AC Auto Trace
+                message: >-
+                  cool_night_ramp_hold | idx={{ repeat.index }} | set={{ loop_setpoint
+                  }} | tin={{ tin }} | stop={{ cool_stop_threshold_selected }}
+                entity_id: '{{ climate_ent }}'
+          until:
+          - condition: template
+            value_template: '{{ false }}'
       - target:
           entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
         action: input_boolean.turn_off
@@ -1937,23 +1908,24 @@
     locked: '{{ is_state(''input_boolean.ac_bloqueo_cambio_modo_2h'',''on'') }}'
     last_mode_no_fan: '{{ states(''input_select.ac_ultimo_modo_no_fan'') }}'
     presence_ok: '{{ is_state(''binary_sensor.presencia_ok_estable'',''on'') }}'
-    ac_power_entity: sensor.ac_power
-    ac_power_raw: '{{ states(ac_power_entity) }}'
-    ac_power_sensor_available: '{{ ac_power_raw not in [''unknown'',''unavailable'',''none'',''None'',''''] }}'
-    ac_power_condenser_on_threshold: 250
-    ac_power_fan_only_max: 120
-    night_bootstrap_in_progress: '{{ is_state(''input_boolean.ac_night_cool_bootstrap_in_progress'',''on'') }}'
+    sensor_temp_delta: "{% if t1 is not none and t2 is not none %}\n  {{ ((t1 - t2)
+      | abs) | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    cool_sensor_off_delta_max: 1.0
+    cool_sensor_off_enabled: "{% if sensor_temp_delta is none %}\n  {{ true }}\n{%
+      else %}\n  {{ (sensor_temp_delta | float(99)) <= (cool_sensor_off_delta_max
+      | float(1)) }}\n{% endif %}"
+    night_ramp_in_progress: '{{ is_state(''input_boolean.ac_night_cool_bootstrap_in_progress'',''on'') }}'
     last_off_ts: '{{ state_attr(''input_datetime.ac_ultimo_apagado'', ''timestamp'') | float(0) }}'
     minutes_since_last_off: '{{ ((as_timestamp(now()) - last_off_ts) / 60) if last_off_ts else 99999 }}'
     last_effective_ts: '{{ state_attr(''input_datetime.ac_night_cool_last_effective_ts'', ''timestamp'') | float(0) }}'
     hours_since_last_effective: '{{ ((as_timestamp(now()) - last_effective_ts) / 3600) if last_effective_ts else 99999 }}'
     last_effective_setpoint: '{{ states(''input_number.ac_night_cool_last_effective_setpoint'') | float(none) }}'
-    cool_bootstrap_memory_hours: 72
-    cool_bootstrap_short_cycle_guard_min: 8
-    cool_bootstrap_step: 0.5
-    cool_bootstrap_max_reductions: 4
-    cool_bootstrap_max_search_min: 9
-    cool_bootstrap_min_setpoint: 20
+    cool_last_useful_memory_hours: 72
+    cool_ramp_short_cycle_guard_min: 8
+    cool_ramp_step: 0.5
+    cool_ramp_initial_wait_min: 30
+    cool_ramp_followup_wait_min: 10
+    cool_ramp_min_setpoint: 20
     heat_force_off_outdoor: 20
     cool_emergency_outdoor_min: 8
     cool_emergency_on_base: 24
@@ -1975,24 +1947,23 @@
       in [11,12,1,2,3] else 21.3 if (month in [6,7,8,9] and tout>=30) else 22.5 }}\n{%
       endif %}"
     cool_stop_threshold: '{{ cool_off }}'
-    cool_bootstrap_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none
-      }}\n{% elif month in [11,12,1,2,3] %}\n  {{ 23.5 }}\n{% else %}\n  {{ max((cool_stop_threshold
-      - 1), cool_bootstrap_min_setpoint) | round(1) }}\n{% endif %}"
-    cool_bootstrap_reference: "{% set memory_valid = last_effective_setpoint is not
-      none and (hours_since_last_effective | float(99999)) <= (cool_bootstrap_memory_hours
-      | float) %}\n{% if cool_bootstrap_base_setpoint is none %}\n  {{ none }}\n{%
-      elif memory_valid %}\n  {{ (((cool_bootstrap_base_setpoint | float) * 0.6)
-      + ((last_effective_setpoint | float) * 0.4)) | round(1) }}\n{% else %}\n  {{
-      cool_bootstrap_base_setpoint | float | round(1) }}\n{% endif %}"
-    # El bootstrap nocturno separa el umbral de confort (`cool_stop_threshold`) del
-    # setpoint agresivo de arranque (`cool_bootstrap_*`). El objetivo térmico para
-    # apagar no cambia; sólo se baja temporalmente el setpoint si el compresor aún
-    # no entra realmente en operación.
-    cool_bootstrap_initial_setpoint: "{% if cool_bootstrap_reference is none or cool_stop_threshold
-      is none %}\n  {{ none }}\n{% else %}\n  {% set preferred = [cool_bootstrap_reference
-      | float, (cool_stop_threshold | float) - 1.0] | min %}\n  {{ [preferred, cool_bootstrap_min_setpoint]
+    cool_last_useful_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none
+      }}\n{% else %}\n  {{ [((cool_stop_threshold | float) - 0.5), cool_ramp_min_setpoint]
       | max | round(1) }}\n{% endif %}"
-    cool_setpoint_normal: '{{ cool_bootstrap_reference }}'
+    cool_last_useful_setpoint: "{% set memory_valid = last_effective_setpoint is not
+      none and (hours_since_last_effective | float(99999)) <= (cool_last_useful_memory_hours
+      | float) %}\n{% if cool_last_useful_base_setpoint is none %}\n  {{ none }}\n{%
+      elif memory_valid %}\n  {{ (((cool_last_useful_base_setpoint | float) * 0.7)
+      + ((last_effective_setpoint | float) * 0.3)) | round(1) }}\n{% else %}\n  {{
+      cool_last_useful_base_setpoint | float | round(1) }}\n{% endif %}"
+    # La rampa nocturna conserva la banda `cool_on`/`cool_off` para decidir el ciclo.
+    # El setpoint inicial arranca en `cool_off - 0.5` y la memoria guarda el último
+    # setpoint útil aplicado justo antes del apagado por confort para reutilizarlo
+    # sólo como aprendizaje contextual, sin depender de consumo ni condensador.
+    cool_ramp_initial_setpoint: "{% if cool_last_useful_base_setpoint is none %}\n
+      \  {{ none }}\n{% else %}\n  {{ cool_last_useful_base_setpoint | float | round(1)
+      }}\n{% endif %}"
+    cool_setpoint_normal: '{{ cool_last_useful_setpoint }}'
     # En meses templados se conserva un corte protector explícito de recámara a
     # 23.2 °C (0.2 °C arriba del apagado por promedio de 23.0 °C) para seguir
     # priorizando confort local / sensor más frío sin perder la nueva histéresis.
@@ -2007,10 +1978,11 @@
       \  none\n{% elif (tout|float) < 17 and (tout|float) >= (cool_emergency_outdoor_min|float)
       and (cool_emergency_off is not none) and (tin|float) <= (cool_emergency_off|float)
       %}\n  Promedio\n{% elif (tout|float) >= 17 and (cool_off is not none) %}\n
-      \ {% if (tin|float) <= (cool_off|float) %}\n    Promedio\n  {% elif (cool_sensor_off_temp
-      is not none) and (cool_sensor_off_trigger is not none) and ((cool_sensor_off_temp|float)
-      <= (cool_sensor_off_trigger|float)) %}\n    {{ cool_sensor_off_name }}\n  {%
-      else %}\n    none\n  {% endif %}\n{% else %}\n  none\n{% endif %}"
+      \ {% if (tin|float) <= (cool_off|float) %}\n    Promedio\n  {% elif cool_sensor_off_enabled
+      and (cool_sensor_off_temp is not none) and (cool_sensor_off_trigger is not
+      none) and ((cool_sensor_off_temp|float) <= (cool_sensor_off_trigger|float))
+      %}\n    {{ cool_sensor_off_name }}\n  {% else %}\n    none\n  {% endif %}\n{%
+      else %}\n  none\n{% endif %}"
     cool_emergency_active: "{{ tout is not none and tin is not none\n   and (tout|float)
       < 17\n   and (tout|float) >= (cool_emergency_outdoor_min|float)\n   and (\n
       \    (tin|float) >= (cool_emergency_on|float)\n     or (cur_mode == 'cool' and
@@ -4876,7 +4848,7 @@
         {{ last_auto_mode == 'cool'
            and (
              (
-               last_auto_action in ['auto_on','bootstrap_start']
+                last_auto_action in ['auto_on','ramp_start']
                and (minutes_since_last_auto | float(99999)) <= 4
                and change_matches_last_auto_sp
              )

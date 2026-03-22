@@ -1,63 +1,109 @@
-# Bootstrap nocturno de COOL basado en consumo real
+# Rampa térmica nocturna de COOL y aprendizaje contextual
+
+> Nota: este archivo conserva el nombre histórico `ac-noche-bootstrap-consumo.md`
+> sólo para no romper referencias existentes. Su contenido ya no describe un
+> bootstrap por consumo ni validación de condensador.
 
 ## Objetivo
 
-La automatización `AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones` ahora separa dos conceptos distintos:
+La automatización `AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones`
+mantiene la banda de control nocturna con dos umbrales:
 
-- `cool_stop_threshold`: umbral térmico de confort usado para apagar `cool`.
-- `cool_bootstrap_*`: setpoints temporales usados sólo para conseguir que el condensador realmente arranque cuando el equipo queda en una zona donde sólo ventila.
+- `cool_on`: temperatura promedio que habilita el encendido de `cool`.
+- `cool_off`: temperatura promedio que dispara el apagado por confort.
 
-El objetivo de confort **no cambia**. El bootstrap sólo baja el setpoint de arranque en escalones controlados mientras el compresor todavía no muestra consumo suficiente.
+Cuando la rama nocturna entra en `cool`, el setpoint inicial normal ya no busca
+“forzar” el compresor ni validar consumo. Ahora arranca directamente en
+`cool_off - 0.5 °C`, respetando un mínimo de seguridad (`cool_ramp_min_setpoint`).
 
-## Telemetría y helpers nuevos
+## Secuencia de rampa térmica
 
-Se agregaron estos helpers persistentes:
+Para el contexto normal (`tout >= 17 °C`), la secuencia quedó así:
 
-- `input_boolean.ac_night_cool_bootstrap_in_progress`: evita reentradas y reintentos simultáneos.
-- `input_number.ac_night_cool_last_effective_setpoint`: guarda el último setpoint nocturno que sí logró encender el condensador.
-- `input_datetime.ac_night_cool_last_effective_ts`: timestamp del setpoint efectivo guardado.
-- `input_datetime.ac_night_cool_last_bootstrap_ts`: timestamp del último inicio de bootstrap nocturno.
+1. Enciende `cool` con fan `Low`.
+2. Aplica el setpoint inicial `cool_off - 0.5 °C`.
+3. Espera `30` minutos (`cool_ramp_initial_wait_min`).
+4. Si el equipo sigue en `cool` y la temperatura promedio `tin` aún está por arriba
+   de `cool_off`, baja el setpoint `0.5 °C`.
+5. Repite el paso anterior cada `10` minutos (`cool_ramp_followup_wait_min`) con
+   escalones de `0.5 °C` (`cool_ramp_step`) mientras el ciclo siga activo.
+6. Si `tin <= cool_off`, la rampa se detiene y el apagado se deja a la rama normal
+   de confort, sin nuevos ajustes de setpoint.
 
-Además, la automatización actualiza la telemetría existente:
+En contexto de emergencia por exterior frío (`tout < 17 °C`) se conserva el setpoint
+de emergencia existente (`cool_setpoint_emerg`), pero la telemetría y trazas también
+usan la nueva semántica de rampa.
 
-- `input_number.ac_last_auto_setpoint`
+## Aprendizaje del último setpoint útil
+
+Los helpers persistentes se reutilizan con un significado nuevo:
+
+- `input_number.ac_night_cool_last_effective_setpoint`: guarda el último setpoint
+  aplicado justo antes de que el ciclo llegue al apagado por confort.
+- `input_datetime.ac_night_cool_last_effective_ts`: timestamp de ese último setpoint útil.
+
+Ese valor ya no significa “setpoint que logró arrancar condensador”, sino
+“último setpoint útil del ciclo nocturno antes del apagado confortable”.
+
+La automatización también calcula una referencia suave (`cool_last_useful_setpoint`)
+mezclando:
+
+- `70%` del setpoint base actual (`cool_off - 0.5 °C`), y
+- `30%` del último setpoint útil recordado,
+
+si la memoria tiene menos de `72` horas.
+
+Hoy esa referencia se usa como aprendizaje contextual y telemetría; el arranque
+normal sigue partiendo explícitamente de `cool_off - 0.5 °C`.
+
+## Regla para apagado por sensor más frío
+
+El apagado por el sensor más frío se mantiene sólo cuando ambos sensores están
+suficientemente alineados:
+
+- `sensor_temp_delta = |t1 - t2|`
+- `cool_sensor_off_enabled = sensor_temp_delta <= 1.0 °C`
+
+Entonces:
+
+- si `tin <= cool_off`, el motivo de apagado sigue siendo `Promedio`;
+- si `tin > cool_off` pero el sensor configurado para apagado local ya cayó a su
+  umbral **y** `sensor_temp_delta <= 1.0 °C`, se permite apagar por ese sensor;
+- si el delta supera `1.0 °C`, se ignora el criterio del sensor más frío y sólo
+  manda el promedio.
+
+## Trazas, helpers y mensajes
+
+La rama nocturna actualiza:
+
 - `input_text.ac_last_auto_branch`
 - `input_text.ac_last_auto_action`
-- `input_text.ac_last_change_origin`
-- `input_text.ac_last_auto_mode`
-- `input_text.ac_last_auto_fan`
+- `input_number.ac_last_auto_setpoint`
+- `input_datetime.ac_last_auto_ts`
+- `input_datetime.ac_night_cool_last_bootstrap_ts`
 
-También deja trazas con `logbook.log` y la notificación móvil cuando el bootstrap tiene éxito, aborta o agota el número de escalones.
+Aunque algunos helpers conservan nombres legacy (`*_bootstrap_*`) por compatibilidad,
+las trazas y mensajes ahora reflejan la nueva semántica:
 
-## Detección de condensador
+- `cool_night_ramp_start`
+- `cool_night_ramp_step`
+- `cool_night_ramp_ready_for_comfort_off`
+- `cool_night_ramp_hold`
+- `cool_night_ramp_presence_exit`
+- `cool_night_ramp_hvac_exit`
 
-En el repositorio **no se encontró** una entidad de potencia/energía ya declarada para el aire acondicionado. Las búsquedas por `consumo`, `energia`, `energy`, `power`, `potencia` y `kwh` sólo devolvieron `input_number.tarifa_kwh_usd` y no aparecieron sensores de consumo del AC.
+La notificación móvil de arranque también cambió para describir:
 
-Por eso la automatización quedó parametrizada con:
+- inicio en `cool_off - 0.5 °C`;
+- espera inicial de `30` minutos;
+- pasos de `10` minutos;
+- aprendizaje del último setpoint útil.
 
-- `ac_power_entity: sensor.ac_power`
-- `ac_power_condenser_on_threshold: 250`
-- `ac_power_fan_only_max: 120`
+## Protecciones
 
-Antes de depender operativamente del bootstrap, hay que reemplazar `sensor.ac_power` por la entidad real de potencia del equipo en tu instalación y ajustar los umbrales según la telemetría histórica.
-
-### Criterio operativo sugerido
-
-- `fan_only` debería quedar por debajo de `ac_power_fan_only_max`.
-- `condensador encendido` debería detectarse cuando la potencia supere `ac_power_condenser_on_threshold` después de la espera inicial de 5 minutos o en las verificaciones posteriores de 1 minuto.
-
-## Reglas de aprendizaje / memoria
-
-El bootstrap reutiliza el helper `input_number.ac_night_cool_last_effective_setpoint` como memoria suave:
-
-- si el último valor efectivo tiene menos de `72` horas, se mezcla con el setpoint base en una proporción `60/40`;
-- si ya expiró, se vuelve al cálculo base de la noche;
-- la automatización principal diurna y sus sesgos `ac_bias_cool_on`, `ac_bias_cool_off` y `ac_bias_cool_setpoint` no se modifican desde esta lógica nocturna.
-
-## Protecciones contra microciclos
-
-- No inicia bootstrap si el AC se apagó hace menos de `8` minutos.
+- No inicia un nuevo ciclo si el AC se apagó hace menos de `8` minutos.
 - No reentra si `input_boolean.ac_night_cool_bootstrap_in_progress` ya está en `on`.
-- Aborta si se pierde presencia.
-- Aborta si la temperatura interior ya cayó al `cool_stop_threshold`.
-- Limita la búsqueda a `4` reducciones de `0.5 °C` con un mínimo nocturno de `20 °C`.
+- Se detiene si se pierde presencia.
+- Se detiene si el equipo sale de `cool`.
+- Se detiene en cuanto `tin <= cool_off`, para que el apagado siga el flujo normal
+  de confort sin más reducciones.
