@@ -36,7 +36,7 @@
     minutes: /1
   variables:
     last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
-    minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none',''] %}99999{% else %}{{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw)) / 60) | round(1) }}{% endif %}"
+    minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts = as_timestamp(raw, default=none) %}{{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}{% endif %}"
     on_stuck: '{{ is_state(''input_boolean.ac_on_por_automatizacion'',''on'') and (minutes_since_last_auto | float(99999)) >= 2 }}'
     off_stuck: '{{ is_state(''input_boolean.ac_off_por_automatizacion'',''on'') and (minutes_since_last_auto | float(99999)) >= 10 }}'
   action:
@@ -3291,8 +3291,32 @@
       {% else %}{{ cool_effective_sp_summary_raw }}{% endif %}
     cool_context_learning_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
     cool_effective_sp_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
-    cool_context_learning_entry: '{{ states(cool_context_learning_helper) | float(none) }}'
-    cool_effective_sp_entry: '{{ states(cool_effective_sp_helper) | float(none) }}'
+    # Dependencia crítica: si un helper contextual todavía no cargó tras reinicio,
+    # el resumen `bucket=valor` evita que una rama auto/manual quede sin fallback.
+    cool_context_learning_summary_value: >-
+      {% set raw = cool_learning_summary_note | default('', true) | trim %}
+      {% set prefix = cool_context_bucket ~ '=' %}
+      {% if raw.startswith(prefix) %}
+        {{ raw[len(prefix):] | float(none) }}
+      {% else %}
+        {{ none }}
+      {% endif %}
+    cool_effective_sp_summary_value: >-
+      {% set raw = cool_effective_sp_summary_note | default('', true) | trim %}
+      {% set prefix = cool_context_bucket ~ '=' %}
+      {% if raw.startswith(prefix) %}
+        {{ raw[len(prefix):] | float(none) }}
+      {% else %}
+        {{ none }}
+      {% endif %}
+    cool_context_learning_entry: >-
+      {% set helper_raw = states(cool_context_learning_helper) %}
+      {% set helper_value = helper_raw | float(none) %}
+      {{ helper_value if helper_value is not none else cool_context_learning_summary_value }}
+    cool_effective_sp_entry: >-
+      {% set helper_raw = states(cool_effective_sp_helper) %}
+      {% set helper_value = helper_raw | float(none) %}
+      {{ helper_value if helper_value is not none else cool_effective_sp_summary_value }}
     # Cool deja de aprender una única rama universal.
     # Desde este rediseño el aprendizaje manual se aplica por bucket contextual
     # (`exterior × humedad × franja × presencia`) para no mezclar confort de
@@ -3513,12 +3537,13 @@
         }}'
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'')
         }}'
-      minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
-        %}
+      minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}
+{% set raw_lower = raw | lower %}
+{% if raw_lower in ['unknown','unavailable','none',''] %}
   99999
 {% else %}
-  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
-        / 60) | round(1) }}
+  {% set ts = as_timestamp(raw, default=none) %}
+  {{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}
 {% endif %}"
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 12 }}'
       valid_feedback: "{{ learning_enabled
@@ -3533,6 +3558,14 @@
       last_auto_context_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
       cool_learning_bucket: "{% set raw = last_auto_context_bucket %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  exterior_templado:humedad_normal:day:presencia\n{% else %}\n  {{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0] }}\n{% endif %}"
       cool_learning_bucket_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_learning_bucket | replace('':'',''_'') ) }}'
+      cool_learning_bucket_summary_value: >-
+        {% set raw = cool_learning_summary_raw | default('', true) | trim %}
+        {% set prefix = cool_learning_bucket ~ '=' %}
+        {% if raw.startswith(prefix) %}
+          {{ raw[len(prefix):] | float(none) }}
+        {% else %}
+          {{ none }}
+        {% endif %}
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
         }}'
@@ -3544,7 +3577,10 @@
       # evita mezclar confort de franjas, humedad o calor exterior distintos.
       # Fase heat: se mantiene intacta y se revisará por separado.
       cool_branch_step: 0.25
-      cool_bucket_previous_value: '{{ states(cool_learning_bucket_helper) | float(cur_cool_off_learned) }}'
+      cool_bucket_previous_value: >-
+        {% set helper_raw = states(cool_learning_bucket_helper) %}
+        {% set helper_value = helper_raw | float(none) %}
+        {{ helper_value if helper_value is not none else (cool_learning_bucket_summary_value if cool_learning_bucket_summary_value is not none else cur_cool_off_learned) }}
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: 'off'
@@ -3845,12 +3881,13 @@
         }}'
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'')
         }}'
-      minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
-        %}
+      minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}
+{% set raw_lower = raw | lower %}
+{% if raw_lower in ['unknown','unavailable','none',''] %}
   99999
 {% else %}
-  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
-        / 60) | round(1) }}
+  {% set ts = as_timestamp(raw, default=none) %}
+  {{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}
 {% endif %}"
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 10 }}'
       cool_comfort_gap_feedback: '{{ manual_event_type == ''manual_on_due_to_comfort_gap_cool'' }}'
@@ -3868,6 +3905,14 @@
       last_auto_context_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
       cool_learning_bucket: "{% set raw = last_auto_context_bucket %}\n{% if raw in ['', 'unknown', 'unavailable', 'none'] %}\n  exterior_templado:humedad_normal:day:presencia\n{% else %}\n  {{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0] }}\n{% endif %}"
       cool_learning_bucket_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_learning_bucket | replace('':'',''_'') ) }}'
+      cool_learning_bucket_summary_value: >-
+        {% set raw = cool_learning_summary_raw | default('', true) | trim %}
+        {% set prefix = cool_learning_bucket ~ '=' %}
+        {% if raw.startswith(prefix) %}
+          {{ raw[len(prefix):] | float(none) }}
+        {% else %}
+          {{ none }}
+        {% endif %}
       cur_bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       cur_bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0)
         }}'
@@ -3877,7 +3922,10 @@
       # Fase cool: mover sólo el bucket contextual correspondiente.
       # Heat se mantiene intacta y fuera de este rediseño para no contaminar reglas futuras.
       cool_branch_step: 0.25
-      cool_bucket_previous_value: '{{ states(cool_learning_bucket_helper) | float(cur_cool_off_learned) }}'
+      cool_bucket_previous_value: >-
+        {% set helper_raw = states(cool_learning_bucket_helper) %}
+        {% set helper_value = helper_raw | float(none) %}
+        {{ helper_value if helper_value is not none else (cool_learning_bucket_summary_value if cool_learning_bucket_summary_value is not none else cur_cool_off_learned) }}
       debug_enabled: '{{ is_state(''input_boolean.ac_learning_debug'',''on'') }}'
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       learning_type: "{% if valid_feedback and final_mode == 'cool' %}
@@ -4109,7 +4157,7 @@
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'') | float(120) }}'
-      minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none',''] %}99999{% else %}{{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw)) / 60) | round(1) }}{% endif %}"
+      minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts = as_timestamp(raw, default=none) %}{{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}{% endif %}"
       manual_event_type: "{% if last_auto_action == 'auto_on' and last_auto_mode in ['cool','heat'] and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120)) %}manual_off_detected_after_recent_auto_on_{{ last_auto_mode }}{% else %}manual_off_detected{% endif %}"
       manual_off_block: 'true'
       presence_effective: 'n/a'
@@ -4254,9 +4302,14 @@
       presence_effective: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
         }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
-      minutes_since_last_auto: "{% if last_auto_ts_raw in ['unknown','unavailable','none','']
-        %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw))
-        / 60) | round(1) }}\n{% endif %}"
+      minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}
+{% set raw_lower = raw | lower %}
+{% if raw_lower in ['unknown','unavailable','none',''] %}
+  99999
+{% else %}
+  {% set ts = as_timestamp(raw, default=none) %}
+  {{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}
+{% endif %}"
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
       cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0) }}'
@@ -4270,7 +4323,20 @@
       cool_context_detail: "{{ cool_context_bucket ~ ':' ~ cool_thermal_trend_bucket }}"
       cool_contextual_base_off: "{% if tout is none %}\n  {{ none }}\n{% elif (tout | float) < 17 %}\n  {{ none }}\n{% else %}\n  {% set base = 24.2 %}\n  {% set base = base - (0.35 if cool_outdoor_bucket == 'exterior_caliente' else 0) %}\n  {% set base = base - (0.20 if cool_humidity_bucket == 'humedad_alta' else 0) %}\n  {% set base = base - (0.15 if cool_tod_bucket == 'day' else 0.05 if cool_tod_bucket == 'tarde' else 0) %}\n  {% set base = base + (0.25 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set base = base - (0.20 if cool_thermal_trend_bucket == 'subiendo' else -0.10 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {% if tin is not none %}\n    {% set demand = ((tin | float) - 23.6) * 0.35 %}\n    {% set base = base - ([demand, 0.45] | min) %}\n  {% endif %}\n  {% if tout is not none %}\n    {% set outdoor_push = ((tout | float) - 24) * 0.03 %}\n    {% set base = base - ([outdoor_push, 0.30] | min) %}\n  {% endif %}\n  {{ [[base, 25.4] | min, 22.4] | max | round(2) }}\n{% endif %}"
       cool_context_learning_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
-      cool_context_learning_entry: '{{ states(cool_context_learning_helper) | float(none) }}'
+      # Dependencia crítica: el guard manual usa el helper contextual si existe y,
+      # tras reinicios, cae al resumen corto para no clasificar con datos vacíos.
+      cool_context_learning_summary_value: >-
+        {% set raw = cool_learning_summary_raw | default('', true) | trim %}
+        {% set prefix = cool_context_bucket ~ '=' %}
+        {% if raw.startswith(prefix) %}
+          {{ raw[len(prefix):] | float(none) }}
+        {% else %}
+          {{ none }}
+        {% endif %}
+      cool_context_learning_entry: >-
+        {% set helper_raw = states(cool_context_learning_helper) %}
+        {% set helper_value = helper_raw | float(none) %}
+        {{ helper_value if helper_value is not none else cool_context_learning_summary_value }}
       # Cool mantiene geometría simple, pero ahora su base es contextual y el aprendizaje
       # manual se evalúa por bucket. Heat queda fuera de este rediseño por ahora.
       bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
@@ -4500,8 +4566,10 @@
       last_step_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_last_step_at'') }}'
       start_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_started_at'') }}'
       minutes_since_last_auto: >-
-        {% if last_auto_ts_raw in ['unknown','unavailable','none',''] %}99999
-        {% else %}{{ ((as_timestamp(now()) - as_timestamp(last_auto_ts_raw)) / 60) | round(1) }}{% endif %}
+        {% set raw = last_auto_ts_raw | default('', true) | trim %}
+        {% set raw_lower = raw | lower %}
+        {% if raw_lower in ['unknown','unavailable','none',''] %}99999
+        {% else %}{% set ts = as_timestamp(raw, default=none) %}{{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}{% endif %}
       minutes_since_last_step: >-
         {% if last_step_ts_raw in ['unknown','unavailable','none',''] %}99999
         {% else %}{{ ((as_timestamp(now()) - as_timestamp(last_step_ts_raw)) / 60) | round(1) }}{% endif %}
@@ -4576,7 +4644,20 @@
       apply_feedback: '{{ ignore_reason == ''none'' and manual_feedback_kind in [''manual_sp_lower_than_auto'',''manual_sp_higher_than_auto''] }}'
       effective_summary_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
       effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (cool_bucket_selected | replace('':'',''_'') ) }}'
-      effective_bucket_previous_value: '{{ states(effective_bucket_helper) | float(last_auto_setpoint if last_auto_setpoint is not none else new_sp_num) }}'
+      # Dependencia crítica: el aprendizaje avanzado de setpoint toma primero el
+      # helper por bucket; si aún no existe/cargó, usa el último resumen persistido.
+      effective_bucket_summary_value: >-
+        {% set raw = effective_summary_raw | default('', true) | trim %}
+        {% set prefix = cool_bucket_selected ~ '=' %}
+        {% if raw.startswith(prefix) %}
+          {{ raw[len(prefix):] | float(none) }}
+        {% else %}
+          {{ none }}
+        {% endif %}
+      effective_bucket_previous_value: >-
+        {% set helper_raw = states(effective_bucket_helper) %}
+        {% set helper_value = helper_raw | float(none) %}
+        {{ helper_value if helper_value is not none else (effective_bucket_summary_value if effective_bucket_summary_value is not none else (last_auto_setpoint if last_auto_setpoint is not none else new_sp_num)) }}
       feedback_weight: >-
         {% if feedback_phase == 'ajuste_inmediato_post_auto_on' %}0.30
         {% elif feedback_phase == 'ajuste_20_40_min' %}0.55
@@ -4594,7 +4675,18 @@
       effective_summary: '{{ ((cool_bucket_selected ~ ''='' ~ (''%.2f'' | format(effective_sp_after | float(0))))[:255]) }}'
       cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
       cool_learning_bucket_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (cool_bucket_selected | replace('':'',''_'') ) }}'
-      cool_learning_previous_value: '{{ states(cool_learning_bucket_helper) | float((last_auto_setpoint | float(new_sp_num | float(24))) + 0.5) }}'
+      cool_learning_bucket_summary_value: >-
+        {% set raw = cool_learning_summary_raw | default('', true) | trim %}
+        {% set prefix = cool_bucket_selected ~ '=' %}
+        {% if raw.startswith(prefix) %}
+          {{ raw[len(prefix):] | float(none) }}
+        {% else %}
+          {{ none }}
+        {% endif %}
+      cool_learning_previous_value: >-
+        {% set helper_raw = states(cool_learning_bucket_helper) %}
+        {% set helper_value = helper_raw | float(none) %}
+        {{ helper_value if helper_value is not none else (cool_learning_bucket_summary_value if cool_learning_bucket_summary_value is not none else ((last_auto_setpoint | float(new_sp_num | float(24))) + 0.5)) }}
       reinforce_effective_needed: '{{ apply_feedback and manual_feedback_kind == ''manual_sp_lower_than_auto'' and insufficient_progress }}'
       cool_learning_after: >-
         {% if not reinforce_effective_needed %}
