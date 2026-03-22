@@ -3284,7 +3284,7 @@
         action: input_boolean.turn_off
     - conditions:
       - condition: template
-        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and cool_setpoint_effective is not none\n   and ac_set_effective_normalized is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (not manual_override_active)\n   and (not manual_sp_override_active) }}"
+        value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and cool_setpoint_effective is not none\n   and ac_set_effective_normalized is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (not manual_override_active)\n   and (not manual_sp_override_active)\n   and (not manual_sp_feedback_future_only_active) }}"
       sequence:
       - target:
           entity_id: climate.0200009211c7_climate
@@ -3622,7 +3622,10 @@
     manual_sp_override_active: >-
       {{ is_state('input_boolean.ac_manual_setpoint_override_active','on')
          and (manual_sp_override_until_ts | float(0)) > as_timestamp(now()) }}
-    cool_sync_should_notify: "{{ cool_sync_push_enabled\n   and (not manual_sp_override_active)\n   and cool_sync_delta is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (\n     cool_sync_recent_auto_on\n     or last_cool_sync_notified_sp is none\n     or ((last_cool_sync_notified_sp | float) - (cool_setpoint_effective | float)) | abs >= 0.2\n     or (minutes_since_cool_sync_notify | float(99999)) >= (cool_sync_notify_window_min | float(20))\n   ) }}"
+    manual_sp_feedback_future_only_active: >-
+      {{ states('input_text.ac_last_change_origin') == 'manual_sp_feedback_future_only'
+         and (minutes_since_last_auto | float(99999)) <= 2 }}
+    cool_sync_should_notify: "{{ cool_sync_push_enabled\n   and (not manual_sp_override_active)\n   and (not manual_sp_feedback_future_only_active)\n   and cool_sync_delta is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (\n     cool_sync_recent_auto_on\n     or last_cool_sync_notified_sp is none\n     or ((last_cool_sync_notified_sp | float) - (cool_setpoint_effective | float)) | abs >= 0.2\n     or (minutes_since_cool_sync_notify | float(99999)) >= (cool_sync_notify_window_min | float(20))\n   ) }}"
     last_manual_on_ts_raw: '{{ states(''input_datetime.ac_last_manual_on_ts'') }}'
     last_manual_final_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'') }}'
     manual_on_hold_minutes: 12
@@ -4939,9 +4942,18 @@
         {% elif 20 <= (runtime_min | float(99999)) <= 40 %}ajuste_20_40_min
         {% else %}ajuste_intermedio
         {% endif %}
+      stabilization_window_active: '{{ (runtime_min | float(99999)) <= 1 }}'
       apply_feedback: '{{ ignore_reason == ''none'' and manual_feedback_kind in [''manual_sp_lower_than_auto'',''manual_sp_higher_than_auto''] }}'
-      manual_override_should_activate: '{{ apply_feedback and manual_override_candidate }}'
-      learning_applied_this_cycle: '{{ apply_feedback }}'
+      feedback_policy: >-
+        {% if not apply_feedback %}sin_feedback
+        {% elif stabilization_window_active %}solo_aprendizaje_futuro
+        {% elif manual_override_candidate %}aprendizaje_y_adopcion_inmediata
+        {% else %}solo_aprendizaje_futuro
+        {% endif %}
+      manual_override_should_activate: '{{ feedback_policy == ''aprendizaje_y_adopcion_inmediata'' }}'
+      learning_applied_this_cycle: '{{ feedback_policy == ''aprendizaje_y_adopcion_inmediata'' }}'
+      sync_should_pause_after_feedback: '{{ feedback_policy == ''solo_aprendizaje_futuro'' and stabilization_window_active }}'
+      feedback_mobile_notify: '{{ apply_feedback and (not stabilization_window_active) }}'
       manual_sp_override_active: '{{ is_state(''input_boolean.ac_manual_setpoint_override_active'',''on'') }}'
       effective_summary_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
       effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (cool_bucket_selected | replace('':'',''_'') ) }}'
@@ -4980,11 +4992,12 @@
           none
         {% endif %}
       feedback_weight: >-
-        {% if feedback_phase == 'ajuste_inmediato_post_auto_on' %}0.30
+        {% if feedback_phase == 'ajuste_inmediato_post_auto_on' %}0.18
         {% elif feedback_phase == 'ajuste_20_40_min' %}0.55
         {% else %}0.40{% endif %}
       effective_sp_feedback_weight: >-
         {% if effective_sp_inconsistency_reason in ['hard_recent_feedback','hard_gap'] %}0
+        {% elif stabilization_window_active %}{{ [feedback_weight | float(0.18), 0.12] | min }}
         {% elif effective_sp_inconsistency_reason == 'soft_gap' %}{{ [feedback_weight | float(0.4), 0.20] | min }}
         {% else %}{{ feedback_weight }}
         {% endif %}
@@ -5031,7 +5044,7 @@
         tin={{ tin if tin is not none else 'na' }},tout={{ tout if tout is not none else 'na' }},h={{ hin if hin is not none else 'na' }},hr={{ now().strftime('%H:%M') }},p={{ '1' if presence_effective else '0' }},m={{ runtime_min }}
       audit_message: >-
         {% if apply_feedback %}
-          sp_manual_feedback | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}{% if manual_override_should_activate %} | ciclo_actual=manual_override{% endif %}
+          sp_manual_feedback | política={{ 'solo aprendizaje futuro' if feedback_policy == 'solo_aprendizaje_futuro' else 'aprendizaje + adopción inmediata' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}{% if sync_should_pause_after_feedback %} | sync=pausado{% endif %}
         {% else %}
           sp_manual_feedback_ignored | SPsrc={{ 'device_echo' if ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] else 'manual_candidate' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | reason={{ ignore_reason if ignore_reason != 'none' else effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }}
         {% endif %}
@@ -5043,7 +5056,7 @@
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
-          value: '{{ ''manual_override'' if manual_override_should_activate else ''manual_sp_feedback'' }}'
+          value: '{{ ''manual_override'' if manual_override_should_activate else (''manual_sp_feedback_future_only'' if sync_should_pause_after_feedback else ''manual_sp_feedback'') }}'
         service: input_text.set_value
       - choose:
         - conditions:
@@ -5105,18 +5118,24 @@
           name: AC Manual SP
           message: '{{ audit_message }}'
           entity_id: '{{ climate_ent }}'
-      - data:
-          title: '{{ ''AC SP respetado'' if manual_override_should_activate else ''AC feedback SP'' }}'
-          message: >-
-            {% if manual_override_should_activate %}
-              {{ manual_override_notify_message }}{% if learning_applied_this_cycle %} || SP aprendido para próxima vez | {{ audit_message }}{% endif %}
-            {% else %}
-              SP aprendido para próxima vez | {{ audit_message }}
-            {% endif %}
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ feedback_mobile_notify }}'
+          sequence:
+          - data:
+              title: '{{ ''AC SP respetado'' if manual_override_should_activate else ''AC feedback SP'' }}'
+              message: >-
+                {% if manual_override_should_activate %}
+                  {{ manual_override_notify_message }}{% if learning_applied_this_cycle %} || SP aprendido para próxima vez | {{ audit_message }}{% endif %}
+                {% else %}
+                  SP aprendido para próxima vez | {{ audit_message }}
+                {% endif %}
+              data:
+                ttl: 0
+                priority: high
+            action: notify.mobile_app_samsung_s24
+        default: []
     default:
     - choose:
       - conditions:
