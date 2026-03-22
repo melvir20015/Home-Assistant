@@ -238,7 +238,7 @@ Regla operativa que no debe romperse:
 
 - `off` es el único estado de reposo permitido para este helper y debe observarse exactamente como texto en `states('input_select.ac_ultimo_modo_no_fan')`.
 - No debe existir ninguna opción booleana como `False`/`false` ni ningún flujo que intente escribirla.
-- Si en la UI/estado runtime reaparece una opción legacy como `False`, debe corregirse la definición cargada del helper (recarga/recreación del helper persistido) antes de volver a confiar en la automatización de normalización.
+- Si en la UI/estado runtime reaparece una opción legacy como `False`, primero hay que confirmar que el selector acepta `off`; después debe corregirse la definición cargada del helper (recarga de `input_select`, reinicio y, si aún persiste, recreación/reparación de la persistencia runtime) antes de volver a confiar en la automatización de normalización.
 - Después de `cool_normal_off`, `cool_emergency_off` y de cualquier limpieza de latch de emergencia, el helper debe quedar en `off`.
 
 Prioridad operativa correcta dentro del `choose` principal de `AC - Día dinámico aprendido (principal)`:

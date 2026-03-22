@@ -8,6 +8,8 @@ input_select = (ROOT / 'input_select.yaml').read_text(encoding='utf-8')
 input_boolean = (ROOT / 'input_boolean.yaml').read_text(encoding='utf-8')
 input_text = (ROOT / 'input_text.yaml').read_text(encoding='utf-8')
 input_datetime = (ROOT / 'input_datetime.yaml').read_text(encoding='utf-8')
+docs_runtime = (ROOT / 'docs' / 'ac-produccion-manual-auto.md').read_text(encoding='utf-8')
+docs_context = (ROOT / 'docs' / 'ac-aprendido-contexto.md').read_text(encoding='utf-8')
 
 checks = []
 
@@ -166,6 +168,24 @@ check(
     'reparacion_helper_invalido',
     'Autocorrige estados restaurados inválidos' in automations and "not in ['off','cool','heat','emergency_cool']" in automations,
     'Existe autocorrección para estados inválidos restaurados del helper.'
+)
+check(
+    'docs_helper_runtime_exige_off_antes_normalizacion',
+    all(token in docs_runtime for token in [
+        'debe exponer únicamente `off`, `cool`, `heat`, `emergency_cool`',
+        'probar manualmente `off` desde la UI de estados',
+        'La automatización `AC - Normaliza helper último modo no fan` debe conservarse como red de seguridad',
+    ]),
+    'La documentación operativa exige validar `off` en runtime/UI antes de confiar en la automatización de normalización.'
+)
+check(
+    'docs_contexto_no_acepta_false_legacy',
+    all(token in docs_context for token in [
+        '`off` es el único estado de reposo permitido para este helper',
+        'No debe existir ninguna opción booleana como `False`/`false`',
+        'primero hay que confirmar que el selector acepta `off`',
+    ]),
+    'La documentación de contexto mantiene que `off` es el único reposo válido y que `False` es legacy inválido.'
 )
 check(
     'banderas_auto_presentes',
