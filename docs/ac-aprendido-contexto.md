@@ -276,6 +276,24 @@ Reglas adicionales que no deben romperse:
 - la histéresis entre ambos se mantiene en **0.5 °C**;
 - si el apagado ocurre porque `t1` o `t2` cae por debajo de `cool_sensor_off`, la causa debe quedar registrada como **corte preventivo** separado y no como `meta_alcanzada`.
 
+### Campos visibles en la notificación `Cool↑` del encendido normal
+
+Cuando `cool_normal_on` ya guardó el snapshot contractual del ciclo, la notificación `Cool↑` debe construirse **exclusivamente** leyendo esos helpers persistidos y no recalculando valores en vivo dentro del mismo mensaje.
+
+Campos visibles y significado exacto:
+
+- `Encendido en`: valor de `input_number.ac_cool_cycle_contract_on`. Es la temperatura promedio (`tin`) comprometida para habilitar el encendido de ese ciclo. Corresponde al `cool_on` latcheado, no a una re-evaluación posterior.
+- `Apagado en`: valor de `input_number.ac_cool_cycle_contract_off`. Es la temperatura promedio contractual que autoriza el apagado normal por meta alcanzada durante ese mismo ciclo.
+- `Corte preventivo sensor`: valor de `input_number.ac_cool_cycle_contract_sensor_off`. Es el umbral protector aplicado a sensores puntuales (`t1`/`t2`); si uno de ellos baja hasta ese valor, el ciclo puede cortarse preventivamente aunque el promedio aún no haya llegado a `Apagado en`.
+- `Setpoint teórico`: valor de `input_number.ac_cool_cycle_contract_setpoint`. Es el setpoint calculado y comprometido por la lógica para ese arranque antes de considerar la resolución o normalización final exigida por el equipo.
+- `Setpoint efectivo`: valor de `input_number.ac_cool_cycle_contract_setpoint_effective`. Es el setpoint finalmente enviado al equipo para ese ciclo después de aplicar la normalización operativa correspondiente.
+
+Interpretación funcional obligatoria:
+
+- `Apagado en` y `Corte preventivo sensor` son condiciones de salida del ciclo y **no** deben confundirse con el setpoint del equipo.
+- `Setpoint teórico` y `Setpoint efectivo` describen la consigna de operación del AC y **no** sustituyen el umbral contractual de apagado.
+- Si cambia el contexto exterior después del arranque, la notificación histórica debe seguir reflejando el snapshot persistido del ciclo original.
+
 ## 6. Clasificación operativa de origen y protección tras intervención manual
 
 ### Origen canónico del último cambio

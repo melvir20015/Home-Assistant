@@ -3333,7 +3333,15 @@
       - variables:
           cool_push_kind: on
           cool_push_reason: Mot=auto umbral
-          cool_push_summary: "Bucket={{ cool_context_detail }} | Calc={{ cool_off_learning_source }} | Dem={{ cool_demand_score }} | SPi={{ cool_setpoint_effective }} | SPt={{ cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | On={{ cool_on }} | Off={{ cool_off }} | SensorOff={{ cool_sensor_off }} | Fan=Low"
+          cool_push_summary: >-
+            {% set contract_bucket = states('input_text.ac_cool_cycle_contract_bucket') | default('', true) | trim %}
+            {% set contract_calc = states('input_text.ac_cool_cycle_contract_reason') | default('', true) | trim %}
+            {% set contract_on = states('input_number.ac_cool_cycle_contract_on') | float(none) %}
+            {% set contract_off = states('input_number.ac_cool_cycle_contract_off') | float(none) %}
+            {% set contract_sensor_off = states('input_number.ac_cool_cycle_contract_sensor_off') | float(none) %}
+            {% set contract_setpoint = states('input_number.ac_cool_cycle_contract_setpoint') | float(none) %}
+            {% set contract_setpoint_effective = states('input_number.ac_cool_cycle_contract_setpoint_effective') | float(none) %}
+            Bucket={{ contract_bucket if contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }} | Calc={{ contract_calc if contract_calc not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }} | Dem={{ cool_demand_score }} | Encendido en={{ contract_on if contract_on is not none else 'n/a' }} | Apagado en={{ contract_off if contract_off is not none else 'n/a' }} | Corte preventivo sensor={{ contract_sensor_off if contract_sensor_off is not none else 'n/a' }} | Setpoint teórico={{ contract_setpoint if contract_setpoint is not none else 'n/a' }} | Setpoint efectivo={{ contract_setpoint_effective if contract_setpoint_effective is not none else 'n/a' }} | Fan=Low
           # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
           cool_mobile_title_local: 'Cool↑'
           cool_mobile_message_local: >-
