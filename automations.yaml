@@ -1680,6 +1680,9 @@
             ttl: 0
             priority: high
         action: '{{ notify_service }}'
+      - variables:
+          loop_started_ts: '{{ as_timestamp(now()) }}'
+          cool_ramp_loop_timeout_min: 180
       - repeat:
           sequence:
           - variables:
@@ -1688,20 +1691,148 @@
           - delay:
               minutes: '{{ ramp_wait_minutes | int }}'
           - variables:
+              loop_now_ts: '{{ as_timestamp(now()) }}'
+              loop_elapsed_min: '{{ ((loop_now_ts | float) - (loop_started_ts | float(loop_now_ts))) / 60 }}'
+              loop_within_night_window: "{{ now().hour >= 21 or now().hour < 7 }}"
+              loop_t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none) }}'
+              loop_t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
               loop_hvac_mode: '{{ states(climate_ent) }}'
-              loop_setpoint: '{{ state_attr(climate_ent, ''temperature'') | float(cool_initial_setpoint_selected)
-                }}'
-              loop_cycle_active: "{{ loop_hvac_mode == 'cool' and presence_ok and tin
-                is not none and cool_stop_threshold_selected is not none and (tin|float)
-                > (cool_stop_threshold_selected|float) }}"
-              loop_can_reduce: '{{ loop_cycle_active and (loop_setpoint | float(99))
-                > (cool_ramp_min_setpoint | float(0)) }}'
-              loop_next_setpoint: '{{ [((loop_setpoint | float) - cool_ramp_step),
-                cool_ramp_min_setpoint] | max | round(1) }}'
+              loop_tin: "{% if loop_t1 is not none and loop_t2 is not none %}
+  {{ ((loop_t1 + loop_t2) / 2) | round(2) }}
+{% elif loop_t1 is not none %}
+  {{ loop_t1 | round(2) }}
+{% elif loop_t2 is not none %}
+  {{ loop_t2 | round(2) }}
+{% else %}
+  {{ none }}
+{% endif %}"
+              loop_presence_ok: '{{ is_state(''binary_sensor.presencia_ok_estable'',''on'') }}'
+              loop_sensor_temp_delta: "{% if loop_t1 is not none and loop_t2 is not none %}
+  {{ ((loop_t1 - loop_t2) | abs) | round(2) }}
+{% else %}
+  {{ none }}
+{% endif %}"
+              loop_cold_temp: "{% if loop_t1 is none and loop_t2 is none %}
+  {{ none }}
+{% elif loop_t2 is none %}
+  {{ loop_t1 | round(2) }}
+{% elif loop_t1 is none %}
+  {{ loop_t2 | round(2) }}
+{% else %}
+  {{ (loop_t1 if loop_t1 <= loop_t2 else loop_t2) | round(2) }}
+{% endif %}"
+              loop_cold_sensor_name: "{% if loop_t1 is none and loop_t2 is none %}
+  none
+{% elif loop_t2 is none %}
+  Cuarto
+{% elif loop_t1 is none %}
+  Sala
+{% else %}
+  {{ 'Cuarto' if loop_t1 <= loop_t2 else 'Sala' }}
+{% endif %}"
+              loop_bedroom_temp: "{% if loop_t1 is not none %}
+  {{ loop_t1 | round(2) }}
+{% elif loop_cold_temp is not none %}
+  {{ loop_cold_temp | round(2) }}
+{% else %}
+  {{ none }}
+{% endif %}"
+              loop_cool_sensor_off_name: "{% if loop_bedroom_temp is not none %}
+  Cuarto
+{% elif loop_cold_temp is not none %}
+  {{ cold_sensor_name }}
+{% else %}
+  none
+{% endif %}"
+              loop_cool_sensor_off_temp: "{% if loop_bedroom_temp is not none %}
+  {{ loop_bedroom_temp | round(2) }}
+{% elif loop_cold_temp is not none %}
+  {{ loop_cold_temp | round(2) }}
+{% else %}
+  {{ none }}
+{% endif %}"
+              loop_cool_sensor_off_enabled: "{% if loop_sensor_temp_delta is none %}
+  {{ true }}
+{% else %}
+  {{ (loop_sensor_temp_delta | float(99)) <= (cool_sensor_off_delta_max | float(1)) }}
+{% endif %}"
+              loop_cool_off_reason: "{% if loop_hvac_mode != 'cool' or loop_tin is none or tout is none %}
+  none
+{% elif (tout|float) < 17 and (tout|float) >= (cool_emergency_outdoor_min|float) and (cool_emergency_off is not none) and (loop_tin|float) <= (cool_emergency_off|float) %}
+  Promedio
+{% elif (tout|float) >= 17 and (cool_off is not none) %}
+  {% if (loop_tin|float) <= (cool_off|float) %}
+    Promedio
+  {% elif loop_cool_sensor_off_enabled and (loop_cool_sensor_off_temp is not none) and (cool_sensor_off_trigger is not none) and ((loop_cool_sensor_off_temp|float) <= (cool_sensor_off_trigger|float)) %}
+    {{ loop_cool_sensor_off_name }}
+  {% else %}
+    none
+  {% endif %}
+{% else %}
+  none
+{% endif %}"
+              loop_setpoint: '{{ state_attr(climate_ent, ''temperature'') | float(cool_initial_setpoint_selected) }}'
+              loop_cycle_active: "{{ loop_hvac_mode == 'cool' and loop_presence_ok and loop_tin is not none and cool_stop_threshold_selected is not none and (loop_tin|float) > (cool_stop_threshold_selected|float) }}"
+              loop_can_reduce: '{{ loop_cycle_active and (loop_setpoint | float(99)) > (cool_ramp_min_setpoint | float(0)) }}'
+              loop_next_setpoint: '{{ [((loop_setpoint | float) - cool_ramp_step), cool_ramp_min_setpoint] | max | round(1) }}'
           - choose:
             - conditions:
               - condition: template
-                value_template: '{{ not presence_ok }}'
+                value_template: '{{ not loop_within_night_window }}'
+              sequence:
+              - target:
+                  entity_id: input_text.ac_last_auto_branch
+                data:
+                  value: cool_night_ramp_window_exit
+                service: input_text.set_value
+              - target:
+                  entity_id: input_text.ac_last_auto_action
+                data:
+                  value: ramp_window_exit
+                service: input_text.set_value
+              - action: logbook.log
+                data:
+                  name: AC Auto Trace
+                  message: >-
+                    cool_night_ramp_window_exit | idx={{ repeat.index }} | elapsed={{ loop_elapsed_min | round(1) }}m
+                  entity_id: '{{ climate_ent }}'
+              - target:
+                  entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
+                action: input_boolean.turn_off
+              - target:
+                  entity_id: input_boolean.ac_on_por_automatizacion
+                action: input_boolean.turn_off
+              - stop: Rampa detenida por salir de la ventana 21:00-07:00.
+            - conditions:
+              - condition: template
+                value_template: '{{ (loop_elapsed_min | float(0)) >= (cool_ramp_loop_timeout_min | float(0)) }}'
+              sequence:
+              - target:
+                  entity_id: input_text.ac_last_auto_branch
+                data:
+                  value: cool_night_ramp_timeout_exit
+                service: input_text.set_value
+              - target:
+                  entity_id: input_text.ac_last_auto_action
+                data:
+                  value: ramp_timeout_exit
+                service: input_text.set_value
+              - action: logbook.log
+                data:
+                  name: AC Auto Trace
+                  message: >-
+                    cool_night_ramp_timeout_exit | idx={{ repeat.index }} | elapsed={{ loop_elapsed_min | round(1) }}m | set={{ loop_setpoint }}
+                  entity_id: '{{ climate_ent }}'
+              - target:
+                  entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
+                action: input_boolean.turn_off
+              - target:
+                  entity_id: input_boolean.ac_on_por_automatizacion
+                action: input_boolean.turn_off
+              - stop: Rampa detenida por timeout de seguridad.
+            - conditions:
+              - condition: template
+                value_template: '{{ not loop_presence_ok }}'
               sequence:
               - target:
                   entity_id: input_text.ac_last_auto_branch
@@ -1717,8 +1848,7 @@
                 data:
                   name: AC Auto Trace
                   message: >-
-                    cool_night_ramp_presence_exit | idx={{ repeat.index }} | set={{
-                    loop_setpoint }}
+                    cool_night_ramp_presence_exit | idx={{ repeat.index }} | set={{ loop_setpoint }} | tin={{ loop_tin }}
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
@@ -1745,8 +1875,7 @@
                 data:
                   name: AC Auto Trace
                   message: >-
-                    cool_night_ramp_hvac_exit | idx={{ repeat.index }} | hvac={{ loop_hvac_mode
-                    }} | set={{ loop_setpoint }}
+                    cool_night_ramp_hvac_exit | idx={{ repeat.index }} | hvac={{ loop_hvac_mode }} | set={{ loop_setpoint }}
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
@@ -1757,9 +1886,7 @@
               - stop: Rampa detenida porque el equipo salió de cool.
             - conditions:
               - condition: template
-                value_template: '{{ tin is not none and cool_stop_threshold_selected
-                  is not none and (tin|float) <= (cool_stop_threshold_selected|float)
-                  }}'
+                value_template: '{{ (loop_cool_off_reason | trim) != ''none'' }}'
               sequence:
               - target:
                   entity_id: input_number.ac_night_cool_last_effective_setpoint
@@ -1790,9 +1917,7 @@
                 data:
                   name: AC Auto Trace
                   message: >-
-                    cool_night_ramp_ready_for_comfort_off | idx={{ repeat.index }}
-                    | useful_set={{ loop_setpoint }} | tin={{ tin }} | stop={{ cool_stop_threshold_selected
-                    }}
+                    cool_night_ramp_ready_for_comfort_off | idx={{ repeat.index }} | useful_set={{ loop_setpoint }} | tin={{ loop_tin }} | stop={{ cool_stop_threshold_selected }} | reason={{ loop_cool_off_reason | trim }} | sensor_off={{ loop_cool_sensor_off_temp }}
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
@@ -1829,9 +1954,7 @@
                 data:
                   name: AC Auto Trace
                   message: >-
-                    cool_night_ramp_step | idx={{ repeat.index }} | wait={{ ramp_wait_minutes
-                    }}m | from={{ loop_setpoint }} | to={{ loop_next_setpoint }} |
-                    tin={{ tin }} | stop={{ cool_stop_threshold_selected }}
+                    cool_night_ramp_step | idx={{ repeat.index }} | wait={{ ramp_wait_minutes }}m | from={{ loop_setpoint }} | to={{ loop_next_setpoint }} | tin={{ loop_tin }} | stop={{ cool_stop_threshold_selected }} | sensor_off={{ loop_cool_sensor_off_temp }}
                   entity_id: '{{ climate_ent }}'
             default:
             - target:
@@ -1848,8 +1971,7 @@
               data:
                 name: AC Auto Trace
                 message: >-
-                  cool_night_ramp_hold | idx={{ repeat.index }} | set={{ loop_setpoint
-                  }} | tin={{ tin }} | stop={{ cool_stop_threshold_selected }}
+                  cool_night_ramp_hold | idx={{ repeat.index }} | set={{ loop_setpoint }} | tin={{ loop_tin }} | stop={{ cool_stop_threshold_selected }} | reason={{ loop_cool_off_reason | trim }}
                 entity_id: '{{ climate_ent }}'
           until:
           - condition: template
@@ -1972,7 +2094,7 @@
       round(2) }}\n{% elif cold_temp is not none %}\n  {{ cold_temp | round(2) }}\n{%
       else %}\n  {{ none }}\n{% endif %}"
     cool_sensor_off_name: "{% if bedroom_temp is not none %}\n  Cuarto\n{% elif
-      cold_sensor_name is not none %}\n  {{ cold_sensor_name }}\n{% else %}\n  none\n{%
+      cold_sensor_name is not none %}\n  {{ loop_cold_sensor_name }}\n{% else %}\n  none\n{%
       endif %}"
     cool_off_reason: "{% if cur_mode != 'cool' or tin is none or tout is none %}\n
       \  none\n{% elif (tout|float) < 17 and (tout|float) >= (cool_emergency_outdoor_min|float)

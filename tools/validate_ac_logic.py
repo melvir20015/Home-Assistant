@@ -170,6 +170,41 @@ check(
     'La ruta diferencia feedback inmediato vs 20-40 min y refuerza el mapa contextual cuando bajar el SP revela falta de progreso.'
 )
 
+
+# Escenario 8: rampa nocturna persistente y snapshots dentro del loop
+night_alias = 'AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones'
+night_match = re.search(
+    rf"alias: {re.escape(night_alias)}\n(?P<body>.*?)(?=\n- id: |\Z)",
+    automations,
+    re.DOTALL,
+)
+night_body = night_match.group('body') if night_match else ''
+night_has_persistent_repeat = (
+    'mode: single' in night_body
+    and "until:\n          - condition: template\n            value_template: '{{ false }}'" in night_body
+)
+night_uses_live_loop_vars = all(token in night_body for token in [
+    'loop_tin:',
+    'loop_presence_ok:',
+    'loop_cool_sensor_off_temp:',
+    'loop_cool_off_reason:',
+    "value_template: '{{ not loop_presence_ok }}'",
+    "value_template: '{{ (loop_cool_off_reason | trim) != ''none'' }}'",
+    'cool_night_ramp_window_exit',
+    'cool_night_ramp_timeout_exit',
+])
+night_uses_snapshot_in_shutdown = any(token in night_body for token in [
+    "value_template: '{{ not presence_ok }}'",
+    "loop_hvac_mode == 'cool' and presence_ok",
+    "value_template: '{{ tin is not none and cool_stop_threshold_selected",
+    '| tin={{ tin }} | stop={{ cool_stop_threshold_selected }}',
+])
+check(
+    'night_ramp_single_repeat_con_snapshots_bloqueado',
+    night_has_persistent_repeat and night_uses_live_loop_vars and not night_uses_snapshot_in_shutdown,
+    'La rampa nocturna persistente en `mode: single` relee estados vivos dentro del loop y evita snapshots viejos en presencia/apagado.'
+)
+
 # Escenario 5 y 6: emergency + helpers
 check(
     'helper_modo_no_fan_valido',
