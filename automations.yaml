@@ -4269,11 +4269,18 @@
       heat_setpoint_after: '{{ [[(cur_bias_heat_setpoint | float) - 0.5, 2] | min, -2] | max | round(1) }}'
       cool_branch_audit: >-
         RamaCool +0.25 | Bucket {{ cool_learning_bucket }} | Off {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
+      cool_bucket_resume: "{% set parts = cool_learning_bucket.split(':') %}
+{{ (parts[0] | replace('exterior_', 'ext ') | replace('_', ' ')) ~ ', ' ~ (parts[1] | replace('humedad_', 'hum ') | replace('_', ' ')) ~ ', ' ~ (parts[2] | replace('franja_', '') | replace('_', '-')) ~ ', ' ~ parts[4] }}"
+      cool_bucket_change_summary: "bucket {{ cool_bucket_resume }} · OFF {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after | float) }} · ON {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }}"
       heat_setpoint_adjustment: "{% if quick_feedback %}
   setpoint {{ cur_bias_heat_setpoint | float }}→{{ heat_setpoint_after }} (-0.5)
 {% else %}
   sin ajuste setpoint
 {% endif %}"
+      heat_change_summary: "calor · bias on {{ cur_bias_heat_on }}→{{ heat_on_after }} · off {{ cur_bias_heat_off }}→{{ heat_off_after }}{% if quick_feedback %} · sp {{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% endif %}"
+      notify_title_valid_off: "AC aprendió: OFF manual tras AUTO ON"
+      notify_message_valid_off_cool: "{{ cool_bucket_change_summary }}"
+      notify_message_valid_off_heat: "{{ heat_change_summary }}"
       ignored_reason_code: "{% if not learning_enabled %}
   learning_disabled
 {% elif last_change_origin != 'manual_off' %}
@@ -4411,8 +4418,8 @@
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - data:
-          title: AC learn✓
-          message: 'learning_ok | src=manual_off | mode={{ last_auto_mode }} | {% if last_auto_mode == ''cool'' %}{{ cool_branch_audit }}{% elif last_auto_mode == ''heat'' %}heat_bias_ok{% else %}valid_feedback{% endif %} | min={{ minutes_since_last_auto }}'
+          title: '{{ notify_title_valid_off }}'
+          message: '{{ notify_message_valid_off_cool }}'
           data:
             ttl: 0
             priority: high
@@ -4456,8 +4463,8 @@
             action: input_number.set_value
         default: []
       - data:
-          title: AC learn✓
-          message: 'learning_ok | src=manual_off | mode={{ last_auto_mode }} | {% if last_auto_mode == ''cool'' %}{{ cool_branch_audit }}{% elif last_auto_mode == ''heat'' %}heat_bias_ok{% else %}valid_feedback{% endif %} | min={{ minutes_since_last_auto }}'
+          title: '{{ notify_title_valid_off }}'
+          message: '{{ notify_message_valid_off_heat }}'
           data:
             ttl: 0
             priority: high
@@ -4637,11 +4644,14 @@
       cool_learning_summary: '{{ cool_learning_bucket ~ ''='' ~ (''%.2f'' | format(cool_off_after | float)) }}'
       cool_branch_audit: >-
         RamaCool -0.25 | Bucket {{ cool_learning_bucket }} | Off {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after | float) }}
-      notify_title_valid: AC learn✓
-      notify_message_valid_cool: >-
-        learning_ok | src=manual_on | mode=cool | {{ cool_branch_audit }} | min={{ minutes_since_last_auto }}
-      notify_message_valid_heat: >-
-        learning_ok | src=manual_on | mode=heat | heat_bias_ok{% if quick_feedback %}:fast{% endif %} | min={{ minutes_since_last_auto }}
+      cool_bucket_resume: "{% set parts = cool_learning_bucket.split(':') %}
+{{ (parts[0] | replace('exterior_', 'ext ') | replace('_', ' ')) ~ ', ' ~ (parts[1] | replace('humedad_', 'hum ') | replace('_', ' ')) ~ ', ' ~ (parts[2] | replace('franja_', '') | replace('_', '-')) ~ ', ' ~ parts[4] }}"
+      cool_bucket_short: "{{ cool_bucket_resume }} · OFF {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after | float) }}"
+      auto_off_fix_suffix: "{{ ' · corrige AUTO OFF reciente' if last_auto_action == 'auto_off' else '' }}"
+      notify_title_valid_cool: "AC aprendió: ON manual tras AUTO OFF"
+      notify_title_valid_heat: "AC aprendió: ON manual tras AUTO OFF"
+      notify_message_valid_cool: "{{ cool_bucket_short }}{{ auto_off_fix_suffix }}"
+      notify_message_valid_heat: "calor · bias on {{ cur_bias_heat_on }}→{{ ((cur_bias_heat_on | float) + (step_main | float)) | round(2) }} · off {{ cur_bias_heat_off }}→{{ ((cur_bias_heat_off | float) + (step_main | float)) | round(2) }}{% if quick_feedback %} · sp {{ cur_bias_heat_setpoint }}→{{ ((cur_bias_heat_setpoint | float) + 0.5) | round(1) }}{% endif %}{{ auto_off_fix_suffix }}"
       learning_audit_message: >-
         {% if valid_feedback %}
           learning_ok | src=manual_on | mode={{ final_mode }} | type={{ learning_type }} | detail={% if final_mode == 'cool' %}{{ cool_branch_audit }}{% else %}heat_bias_ok{% endif %} | min={{ minutes_since_last_auto }}
@@ -4715,7 +4725,7 @@
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - data:
-          title: '{{ notify_title_valid }}'
+          title: '{{ notify_title_valid_cool }}'
           message: '{{ notify_message_valid_cool }}'
           data:
             ttl: 0
@@ -4760,7 +4770,7 @@
             action: input_number.set_value
         default: []
       - data:
-          title: '{{ notify_title_valid }}'
+          title: '{{ notify_title_valid_heat }}'
           message: '{{ notify_message_valid_heat }}'
           data:
             ttl: 0
@@ -5038,8 +5048,9 @@
       manual_event_type_final: "{% if final_mode == 'cool' and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap_cool\n{% elif final_mode == 'heat' and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap_heat\n{% elif final_mode in ['cool','heat','fan_only'] and auto_on_blocked_by_presence %}\n  manual_on_due_to_presence_gap\n{% elif final_mode == 'cool' and cool_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_cool\n{% elif final_mode == 'heat' and heat_auto_blocked_by_threshold %}\n  manual_on_due_to_comfort_gap_heat\n{% else %}\n  manual_on_detected\n{% endif %}"
       manual_presence_until: "{% if (manual_event_type_final | trim) in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] %}\n  {{ (now() + timedelta(minutes=90)).strftime('%Y-%m-%d %H:%M:%S') }}\n{% else %}\n  {{ states('input_datetime.ac_manual_presence_until') }}\n{% endif %}"
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
-      notify_message: >-
-        {% if (manual_event_type_final | trim) in ['manual_on_due_to_presence_gap','manual_on_due_to_presence_gap_cool','manual_on_due_to_presence_gap_heat'] %}AC aprendió: ON manual por ausencia | presencia temporal activada{% else %}AC manual detectado: {{ final_mode }}{% endif %}
+      notify_title_presence_gap: 'AC manual por ausencia: presencia temporal activada'
+      notify_message_presence_gap: >-
+        AC encendido manual sin presencia detectada; se activa presencia temporal.
   - target:
       entity_id: input_datetime.ac_last_manual_final_ts
     data:
@@ -5073,8 +5084,8 @@
             manual_on_due_to_presence_gap | modo={{ final_mode }} | presencia temporal hasta {{ manual_presence_until }}
           entity_id: climate.0200009211c7_climate
       - data:
-          title: AC manual importante
-          message: '{{ notify_message }}'
+          title: '{{ notify_title_presence_gap }}'
+          message: '{{ notify_message_presence_gap }}'
           data:
             ttl: 0
             priority: high
