@@ -2077,6 +2077,11 @@
       - condition: template
         value_template: '{{ presence_away_30m and cur_mode != ''off'' and (not manual_override_active) }}'
       sequence:
+      - variables:
+          cool_cycle_contract_snapshot: >-
+            Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }} | Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }} | On={{ cool_cycle_contract_on if cool_cycle_contract_on is not none else 'n/a' }} | Off={{ cool_cycle_contract_off if cool_cycle_contract_off is not none else 'n/a' }} | OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else 'n/a' }} | SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+          cool_cycle_real_off_cause: ausencia
+          cool_cycle_real_off_detail: Modo={{ cur_mode }} | Aus=30m
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_on
@@ -2085,6 +2090,12 @@
           - condition: template
             value_template: '{{ cur_mode == ''cool'' }}'
           sequence:
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                cool_off_txn_begin | branch=presence_off | phase=before_fan_only | cause={{ cool_cycle_real_off_cause }} | detail={{ cool_cycle_real_off_detail }} | {{ cool_cycle_contract_snapshot }}
+              entity_id: climate.0200009211c7_climate
           - target:
               entity_id: climate.0200009211c7_climate
             data:
@@ -2103,6 +2114,12 @@
                 action: climate.set_fan_mode
             default: []
           - delay: '{{ fan_dry_delay }}'
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                cool_off_txn_dry_done | branch=presence_off | phase=after_fan_delay | cause={{ cool_cycle_real_off_cause }} | detail={{ cool_cycle_real_off_detail }} | delay={{ fan_dry_delay }} | {{ cool_cycle_contract_snapshot }}
+              entity_id: climate.0200009211c7_climate
         default: []
       - target:
           entity_id:
@@ -2171,6 +2188,12 @@
         data:
           value: '{{ sensor_delta }}'
         action: input_number.set_value
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off_txn_before_off | branch=presence_off | phase=before_off | cause={{ cool_cycle_real_off_cause }} | detail={{ cool_cycle_real_off_detail }} | {{ cool_cycle_contract_snapshot }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: climate.0200009211c7_climate
         data:
@@ -2187,8 +2210,8 @@
         action: input_select.select_option
       - variables:
           cool_push_kind: off
-          cool_push_reason: Mot=auto ausencia
-          cool_push_summary: 'Modo={{ cur_mode }} | Aus=30m'
+          cool_push_reason: 'Mot={{ cool_cycle_real_off_cause }}'
+          cool_push_summary: 'Ctx=Ausencia | {{ cool_cycle_contract_snapshot }} | Disparo={{ cool_cycle_real_off_detail }}'
           # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
           cool_mobile_title_local: 'Cool↓'
           cool_mobile_message_local: >-
@@ -2205,7 +2228,8 @@
       - action: logbook.log
         data:
           name: AC Auto Trace
-          message: 'cool_off_notify_sent | branch=presence_off | {{ cool_mobile_message_local }}'
+          message: >-
+            cool_off_notify_sent | branch=presence_off | phase=after_notify | cause={{ cool_cycle_real_off_cause }} | detail={{ cool_cycle_real_off_detail }} | {{ cool_mobile_message_local }}
           entity_id: climate.0200009211c7_climate
       - delay: 00:00:45
       - target:
@@ -2401,9 +2425,25 @@
         value_template: "{{ emergency_latched\n   and emergency_off_ready\n   and
           cur_mode != 'off'\n   and (not manual_override_active) }}"
       sequence:
+      - variables:
+          cool_cycle_contract_snapshot: >-
+            Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }} | Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }} | On={{ cool_cycle_contract_on if cool_cycle_contract_on is not none else 'n/a' }} | Off={{ cool_cycle_contract_off if cool_cycle_contract_off is not none else 'n/a' }} | OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else 'n/a' }} | SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+          cool_cycle_real_off_cause: emergencia
+          cool_cycle_real_off_detail: >-
+            {% if tin is not none and emergency_off_avg is not none and (tin | float) <= (emergency_off_avg | float) %}
+              Prom={{ tin }}<=OffEmerg={{ emergency_off_avg }}
+            {% else %}
+              Prom={{ tin if tin is not none else 'n/a' }} | OffEmerg={{ emergency_off_avg if emergency_off_avg is not none else 'n/a' }}
+            {% endif %}
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_on
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off_txn_begin | branch=cool_emergency_off | phase=before_fan_only | cause={{ cool_cycle_real_off_cause }} | detail={{ cool_cycle_real_off_detail }} | {{ cool_cycle_contract_snapshot }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: climate.0200009211c7_climate
         data:
@@ -2422,6 +2462,12 @@
             action: climate.set_fan_mode
         default: []
       - delay: '{{ fan_dry_delay }}'
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off_txn_dry_done | branch=cool_emergency_off | phase=after_fan_delay | cause={{ cool_cycle_real_off_cause }} | detail={{ cool_cycle_real_off_detail }} | delay={{ fan_dry_delay }} | {{ cool_cycle_contract_snapshot }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
@@ -2489,6 +2535,12 @@
         data:
           value: '{{ sensor_delta }}'
         action: input_number.set_value
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off_txn_before_off | branch=cool_emergency_off | phase=before_off | cause={{ cool_cycle_real_off_cause }} | detail={{ cool_cycle_real_off_detail }} | {{ cool_cycle_contract_snapshot }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: climate.0200009211c7_climate
         data:
@@ -2506,14 +2558,9 @@
         action: input_select.select_option
       - variables:
           cool_push_kind: off
-          cool_push_reason: Mot=auto emergencia
-          cool_push_trigger_detail: >-
-            {% if tin is not none and emergency_off_avg is not none and (tin | float) <= (emergency_off_avg | float) %}
-              Prom={{ tin }}<=Off={{ emergency_off_avg }}
-            {% else %}
-              Prom={{ tin if tin is not none else 'n/a' }} | Off={{ emergency_off_avg if emergency_off_avg is not none else 'n/a' }}
-            {% endif %}
-          cool_push_summary: 'Ctx=Emergencia | Disparo={{ cool_push_trigger_detail }} | Cuarto={{ t1 if t1 is not none else ''n/a'' }} | Sensor={{ t2 if t2 is not none else ''n/a'' }}'
+          cool_push_reason: 'Mot={{ cool_cycle_real_off_cause }}'
+          cool_push_trigger_detail: '{{ cool_cycle_real_off_detail }}'
+          cool_push_summary: 'Ctx=Emergencia | Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['''',''unknown'',''unavailable'',''none''] else cool_off_learning_source }} | Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['''',''unknown'',''unavailable'',''none''] else cool_context_detail }} | Disparo={{ cool_push_trigger_detail }} | OffProm={{ cool_cycle_contract_off if cool_cycle_contract_off is not none else ''n/a'' }} | OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else ''n/a'' }} | On={{ cool_cycle_contract_on if cool_cycle_contract_on is not none else ''n/a'' }} | SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}'
           # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
           cool_mobile_title_local: 'Cool↓'
           cool_mobile_message_local: >-
@@ -2530,7 +2577,8 @@
       - action: logbook.log
         data:
           name: AC Auto Trace
-          message: 'cool_off_notify_sent | branch=cool_emergency_off | {{ cool_mobile_message_local }}'
+          message: >-
+            cool_off_notify_sent | branch=cool_emergency_off | phase=after_notify | cause={{ cool_cycle_real_off_cause }} | detail={{ cool_cycle_real_off_detail }} | {{ cool_mobile_message_local }}
           entity_id: climate.0200009211c7_climate
       - delay: 00:00:45
       - target:
@@ -2777,9 +2825,38 @@
           not none and cool_cycle_contract_sensor_off is not none and (t2 | float)
           <= (cool_cycle_contract_sensor_off | float))\n   ) }}"
       sequence:
+      - variables:
+          cool_cycle_off_cause: >-
+            {% if tin is not none and (tin | float) <= (cool_cycle_contract_off | float) %}
+              meta_alcanzada
+            {% elif t1 is not none and cool_cycle_contract_sensor_off is not none and (t1 | float) <= (cool_cycle_contract_sensor_off | float) %}
+              corte_preventivo_t1
+            {% elif t2 is not none and cool_cycle_contract_sensor_off is not none and (t2 | float) <= (cool_cycle_contract_sensor_off | float) %}
+              corte_preventivo_t2
+            {% else %}
+              no_clasificado
+            {% endif %}
+          cool_cycle_off_cause_detail: >-
+            {% if cool_cycle_off_cause == 'meta_alcanzada' %}
+              Prom={{ tin }}<=Off={{ cool_cycle_contract_off }}
+            {% elif cool_cycle_off_cause == 'corte_preventivo_t1' %}
+              t1={{ t1 }}<=SensorOff={{ cool_cycle_contract_sensor_off }}
+            {% elif cool_cycle_off_cause == 'corte_preventivo_t2' %}
+              t2={{ t2 }}<=SensorOff={{ cool_cycle_contract_sensor_off }}
+            {% else %}
+              Prom={{ tin if tin is not none else 'n/a' }} | t1={{ t1 if t1 is not none else 'n/a' }} | t2={{ t2 if t2 is not none else 'n/a' }}
+            {% endif %}
+          cool_cycle_contract_snapshot: >-
+            Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }} | Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }} | On={{ cool_cycle_contract_on if cool_cycle_contract_on is not none else 'n/a' }} | Off={{ cool_cycle_contract_off if cool_cycle_contract_off is not none else 'n/a' }} | OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else 'n/a' }} | SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_on
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off_txn_begin | branch=cool_normal_off | phase=before_fan_only | cause={{ cool_cycle_off_cause }} | detail={{ cool_cycle_off_cause_detail }} | {{ cool_cycle_contract_snapshot }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: climate.0200009211c7_climate
         data:
@@ -2798,6 +2875,12 @@
             action: climate.set_fan_mode
         default: []
       - delay: '{{ fan_dry_delay }}'
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off_txn_dry_done | branch=cool_normal_off | phase=after_fan_delay | cause={{ cool_cycle_off_cause }} | detail={{ cool_cycle_off_cause_detail }} | delay={{ fan_dry_delay }} | {{ cool_cycle_contract_snapshot }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
@@ -2870,6 +2953,12 @@
         data:
           value: '{{ sensor_delta }}'
         action: input_number.set_value
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off_txn_before_off | branch=cool_normal_off | phase=before_off | cause={{ cool_cycle_off_cause }} | detail={{ cool_cycle_off_cause_detail }} | {{ cool_cycle_contract_snapshot }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: climate.0200009211c7_climate
         data:
@@ -2882,27 +2971,6 @@
         # `off` representa reposo del helper cuando la lógica descarta conservar el
         # modo previo tras este apagado automático.
         action: input_select.select_option
-      - variables:
-          cool_cycle_off_cause: >-
-            {% if tin is not none and (tin | float) <= (cool_cycle_contract_off | float) %}
-              meta_alcanzada
-            {% elif t1 is not none and cool_cycle_contract_sensor_off is not none and (t1 | float) <= (cool_cycle_contract_sensor_off | float) %}
-              corte_preventivo_t1
-            {% elif t2 is not none and cool_cycle_contract_sensor_off is not none and (t2 | float) <= (cool_cycle_contract_sensor_off | float) %}
-              corte_preventivo_t2
-            {% else %}
-              no_clasificado
-            {% endif %}
-          cool_cycle_off_cause_detail: >-
-            {% if cool_cycle_off_cause == 'meta_alcanzada' %}
-              Prom={{ tin }}<=Off={{ cool_cycle_contract_off }}
-            {% elif cool_cycle_off_cause == 'corte_preventivo_t1' %}
-              t1={{ t1 }}<=SensorOff={{ cool_cycle_contract_sensor_off }}
-            {% elif cool_cycle_off_cause == 'corte_preventivo_t2' %}
-              t2={{ t2 }}<=SensorOff={{ cool_cycle_contract_sensor_off }}
-            {% else %}
-              Prom={{ tin if tin is not none else 'n/a' }} | t1={{ t1 if t1 is not none else 'n/a' }} | t2={{ t2 if t2 is not none else 'n/a' }}
-            {% endif %}
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -2930,7 +2998,8 @@
       - action: logbook.log
         data:
           name: AC Auto Trace
-          message: 'cool_off_notify_sent | branch=cool_normal_off | {{ cool_mobile_message_local }}'
+          message: >-
+            cool_off_notify_sent | branch=cool_normal_off | phase=after_notify | cause={{ cool_cycle_off_cause }} | detail={{ cool_cycle_off_cause_detail }} | {{ cool_mobile_message_local }}
           entity_id: climate.0200009211c7_climate
       - delay: 00:00:45
       - target:
