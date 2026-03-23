@@ -40,6 +40,19 @@ El sistema no debe entenderse como una fórmula fija. La meta real es aproximars
 - una acción manual del usuario puede contener información más valiosa que un umbral duro;
 - el aprendizaje debe orientar la lógica hacia la experiencia real del usuario, no sólo hacia una regla abstracta.
 
+
+## 3.1. Referencias complementarias del proyecto
+
+Para evitar que este documento concentre todo el contrato operativo, conviene enlazar también la documentación complementaria ya existente del proyecto para automatizaciones del AC:
+
+- [`ac-produccion-manual-auto.md`](./ac-produccion-manual-auto.md): contrato operativo en producción para distinguir eventos manuales vs automáticos, presencia temporal y telemetría mínima.
+- [`ac-manual-off-learning-contract.md`](./ac-manual-off-learning-contract.md): reglas específicas del aprendizaje por `manual_off` tras `AUTO ON`.
+- [`ac-cool-off-transaccional.md`](./ac-cool-off-transaccional.md): secuencia transaccional esperada para `cool_off` y emisión de `Cool↓`.
+- [`ac-validacion-funcional-2026-03-20.md`](./ac-validacion-funcional-2026-03-20.md): validación funcional reproducible de escenarios críticos.
+- [`ac-produccion-manual-auto.md`](./ac-produccion-manual-auto.md#presencia-temporal-por-encendido-manual): referencia operativa para la presencia temporal disparada por `manual_on`.
+
+Estas referencias no sustituyen este documento: lo complementan. `ac-aprendido-contexto.md` debe seguir siendo la explicación de alto nivel del modelo mental, mientras que los otros documentos detallan contratos concretos o validaciones reproducibles.
+
 ## 3. Interpretación esperada de acciones manuales
 
 Las acciones manuales son señales de retroalimentación. Deben interpretarse sólo cuando exista suficiente contexto para distinguirlas de eventos automáticos o ambiguos. En particular, un **apagado manual** debe tratarse como **feedback de confort** del usuario: indica que la automatización probablemente sostuvo el equipo más tiempo del deseado, o que la decisión automática previa ya no coincide con el confort percibido.
@@ -535,3 +548,230 @@ Si en el futuro se necesita guardar más contexto de `cool`, se debe elegir una 
 3. una persistencia alternativa fuera de `input_text` si realmente se requiere una estructura amplia.
 
 No se debe reintroducir un patrón de “mapa JSON completo en `input_text`”, aunque parezca temporal, porque rompe el contrato de tamaño y hace frágiles las plantillas que dependen de esa memoria.
+
+
+## 10. Contexto específico de `cool normal`
+
+La rama `cool normal` debe documentarse como un flujo distinto de `emergency_cool`, porque representa el escenario diario esperado de enfriamiento y concentra la mayor parte del aprendizaje contextual.
+
+### 10.1. Las 4 franjas horarias exactas
+
+Para `cool normal`, el contexto horario debe clasificarse siempre en una de estas **4 franjas exactas**:
+
+- **`night`**: de **23:00:00** a **06:59:59**.
+- **`morning`**: de **07:00:00** a **11:59:59**.
+- **`afternoon`**: de **12:00:00** a **17:59:59**.
+- **`evening`**: de **18:00:00** a **22:59:59**.
+
+No deben introducirse ventanas “aproximadas” ni nombres alternos para el mismo bucket, porque el aprendizaje contextual depende de que las claves sean estables entre eventos automáticos y manuales.
+
+### 10.2. Uso del estado externo descriptivo
+
+Además del tramo horario, `cool normal` debe incluir el **estado externo descriptivo** derivado de la condición térmica exterior real. La intención es evitar que el sistema aprenda igual un `cool_on` ocurrido con calor moderado que otro ocurrido con calor muy severo.
+
+Ese estado externo descriptivo debe ser legible y auditable, por ejemplo con etiquetas como:
+
+- `mild_outside`
+- `warm_outside`
+- `hot_outside`
+- `very_hot_outside`
+
+La etiqueta exacta usada por la automatización debe persistirse siempre igual en las claves de contexto. Lo importante no es el nombre elegido, sino que sea **descriptivo, estable y común** para `cool_on`, `cool_off`, `cool_setpoint` y aprendizaje.
+
+### 10.3. Compuerta de presencia estricta
+
+En `cool normal` la **presencia estricta** debe actuar como compuerta dura de encendido automático: si no hay presencia efectiva válida, la rama no debe hacer `AUTO ON` aunque la condición térmica sea favorable.
+
+Esa compuerta estricta existe para que el aprendizaje no derive en enfriar una vivienda vacía sólo porque el contexto térmico “parece” compatible con un encendido previo exitoso.
+
+### 10.4. Diferencia entre presencia real, presencia del teléfono y presencia efectiva
+
+Para evitar confusiones futuras, la documentación debe separar tres conceptos:
+
+- **Presencia real**: evidencia fuerte de ocupación humana observada en el hogar, por ejemplo movimiento reciente o actividad consistente en sensores físicos.
+- **Presencia del teléfono**: señal indirecta basada en el dispositivo del usuario; ayuda, pero puede fallar por batería, geolocalización o latencia.
+- **Presencia efectiva**: resultado final que usa la automatización. Combina presencia real, presencia del teléfono y, cuando aplique, presencia temporal activada por `manual_on`.
+
+La automatización de `cool normal` debe decidir con **presencia efectiva**, pero la documentación y el aprendizaje deben poder distinguir si esa presencia efectiva provenía de ocupación observada, del teléfono o de una retención temporal por acción manual del usuario.
+
+## 11. Bucket contextual completo
+
+El bucket contextual es la clave semántica completa con la que el sistema agrupa decisiones comparables. Debe ser suficientemente expresivo para que dos eventos del mismo bucket realmente representen un contexto parecido, y suficientemente estable para que el aprendizaje no se fragmente en cientos de combinaciones irrepetibles.
+
+### 11.1. Componentes mínimos del bucket
+
+Para `cool normal`, el bucket contextual completo debe incluir como mínimo:
+
+- modo térmico principal: `cool_normal`;
+- franja horaria exacta: `night`, `morning`, `afternoon` o `evening`;
+- estado externo descriptivo: por ejemplo `warm_outside`, `hot_outside` o `very_hot_outside`;
+- estado de presencia efectiva: por ejemplo `presence_effective_on` o `presence_effective_off`;
+- si el origen de presencia efectiva fue real, teléfono o temporal manual, cuando ese detalle sea relevante para aprendizaje.
+
+### 11.2. Ejemplos reales de claves
+
+Ejemplos de claves narrativamente realistas y suficientemente explícitas:
+
+- `cool_normal|night|hot_outside|presence_effective_on|presence_real`
+- `cool_normal|afternoon|very_hot_outside|presence_effective_on|phone_present`
+- `cool_normal|evening|warm_outside|presence_effective_on|manual_presence_hold`
+- `cool_normal|morning|hot_outside|presence_effective_off`
+
+Si el sistema usa un formato distinto —por ejemplo JSON serializado o prefijos como `ctx:`— debe mantener la misma semántica. Lo obligatorio es que la clave capture el mismo contexto operativo.
+
+### 11.3. Uso del bucket para `cool_on`
+
+El bucket debe permitir contestar: “¿en este contexto exacto suele convenir encender en `cool normal`?”.
+
+Ejemplo:
+
+- clave: `cool_normal|afternoon|very_hot_outside|presence_effective_on|presence_real`
+- uso: registrar que en tardes muy calurosas, con presencia efectiva real, el sistema sí llegó a `AUTO ON` y qué umbral interior disparó el encendido.
+
+Ese historial alimenta la calibración de `cool_on` para el mismo contexto, evitando mezclarlo con noches o con tardes sin presencia efectiva.
+
+### 11.4. Uso del bucket para `cool_off`
+
+El mismo bucket contextual debe permitir evaluar si, una vez encendido, el apagado automático fue oportuno o se sostuvo demasiado tiempo.
+
+Ejemplo:
+
+- clave: `cool_normal|night|hot_outside|presence_effective_on|manual_presence_hold`
+- uso: asociar un `AUTO OFF` o un `manual_off` posterior con el contexto completo en el que el equipo estaba enfriando.
+
+Así el sistema puede aprender que en noches con presencia temporal por `manual_on` quizá conviene sostener menos o más el enfriamiento, sin contaminar el comportamiento de una noche con presencia real confirmada.
+
+### 11.5. Uso del bucket para `cool_setpoint`
+
+El bucket contextual también debe servir para aprender qué setpoint resulta aceptable en ese contexto.
+
+Ejemplo:
+
+- clave: `cool_normal|evening|warm_outside|presence_effective_on|phone_present`
+- uso: registrar que el setpoint efectivo aprendido para esa combinación termina siendo, por ejemplo, `24.0 °C`, mientras que otro bucket parecido pero con `very_hot_outside` podría converger a `23.0 °C`.
+
+### 11.6. Uso del bucket para aprendizaje de apagado/encendido
+
+El aprendizaje de encendido y apagado debe colgarse del mismo bucket para que el feedback manual no quede huérfano del contexto donde ocurrió.
+
+Ejemplos:
+
+- `manual_off` válido tras `AUTO ON` en `cool_normal|afternoon|very_hot_outside|presence_effective_on|presence_real` → retrasa futuros `cool_on` y/o adelanta `cool_off` para ese mismo bucket o para su agregación compatible.
+- `manual_on` válido tras `AUTO OFF` en `cool_normal|night|hot_outside|presence_effective_on|manual_presence_hold` → indica que el sistema apagó demasiado pronto en ese contexto.
+
+### 11.7. Uso del bucket para aprendizaje de setpoint efectivo
+
+El bucket debe almacenar también el **setpoint efectivo aprendido**, no sólo el pedido automáticamente. Esto permite responder: “en este contexto, ¿qué temperatura final tolera realmente el usuario?”.
+
+Ejemplo:
+
+- `cool_normal|night|hot_outside|presence_effective_on|presence_real`
+- setpoint automático inicial: `23.0 °C`
+- ajuste manual estable del usuario: `24.0 °C`
+- resultado aprendido: el bucket conserva `24.0 °C` como setpoint efectivo preferido para la próxima activación automática comparable.
+
+## 12. Contrato del setpoint manual
+
+El setpoint manual es una señal de alta calidad porque expresa una preferencia térmica explícita del usuario. Sin embargo, sólo debe aprenderse cuando quede claro que el valor final ya se estabilizó y no fue un toque accidental o transitorio.
+
+### 12.1. Cuándo se considera aprendizaje válido
+
+El cambio manual de setpoint se considera aprendizaje válido cuando se cumple todo esto:
+
+- hubo un cambio manual explícito del usuario, no una corrección automática de la propia automatización;
+- el AC quedó operando en un contexto aprendible, típicamente `cool normal` con bucket contextual identificable;
+- el nuevo setpoint se mantuvo estable durante la ventana de retención definida para consolidar el estado final manual;
+- no fue invalidado por un apagado inmediato, un cambio de modo incompatible o una nueva corrección manual contradictoria antes de cerrar la retención.
+
+### 12.2. Cuándo se respeta inmediatamente
+
+Cuando el usuario cambia manualmente el setpoint, ese nuevo valor debe respetarse **de inmediato**. Durante la ventana de estabilización/retención, la automatización principal no debe sobrescribirlo con el setpoint automático calculado para ese mismo contexto.
+
+La lógica correcta es:
+
+1. respetar el setpoint manual ahora;
+2. consolidar si el cambio fue estable;
+3. aprenderlo para la próxima vez si siguió siendo válido al final de la retención.
+
+### 12.3. Cuánto dura la retención
+
+La retención del setpoint manual debe durar **hasta que termine la misma ventana corta de estabilización del estado manual final** que protege un `manual_on` reciente. En términos operativos, esa retención se apoya en `input_datetime.ac_last_manual_on_ts` y `input_datetime.ac_last_manual_final_ts` y debe cubrir el periodo en que el usuario todavía está ajustando el AC.
+
+La duración exacta implementada debe permanecer única y consistente en automatizaciones y helpers; este documento no debe duplicar un número distinto si la lógica ya usa una sola ventana centralizada. Lo importante del contrato es que la retención sea **inmediata, temporal y suficientemente larga para consolidar el estado final manual**, pero no tan larga como para secuestrar la automatización durante horas.
+
+### 12.4. Cómo alimenta el siguiente encendido automático del mismo contexto
+
+Una vez consolidado como válido, el setpoint manual debe alimentar el siguiente `AUTO ON` del **mismo bucket contextual**.
+
+Ejemplo:
+
+- contexto: `cool_normal|evening|warm_outside|presence_effective_on|phone_present`
+- setpoint automático inicial: `23.0 °C`
+- usuario lo mueve manualmente a `24.0 °C`
+- el valor se mantiene hasta cerrar la retención
+- próximo `AUTO ON` del mismo contexto: la automatización usa `24.0 °C` como referencia aprendida o como setpoint efectivo preferido
+
+Ese aprendizaje no debe aplicarse ciegamente a todos los contextos; debe reutilizarse primero en el mismo bucket o en una agregación explícitamente compatible.
+
+## 13. Política de notificaciones de producción en español
+
+La política de notificaciones debe ser consistente, breve y completamente en español para producción.
+
+### 13.1. Qué sí se notifica
+
+Sí deben notificarse únicamente eventos de alto valor operativo para el usuario:
+
+- `AC AUTO ON: ...`
+- `AC AUTO OFF: ...`
+- `AC aprendió: OFF manual tras AUTO COOL ...`
+- `AC aprendió: ON manual por ausencia | presencia temporal activada`
+- `AC aprendió setpoint: ...` cuando el cambio manual de setpoint se consolidó como aprendizaje válido y útil para el siguiente contexto comparable.
+
+### 13.2. Qué no se notifica
+
+No deben notificarse en producción:
+
+- evaluaciones internas de ramas automáticas;
+- abortos por guardas o compuertas;
+- detecciones manuales crudas sin aprendizaje válido final;
+- aprendizajes ignorados, expirados o ambiguos;
+- depuración técnica de helpers, waits, retries o saneamientos defensivos.
+
+### 13.3. Qué queda sólo en logbook
+
+Deben quedar sólo en logbook, traces o helpers de auditoría:
+
+- `manual_on` detectado;
+- `manual_off` detectado;
+- clasificación detallada en `input_text.ac_last_manual_event_type`;
+- clasificación final en `input_text.ac_last_manual_learning_type` cuando no produjo push;
+- limpiezas de banderas automáticas;
+- retención temporal de presencia o consolidación del estado manual final;
+- snapshots contextuales usados para aprendizaje.
+
+## 14. Casos narrativos clave
+
+### 14.1. `manual_on` porque faltó detección de presencia
+
+Son las 19:40. El apartamento está caliente, el teléfono del usuario aparece fuera de casa y no hubo movimiento reciente en sala, así que `presence_effective` quedó en `off`. El usuario en realidad sí llegó, pero la detección de presencia no se actualizó a tiempo. Como la compuerta de presencia estricta bloqueó `cool normal`, el AC no hizo `AUTO ON`.
+
+El usuario enciende el AC manualmente desde la app o desde Home Assistant. Ese evento debe clasificarse como `manual_on_due_to_presence_gap`, no como simple “uso manual sin contexto”. La automatización debe activar presencia temporal, respetar el estado manual inmediato y dejar trazabilidad de que el problema principal fue una **brecha de presencia**, no necesariamente un error térmico.
+
+Resultado esperado:
+
+- el AC se mantiene encendido porque la presencia efectiva ahora incluye la retención temporal manual;
+- no se envía spam técnico;
+- en producción puede notificarse algo breve como `AC aprendió: ON manual por ausencia | presencia temporal activada`;
+- el caso queda documentado para futuras revisiones del modelo de presencia.
+
+### 14.2. Cambio manual de setpoint que debe mantenerse ahora y aprenderse para la próxima vez
+
+Son las 22:15. El sistema hace `AUTO ON` en `cool normal` con la clave `cool_normal|evening|warm_outside|presence_effective_on|phone_present` y fija `23.0 °C`. A los pocos minutos el usuario siente que enfría de más y sube manualmente el setpoint a `24.0 °C`.
+
+La automatización no debe pisar ese `24.0 °C` durante la retención manual. Debe respetarlo inmediatamente, esperar a que el estado final manual se estabilice y, si el valor sigue siendo `24.0 °C` al cerrar la ventana, guardarlo como aprendizaje válido del bucket.
+
+Resultado esperado:
+
+- ahora: el AC sigue operando con `24.0 °C` porque el ajuste manual se respeta;
+- después: el bucket contextual aprende que ese contexto tolera mejor `24.0 °C` que `23.0 °C`;
+- próxima vez en el mismo contexto: el `AUTO ON` usa el setpoint efectivo aprendido sin exigir que el usuario vuelva a corregirlo manualmente.
