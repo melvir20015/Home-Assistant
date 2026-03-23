@@ -12,16 +12,17 @@ Este documento describe el flujo contractual y auditable de las ramas COOL que a
 
 ## Orden exacto del flujo
 
-En las tres ramas, el flujo operativo ahora ocurre en este orden lineal y dentro de la misma secuencia que hace el apagado final:
+En las tres ramas, el flujo operativo ocurre en este orden lineal y dentro de la misma secuencia que hace el apagado real:
 
 1. **Snapshot inicial de la transacción**  
-   Se construyen variables locales con:
-   - snapshot contractual del ciclo (`cool_cycle_contract_on`, `cool_cycle_contract_off`, `cool_cycle_contract_sensor_off`, `cool_cycle_contract_setpoint_effective`, `cool_cycle_contract_bucket`, `cool_cycle_contract_reason`);
-   - causa real del corte;
-   - detalle puntual del disparo.
+   La rama construye una sola vez el mensaje final reusable (`cool_cycle_final_message`) con:
+   - rama (`cool_cycle_branch`);
+   - contrato del ciclo (`cool_cycle_contract_on`, `cool_cycle_contract_off`, `cool_cycle_contract_sensor_off`, `cool_cycle_contract_setpoint_effective`);
+   - causa y detalle del apagado;
+   - hora exacta (`now().isoformat()`).
 
-2. **Marca `fan_only_start`**  
-   Se registra un `logbook.log` inmediatamente antes de entrar a `fan_only`.
+2. **Hito `entrada_fan_only`**  
+   `logbook.log` justo antes de mandar `climate.set_hvac_mode: fan_only`.
 
 3. **Entrada a `fan_only`**
    - Se ejecuta `climate.set_hvac_mode: fan_only`.
@@ -30,8 +31,8 @@ En las tres ramas, el flujo operativo ahora ocurre en este orden lineal y dentro
 4. **Espera de secado (`fan_dry_delay`)**
    - Se espera el delay configurado.
 
-5. **Marca `fan_only_done`**  
-   Se registra un `logbook.log` al terminar `fan_dry_delay`.
+5. **Hito `fan_dry_delay_finalizado`**  
+   `logbook.log` al terminar `fan_dry_delay`.
 
 6. **Persistencia de auditoría en helpers**
    - `input_datetime.ac_ultimo_apagado`
@@ -46,87 +47,85 @@ En las tres ramas, el flujo operativo ahora ocurre en este orden lineal y dentro
 7. **Orden de apagado final**
    - Se ejecuta `climate.set_hvac_mode: 'off'`.
 
-8. **Marca `hvac_off_sent`**  
-   Se registra inmediatamente otro `logbook.log` para confirmar que la orden de apagado ya fue enviada.
+8. **Hito `off_enviado`**  
+   `logbook.log` inmediatamente después del `off`.
 
-9. **Push en la misma secuencia lineal**
-   - La misma rama ejecuta `notify.mobile_app_samsung_s24`.
-   - No depende de automatizaciones externas, helpers temporales ni esperas implícitas para poder notificar.
+9. **Hito `mensaje_preparado`**  
+   `logbook.log` justo antes del push. Este punto prueba que el texto final ya quedó construido dentro de la misma rama.
 
-10. **Marca `push_sent`**  
-    Se registra otro `logbook.log` inmediatamente después del `notify`.
+10. **Push en la misma secuencia lineal**
+    - La misma rama ejecuta `notify.mobile_app_samsung_s24`.
+    - No depende de automatizaciones externas, helpers temporales ni compuertas separadas para completar el aviso de apagado.
 
-## Contrato del mensaje final
+11. **Hito `notify_ejecutado`**  
+    `logbook.log` inmediatamente después del `notify`.
 
-La notificación final de apagado combina dos grupos de datos:
+12. **Hito `rama_completada`**  
+    `logbook.log` final antes del delay de limpieza de `input_boolean.ac_off_por_automatizacion`.
 
-### 1) Valores contractuales del ciclo
+## Qué contiene cada hito
 
-- `cool_cycle_contract_on`
-- `cool_cycle_contract_off`
-- `cool_cycle_contract_sensor_off`
-- `cool_cycle_contract_setpoint_effective`
-- `cool_cycle_contract_bucket`
-- `cool_cycle_contract_reason`
+Todos los hitos comparten el mismo mensaje base reusable. Eso permite comparar Logbook y push sin ambigüedad.
 
-### 2) Causa real del apagado
+Formato lógico del mensaje:
 
-Según la rama, la causa real puede ser:
+- `Rama=<branch>`
+- `Contrato(On=<cool_cycle_contract_on>, Off=<cool_cycle_contract_off>, OffSensor=<cool_cycle_contract_sensor_off>, SP=<cool_cycle_contract_setpoint_effective>)`
+- `Causa=<causa real del apagado>`
+- `Detalle=<detalle puntual del disparo>`
+- `Hora=<timestamp exacto ISO8601>`
 
-- `meta_alcanzada`
-- `corte_preventivo_t1`
-- `corte_preventivo_t2`
-- `ausencia`
-- `emergencia`
+## Cómo diagnosticar dónde se rompió el flujo
 
-El mensaje push debe ser coherente con ambos planos: lo que el contrato esperaba y lo que efectivamente disparó el corte.
+### Caso 1: se rompió **antes** del `off`
 
-## Cómo leer los hitos del Logbook
+Señales típicas:
 
-### Secuencia esperada sana
+- aparece `entrada_fan_only`, pero no aparece `fan_dry_delay_finalizado`; o
+- aparece `fan_dry_delay_finalizado`, pero no aparece `off_enviado`.
 
-Si todo el flujo se ejecutó bien, en Logbook deben verse estos hitos en este orden:
+Interpretación:
 
-1. `fan_only_start`
-2. `fan_only_done`
-3. `hvac_off_sent`
-4. `push_sent`
+- el flujo entró a secado, pero no terminó el delay; o
+- terminó el delay, pero no llegó a ejecutar el `climate.set_hvac_mode: 'off'`.
 
-### Diagnóstico rápido por tipo de fallo
+### Caso 2: se rompió **entre** `off` y `notify`
 
-#### Fallo de lógica
+Señales típicas:
 
-Puede sospecharse un fallo de lógica cuando:
+- aparece `off_enviado`; pero
+- no aparece `mensaje_preparado`, o no aparece `notify_ejecutado`.
 
-- no aparece `fan_only_start`; o
-- aparece `fan_only_start` pero no aparece `fan_only_done`; o
-- los campos `branch=`, `cause=` o `detail=` no coinciden con la rama/corte esperado.
+Interpretación:
 
-Interpretación: la rama no entró donde debía, el delay no terminó, o la condición que eligió la causa real no coincide con el evento observado.
+- si falta `mensaje_preparado`, la rama se interrumpió antes de construir/reusar el mensaje final;
+- si aparece `mensaje_preparado` pero falta `notify_ejecutado`, la interrupción ocurrió en el tramo exacto entre preparar el mensaje y ejecutar el servicio de notificación.
 
-#### Fallo de despliegue
+### Caso 3: se rompió **después** del `notify`
 
-Puede sospecharse un fallo de despliegue cuando:
+Señales típicas:
 
-- el YAML esperado contiene estas marcas, pero en producción siguen apareciendo hitos antiguos; o
-- una rama muestra los marcadores nuevos y otra sigue con mensajes previos.
+- aparece `notify_ejecutado`; pero
+- no aparece `rama_completada`.
 
-Interpretación: el archivo editado no fue recargado, se desplegó una versión distinta o Home Assistant sigue ejecutando una automatización anterior.
+Interpretación:
 
-#### Fallo del servicio de notificación
+- la lógica alcanzó a ejecutar `notify.mobile_app_samsung_s24`, pero la rama no terminó completamente su secuencia posterior.
 
-Puede sospecharse un fallo del servicio de notificación cuando:
+### Caso 4: el Logbook muestra el mensaje pero el móvil no recibe push
 
-- aparecen `fan_only_start`, `fan_only_done` y `hvac_off_sent`; y
-- también aparece `push_sent`; pero
-- el móvil no recibe la notificación.
+Señales típicas:
 
-Interpretación: la lógica sí envió el `notify`, pero el problema está aguas abajo del automation engine: servicio móvil, app, conectividad, permisos o entrega del proveedor.
+- aparece `mensaje_preparado` con el texto esperado;
+- aparece `notify_ejecutado`; y
+- el contenido coincide con el push esperado;
+- pero el teléfono no muestra la notificación.
 
-## Sobre `push_skipped`
+Interpretación:
 
-La marca `push_skipped` sólo debe existir cuando haya una condición explícita que impida notificar. En el flujo actual no se conserva ninguna condición de bypass: las tres ramas ejecutan el push en línea, así que el caso normal es `push_sent`.
+- el problema ya no está en la lógica del ciclo ni en la construcción del mensaje;
+- el fallo está aguas abajo del servicio `notify.mobile_app_samsung_s24` (app móvil, permisos, conectividad o entrega del proveedor).
 
 ## Resultado esperado en auditoría
 
-Con esta instrumentación, cualquier revisión futura puede reconstruir el flujo exacto `fan_only -> espera -> off -> notify` y determinar si un problema fue de lógica, de despliegue o del servicio de notificación sin depender de automatizaciones externas ni de inferencias implícitas.
+Con estos hitos, cualquier revisión futura puede reconstruir el flujo exacto `fan_only -> fan_dry_delay -> off -> preparar mensaje -> notify -> rama completada` y ubicar con precisión si el problema ocurrió antes del `off`, entre `off` y `notify`, o después del `notify`.
