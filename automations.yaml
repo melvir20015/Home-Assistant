@@ -2326,12 +2326,6 @@
           message: >-
             hito=off_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - target:
-          entity_id: input_select.ac_ultimo_modo_no_fan
-        data:
-          option: 'off'
-        # `off` es el reposo del helper; no existe un estado `idle` válido aquí.
-        action: input_select.select_option
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -2351,6 +2345,31 @@
           message: >-
             hito=notify_ejecutado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: 'off'
+        # `off` es el reposo del helper; no existe un estado `idle` válido aquí.
+        continue_on_error: true
+        action: input_select.select_option
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ states('input_select.ac_ultimo_modo_no_fan') == 'off' }}"
+          sequence:
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                hito=helper_estado_saneado | helper=input_select.ac_ultimo_modo_no_fan | valor=off | {{ cool_cycle_final_message }}
+              entity_id: input_select.ac_ultimo_modo_no_fan
+        default:
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: >-
+              error_saneamiento_estado | helper=input_select.ac_ultimo_modo_no_fan | esperado=off | actual={{ states('input_select.ac_ultimo_modo_no_fan') }} | {{ cool_cycle_final_message }}
+            entity_id: input_select.ac_ultimo_modo_no_fan
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -2679,13 +2698,6 @@
           message: >-
             hito=off_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - target:
-          entity_id: input_select.ac_ultimo_modo_no_fan
-        data:
-          option: 'off'
-        # El helper vuelve a `off` cuando la rama apaga por objetivo de emergencia
-        # y ya no conviene conservar un modo recordado.
-        action: input_select.select_option
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -2705,6 +2717,32 @@
           message: >-
             hito=notify_ejecutado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: 'off'
+        # El helper vuelve a `off` cuando la rama apaga por objetivo de emergencia
+        # y ya no conviene conservar un modo recordado.
+        continue_on_error: true
+        action: input_select.select_option
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ states('input_select.ac_ultimo_modo_no_fan') == 'off' }}"
+          sequence:
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                hito=helper_estado_saneado | helper=input_select.ac_ultimo_modo_no_fan | valor=off | {{ cool_cycle_final_message }}
+              entity_id: input_select.ac_ultimo_modo_no_fan
+        default:
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: >-
+              error_saneamiento_estado | helper=input_select.ac_ultimo_modo_no_fan | esperado=off | actual={{ states('input_select.ac_ultimo_modo_no_fan') }} | {{ cool_cycle_final_message }}
+            entity_id: input_select.ac_ultimo_modo_no_fan
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -3102,13 +3140,6 @@
           message: >-
             hito=off_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - target:
-          entity_id: input_select.ac_ultimo_modo_no_fan
-        data:
-          option: 'off'
-        # `off` representa reposo del helper cuando la lógica descarta conservar el
-        # modo previo tras este apagado automático.
-        action: input_select.select_option
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -3134,6 +3165,32 @@
           message: >-
             hito=notify_ejecutado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
+      - target:
+          entity_id: input_select.ac_ultimo_modo_no_fan
+        data:
+          option: 'off'
+        # `off` representa reposo del helper cuando la lógica descarta conservar el
+        # modo previo tras este apagado automático.
+        continue_on_error: true
+        action: input_select.select_option
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ states('input_select.ac_ultimo_modo_no_fan') == 'off' }}"
+          sequence:
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                hito=helper_estado_saneado | helper=input_select.ac_ultimo_modo_no_fan | valor=off | {{ cool_cycle_final_message }}
+              entity_id: input_select.ac_ultimo_modo_no_fan
+        default:
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: >-
+              error_saneamiento_estado | helper=input_select.ac_ultimo_modo_no_fan | esperado=off | actual={{ states('input_select.ac_ultimo_modo_no_fan') }} | {{ cool_cycle_final_message }}
+            entity_id: input_select.ac_ultimo_modo_no_fan
       - action: logbook.log
         data:
           name: AC Auto Trace
