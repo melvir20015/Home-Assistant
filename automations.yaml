@@ -2213,8 +2213,10 @@
         action: input_boolean.turn_off
     - conditions:
       - condition: template
-        value_template: "{{ auto_on_allowed\n   and (not recent_any_auto_on)\n   and
-          emergency_hot\n   and (not emergency_latched)\n   and (\n     cur_mode !=
+        value_template: "{{ auto_on_allowed
+   and auto_on_presence_gate
+   and (not recent_any_auto_on)
+   and emergency_hot\n   and (not emergency_latched)\n   and (\n     cur_mode !=
           'cool'\n     or (ac_set | float(0)) != (emergency_setpoint | float)\n     or
           ac_fan != emergency_fan_mode\n   ) }}"
       sequence:
@@ -2349,7 +2351,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_emergency_on | SPsrc=emergency | SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode }} | Vent={{ emergency_window }} | Tin={{ tin }} | Tout={{ tout }}
+            cool_emergency_on | permit={{ auto_on_presence_reason }} | SPsrc=emergency | SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode }} | Vent={{ emergency_window }} | Tin={{ tin }} | Tout={{ tout }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -2936,8 +2938,11 @@
         action: input_boolean.turn_off
     - conditions:
       - condition: template
-        value_template: "{{ (not emergency_latched)\n   and auto_on_allowed\n   and
-          (not recent_any_auto_on)\n   and heat_on is not none\n   and tin is not
+        value_template: "{{ (not emergency_latched)
+   and auto_on_allowed
+   and auto_on_presence_gate
+   and (not recent_any_auto_on)
+   and heat_on is not none\n   and tin is not
           none\n   and (tin | float) <= (heat_on | float)\n   and (tout | float(99))
           < (heat_force_off_outdoor | float)\n   and cur_mode != 'heat'\n   and (not
           locked or last_mode_no_fan not in ['cool','emergency_cool']) }}"
@@ -3058,6 +3063,12 @@
               fan_mode: Auto
             action: climate.set_fan_mode
         default: []
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            heat_normal_on | permit={{ auto_on_presence_reason }} | SP={{ heat_setpoint }} | Fan={{ fan_day_mode }} | Tin={{ tin }} | Tout={{ tout }}
+          entity_id: climate.0200009211c7_climate
       - data:
           title: AC AUTO ON
           message: 'AC AUTO ON: HEAT | set {{ heat_setpoint }}'
@@ -3071,8 +3082,11 @@
         action: input_boolean.turn_off
     - conditions:
       - condition: template
-        value_template: "{{ (not emergency_latched)\n   and auto_on_allowed\n   and
-          (not recent_any_auto_on)\n   and cool_on is not none\n   and cool_setpoint
+        value_template: "{{ (not emergency_latched)
+   and auto_on_allowed
+   and auto_on_presence_gate
+   and (not recent_any_auto_on)
+   and cool_on is not none\n   and cool_setpoint
           is not none\n   and tin is not none\n   and (tin | float) >= (cool_on |
           float)\n   and cur_mode != 'cool'\n   and (not locked or last_mode_no_fan
           != 'heat') }}"
@@ -3294,7 +3308,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_normalized | SPsrc=auto_on | {{ cool_ctx_brief }} | On={{ cool_on }} | Off={{ cool_off }} | SensorOff={{ cool_sensor_off }} | SPt={{ cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{ cool_setpoint_effective }} | Calc={{ cool_off_learning_source }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason }} | Min={{ minutes_since_last_auto }}
+            cool_normalized | permit={{ auto_on_presence_reason }} | SPsrc=auto_on | {{ cool_ctx_brief }} | On={{ cool_on }} | Off={{ cool_off }} | SensorOff={{ cool_sensor_off }} | SPt={{ cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{ cool_setpoint_effective }} | Calc={{ cool_off_learning_source }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -3464,9 +3478,20 @@
       %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw)
       }}\n{% endif %}"
     presence_sensor_strict: '{{ presence_ok and presence_real_now }}'
-    presence_effective: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
+    auto_on_presence_gate: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
       }}'
-    auto_on_allowed: '{{ presence_effective and (not manual_off_block) }}'
+    auto_on_presence_reason: >-
+      {% if presence_phone_home %}
+        phone_home
+      {% elif presence_sensor_strict %}
+        sensor_strict
+      {% elif presence_temp_from_manual %}
+        manual_presence_exception
+      {% else %}
+        blocked
+      {% endif %}
+    presence_effective: '{{ auto_on_presence_gate }}'
+    auto_on_allowed: '{{ auto_on_presence_gate and (not manual_off_block) }}'
     presence_away_30m: "{{ (not presence_effective)\n   and is_state('binary_sensor.presencia_movimiento_estable','off')\n
       \  and (person_raw != 'home')\n   and (s24_raw not in ['home','on']) }}"
     away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
@@ -3759,12 +3784,14 @@
     cool_main_control_error: >-
       {{ cool_main_control_demand
          and auto_on_allowed
+         and auto_on_presence_gate
          and (not recent_any_auto_on)
          and (not locked or last_mode_no_fan != 'heat')
          and (cool_setpoint is none or cool_setpoint_effective is none) }}
     cool_main_control_ready: >-
       {{ cool_main_control_demand
          and auto_on_allowed
+         and auto_on_presence_gate
          and (not recent_any_auto_on)
          and cool_setpoint is not none
          and cool_setpoint_effective is not none
@@ -3772,7 +3799,8 @@
     cool_main_control_blocked: >-
       {{ cool_main_control_demand and (not cool_main_control_ready) and (not cool_main_control_error) }}
     cool_main_control_block_reason: >-
-      {% if not presence_effective %}sin_pres
+      {% if not auto_on_presence_gate %}sin_pres_auto_on
+      {% elif auto_on_presence_reason == 'blocked' %}sin_pres_auto_on
       {% elif manual_off_block %}pausa_manual
       {% elif recent_any_auto_on %}auto_reciente
       {% elif locked and last_mode_no_fan == 'heat' %}lock_heat
