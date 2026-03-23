@@ -3743,19 +3743,19 @@
       %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw)
       }}\n{% endif %}"
     presence_sensor_strict: '{{ presence_ok and presence_real_now }}'
-    auto_on_presence_gate: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
+    presence_effective: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
       }}'
+    auto_on_presence_gate: '{{ presence_phone_home or presence_sensor_strict }}'
     auto_on_presence_reason: >-
       {% if presence_phone_home %}
         phone_home
       {% elif presence_sensor_strict %}
         sensor_strict
       {% elif presence_temp_from_manual %}
-        manual_presence_exception
+        manual_presence_exception_blocked_for_auto_on
       {% else %}
         blocked
       {% endif %}
-    presence_effective: '{{ auto_on_presence_gate }}'
     auto_on_allowed: '{{ auto_on_presence_gate and (not manual_off_block) }}'
     presence_away_30m: "{{ (not presence_effective)\n   and is_state('binary_sensor.presencia_movimiento_estable','off')\n
       \  and (person_raw != 'home')\n   and (s24_raw not in ['home','on']) }}"
@@ -4947,7 +4947,8 @@
         %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw)
         }}\n{% endif %}"
       presence_sensor_strict: '{{ presence_ok and presence_real_now }}'
-      presence_effective: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
+      presence_strict_for_manual_guard: '{{ presence_phone_home or presence_sensor_strict }}'
+      presence_effective: '{{ presence_strict_for_manual_guard or presence_temp_from_manual
         }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}
@@ -5020,7 +5021,7 @@
       cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else
         %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min,
         21] | max | round(1) }}\n{% endif %}"
-      auto_on_blocked_by_presence: '{{ not presence_effective }}'
+      auto_on_blocked_by_presence: '{{ not presence_strict_for_manual_guard }}'
       cool_auto_blocked_by_threshold: "{{ final_mode == 'cool'
    and (
      cool_on is none

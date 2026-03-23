@@ -334,15 +334,29 @@ Durante esa ventana:
 
 La finalidad es permitir que el equipo termine de estabilizar el estado elegido manualmente antes de que la lógica principal vuelva a intervenir.
 
+### Semántica de presencia: teléfono, presencia real y memoria operativa
+
+La lógica del AC debe separar explícitamente tres conceptos:
+
+- **`presence_phone_home` / presencia del teléfono en casa**: `true` cuando `person.ivan == home` **o** `device_tracker.samsung_s24` reporta `home/on`. Esta señal **sí puede** habilitar `AUTO ON`.
+- **`presence_real_now` / presencia real ahora**: `true` sólo cuando el movimiento estable está activo y además `presence_ok` valida ese sensor. En código esto equivale al gate estricto `presence_sensor_strict = presence_ok and presence_real_now`. Esta señal **sí puede** habilitar `AUTO ON`.
+- **`presence_effective` / presencia efectiva histórica**: memoria operativa que agrega `presence_phone_home`, `presence_sensor_strict` y la excepción temporal `presence_temp_from_manual`. Sirve para contexto, buckets y para no apagar/rebloquear inmediatamente después de un `manual_on`, pero **no debe autorizar por sí sola un `AUTO ON`**.
+
+Regla obligatoria para el encendido automático:
+
+- si `person.ivan != home` **y** `device_tracker.samsung_s24` no está en `home/on`, el `AUTO ON` queda bloqueado salvo que exista `presence_sensor_strict`;
+- aunque `presence_effective` siga en `true` por memoria operativa, si `presence_real_now == false` y no hay presencia telefónica válida, el `AUTO ON` debe permanecer bloqueado.
+
 ### Presencia temporal por encendido manual durante ausencia
 
-Si `presence_effective` es `false` y el usuario enciende manualmente el AC, el sistema debe interpretarlo como señal válida de presencia real o brecha de confort.
+Si no existe presencia estricta para `AUTO ON` y el usuario enciende manualmente el AC, el sistema debe interpretarlo como señal válida de presencia real o brecha de confort.
 
 Contrato:
 
-- clasificar el evento como `manual_on_due_to_presence_gap`, `manual_on_due_to_presence_gap_cool` o `manual_on_due_to_presence_gap_heat`, según el modo final;
+- clasificar el evento como `manual_on_due_to_presence_gap`, `manual_on_due_to_presence_gap_cool` o `manual_on_due_to_presence_gap_heat`, según el modo final, usando la semántica estricta (`presence_phone_home` o `presence_sensor_strict`) y **no** una `presence_effective` rezagada;
 - extender `input_datetime.ac_manual_presence_until` con una presencia temporal coherente;
-- usar esa presencia temporal para impedir que la rama principal apague enseguida por ausencia;
+- usar esa presencia temporal sólo como memoria operativa para evitar apagar o rebloquear inmediatamente tras el encendido manual;
+- no reutilizar esa presencia temporal para habilitar `AUTO ON` cuando ya no hay presencia real actual ni presencia telefónica válida;
 - permitir que el aprendizaje posterior siga funcionando normalmente.
 
 ## 7. Emergency cool: dominancia y límites
