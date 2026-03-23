@@ -435,6 +435,82 @@ Para `cool`, la persistencia del aprendizaje contextual **no debe volver a usar*
 - `input_text.ac_cool_effective_setpoint_map` sólo conserva un **resumen corto del último setpoint efectivo persistido**, también con formato `bucket=valor`.
 - Las plantillas operativas deben leer el valor real desde el `input_number` del bucket correspondiente; los `input_text` se consideran únicamente telemetría resumida o ayuda de auditoría rápida.
 
+### Contrato actual de buckets `cool`
+
+La clave contextual activa de `cool` tiene ahora esta forma estable:
+
+`<bucket_exterior>:<bucket_humedad>:<bucket_franja>:<bucket_clima>:<bucket_presencia>`
+
+Y el detalle extendido agrega la tendencia térmica:
+
+`<bucket_exterior>:<bucket_humedad>:<bucket_franja>:<bucket_clima>:<bucket_presencia>:<bucket_tendencia>`
+
+#### Buckets canónicos
+
+- **Exterior aparente (`tout`)**
+  - `exterior_templado`
+  - `exterior_caliente`
+  - `exterior_muy_caliente`
+- **Humedad interior (`hin`)**
+  - `humedad_normal`
+  - `humedad_alta`
+  - `humedad_muy_alta`
+- **Franja horaria**
+  - `franja_0700_1000`
+  - `franja_1001_1500`
+  - `franja_1501_1800`
+  - `franja_1801_2059`
+  - `franja_fuera_rango`
+- **Condición meteorológica descriptiva** a partir de `weather.openweathermap`
+  - `soleado`
+  - `parcial`
+  - `nublado`
+  - `lluvia`
+  - `niebla`
+  - `tormenta`
+  - `desconocido`
+- **Presencia**
+  - `presencia`
+  - `ausencia`
+- **Tendencia térmica**
+  - `subiendo`
+  - `estable`
+  - `bajando`
+
+#### Normalización del clima exterior
+
+Antes de formar la clave contextual, la automatización normaliza el estado real de `weather.openweathermap` a una categoría canónica:
+
+- `sunny` y `clear-night` → `soleado`
+- `partlycloudy`, `windy`, `windy-variant` → `parcial`
+- `cloudy`, `overcast` → `nublado`
+- `rainy`, `pouring`, `hail`, `snowy-rainy`, `snowy` → `lluvia`
+- `fog` → `niebla`
+- `lightning`, `lightning-rainy` → `tormenta`
+- cualquier otro estado → `desconocido`
+
+#### Ejemplos de claves completas
+
+- Bucket base: `exterior_caliente:humedad_alta:franja_1001_1500:soleado:presencia`
+- Bucket detallado: `exterior_caliente:humedad_alta:franja_1001_1500:soleado:presencia:subiendo`
+- Helper de aprendizaje derivado: `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_alta_franja_1001_1500_soleado_presencia`
+- Helper de setpoint efectivo derivado: `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_franja_1001_1500_soleado_presencia`
+
+#### Impacto operativo del nuevo contexto
+
+- `cool_contextual_base_off` pondera simultáneamente:
+  - temperatura aparente exterior,
+  - promedio interior,
+  - humedad interior,
+  - franja horaria,
+  - condición meteorológica descriptiva,
+  - tendencia térmica,
+  - presencia.
+- `cool_off_target` sigue derivándose del bucket contextual aprendido, pero ahora aplica un ajuste fino de demanda sin romper los límites existentes.
+- `cool_on_target` sigue saliendo de `cool_off_target`, preservando la geometría del sistema, aunque el diferencial ahora también se modula por franja, clima, tendencia y presencia.
+- `cool_setpoint_theoretical` sigue derivándose de `cool_off`, pero ajusta su offset con el mismo contexto ampliado para que el setpoint responda mejor a humedad, clima y momento del día.
+- El aprendizaje contextual y la memoria de setpoint efectivo ya no deben asumir una clave de cuatro dimensiones; cualquier helper o resumen debe tratar la dimensión climática como obligatoria dentro de la clave base.
+
 ### Regla de evolución
 
 Si en el futuro se necesita guardar más contexto de `cool`, se debe elegir una de estas rutas compatibles:
