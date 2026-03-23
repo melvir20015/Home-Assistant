@@ -62,14 +62,25 @@ Reglas:
 Verificación y reconciliación en runtime/UI:
 
 1. En **Developer Tools → States**, `input_select.ac_ultimo_modo_no_fan` debe exponer únicamente `off`, `cool`, `heat`, `emergency_cool`.
-2. Antes de confiar en cualquier autocorrección, probar manualmente `off` desde la UI de estados: el selector debe aceptar `off` sin error y reflejar el cambio inmediatamente.
-3. Si todavía aparece la opción legacy `False`, el runtime no quedó sincronizado con `input_select.yaml`; en ese caso hay que **recargar los `input_select` YAML** y volver a abrir la UI de estados.
-4. Si tras la recarga sigue apareciendo `False`, asumir que quedó una persistencia legacy en runtime/UI y **forzar una resincronización completa**:
+2. En **Settings → Devices & services → Helpers**, el helper cargado debe mostrar exactamente las mismas cuatro opciones. No basta con que el YAML esté correcto: la UI runtime también debe haber absorbido `off`.
+3. Antes de confiar en cualquier autocorrección, probar manualmente `off` desde la UI de estados: el selector debe aceptar `off` sin error y reflejar el cambio inmediatamente.
+4. Si todavía aparece la opción legacy `False`, el runtime no quedó sincronizado con `input_select.yaml`; en ese caso hay que **recargar los `input_select` YAML** y volver a abrir tanto la UI de estados como la de helpers.
+5. Si tras la recarga sigue apareciendo `False`, asumir que quedó una persistencia legacy en runtime/UI y **forzar una resincronización completa**:
    - reiniciar Home Assistant para que vuelva a cargar `input_select.yaml`;
    - vaciar caché fuerte del navegador o reabrir la vista de estados;
-   - volver a comprobar que el selector sólo ofrezca `off`, `cool`, `heat`, `emergency_cool`.
-5. Sólo si la UI sigue mostrando `False` después de recarga + reinicio, tratar el helper cargado como desalineado y recrearlo/resolver la persistencia runtime antes de volver a probar automatizaciones.
-6. La automatización `AC - Normaliza helper último modo no fan` debe conservarse como red de seguridad, pero no sustituye la corrección del helper cargado: primero debe existir la opción `off` en runtime y sólo después esa automatización puede reparar estados restaurados inválidos.
+   - volver a comprobar en **States** y **Helpers** que el selector sólo ofrezca `off`, `cool`, `heat`, `emergency_cool`.
+6. Sólo si la UI sigue mostrando `False` después de recarga + reinicio, tratar el helper cargado como desalineado y recrearlo/resolver la persistencia runtime antes de volver a probar automatizaciones.
+7. La automatización `AC - Normaliza helper último modo no fan` debe conservarse como red de seguridad, pero no sustituye la corrección del helper cargado: primero debe existir la opción `off` en runtime y sólo después esa automatización puede reparar estados restaurados inválidos.
+
+### Revalidación obligatoria después de corregir el helper runtime
+
+Una vez que `off` exista realmente en runtime/UI y `False` haya desaparecido:
+
+1. Ejecutar un ciclo `COOL` completo hasta llegar al apagado.
+2. Confirmar en el trace que la rama de apagado ya no falla en `input_select.select_option` al escribir `off`.
+3. Verificar que el script/automatización no termine en estado `error`.
+4. Confirmar que la notificación final de apagado se envíe después del `turn_off` y del reseteo del helper a `off`.
+5. Si cualquiera de esos puntos falla, no dar por cerrada la corrección: primero debe resolverse la discrepancia runtime del helper antes de seguir ajustando lógica de automatización.
 
 ## Presencia temporal por encendido manual
 
