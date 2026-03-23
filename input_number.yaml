@@ -868,10 +868,10 @@ ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_noche_presencia:
   icon: mdi:snowflake-thermometer
 
 ac_manual_setpoint_override_hold_minutes:
-  name: "AC Manual Setpoint Override Hold Minutes"
-  min: 3
-  max: 30
+  name: "AC Respeto SP manual aprendido (ciclo actual)"
+  min: 45
+  max: 60
   step: 1
   mode: box
   unit_of_measurement: "min"
-  initial: 12
+  initial: 50

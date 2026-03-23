@@ -447,6 +447,7 @@ Para `cool`, la persistencia del aprendizaje contextual **no debe volver a usar*
 - Los valores efectivos de aprendizaje contextual viven en helpers numéricos dedicados por bucket, por ejemplo `input_number.ac_cool_learning_bucket_*` y `input_number.ac_cool_effective_sp_bucket_*`.
 - `input_text.ac_cool_contextual_learning_map` sólo conserva un **resumen corto del último bucket escrito**, con formato `bucket=valor`.
 - `input_text.ac_cool_effective_setpoint_map` sólo conserva un **resumen corto del último setpoint efectivo persistido**, también con formato `bucket=valor`.
+- El helper `input_number.ac_manual_setpoint_override_hold_minutes` define la **ventana de respeto del SP manual aprendido en el ciclo actual**; su rango operativo quedó en `45-60 min` con valor inicial `50 min`, y durante esa ventana deben quedar bloqueadas la sincronización automática, los `cool_cycle_step` y cualquier reescritura/eco del dispositivo.
 - Las plantillas operativas deben leer el valor real desde el `input_number` del bucket correspondiente; los `input_text` se consideran únicamente telemetría resumida o ayuda de auditoría rápida.
 
 ### Contrato actual de buckets `cool`
