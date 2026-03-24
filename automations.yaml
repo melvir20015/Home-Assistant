@@ -5322,6 +5322,17 @@
       last_change_origin_normalized: >-
         {% set origin = last_change_origin | lower %}
         {% if origin in ['unknown','unavailable','none',''] %}none{% else %}{{ origin }}{% endif %}
+      trigger_user_id: >-
+        {% if trigger is defined and trigger.to_state is not none and trigger.to_state.context is defined and trigger.to_state.context.user_id is defined %}
+          {{ trigger.to_state.context.user_id }}
+        {% else %}
+          {{ none }}
+        {% endif %}
+      manual_user_confirmed: '{{ trigger_user_id not in [none, '''', ''None''] }}'
+      manual_sp_real_change: >-
+        {{ new_sp_num is not none
+           and prev_sp_num is not none
+           and ((((new_sp_num | float) - (prev_sp_num | float)) | abs) >= 0.09) }}
       change_matches_last_auto_sp: >-
         {{ last_auto_setpoint is not none
            and new_sp_num is not none
@@ -5355,14 +5366,10 @@
              )
            ) }}
       manual_override_candidate: >-
-        {{ last_auto_mode == 'cool'
-           and last_auto_action == 'auto_on'
-           and new_sp_num is not none
-           and prev_sp_num is not none
-           and ((((new_sp_num | float) - (prev_sp_num | float)) | abs) >= 0.09)
-           and last_auto_setpoint is not none
-           and ((((new_sp_num | float) - (last_auto_setpoint | float)) | abs) >= 0.2)
-           and (minutes_since_last_auto | float(99999)) <= 12
+        {{ manual_sp_real_change
+           and last_auto_mode == 'cool'
+           and (manual_user_confirmed or (minutes_since_last_auto | float(99999)) <= 60)
+           and (last_auto_setpoint is none or ((((new_sp_num | float) - (last_auto_setpoint | float)) | abs) >= 0.2))
            and (not change_matches_last_auto_sp)
            and (not change_matches_cycle_step_sp) }}
       manual_override_until_ts: >-
@@ -5373,8 +5380,10 @@
         | pausa_sync={{ manual_sp_override_hold_minutes | float(50) }} min
         | aprendizaje={{ 'sí' if apply_feedback else 'pendiente' }}
       ignore_reason: >-
-        {% if prev_sp_num is none or new_sp_num is none or (((new_sp_num | float) - (prev_sp_num | float)) | abs) < 0.09 %}
+        {% if not manual_sp_real_change %}
           sin_cambio_real
+        {% elif manual_user_confirmed %}
+          none
         {% elif is_state('input_boolean.ac_on_por_automatizacion','on') or is_state('input_boolean.ac_off_por_automatizacion','on') %}
           bandera_auto_activa
         {# El equipo/integración puede reflejar con retraso o cuantización el setpoint aplicado.
@@ -5409,14 +5418,16 @@
         {% endif %}
       stabilization_window_active: '{{ (runtime_min | float(99999)) <= 1 }}'
       apply_feedback: '{{ ignore_reason == ''none'' and manual_feedback_kind in [''manual_sp_lower_than_auto'',''manual_sp_higher_than_auto''] }}'
+      feedback_or_override_apply: '{{ apply_feedback or manual_override_candidate }}'
       feedback_policy: >-
-        {% if not apply_feedback %}sin_feedback
+        {% if not feedback_or_override_apply %}sin_feedback
+        {% elif not apply_feedback %}proteccion_manual_sin_delta_auto
         {% else %}aprendizaje_y_adopcion_inmediata
         {% endif %}
-      manual_override_should_activate: '{{ apply_feedback }}'
-      learning_applied_this_cycle: '{{ apply_feedback }}'
+      manual_override_should_activate: '{{ ignore_reason == ''none'' and manual_override_candidate }}'
+      learning_applied_this_cycle: '{{ feedback_or_override_apply }}'
       sync_should_pause_after_feedback: false
-      feedback_mobile_notify: '{{ apply_feedback and (not stabilization_window_active) }}'
+      feedback_mobile_notify: '{{ feedback_or_override_apply and (not stabilization_window_active) }}'
       manual_sp_override_active: >-
         {{ is_state('input_boolean.ac_manual_setpoint_override_active','on')
            and manual_sp_override_until_raw not in ['unknown','unavailable','none','']
@@ -5468,10 +5479,10 @@
         {% else %}{{ feedback_weight }}
         {% endif %}
       effective_sp_after: >-
-        {% if not apply_feedback %}
-          {{ effective_bucket_previous_value | float(none) }}
-        {% elif manual_override_should_activate %}
+        {% if manual_override_should_activate %}
           {{ [[new_sp_num | float(last_auto_setpoint | float(22)), 24] | min, 20] | max | round(2) }}
+        {% elif not apply_feedback %}
+          {{ effective_bucket_previous_value | float(none) }}
         {% elif (effective_sp_feedback_weight | float(0)) <= 0 %}
           {{ last_auto_setpoint | float(new_sp_num | float(0)) | round(2) }}
         {% else %}
@@ -5511,7 +5522,7 @@
       compact_context: >-
         tin={{ tin if tin is not none else 'na' }},tout={{ tout if tout is not none else 'na' }},h={{ hin if hin is not none else 'na' }},hr={{ now().strftime('%H:%M') }},p={{ '1' if presence_effective else '0' }},trend={{ cool_thermal_trend_bucket }},bucket_ctx={{ cool_bucket_context_detail }},m={{ runtime_min }}
       audit_message: >-
-        {% if apply_feedback %}
+        {% if feedback_or_override_apply %}
           sp_manual_feedback | política={{ 'solo aprendizaje futuro' if feedback_policy == 'solo_aprendizaje_futuro' else 'aprendizaje + adopción inmediata' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }} | bucket_detalle={{ cool_bucket_context_detail }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}{% if sync_should_pause_after_feedback %} | sync=pausado{% endif %}
         {% else %}
           sp_manual_feedback_ignored | SPsrc={{ 'device_echo' if ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] else 'manual_candidate' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | reason={{ ignore_reason if ignore_reason != 'none' else effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }} | bucket_detalle={{ cool_bucket_context_detail }}
@@ -5519,7 +5530,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ apply_feedback }}'
+        value_template: '{{ feedback_or_override_apply }}'
       sequence:
       - target:
           entity_id: input_text.ac_last_change_origin
@@ -5568,7 +5579,7 @@
       - choose:
         - conditions:
           - condition: template
-            value_template: '{{ reinforce_effective_needed }}'
+            value_template: '{{ apply_feedback and reinforce_effective_needed }}'
           sequence:
           - target:
               entity_id: '{{ cool_learning_bucket_helper }}'
