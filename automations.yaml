@@ -5693,6 +5693,14 @@
           ignorado: sin delta útil para aprendizaje
         {% endif %}
       feedback_mobile_state: '{{ ''aprendió'' if apply_feedback else ''ignorado'' }}'
+      bucket_short_id: >-
+        {% set bucket_parts = (cool_bucket_selected | default('', true) | trim).split(':') %}
+        {% set out = bucket_parts[0] if bucket_parts | count > 0 else 'na' %}
+        {% set hum = bucket_parts[1] if bucket_parts | count > 1 else 'na' %}
+        {% set tod = bucket_parts[2] if bucket_parts | count > 2 else 'na' %}
+        {% set weather = bucket_parts[3] if bucket_parts | count > 3 else 'na' %}
+        {% set pres = bucket_parts[4] if bucket_parts | count > 4 else 'na' %}
+        {{ (out[0:3] ~ hum[0:3] ~ tod[0:3] ~ weather[0:3] ~ pres[0:3]) | lower }}
       feedback_mobile_message: >-
         {% if apply_feedback %}
           {{ aprendizaje_aplicado_en_este_ciclo }}
@@ -5811,6 +5819,17 @@
         {% else %}
           {{ ignore_reason if ignore_reason != 'none' else 'sin_aprendizaje' }}
         {% endif %}
+      manual_sp_resultado: '{{ ''aprendido'' if feedback_or_override_apply else ''ignorado'' }}'
+      manual_sp_reason_output: '{{ manual_sp_event_reason }}'
+      manual_sp_resumen: >-
+        {{ ('resultado=' ~ manual_sp_resultado
+            ~ '|razon=' ~ manual_sp_reason_output
+            ~ '|bucket=' ~ cool_bucket_selected
+            ~ '|bucket_id=' ~ bucket_short_id
+            ~ '|sp_manual=' ~ (new_sp_num if new_sp_num is not none else 'na')
+            ~ '|sp_guardado=' ~ (effective_sp_after if effective_sp_after is not none else 'na'))[:255] }}
+      manual_sp_result_log: >-
+        sp_manual_result | {{ manual_sp_resumen }}
       audit_message: >-
         {% if feedback_or_override_apply %}
           sp_manual_feedback | manual_sp_event={{ manual_sp_event_status }} | reason={{ manual_sp_event_reason }} | política={{ 'solo aprendizaje futuro' if feedback_policy == 'solo_aprendizaje_futuro' else 'aprendizaje + adopción inmediata' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }} | bucket_detalle={{ cool_bucket_context_detail }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}{% if sync_should_pause_after_feedback %} | sync=pausado{% endif %}
@@ -5857,6 +5876,11 @@
           value: '{{ manual_feedback_kind }}:{{ feedback_phase }}:{{ effective_sp_inconsistency_reason }}{% if reinforce_effective_needed %}:refuerzo{% endif %}'
         service: input_text.set_value
       - target:
+          entity_id: input_text.ac_last_manual_sp_result_summary
+        data:
+          value: '{{ manual_sp_resumen }}'
+        service: input_text.set_value
+      - target:
           entity_id: '{{ effective_bucket_helper }}'
         data:
           value: '{{ effective_sp_after }}'
@@ -5890,6 +5914,11 @@
       - action: logbook.log
         data:
           name: AC Manual SP
+          message: '{{ manual_sp_result_log }}'
+          entity_id: '{{ climate_ent }}'
+      - action: logbook.log
+        data:
+          name: AC Manual SP
           message: '{{ audit_message }}'
           entity_id: '{{ climate_ent }}'
       - choose:
@@ -5899,7 +5928,7 @@
           sequence:
           - data:
               title: 'AC SP {{ feedback_mobile_state }}'
-              message: '{{ feedback_mobile_message }}'
+              message: '{{ feedback_mobile_message }} | BucketID={{ bucket_short_id }}'
               data:
                 ttl: 0
                 priority: high
@@ -5926,6 +5955,16 @@
             value: device_echo
           service: input_text.set_value
       default: []
+    - action: logbook.log
+      data:
+        name: AC Manual SP
+        message: '{{ manual_sp_result_log }}'
+        entity_id: '{{ climate_ent }}'
+    - target:
+        entity_id: input_text.ac_last_manual_sp_result_summary
+      data:
+        value: '{{ manual_sp_resumen }}'
+      service: input_text.set_value
     - action: logbook.log
       data:
         name: AC Manual SP

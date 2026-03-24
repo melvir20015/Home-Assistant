@@ -776,6 +776,24 @@ Deben quedar sólo en logbook, traces o helpers de auditoría:
 - retención temporal de presencia o consolidación del estado manual final;
 - snapshots contextuales usados para aprendizaje.
 
+### 13.4. Resumen auditable por evento de setpoint manual
+
+Para cada evento de feedback/manual override de setpoint, el sistema debe persistir un resumen corto y uniforme en:
+
+- helper `input_text.ac_last_manual_sp_result_summary`;
+- logbook con prefijo fijo `sp_manual_result`.
+
+Formato contractual del resumen (compacto, máximo 255 chars):
+
+- `resultado`: `aprendido` o `ignorado`;
+- `razon`: razón de clasificación final (`manual_feedback_kind` o `ignore_reason`);
+- `bucket`: bucket contextual completo usado para aprendizaje;
+- `bucket_id`: identificador corto derivado del bucket para auditoría rápida;
+- `sp_manual`: setpoint manual capturado en el evento;
+- `sp_guardado`: valor efectivo persistido como aprendizaje contextual.
+
+Este resumen **complementa** (no reemplaza) la telemetría extensa `sp_manual_feedback` / `sp_manual_feedback_ignored`. La notificación push de setpoint manual debe incluir también `BucketID=<bucket_id>` para correlacionar rápidamente push ↔ logbook ↔ helper de auditoría.
+
 ## 14. Casos narrativos clave
 
 ### 14.1. `manual_on` porque faltó detección de presencia

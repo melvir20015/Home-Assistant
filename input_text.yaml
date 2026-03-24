@@ -22,6 +22,10 @@ ac_last_manual_learning_type:
   name: "AC Last Manual Learning Result"
   max: 60
 
+ac_last_manual_sp_result_summary:
+  name: "AC Last Manual SP Result Summary"
+  max: 255
+
 ac_last_manual_feedback_type:
   name: "AC Last Manual Feedback Type (legacy)"
   max: 60
