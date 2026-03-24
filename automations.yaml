@@ -1167,10 +1167,9 @@
       target:
         entity_id: input_boolean.ac_tendencia_subiendo_con_ac_off
 - id: ac_noche_decide_modo_2200
-  alias: AC - Noche Decide modo final (22:00) con bloqueo (no cae a none si AC estaba
+  alias: 'AC - Noche Decide modo final (22:00) con bloqueo (no cae a none si AC estaba ON)'
   trace:
     stored_traces: 50
-    ON)
   mode: single
   trigger:
   - platform: time
