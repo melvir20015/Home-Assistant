@@ -5489,6 +5489,19 @@
           {{ none }}
         {% endif %}
       manual_user_confirmed: '{{ trigger_user_id not in [none, '''', ''None''] }}'
+      last_manual_final_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'') | default('''', true) | trim }}'
+      minutes_since_manual_interaction: >-
+        {% if last_manual_final_ts_raw in ['unknown','unavailable','none',''] %}99999
+        {% else %}
+          {% set ts = as_timestamp(last_manual_final_ts_raw, default=none) %}
+          {{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}
+        {% endif %}
+      manual_interaction_recent: >-
+        {{ manual_user_confirmed
+           or (
+             last_change_origin_normalized in ['manual_on','manual_off','manual_override','manual_sp_feedback','manual_sp_feedback_future_only']
+             and (minutes_since_manual_interaction | float(99999)) <= 20
+           ) }}
       manual_sp_real_change: >-
         {{ new_sp_num is not none
            and prev_sp_num is not none
@@ -5525,10 +5538,29 @@
                and change_matches_last_auto_sp
              )
            ) }}
+      origin_points_to_auto: >-
+        {{ last_change_origin_normalized in ['auto_on','auto_off','manual_sp_feedback','cool_cycle_step','cool_sp_sync','device_echo'] }}
+      immediate_same_value_echo: >-
+        {{ manual_sp_real_change
+           and (
+             (change_matches_cycle_step_sp and (minutes_since_last_step | float(99999)) <= 3)
+             or (change_matches_last_auto_sp and (minutes_since_last_auto | float(99999)) <= 3)
+           )
+           and origin_points_to_auto
+           and (not manual_user_confirmed) }}
+      device_echo_candidate: >-
+        {{ (not manual_sp_real_change)
+           or immediate_same_value_echo
+           or (
+             auto_setpoint_recent
+             and origin_points_to_auto
+             and (not manual_interaction_recent)
+             and (change_matches_last_auto_sp or change_matches_cycle_step_sp)
+           ) }}
       manual_override_candidate: >-
         {{ manual_sp_real_change
            and last_auto_mode == 'cool'
-           and (manual_user_confirmed or (minutes_since_last_auto | float(99999)) <= 60)
+           and (manual_interaction_recent or (minutes_since_last_auto | float(99999)) <= 60)
            and (last_auto_setpoint is none or ((((new_sp_num | float) - (last_auto_setpoint | float)) | abs) >= 0.2))
            and (not change_matches_last_auto_sp)
            and (not change_matches_cycle_step_sp) }}
@@ -5542,20 +5574,18 @@
       ignore_reason: >-
         {% if not manual_sp_real_change %}
           sin_cambio_real
-        {% elif manual_user_confirmed %}
+        {% elif manual_interaction_recent and not immediate_same_value_echo %}
           none
+        {% elif immediate_same_value_echo %}
+          eco_inmediato_mismo_valor
         {% elif is_state('input_boolean.ac_on_por_automatizacion','on') or is_state('input_boolean.ac_off_por_automatizacion','on') %}
           bandera_auto_activa
-        {# El equipo/integración puede reflejar con retraso o cuantización el setpoint aplicado.
-           Esos ecos/reportes tardíos no deben alimentar aprendizaje manual automáticamente. #}
-        {% elif auto_setpoint_recent and (not manual_override_candidate) and last_change_origin_normalized in ['auto_on','auto_off','manual_sp_feedback','cool_cycle_step','cool_sp_sync'] %}
-          post_auto_sync
-        {% elif auto_setpoint_recent and (minutes_since_last_step | float(99999)) <= 4 and change_matches_cycle_step_sp %}
+        {% elif device_echo_candidate and auto_setpoint_recent and change_matches_cycle_step_sp %}
           setpoint_echo_from_device
-        {% elif auto_setpoint_recent and recent_auto_cycle_window and change_matches_last_auto_sp %}
+        {% elif device_echo_candidate and auto_setpoint_recent and change_matches_last_auto_sp %}
           device_report_lag
-        {% elif auto_setpoint_recent %}
-          autoaccion_reciente
+        {% elif device_echo_candidate and auto_setpoint_recent %}
+          post_auto_sync
         {% elif last_change_origin_normalized in ['auto_on','auto_off','cool_cycle_step','cool_sp_sync'] and recent_auto_cycle_window %}
           post_auto_sync
         {% elif last_change_origin_normalized in ['auto_on','auto_off'] and (minutes_since_last_auto | float(99999)) <= 0.5 %}
@@ -5577,7 +5607,13 @@
         {% else %}ajuste_intermedio
         {% endif %}
       stabilization_window_active: '{{ (runtime_min | float(99999)) <= 1 }}'
-      apply_feedback: '{{ ignore_reason == ''none'' and manual_feedback_kind in [''manual_sp_lower_than_auto'',''manual_sp_higher_than_auto''] }}'
+      manual_change_unequivocal: >-
+        {{ manual_sp_real_change
+           and manual_interaction_recent
+           and (not immediate_same_value_echo)
+           and (ignore_reason == 'none')
+           and manual_feedback_kind in ['manual_sp_lower_than_auto','manual_sp_higher_than_auto'] }}
+      apply_feedback: '{{ manual_change_unequivocal }}'
       feedback_or_override_apply: '{{ apply_feedback or manual_override_candidate }}'
       feedback_policy: >-
         {% if not feedback_or_override_apply %}sin_feedback
@@ -5642,16 +5678,10 @@
       effective_sp_after: >-
         {% if manual_override_should_activate %}
           {{ new_sp_num | float(last_auto_setpoint | float(22)) }}
-        {% elif not apply_feedback %}
-          {{ effective_bucket_previous_value | float(none) }}
-        {% elif (effective_sp_feedback_weight | float(0)) <= 0 %}
-          {{ last_auto_setpoint | float(new_sp_num | float(0)) | round(2) }}
+        {% elif apply_feedback %}
+          {{ new_sp_num | float(last_auto_setpoint | float(22)) | round(2) }}
         {% else %}
-          {% set base = effective_bucket_previous_value | float(last_auto_setpoint | float(new_sp_num | float(0))) %}
-          {% set manual = new_sp_num | float(base) %}
-          {% set weight = effective_sp_feedback_weight | float(0.4) %}
-          {% set blended = (base * (1 - weight)) + (manual * weight) %}
-          {{ [[blended, 24] | min, 20] | max | round(2) }}
+          {{ effective_bucket_previous_value | float(none) }}
         {% endif %}
       effective_summary: '{{ ((cool_bucket_selected ~ ''='' ~ (''%.2f'' | format(effective_sp_after | float(0))))[:255]) }}'
       cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
@@ -5690,11 +5720,18 @@
         {{ ((cool_bucket_selected ~ '=' ~ ('%.2f' | format(final_value | float(0))))[:255]) }}
       compact_context: >-
         tin={{ tin if tin is not none else 'na' }},tout={{ tout if tout is not none else 'na' }},h={{ hin if hin is not none else 'na' }},hr={{ now().strftime('%H:%M') }},p={{ '1' if presence_effective else '0' }},trend={{ cool_thermal_trend_bucket }},bucket_ctx={{ cool_bucket_context_detail }},m={{ runtime_min }}
+      manual_sp_event_status: '{{ ''valid'' if feedback_or_override_apply else ''ignored'' }}'
+      manual_sp_event_reason: >-
+        {% if manual_sp_event_status == 'valid' %}
+          {{ manual_feedback_kind if manual_feedback_kind != 'ignored' else 'manual_override' }}
+        {% else %}
+          {{ ignore_reason if ignore_reason != 'none' else 'sin_aprendizaje' }}
+        {% endif %}
       audit_message: >-
         {% if feedback_or_override_apply %}
-          sp_manual_feedback | política={{ 'solo aprendizaje futuro' if feedback_policy == 'solo_aprendizaje_futuro' else 'aprendizaje + adopción inmediata' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }} | bucket_detalle={{ cool_bucket_context_detail }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}{% if sync_should_pause_after_feedback %} | sync=pausado{% endif %}
+          sp_manual_feedback | manual_sp_event={{ manual_sp_event_status }} | reason={{ manual_sp_event_reason }} | política={{ 'solo aprendizaje futuro' if feedback_policy == 'solo_aprendizaje_futuro' else 'aprendizaje + adopción inmediata' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num }} | ΔSP={{ delta_sp }} | tipo={{ manual_feedback_kind }} | fase={{ feedback_phase }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | W={{ effective_sp_feedback_weight }} | sanity={{ effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }} | bucket_detalle={{ cool_bucket_context_detail }}{% if reinforce_effective_needed %} | refuerzo=sp_efectivo{% endif %}{% if sync_should_pause_after_feedback %} | sync=pausado{% endif %}
         {% else %}
-          sp_manual_feedback_ignored | SPsrc={{ 'device_echo' if ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] else 'manual_candidate' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | reason={{ ignore_reason if ignore_reason != 'none' else effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }} | bucket_detalle={{ cool_bucket_context_detail }}
+          sp_manual_feedback_ignored | manual_sp_event={{ manual_sp_event_status }} | reason={{ manual_sp_event_reason }} | SPsrc={{ 'device_echo' if ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync','eco_inmediato_mismo_valor'] else 'manual_candidate' }} | SP auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }} | SP manual={{ new_sp_num if new_sp_num is not none else 'na' }} | ΔSP={{ delta_sp if delta_sp is not none else 'na' }} | SPh(hist_prev)={{ effective_bucket_previous_value if effective_bucket_previous_value is not none else 'na' }} | reason_detalle={{ ignore_reason if ignore_reason != 'none' else effective_sp_inconsistency_reason }} | ctx={{ compact_context }} | bucket={{ cool_bucket_selected }} | bucket_detalle={{ cool_bucket_context_detail }}
         {% endif %}
   - choose:
     - conditions:
@@ -5802,7 +5839,7 @@
           service: input_text.set_value
       - conditions:
         - condition: template
-          value_template: "{{ ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync'] }}"
+          value_template: "{{ ignore_reason in ['setpoint_echo_from_device','device_report_lag','post_auto_sync','eco_inmediato_mismo_valor'] }}"
         sequence:
         - target:
             entity_id: input_text.ac_last_change_origin
