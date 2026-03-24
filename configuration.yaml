@@ -1,0 +1,39 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+# frontend:
+#   themes: !include_dir_merge_named themes
+
+# ===========================
+# HELPERS (input_*)
+# ===========================
+input_boolean: !include helpers/input_boolean.yaml
+input_datetime: !include helpers/input_datetime.yaml
+input_number: !include helpers/input_number.yaml
+input_select: !include helpers/input_select.yaml
+input_text: !include helpers/input_text.yaml
+timer: !include helpers/timer.yaml
+
+# ===========================
+# AUTOMATIONS / SCRIPTS / SCENES
+# ===========================
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+http:
+  ssl_certificate: /ssl/fullchain.pem
+  ssl_key: /ssl/privkey.pem
+  ip_ban_enabled: true
+  login_attempts_threshold: 3
+
+trace:
+  stored_traces: 50
+
+# ===========================
+# INCLUDES
+# ===========================
+template: !include templates.yaml
+sensor: !include sensors.yaml
+utility_meter: !include utility_meter.yaml
