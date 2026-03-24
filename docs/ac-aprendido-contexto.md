@@ -536,7 +536,9 @@ Antes de formar la clave contextual, la automatización normaliza el estado real
   - presencia.
 - `cool_off_target` sigue derivándose del bucket contextual aprendido, pero ahora aplica un ajuste fino de demanda sin romper los límites existentes.
 - `cool_on_target` sigue saliendo de `cool_off_target`, preservando la geometría del sistema, aunque el diferencial ahora también se modula por franja, clima, tendencia y presencia.
-- `cool_setpoint_theoretical` sigue derivándose de `cool_off`, pero ajusta su offset con el mismo contexto ampliado para que el setpoint responda mejor a humedad, clima y momento del día.
+- Regla contractual de decisión para `cool`: **`SP = Off - 0.5 °C`** y luego saturado a límites operativos (`21.0 °C` a `24.0 °C`).
+- La lógica interna debe usar siempre ese valor en °C como fuente única de verdad (`SP_logic_c` / `cool_setpoint_effective_c`).
+- Si el equipo obliga setpoint entero en °F, ese valor de actuación debe mantenerse aparte (`SP_sent_f`) y **no** debe reingresar para recalcular la lógica.
 - El aprendizaje contextual y la memoria de setpoint efectivo ya no deben asumir una clave de cuatro dimensiones; cualquier helper o resumen debe tratar la dimensión climática como obligatoria dentro de la clave base.
 
 ### Regla de evolución

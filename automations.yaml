@@ -3659,7 +3659,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_normalized | sp_writer={{ 'manual_lock' if manual_sp_protected_lock_active else 'auto_on' }} | permit={{ auto_on_presence_reason }} | SPsrc=auto_on | {{ cool_ctx_brief }} | On={{ cool_on }} | Off={{ cool_off }} | SensorOff={{ cool_sensor_off }} | SPt={{ cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{ cool_setpoint_effective }} | Calc={{ cool_off_learning_source }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason }} | Min={{ minutes_since_last_auto }}
+            cool_normalized | sp_writer={{ 'manual_lock' if manual_sp_protected_lock_active else 'auto_on' }} | permit={{ auto_on_presence_reason }} | SPsrc=auto_on | {{ cool_ctx_brief }} | On={{ cool_on }} | Off={{ cool_off }} | SensorOff={{ cool_sensor_off }} | SPt={{ cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{ cool_setpoint_effective }} | SP_logic_c={{ cool_setpoint_effective_c }} | SP_sent_f={{ cool_setpoint_sent_f }} | Calc={{ cool_off_learning_source }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -3762,7 +3762,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            sp_writer_blocked_manual_lock | sp_writer=manual_lock | SPsrc=sync | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=manual_lock | lock_explicit={{ manual_sp_lock_explicit }} | evidence_recent={{ manual_sp_recent_user_evidence }} | Δ={{ cool_sync_delta }} | Min={{ minutes_since_last_auto }}
+            sp_writer_blocked_manual_lock | sp_writer=manual_lock | SPsrc=sync | {{ cool_ctx_brief }} | SP_logic_c={{ cool_setpoint_effective_c }} | SP_sent_f={{ cool_setpoint_sent_f }} | Mot=manual_lock | lock_explicit={{ manual_sp_lock_explicit }} | evidence_recent={{ manual_sp_recent_user_evidence }} | Δ={{ cool_sync_delta }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3812,7 +3812,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_sp_sync | sp_writer=sync | SPsrc=sync | {{ cool_ctx_brief }} | SPf={{ cool_setpoint_f }} | Mot=sync | Δ={{ cool_sync_delta }} | Min={{ minutes_since_last_auto }}
+            cool_sp_sync | sp_writer=sync | SPsrc=sync | {{ cool_ctx_brief }} | SP_logic_c={{ cool_setpoint_effective_c }} | SP_sent_f={{ cool_setpoint_sent_f }} | Mot=sync | Δ={{ cool_sync_delta }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -3832,7 +3832,7 @@
           - variables:
               cool_push_kind: sync
               cool_push_reason: Mot=sync
-              cool_push_summary: 'SP {{ ac_set_effective_normalized }}→{{ cool_setpoint_effective }} | Δ={{ cool_sync_delta }} | SPf={{ cool_setpoint_f }}'
+              cool_push_summary: 'SP {{ ac_set_effective_normalized }}→{{ cool_setpoint_effective }} | Δ={{ cool_sync_delta }} | SP_logic_c={{ cool_setpoint_effective_c }} | SP_sent_f={{ cool_setpoint_sent_f }}'
               # `cool_push_*` vive sólo en esta rama; el título/mensaje se renderiza aquí mismo.
               cool_mobile_title_local: 'Cool↺'
               cool_mobile_message_local: >-
@@ -4017,13 +4017,11 @@
     cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
       raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
       }}\n{% endif %}"
-    # El panel del AC opera con pasos efectivos de 1 °F. Por eso Home Assistant
-    # puede mostrar un valor en °C distinto al que redondea visualmente el equipo:
-    # primero calculamos el setpoint teórico (`SPt`), luego validamos el setpoint
-    # histórico efectivo por bucket (`SPh`) y recién después normalizamos al entero
-    # en °F realmente aceptado por el equipo (`SPf`) para obtener el efectivo final
-    # (`SPe`). `SPh` es histórico/contextual, no el valor enviado directamente.
-    cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {% set offset = -0.50 %}\n  {% set offset = offset - (0.06 if cool_weather_bucket in ['soleado', 'tormenta'] else 0.03 if cool_weather_bucket == 'parcial' else 0) %}\n  {% set offset = offset - (0.05 if cool_humidity_bucket == 'humedad_muy_alta' else 0.02 if cool_humidity_bucket == 'humedad_alta' else 0) %}\n  {% set offset = offset - (0.04 if cool_tod_bucket == 'franja_1001_1500' else 0.02 if cool_tod_bucket == 'franja_1501_1800' else 0) %}\n  {% set offset = offset + (0.04 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set offset = offset - (0.03 if cool_thermal_trend_bucket == 'subiendo' else -0.02 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {{ ((cool_off | float) + offset) | round(2) }}\n{% endif %}"
+    # Regla contractual de control para cool: SP_logic_c = (cool_off - 0.5 °C) con
+    # límites operativos. La lógica interna SIEMPRE trabaja en °C.
+    # Si el equipo obliga pasos enteros en °F, se calcula un valor físico aparte
+    # (`SP_sent_f`) sólo para envío al equipo, sin retroalimentar la lógica.
+    cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
     cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min, 21] | max | round(2) }}\n{% endif %}"
     cool_effective_sp_soft_gap: '{{ states(''input_number.ac_cool_effective_sp_soft_gap'') | float(0.8) }}'
     cool_effective_sp_hard_gap: '{{ states(''input_number.ac_cool_effective_sp_hard_gap'') | float(1.4) }}'
@@ -4096,9 +4094,11 @@
       {{ cool_effective_sp_ignored
          and cool_effective_sp_inconsistency_reason == 'hard_recent_feedback'
          and (cool_effective_sp_reset_hits | int(0)) >= (cool_effective_sp_reset_repeat_limit | int(2)) }}
-    cool_setpoint_learned_blended: "{% if cool_setpoint is none %}\n  {{ none }}\n{% else %}\n  {% set historical = cool_effective_sp_entry %}\n  {% set hist_weight = cool_effective_sp_hist_weight | float(0) %}\n  {% if historical is none or hist_weight <= 0 %}\n    {{ cool_setpoint | float | round(2) }}\n  {% else %}\n    {% set theory_weight = 1 - hist_weight %}\n    {% set blended = ((cool_setpoint | float) * theory_weight) + ((historical | float) * hist_weight) %}\n    {{ [[blended, 24] | min, 20] | max | round(2) }}\n  {% endif %}\n{% endif %}"
-    cool_setpoint_f: "{% if cool_setpoint_learned_blended is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((cool_setpoint_learned_blended | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 68] | max | int }}\n{% endif %}"
-    cool_setpoint_effective: "{% if cool_setpoint_f is none %}\n  {{ none }}\n{% else %}\n  {{ (((cool_setpoint_f | float) - 32) * 5 / 9) | round(2) }}\n{% endif %}"
+    cool_setpoint_learned_blended: '{{ cool_setpoint }}'
+    cool_setpoint_effective_c: '{{ cool_setpoint }}'
+    cool_setpoint_sent_f: "{% if cool_setpoint_effective_c is none %}\n  {{ none }}\n{% else %}\n  {% set sp_f = (((cool_setpoint_effective_c | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75] | min, 68] | max | int }}\n{% endif %}"
+    cool_setpoint_f: '{{ cool_setpoint_sent_f }}'
+    cool_setpoint_effective: '{{ cool_setpoint_effective_c }}'
     cool_cycle_contract_on: '{{ states(''input_number.ac_cool_cycle_contract_on'') | float(none) }}'
     cool_cycle_contract_off: '{{ states(''input_number.ac_cool_cycle_contract_off'') | float(none) }}'
     cool_cycle_contract_sensor_off: '{{ states(''input_number.ac_cool_cycle_contract_sensor_off'') | float(none) }}'
@@ -5182,11 +5182,10 @@
       cool_off: '{{ cool_off_target }}'
       cool_on_target: "{% if cool_off_target is none %}\n  {{ none }}\n{% else %}\n  {% set spread = 0.52 %}\n  {% set spread = spread + (0.04 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set spread = spread + (0.03 if cool_tod_bucket in ['franja_0700_1000', 'franja_fuera_rango'] else 0) %}\n  {% set spread = spread - (0.03 if cool_weather_bucket in ['soleado', 'tormenta'] else 0) %}\n  {% set spread = spread - (0.04 if cool_thermal_trend_bucket == 'subiendo' else 0) %}\n  {% set raw = (cool_off_target | float) + spread %}\n  {{ [[raw, 26.2] | min, 22.9] | max | round(2) }}\n{% endif %}"
       cool_on: '{{ cool_on_target }}'
-      cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else
-        %}\n  {% set offset = -0.50 %}\n  {% set offset = offset - (0.06 if cool_weather_bucket in ['soleado', 'tormenta'] else 0.03 if cool_weather_bucket == 'parcial' else 0) %}\n  {% set offset = offset - (0.05 if cool_humidity_bucket == 'humedad_muy_alta' else 0.02 if cool_humidity_bucket == 'humedad_alta' else 0) %}\n  {% set offset = offset - (0.04 if cool_tod_bucket == 'franja_1001_1500' else 0.02 if cool_tod_bucket == 'franja_1501_1800' else 0) %}\n  {% set offset = offset + (0.04 if cool_presence_bucket == 'ausencia' else 0) %}\n  {% set offset = offset - (0.03 if cool_thermal_trend_bucket == 'subiendo' else -0.02 if cool_thermal_trend_bucket == 'bajando' else 0) %}\n  {{ ((cool_off | float) + offset) | round(2) }}\n{% endif %}"
+      cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
       cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else
         %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min,
-        21] | max | round(1) }}\n{% endif %}"
+        21] | max | round(2) }}\n{% endif %}"
       auto_on_blocked_by_presence: '{{ not presence_strict_for_manual_guard }}'
       cool_auto_blocked_by_threshold: "{{ final_mode == 'cool'
    and (
