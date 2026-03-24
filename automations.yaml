@@ -3597,7 +3597,7 @@
           sequence:
           - variables:
               sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
-              sp_target: '{{ cool_setpoint_effective }}'
+              sp_target: '{{ cool_setpoint_effective_soft_resume }}'
               writer_id: auto_on
               manual_lock_state: '{{ manual_sp_lock_active }}'
               bucket: '{{ cool_context_bucket }}'
@@ -3615,6 +3615,16 @@
               message: >-
                 sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{ 'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
               entity_id: climate.0200009211c7_climate
+          - target:
+              entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+            data:
+              value: '{{ sp_before if sp_before is not none else (ac_set_effective_normalized if ac_set_effective_normalized is not none else 0) }}'
+            action: input_number.set_value
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: writer={{ writer_id }} blocked_by=manual_sp_lock
+              entity_id: climate.0200009211c7_climate
           - action: logbook.log
             data:
               name: AC Auto Trace
@@ -3624,7 +3634,7 @@
         default:
         - variables:
             sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
-            sp_target: '{{ cool_setpoint_effective }}'
+            sp_target: '{{ cool_setpoint_effective_soft_resume }}'
             writer_id: auto_on
             manual_lock_state: '{{ manual_sp_lock_active }}'
             bucket: '{{ cool_context_bucket }}'
@@ -3636,7 +3646,7 @@
         - target:
             entity_id: climate.0200009211c7_climate
           data:
-            temperature: '{{ cool_setpoint_effective }}'
+            temperature: '{{ cool_setpoint_effective_soft_resume }}'
           action: climate.set_temperature
         - variables:
             sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
@@ -3765,7 +3775,7 @@
       sequence:
       - variables:
           sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
-          sp_target: '{{ cool_setpoint_effective }}'
+          sp_target: '{{ cool_setpoint_effective_soft_resume }}'
           writer_id: cool_sp_sync
           manual_lock_state: '{{ manual_sp_lock_active }}'
           bucket: '{{ cool_context_bucket }}'
@@ -3782,6 +3792,16 @@
           name: AC Auto Trace
           message: >-
             sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{ 'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+          entity_id: climate.0200009211c7_climate
+      - target:
+          entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+        data:
+          value: '{{ sp_before if sp_before is not none else (ac_set_effective_normalized if ac_set_effective_normalized is not none else 0) }}'
+        action: input_number.set_value
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: writer={{ writer_id }} blocked_by=manual_sp_lock
           entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_datetime.ac_last_cool_sp_sync_notify_ts
@@ -3805,7 +3825,7 @@
       sequence:
       - variables:
           sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
-          sp_target: '{{ cool_setpoint_effective }}'
+          sp_target: '{{ cool_setpoint_effective_soft_resume }}'
           writer_id: cool_sp_sync
           manual_lock_state: '{{ manual_sp_lock_active }}'
           bucket: '{{ cool_context_bucket }}'
@@ -3817,7 +3837,7 @@
       - target:
           entity_id: climate.0200009211c7_climate
         data:
-          temperature: '{{ cool_setpoint_effective }}'
+          temperature: '{{ cool_setpoint_effective_soft_resume }}'
         action: climate.set_temperature
       - variables:
           sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
@@ -3836,12 +3856,12 @@
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
-          value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
+          value: '{{ cool_setpoint_effective_soft_resume if cool_setpoint_effective_soft_resume is not none else 0 }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
-          value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
+          value: '{{ cool_setpoint_effective_soft_resume if cool_setpoint_effective_soft_resume is not none else 0 }}'
         action: input_number.set_value
       - action: logbook.log
         data:
@@ -4179,7 +4199,10 @@
     last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
     recent_any_auto_on: "{{ last_auto_action == 'auto_on'\n   and (minutes_since_last_auto
       | float(99999)) <= 2 }}"
-    manual_sp_override_hold_minutes: '{{ states(''input_number.ac_manual_setpoint_override_hold_minutes'') | float(50) }}'
+    manual_sp_lock_window_min: >-
+      {% set raw = states('input_number.ac_manual_setpoint_override_hold_minutes') | float(50) %}
+      {{ [[raw, 60] | min, 45] | max }}
+    manual_sp_override_hold_minutes: '{{ manual_sp_lock_window_min }}'
     manual_sp_override_until_raw: '{{ states(''input_datetime.ac_manual_setpoint_override_until'') }}'
     manual_sp_override_until_ts: >-
       {% set raw = manual_sp_override_until_raw | default('', true) | trim %}
@@ -4203,12 +4226,30 @@
     manual_sp_recent_user_evidence: >-
       {{ last_auto_mode == 'cool'
          and last_auto_branch == 'cool_normal_on'
-         and (minutes_since_last_auto | float(99999)) <= (manual_sp_override_hold_minutes | float(50))
+         and (minutes_since_last_auto | float(99999)) <= (manual_sp_lock_window_min | float(50))
          and last_change_origin_raw in ['manual_override','manual_sp_feedback','manual_sp_feedback_future_only'] }}
     manual_sp_lock_active: >-
       {{ manual_sp_lock_explicit
          or manual_sp_recent_user_evidence }}
     manual_sp_protected_lock_active: '{{ manual_sp_lock_active }}'
+    manual_sp_lock_recently_expired: >-
+      {{ (not manual_sp_protected_lock_active)
+         and (manual_sp_override_minutes_left | float(0)) <= 5
+         and (manual_sp_override_until_ts | float(0)) > 0 }}
+    cool_setpoint_effective_soft_resume: >-
+      {% if cool_setpoint_effective is none or ac_set_effective_normalized is none %}
+        {{ cool_setpoint_effective }}
+      {% elif manual_sp_lock_recently_expired %}
+        {% set step = 0.3 %}
+        {% set delta = (cool_setpoint_effective | float) - (ac_set_effective_normalized | float) %}
+        {% if (delta | abs) <= step %}
+          {{ cool_setpoint_effective }}
+        {% else %}
+          {{ ((ac_set_effective_normalized | float) + (step if delta > 0 else -step)) | round(2) }}
+        {% endif %}
+      {% else %}
+        {{ cool_setpoint_effective }}
+      {% endif %}
     manual_sp_feedback_future_only_active: >-
       {{ states('input_text.ac_last_change_origin') == 'manual_sp_feedback_future_only'
          and (minutes_since_last_auto | float(99999)) <= 2 }}
@@ -5441,6 +5482,9 @@
         {% endif %}
       last_auto_setpoint: '{{ states(''input_number.ac_last_auto_setpoint'') | float(none) }}'
       cycle_last_applied_setpoint: '{{ states(''input_number.ac_cool_cycle_last_applied_setpoint'') | float(none) }}'
+      manual_sp_lock_window_min: >-
+        {% set raw = states('input_number.ac_manual_setpoint_override_hold_minutes') | float(50) %}
+        {{ [[raw, 60] | min, 45] | max }}
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       last_step_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_last_step_at'') }}'
       start_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_started_at'') }}'
@@ -5565,11 +5609,11 @@
            and (not change_matches_last_auto_sp)
            and (not change_matches_cycle_step_sp) }}
       manual_override_until_ts: >-
-        {{ (as_timestamp(now()) + ((manual_sp_override_hold_minutes | float(50)) * 60)) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+        {{ (as_timestamp(now()) + ((manual_sp_lock_window_min | float(50)) * 60)) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
       manual_override_notify_message: >-
         SP respetado en este ciclo | manual={{ new_sp_num if new_sp_num is not none else 'na' }}
         | auto={{ last_auto_setpoint if last_auto_setpoint is not none else 'na' }}
-        | pausa_sync={{ manual_sp_override_hold_minutes | float(50) }} min
+        | pausa_sync={{ manual_sp_lock_window_min | float(50) }} min
         | aprendizaje={{ 'sí' if apply_feedback else 'pendiente' }}
       ignore_reason: >-
         {% if not manual_sp_real_change %}
@@ -5661,7 +5705,14 @@
         {{ is_state('input_boolean.ac_manual_setpoint_override_active','on')
            and manual_sp_override_until_raw not in ['unknown','unavailable','none','']
            and as_timestamp(manual_sp_override_until_raw, 0) > as_timestamp(now()) }}
-      manual_sp_lock_active: '{{ manual_override_should_activate or manual_sp_override_active }}'
+      manual_sp_recent_user_evidence: >-
+        {{ last_auto_mode == 'cool'
+           and last_change_origin_normalized in ['manual_override','manual_sp_feedback','manual_sp_feedback_future_only']
+           and (minutes_since_last_auto | float(99999)) <= (manual_sp_lock_window_min | float(50)) }}
+      manual_sp_lock_active: >-
+        {{ manual_override_should_activate
+           or manual_sp_override_active
+           or manual_sp_recent_user_evidence }}
       effective_summary_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'') | trim }}'
       effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~ (cool_bucket_selected | replace('':'',''_'') ) }}'
       # Dependencia crítica: el aprendizaje avanzado de setpoint toma primero el
@@ -5927,11 +5978,14 @@
           {{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}
         {% endif %}
       last_change_origin_raw: '{{ states(''input_text.ac_last_change_origin'') | default('''', true) | trim }}'
-      manual_sp_override_hold_minutes: '{{ states(''input_number.ac_manual_setpoint_override_hold_minutes'') | float(50) }}'
+      manual_sp_lock_window_min: >-
+        {% set raw = states('input_number.ac_manual_setpoint_override_hold_minutes') | float(50) %}
+        {{ [[raw, 60] | min, 45] | max }}
+      manual_sp_override_hold_minutes: '{{ manual_sp_lock_window_min }}'
       manual_sp_recent_user_evidence: >-
         {{ last_auto_mode == 'cool'
            and last_auto_action == 'auto_on'
-           and (minutes_since_last_auto | float(99999)) <= (manual_sp_override_hold_minutes | float(50))
+           and (minutes_since_last_auto | float(99999)) <= (manual_sp_lock_window_min | float(50))
            and last_change_origin_raw in ['manual_override','manual_sp_feedback','manual_sp_feedback_future_only'] }}
       manual_sp_lock_active: >-
         {{ manual_sp_lock_explicit
@@ -5963,6 +6017,24 @@
       insufficient_progress: "{{ progress_temp is not none and remaining_delta is not none and (runtime_min | float(0)) >= (initial_delay_min | float(30)) and (minutes_since_last_step | float(99999)) >= (window_min | float(30)) and (remaining_delta | float(0)) > (close_enough_delta | float(0.2)) and ((progress_temp | float(0)) + 0.05) < (expected_progress | float(0)) }}"
       next_setpoint: '{{ [((current_setpoint | float(99)) - (step_size | float(0.5))), (min_setpoint | float(20))] | max | round(1) }}'
       can_reduce: '{{ (current_setpoint | float(99)) > (min_setpoint | float(20)) and (next_setpoint | float(99)) < (current_setpoint | float(99)) }}'
+      manual_sp_lock_recently_expired: >-
+        {{ (not manual_sp_protected_lock_active)
+           and (manual_sp_override_minutes_left | float(0)) <= 5
+           and manual_sp_override_until_raw not in ['unknown','unavailable','none',''] }}
+      next_setpoint_soft_resume: >-
+        {% if next_setpoint is none or current_setpoint is none %}
+          {{ next_setpoint }}
+        {% elif manual_sp_lock_recently_expired %}
+          {% set step = 0.3 %}
+          {% set delta = (next_setpoint | float) - (current_setpoint | float) %}
+          {% if (delta | abs) <= step %}
+            {{ next_setpoint }}
+          {% else %}
+            {{ ((current_setpoint | float) + (step if delta > 0 else -step)) | round(1) }}
+          {% endif %}
+        {% else %}
+          {{ next_setpoint }}
+        {% endif %}
       effective_bucket: >-
         {% set raw = active_bucket %}
         {% if raw in ['','unknown','unavailable','none'] %}exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia
@@ -6017,7 +6089,7 @@
       sequence:
       - variables:
           sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
-          sp_target: '{{ next_setpoint }}'
+          sp_target: '{{ next_setpoint_soft_resume }}'
           writer_id: cool_cycle_step
           manual_lock_state: '{{ manual_sp_lock_active }}'
           bucket: '{{ effective_bucket }}'
@@ -6035,6 +6107,16 @@
           message: >-
             sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock=yes | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
           entity_id: '{{ climate_ent }}'
+      - target:
+          entity_id: input_number.ac_cool_cycle_last_applied_setpoint
+        data:
+          value: '{{ current_setpoint if current_setpoint is not none else (sp_before if sp_before is not none else 0) }}'
+        action: input_number.set_value
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: writer={{ writer_id }} blocked_by=manual_sp_lock
+          entity_id: '{{ climate_ent }}'
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -6047,7 +6129,7 @@
       sequence:
       - variables:
           sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
-          sp_target: '{{ next_setpoint }}'
+          sp_target: '{{ next_setpoint_soft_resume }}'
           writer_id: cool_cycle_step
           manual_lock_state: '{{ manual_sp_lock_active }}'
           bucket: '{{ effective_bucket }}'
@@ -6059,7 +6141,7 @@
       - target:
           entity_id: climate.0200009211c7_climate
         data:
-          temperature: '{{ next_setpoint }}'
+          temperature: '{{ next_setpoint_soft_resume }}'
         action: climate.set_temperature
       - variables:
           sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
@@ -6078,12 +6160,12 @@
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
-          value: '{{ next_setpoint }}'
+          value: '{{ next_setpoint_soft_resume }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
-          value: '{{ next_setpoint }}'
+          value: '{{ next_setpoint_soft_resume }}'
         action: input_number.set_value
       - target:
           entity_id: input_datetime.ac_cool_cycle_last_step_at
@@ -6094,7 +6176,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_adaptive_step | sp_writer=adaptive | SPsrc=adaptive | bucket={{ effective_bucket }} | init={{ start_temp }} | now={{ tin }} | prog={{ progress_temp }} | remain={{ remaining_delta }} | run={{ runtime_min }} | exp={{ expected_progress }} | sp={{ current_setpoint }}→{{ next_setpoint }}
+            cool_adaptive_step | sp_writer=adaptive | SPsrc=adaptive | bucket={{ effective_bucket }} | init={{ start_temp }} | now={{ tin }} | prog={{ progress_temp }} | remain={{ remaining_delta }} | run={{ runtime_min }} | exp={{ expected_progress }} | sp={{ current_setpoint }}→{{ next_setpoint_soft_resume }}
           entity_id: '{{ climate_ent }}'
     - conditions:
       - condition: template
