@@ -1,5 +1,7 @@
 - id: ac_normaliza_helper_ultimo_modo_no_fan
   alias: AC - Normaliza helper último modo no fan
+  trace:
+    stored_traces: 50
   description: 'Autocorrige estados restaurados inválidos de `input_select.ac_ultimo_modo_no_fan`.
     El helper sólo admite `off`, `cool`, `heat` o `emergency_cool`; si Home Assistant
     restaura un valor legacy como `False`, se fuerza a `off` para evitar errores posteriores.
@@ -25,6 +27,8 @@
 
 - id: ac_saneamiento_banderas_auto_ac
   alias: AC - Saneamiento defensivo banderas auto
+  trace:
+    stored_traces: 50
   description: 'Evita que `input_boolean.ac_on_por_automatizacion` o `input_boolean.ac_off_por_automatizacion`
     queden pegadas más allá de una ventana operativa razonable y refuerza la clasificación
     del último origen de cambio sin generar ruido al usuario.
@@ -60,6 +64,8 @@
 
 - id: ac_audita_helpers_telemetria_runtime
   alias: AC - Audita helpers de telemetría en runtime
+  trace:
+    stored_traces: 50
   description: 'Verifica al iniciar Home Assistant que los helpers críticos del AC
     existan realmente en runtime. Si alguno responde `unknown` o `unavailable`,
     se deja evidencia en logbook para diagnóstico sin generar ruido en producción.
@@ -107,6 +113,8 @@
 
 - id: ac_memoria_y_bloqueo_2h_cool_heat
   alias: AC - Memoria último modo + Bloqueo 2h Cool/Heat (rolling, a prueba de fan_only)
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: state
@@ -137,6 +145,8 @@
       entity_id: input_boolean.ac_bloqueo_cambio_modo_2h
 - id: ac_bloqueo_cambio_modo_2h_expira
   alias: AC - Bloqueo cambio modo 2h (expira por timestamp, rolling)
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: time_pattern
@@ -161,6 +171,8 @@
     default: []
 - id: ac_dinamico_por_tendencia_con_ac_off
   alias: AC - Modo dinámico por tendencia con AC OFF (23:00-07:00) + cooldown afinado
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: time_pattern
@@ -236,6 +248,8 @@
           value: '{{ avg }}'
 - id: ac_dormitorio_noche_on
   alias: AC - Noche Enciende Cool sobre 22.7 con tendencia
+  trace:
+    stored_traces: 50
   description: 'Enciende el AC en modo COOL si está dentro del horario nocturno y
     el selector activo lo permite. Respeta bloqueo anti-cambio cool<->heat 2h. Presencia
     válida: (S24 home) OR (movimiento ON por 5 min).
@@ -332,6 +346,8 @@
   mode: single
 - id: ac_dormitorio_noche_off_temp
   alias: AC - Apaga Cool a 22.2 (Noche)
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: numeric_state
@@ -388,6 +404,8 @@
       entity_id: climate.0200009211c7_climate
 - id: ac_dormitorio_noche_off_0700
   alias: AC - Apaga a las 07:00 am
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: time
@@ -430,6 +448,8 @@
       entity_id: climate.0200009211c7_climate
 - id: ac_dia_cool_presencia_245
   alias: AC - Día Enciende cool si hace calor y hay presencia
+  trace:
+    stored_traces: 50
   description: 'Enciende el AC en modo cool (20 °C) y ventilador Auto entre 08:00
     y 21:59. Presencia válida: (S24 home) OR (ausencia_prolongada_calefaccion OFF
     + movimiento ON).
@@ -509,6 +529,8 @@
   mode: single
 - id: ac_dia_cool_off_frio_o_ausencia
   alias: AC - Apaga Cool bajando de 23 o no presencia.
+  trace:
+    stored_traces: 50
   description: 'Apaga el AC si ambos sensores bajan de 23 °C, o si no hay presencia
     30 min y el S24 NO está en casa, entre 08:00 y 21:59, solo en modo cool.
 
@@ -614,6 +636,8 @@
           entity_id: climate.0200009211c7_climate
 - id: ac_noche_heat_on_225
   alias: AC - Enciende calefaccion debajo de 22.5 (Noche)
+  trace:
+    stored_traces: 50
   description: 'Enciende HEAT durante la noche solo si el selector activo permite
     HEAT. Presencia válida: (S24 home) OR (ausencia_prolongada_calefaccion OFF + movimiento
     ON). Respeta bloqueo anti-cambio cool<->heat 2h.
@@ -723,6 +747,8 @@
   mode: single
 - id: ac_noche_heat_off_23
   alias: AC - Apaga calefacción a 23 (Noche)
+  trace:
+    stored_traces: 50
   description: Apaga HEAT si sube a 23.5+ en ambos sensores durante la noche.
   triggers:
   - entity_id:
@@ -782,6 +808,8 @@
   mode: single
 - id: ac_dia_heat_on_por_ausencia
   alias: AC - En el Día Enciende Calefacción si hace frío y hay presencia (sin tendencia)
+  trace:
+    stored_traces: 50
   description: 'Enciende HEAT de día cuando hace frío y hay presencia válida: (S24
     home) OR (ausencia_prolongada_calefaccion OFF + movimiento ON). Respeta bloqueo
     anti-cambio cool<->heat 2h.
@@ -877,6 +905,8 @@
   mode: single
 - id: ac_dia_heat_off_por_ausencia_o_calor
   alias: AC - Durante el dia apaga calefaccion por ausencia o calor
+  trace:
+    stored_traces: 50
   description: Apaga HEAT de día si ambos sensores > 24.5 o ausencia 30m + S24 fuera.
   mode: single
   trigger:
@@ -948,6 +978,8 @@
       entity_id: climate.0200009211c7_climate
 - id: helper_ausencia_prolongada_calefaccion_on
   alias: Helper - Ausencia prolongada calefacción
+  trace:
+    stored_traces: 50
   description: Marca una bandera cuando no hay presencia por 1 hora
   mode: single
   trigger:
@@ -961,6 +993,8 @@
       entity_id: input_boolean.ausencia_prolongada_calefaccion
 - id: helper_ausencia_prolongada_calefaccion_off
   alias: Helper - Resetea ausencia prolongada calefacción
+  trace:
+    stored_traces: 50
   description: Apaga el helper cuando vuelve la presencia (confirmada 5 min) o llegas
     a casa
   mode: restart
@@ -978,6 +1012,8 @@
       entity_id: input_boolean.ausencia_prolongada_calefaccion
 - id: helper_calefaccion_reciente_3h
   alias: Helper - Marca calefaccion reciente 2 horas
+  trace:
+    stored_traces: 50
   description: Mantiene la bandera en on durante 2 horas desde el último cambio SALIENDO
     de heat
   mode: restart
@@ -995,6 +1031,8 @@
       entity_id: input_boolean.calefaccion_reciente
 - id: ac_noche_reset_tendencia_off_1900
   alias: AC - Noche Reset tendencia OFF (19:00)
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: time
@@ -1035,6 +1073,8 @@
       value: 0
 - id: ac_noche_muestreo_tendencia_off
   alias: AC - Noche Muestreo tendencia solo AC OFF
+  trace:
+    stored_traces: 50
   description: Muestrea cada 2 min entre 19:00-22:00 cuando AC está off o fan_only.
     Filtra Coco con clamp anti-cocina.
   mode: single
@@ -1099,6 +1139,8 @@
           value: '{{ n + 1 }}'
 - id: ac_noche_decide_tendencia_off_2159
   alias: AC - Noche Decide tendencia OFF (21:59)
+  trace:
+    stored_traces: 50
   description: Decide si la tendencia (filtrada) sube entre 19:00 y 21:59.
   mode: single
   trigger:
@@ -1126,6 +1168,8 @@
         entity_id: input_boolean.ac_tendencia_subiendo_con_ac_off
 - id: ac_noche_decide_modo_2200
   alias: AC - Noche Decide modo final (22:00) con bloqueo (no cae a none si AC estaba
+  trace:
+    stored_traces: 50
     ON)
   mode: single
   trigger:
@@ -1232,6 +1276,8 @@
         entity_id: input_boolean.ac_bloqueo_modo_noche
 - id: ac_noche_desbloquea_modo_0700
   alias: AC - Noche Desbloquea modo (07:00)
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: time
@@ -1252,6 +1298,8 @@
       option: none
 - id: tv_apaga_si_no_movimiento_15m
   alias: Apaga TV si no hay movimiento
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: device
@@ -1274,6 +1322,8 @@
     domain: remote
 - id: notifica_movimiento_despues_1h
   alias: Notificación - Movimiento después de 1h sin actividad
+  trace:
+    stored_traces: 50
   description: Notifica cuando hay movimiento tras 60+ min sin actividad (08:00-20:00).
   mode: single
   trigger:
@@ -1295,6 +1345,8 @@
       message: Hubo movimiento después de 1 hora o mas sin actividad.
 - id: aviso_afuera_mas_fresco_cool
   alias: Aviso - Afuera más fresco que adentro (AC en cool, Met.no)
+  trace:
+    stored_traces: 50
   description: Notifica si el AC está en cool y afuera está 5°C más fresco (solo de
     día).
   mode: single
@@ -1327,6 +1379,8 @@
         más fresco que adentro.
 - id: shield_programa_apagado_30m
   alias: TV Dormitorio - Programar apagado 30 min
+  trace:
+    stored_traces: 50
   description: Inicia o cancela el timer de apagado de la SHIELD
   mode: restart
   trigger:
@@ -1352,6 +1406,8 @@
           entity_id: timer.timer_apagado_tv_dormitorio
 - id: shield_apaga_al_terminar_timer_30m
   alias: TV Dormitorio - Apaga SHIELD al terminar timer
+  trace:
+    stored_traces: 50
   description: Apaga la SHIELD cuando termina el timer de 30 min
   mode: single
   trigger:
@@ -1372,6 +1428,8 @@
       entity_id: input_boolean.apagar_shield_en_30_min
 - id: '1766870769686'
   alias: AC - Guardar último apagado (solo OFF)
+  trace:
+    stored_traces: 50
   mode: single
   trigger:
   - platform: state
@@ -1385,6 +1443,8 @@
       timestamp: '{{ now().timestamp() }}'
 - id: '1768016118285'
   alias: AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones
+  trace:
+    stored_traces: 50
   description: '21:00–07:00: Control nocturno inteligente HEAT/COOL/OFF usando temperatura
     interior vs exterior (OpenWeather apparent_temperature), presencia estable, histéresis,
     bloqueo 2h y ajuste de emergencia por humedad (punto de rocío). Emergencia COOL
@@ -2183,6 +2243,8 @@
       Last={{ last_mode_no_fan }}'
 - id: '1768159303322'
   alias: AC - Día dinámico aprendido (principal)
+  trace:
+    stored_traces: 50
   description: 'Automatización principal diurna 07:01–20:59. Usa fórmula base + sesgos
     aprendidos. Respeta presencia jerárquica, pausa manual de 5 min, presencia temporal
     por encendido manual y aprendizaje por feedback. En `input_select.ac_ultimo_modo_no_fan`,
@@ -4364,6 +4426,8 @@
   mode: single
 - id: '1769981375283'
   alias: AC - Iniciar bloqueo 2h al apagarse
+  trace:
+    stored_traces: 50
   description: ''
   triggers:
   - entity_id: climate.0200009211c7_climate
@@ -4380,6 +4444,8 @@
   mode: restart
 - id: '1773894905330'
   alias: AC - Learning - Manual OFF feedback
+  trace:
+    stored_traces: 50
   description: 'Evalúa si un apagado manual detectado previamente constituye feedback
     válido para aprendizaje. Esta automatización sólo escribe telemetría de aprendizaje:
     `input_datetime.ac_last_manual_feedback_ts` se actualiza exclusivamente cuando
@@ -4833,6 +4899,8 @@
   mode: restart
 - id: '1773895045305'
   alias: AC - Learning - Manual ON feedback
+  trace:
+    stored_traces: 50
   description: 'Evalúa si un encendido manual detectado previamente constituye feedback
     válido para aprendizaje. Esta automatización sólo clasifica el aprendizaje manual
     y ajusta sesgos cuando el encendido corrige un `auto_off` reciente dentro de la
@@ -5140,6 +5208,8 @@
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
+  trace:
+    stored_traces: 50
   description: 'Detecta el instante exacto en que el usuario apaga manualmente el AC.
     Sólo escribe telemetría del evento manual inicial: actualiza
     `input_datetime.ac_last_manual_off_ts`, clasifica el evento en
@@ -5242,6 +5312,8 @@
   mode: restart
 - id: '1773947560399'
   alias: AC - Manual ON guard + presencia temporal
+  trace:
+    stored_traces: 50
   description: 'Detecta el encendido manual inicial y, tras estabilizarse el equipo, registra
     el estado final elegido por el usuario. Esta automatización separa ambos momentos:
     `input_datetime.ac_last_manual_on_ts` marca la detección del encendido manual,
@@ -5539,6 +5611,8 @@
 
 - id: ac_cool_manual_setpoint_feedback
   alias: AC - Feedback manual de setpoint en cool activo
+  trace:
+    stored_traces: 50
   description: >-
     Detecta cambios manuales del setpoint mientras `cool` sigue activo, ignora
     autoacciones recientes, clasifica si el usuario bajó o subió el SP respecto al
@@ -6119,6 +6193,8 @@
 
 - id: ac_cool_adaptive_setpoint_runtime
   alias: AC - Cool setpoint adaptativo en ciclo activo
+  trace:
+    stored_traces: 50
   trigger:
   - platform: time_pattern
     minutes: '/5'

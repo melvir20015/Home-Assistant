@@ -1,33 +1,33 @@
 # Retención de traces en Home Assistant
 
-## Resultado de la revisión
+## Estrategia final aplicada
 
-Se revisaron todos los YAML versionados de esta instancia (`automations.yaml`, `input_*.yaml` y `timer.yaml`) buscando bloques `trace:` y parámetros `stored_traces:`. En el estado actual del repositorio **no existe** una configuración global `trace:` ni un `stored_traces: 50` equivalente.
+Se **eliminó** el bloque global `trace:` de `configuration.yaml` para evitar ambigüedades entre versiones y mantener una configuración explícita por entidad.
 
-## Dónde debe controlarse la retención
+A partir de este cambio, la retención se define **por automatización/script**:
 
-En la versión actual usada para esta base, la retención de traces **no debe declararse de forma global** dentro de la configuración raíz. Si en el futuro se necesita aumentar el histórico de una automatización o un script, el ajuste debe hacerse **únicamente dentro de esa automatización o script**, por ejemplo:
+- En `automations.yaml` se agregó en cada automatización versionada:
 
 ```yaml
-- id: ejemplo_automatizacion
-  alias: Ejemplo
-  trace:
-    stored_traces: 20
-  trigger:
-    ...
+trace:
+  stored_traces: 50
 ```
 
-## Regla operativa para futuros cambios
+- En `scripts.yaml` no se aplicaron cambios porque actualmente no hay scripts definidos en el repositorio (archivo vacío).
 
-- **No agregar** un bloque raíz `trace:` en archivos de configuración global.
-- **No mover** `stored_traces` a `configuration.yaml` ni a otro nivel global equivalente.
-- Si se requiere más historial, aplicar `trace.stored_traces` sólo en la automatización/script puntual que lo necesite y validar antes de desplegar.
+## Regla recomendada a futuro
 
-## Validación incluida en el repositorio
+1. No usar `trace:` a nivel global en `configuration.yaml`.
+2. Configurar `trace.stored_traces` por automatización/script según criticidad.
+3. Mantener `50` como valor base para automatizaciones críticas, ajustándolo sólo si hay una razón operativa documentada.
 
-Se agregó el script `tools/check_trace_config.py`, que falla si detecta:
+## Validación operativa en UI (pasos)
 
-1. un bloque global `trace:`, o
-2. un `stored_traces:` fuera de un bloque `trace:` por automatización/script.
+1. Ir a **Settings > System > Restart** (o recargar automatizaciones desde **Developer Tools > YAML**).
+2. Ejecutar manualmente una automatización crítica varias veces.
+3. Abrir la automatización y entrar a **Traces**.
+4. Verificar que el historial retenido coincide con `stored_traces: 50` para esa automatización.
 
-Esto ayuda a evitar reintroducir el error asociado a `helpers/config_validation.py` al editar la configuración más adelante.
+## Nota de validación en este entorno
+
+En este entorno de trabajo (CLI/repositorio) sólo se pudo validar la configuración por archivos; la verificación visual en UI debe ejecutarse en tu instancia de Home Assistant.
