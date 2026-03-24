@@ -4430,13 +4430,22 @@
   {{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}
 {% endif %}"
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 12 }}'
-      valid_feedback: "{{ learning_enabled
+      min_operating_minutes_contextual: 8
+      manual_off_detected: '{{ last_change_origin == ''manual_off'' }}'
+      auto_off_flag_active: '{{ is_state(''input_boolean.ac_off_por_automatizacion'', ''on'') }}'
+      valid_feedback_strong: "{{ learning_enabled
    and last_change_origin == 'manual_off'
    and last_auto_action == 'auto_on'
 
         \  and last_auto_mode in ['cool','heat']
    and (minutes_since_last_auto
         | float(99999)) <= (feedback_window_min | float(120)) }}"
+      valid_feedback_contextual_cool: "{{ learning_enabled
+   and manual_off_detected
+   and (not auto_off_flag_active)
+   and last_auto_mode == 'cool'
+   and (minutes_since_last_auto | float(99999)) >= (min_operating_minutes_contextual | float(8)) }}"
+      valid_feedback: '{{ valid_feedback_strong or valid_feedback_contextual_cool }}'
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
       cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'') | trim }}'
       last_auto_context_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim }}'
@@ -4472,24 +4481,35 @@
       final_fan: "{% set fan = state_attr('climate.0200009211c7_climate','fan_mode') %}{{ fan if fan is not none else 'n/a' }}"
       manual_off_block: 'true'
       presence_effective: 'n/a'
-      learning_type: "{% if valid_feedback and last_auto_mode == 'cool' %}
+      feedback_strength: "{% if valid_feedback_strong %}
+  fuerte
+{% elif valid_feedback_contextual_cool %}
+  moderado
+{% else %}
+  none
+{% endif %}"
+      learning_type: "{% if valid_feedback_strong and last_auto_mode == 'cool' %}
   manual_off_feedback_valid_after_auto_on_cool
-{%
-        elif valid_feedback and last_auto_mode == 'heat' %}
+{% elif valid_feedback_strong and last_auto_mode == 'heat' %}
   manual_off_feedback_valid_after_auto_on_heat
+{% elif valid_feedback_contextual_cool %}
+  manual_off_feedback_valid_contextual_cool_manual_off
 {%
         elif not learning_enabled %}
   manual_off_feedback_ignored_learning_disabled
 {% elif last_change_origin != 'manual_off' %}
   manual_off_feedback_ignored_not_manual
-{% elif last_auto_action
-        != 'auto_on' %}
+{% elif auto_off_flag_active %}
+  manual_off_feedback_ignored_auto_off_flag_active
+{% elif last_auto_action != 'auto_on' and last_auto_mode != 'cool' %}
   manual_off_feedback_ignored_last_action_not_auto_on
 {% elif last_auto_mode
         not in ['cool','heat'] %}
   manual_off_feedback_ignored_last_mode_not_learnable
+{% elif last_auto_mode == 'cool' and (minutes_since_last_auto | float(99999)) < (min_operating_minutes_contextual | float(8)) %}
+  manual_off_feedback_ignored_contextual_runtime_short
 {% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(120)) %}
+        | float(99999)) > (feedback_window_min | float(120)) and last_auto_mode != 'cool' %}
   manual_off_feedback_ignored_window_expired
 {%
         else %}
@@ -4515,19 +4535,23 @@
   sin ajuste setpoint
 {% endif %}"
       heat_change_summary: "calor · bias on {{ cur_bias_heat_on }}→{{ heat_on_after }} · off {{ cur_bias_heat_off }}→{{ heat_off_after }}{% if quick_feedback %} · sp {{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% endif %}"
-      notify_title_valid_off: "AC aprendió: OFF manual tras AUTO ON"
-      notify_message_valid_off_cool: "{{ cool_bucket_change_summary }}"
-      notify_message_valid_off_heat: "{{ heat_change_summary }}"
+      notify_title_valid_off: "AC aprendió: OFF manual ({{ feedback_strength }})"
+      notify_message_valid_off_cool: "{{ cool_bucket_change_summary }} · tipo {{ learning_type }}"
+      notify_message_valid_off_heat: "{{ heat_change_summary }} · tipo {{ learning_type }}"
       ignored_reason_code: "{% if not learning_enabled %}
   learning_disabled
 {% elif last_change_origin != 'manual_off' %}
   not_manual
-{% elif last_auto_action != 'auto_on' %}
+{% elif auto_off_flag_active %}
+  auto_off_flag_active
+{% elif last_auto_action != 'auto_on' and last_auto_mode != 'cool' %}
   last_action_not_auto_on
 {% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(120)) %}
   window_expired
 {% elif last_auto_mode not in ['cool','heat'] %}
   last_mode_not_learnable
+{% elif last_auto_mode == 'cool' and (minutes_since_last_auto | float(99999)) < (min_operating_minutes_contextual | float(8)) %}
+  contextual_runtime_short
 {% else %}
   no_valid_learning
 {% endif %}"
@@ -4537,15 +4561,19 @@
   Ign: origen.
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
   Ign: sin auto previa.
+{% elif ignored_reason_code == 'auto_off_flag_active' %}
+  Ign: auto-off activo.
 {% elif ignored_reason_code == 'window_expired' %}
   Ign: ventana.
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
   Ign: modo.
+{% elif ignored_reason_code == 'contextual_runtime_short' %}
+  Ign: runtime corto.
 {% else %}
   Ign: sin match.
 {% endif %}"
       learning_status_label: "{% if valid_feedback %}
-  aprendizaje válido aplicado
+  aprendizaje {{ feedback_strength }} aplicado
 {% elif ignored_reason_code == 'learning_disabled' %}
   Ign: learning off
 {% elif ignored_reason_code == 'window_expired' %}
@@ -4554,8 +4582,12 @@
   Ign: origen
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
   Ign: sin auto previa
+{% elif ignored_reason_code == 'auto_off_flag_active' %}
+  Ign: auto-off activo
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
   Ign: modo
+{% elif ignored_reason_code == 'contextual_runtime_short' %}
+  Ign: runtime corto
 {% else %}
   Ign: sin match
 {% endif %}"
@@ -4569,7 +4601,7 @@
       audit_title: AC - Learning - Manual OFF feedback
       audit_message: >-
         {% if valid_feedback %}
-          learning_ok | src=manual_off | mode={{ last_auto_mode }} | type={{ learning_type }} | detail={{ adjusted_biases_valid }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
+          learning_ok | src=manual_off | mode={{ last_auto_mode }} | strength={{ feedback_strength }} | type={{ learning_type }} | detail={{ adjusted_biases_valid }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
         {% else %}
           learning_skip | src=manual_off | type={{ learning_type }} | reason={{ ignored_reason_code }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
         {% endif %}
