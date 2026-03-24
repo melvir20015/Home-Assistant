@@ -764,6 +764,10 @@ No deben notificarse en producción:
 - aprendizajes ignorados, expirados o ambiguos;
 - depuración técnica de helpers, waits, retries o saneamientos defensivos.
 
+Excepción controlada por diagnóstico:
+
+- cuando `input_boolean.ac_learning_debug` está en `on`, se permite un push breve para descartes de alto valor operativo (por ejemplo `manual_off_feedback_ignored_last_action_not_auto_on`) con mensaje de una línea tipo: `AC no aprendió OFF manual: última auto fue OFF, no ON.`
+
 ### 13.3. Qué queda sólo en logbook
 
 Deben quedar sólo en logbook, traces o helpers de auditoría:
@@ -775,6 +779,11 @@ Deben quedar sólo en logbook, traces o helpers de auditoría:
 - limpiezas de banderas automáticas;
 - retención temporal de presencia o consolidación del estado manual final;
 - snapshots contextuales usados para aprendizaje.
+
+Además, en `manual_off`, el motivo de descarte debe registrarse siempre en logbook con el mismo texto breve usado por el diagnóstico opcional, para distinguir claramente:
+
+- **no detectó** (no hubo evento manual válido); de
+- **detectó pero no aprendió/no notificó** (evento detectado con descarte explícito).
 
 ### 13.4. Resumen auditable por evento de setpoint manual
 

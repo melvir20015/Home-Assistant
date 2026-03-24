@@ -4572,6 +4572,23 @@
 {% else %}
   Ign: sin match.
 {% endif %}"
+      ignored_reason_line: "{% if ignored_reason_code == 'last_action_not_auto_on' %}
+  AC no aprendió OFF manual: última auto fue OFF, no ON.
+{% elif ignored_reason_code == 'learning_disabled' %}
+  AC no aprendió OFF manual: aprendizaje desactivado.
+{% elif ignored_reason_code == 'not_manual' %}
+  AC no aprendió OFF manual: evento no fue manual_off.
+{% elif ignored_reason_code == 'auto_off_flag_active' %}
+  AC no aprendió OFF manual: AUTO OFF en curso.
+{% elif ignored_reason_code == 'window_expired' %}
+  AC no aprendió OFF manual: ventana de feedback vencida.
+{% elif ignored_reason_code == 'last_mode_not_learnable' %}
+  AC no aprendió OFF manual: último modo no aprendible.
+{% elif ignored_reason_code == 'contextual_runtime_short' %}
+  AC no aprendió OFF manual: runtime contextual insuficiente.
+{% else %}
+  AC no aprendió OFF manual: sin criterio de aprendizaje válido.
+{% endif %}"
       learning_status_label: "{% if valid_feedback %}
   aprendizaje {{ feedback_strength }} aplicado
 {% elif ignored_reason_code == 'learning_disabled' %}
@@ -4603,8 +4620,10 @@
         {% if valid_feedback %}
           learning_ok | src=manual_off | mode={{ last_auto_mode }} | strength={{ feedback_strength }} | type={{ learning_type }} | detail={{ adjusted_biases_valid }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
         {% else %}
-          learning_skip | src=manual_off | type={{ learning_type }} | reason={{ ignored_reason_code }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
+          learning_skip | src=manual_off | type={{ learning_type }} | reason={{ ignored_reason_code }} | msg={{ ignored_reason_line }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
         {% endif %}
+      notify_title_ignored_off: 'AC no aprendió: OFF manual'
+      notify_message_ignored_off: '{{ ignored_reason_line }}'
   - choose:
     - conditions:
       - condition: template
@@ -4734,6 +4753,17 @@
       - data:
           title: '{{ notify_title_valid_off }}'
           message: '{{ notify_message_valid_off_heat }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    - conditions:
+      - condition: template
+        value_template: '{{ (not valid_feedback) and debug_enabled and ignored_reason_code == ''last_action_not_auto_on'' }}'
+      sequence:
+      - data:
+          title: '{{ notify_title_ignored_off }}'
+          message: '{{ notify_message_ignored_off }}'
           data:
             ttl: 0
             priority: high
