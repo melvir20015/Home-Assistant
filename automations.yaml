@@ -1815,7 +1815,18 @@
 {% endif %}"
               loop_setpoint: '{{ state_attr(climate_ent, ''temperature'') | float(cool_initial_setpoint_selected) }}'
               loop_cycle_active: "{{ loop_hvac_mode == 'cool' and loop_presence_ok and loop_tin is not none and cool_stop_threshold_selected is not none and (loop_tin|float) > (cool_stop_threshold_selected|float) }}"
-              loop_can_reduce: '{{ loop_cycle_active and (loop_setpoint | float(99)) > (cool_ramp_min_setpoint | float(0)) }}'
+              loop_bedroom_comfort_reached: "{% if loop_cool_sensor_off_temp is none or cool_sensor_off_trigger is none %}
+  {{ false }}
+{% else %}
+  {{ (loop_cool_sensor_off_temp | float) <= (cool_sensor_off_trigger | float) }}
+{% endif %}"
+              loop_high_delta_block: "{% if loop_sensor_temp_delta is none %}
+  {{ false }}
+{% else %}
+  {{ (loop_sensor_temp_delta | float(99)) > (cool_sensor_off_delta_max | float(1)) }}
+{% endif %}"
+              loop_no_more_cooldown: '{{ loop_high_delta_block or loop_bedroom_comfort_reached }}'
+              loop_can_reduce: '{{ loop_cycle_active and (loop_setpoint | float(99)) > (cool_ramp_min_setpoint | float(0)) and not loop_no_more_cooldown }}'
               loop_next_setpoint: '{{ [((loop_setpoint | float) - cool_ramp_step), cool_ramp_min_setpoint] | max | round(1) }}'
           - choose:
             - conditions:
@@ -2013,7 +2024,7 @@
               data:
                 name: AC Auto Trace
                 message: >-
-                  cool_night_ramp_hold | idx={{ repeat.index }} | set={{ loop_setpoint }} | tin={{ loop_tin }} | stop={{ cool_stop_threshold_selected }} | reason={{ loop_cool_off_reason | trim }}
+                  cool_night_ramp_hold | idx={{ repeat.index }} | set={{ loop_setpoint }} | tin={{ loop_tin }} | stop={{ cool_stop_threshold_selected }} | reason={{ loop_cool_off_reason | trim }} | no_more={{ loop_no_more_cooldown }} | delta={{ loop_sensor_temp_delta }} | comfort={{ loop_bedroom_comfort_reached }}
                 entity_id: '{{ climate_ent }}'
           until:
           - condition: template
@@ -2086,7 +2097,7 @@
     last_effective_setpoint: '{{ states(''input_number.ac_night_cool_last_effective_setpoint'') | float(none) }}'
     cool_last_useful_memory_hours: 72
     cool_ramp_short_cycle_guard_min: 8
-    cool_ramp_step: 0.0
+    cool_ramp_step: 0.2
     cool_ramp_initial_wait_min: 30
     cool_ramp_followup_wait_min: 10
     cool_ramp_min_setpoint: 20
