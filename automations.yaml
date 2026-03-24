@@ -4346,7 +4346,8 @@
     `input_datetime.ac_last_manual_feedback_ts` se actualiza exclusivamente cuando
     el apagado manual corrige un `auto_on` reciente dentro de la ventana de feedback.
     La detección del apagado manual vive en `input_datetime.ac_last_manual_off_ts`
-    y el resultado del aprendizaje queda clasificado en `input_text.ac_last_manual_learning_type`.
+    y el resultado final queda explícito en `input_text.ac_last_manual_learning_type`
+    como `manual_off_learning_applied` o `manual_off_learning_ignored_<motivo>`.
 
     '
   triggers:
@@ -4535,9 +4536,6 @@
   sin ajuste setpoint
 {% endif %}"
       heat_change_summary: "calor · bias on {{ cur_bias_heat_on }}→{{ heat_on_after }} · off {{ cur_bias_heat_off }}→{{ heat_off_after }}{% if quick_feedback %} · sp {{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% endif %}"
-      notify_title_valid_off: "AC aprendió: OFF manual ({{ feedback_strength }})"
-      notify_message_valid_off_cool: "{{ cool_bucket_change_summary }} · tipo {{ learning_type }}"
-      notify_message_valid_off_heat: "{{ heat_change_summary }} · tipo {{ learning_type }}"
       ignored_reason_code: "{% if not learning_enabled %}
   learning_disabled
 {% elif last_change_origin != 'manual_off' %}
@@ -4554,6 +4552,11 @@
   contextual_runtime_short
 {% else %}
   no_valid_learning
+{% endif %}"
+      final_learning_status: "{% if valid_feedback %}
+  manual_off_learning_applied
+{% else %}
+  manual_off_learning_ignored_{{ ignored_reason_code }}
 {% endif %}"
       ignored_reason_summary: "{% if ignored_reason_code == 'learning_disabled' %}
   Ign: learning off.
@@ -4618,12 +4621,14 @@
       audit_title: AC - Learning - Manual OFF feedback
       audit_message: >-
         {% if valid_feedback %}
-          learning_ok | src=manual_off | mode={{ last_auto_mode }} | strength={{ feedback_strength }} | type={{ learning_type }} | detail={{ adjusted_biases_valid }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
+          learning_ok | src=manual_off | final={{ final_learning_status }} | mode={{ last_auto_mode }} | strength={{ feedback_strength }} | type={{ learning_type }} | detail={{ adjusted_biases_valid }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
         {% else %}
-          learning_skip | src=manual_off | type={{ learning_type }} | reason={{ ignored_reason_code }} | msg={{ ignored_reason_line }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
+          learning_skip | src=manual_off | final={{ final_learning_status }} | type={{ learning_type }} | reason={{ ignored_reason_code }} | msg={{ ignored_reason_line }} | min={{ minutes_since_last_auto }} | trig={{ ts }}
         {% endif %}
-      notify_title_ignored_off: 'AC no aprendió: OFF manual'
-      notify_message_ignored_off: '{{ ignored_reason_line }}'
+      notify_title_applied_off_short: 'AC OFF manual aplicado'
+      notify_message_applied_off_short: '{{ ''aprendizaje '' ~ feedback_strength ~ '' · '' ~ last_auto_mode }}'
+      notify_title_ignored_off_short: 'AC OFF manual ignorado'
+      notify_message_ignored_off_short: '{{ ignored_reason_summary }}'
   - choose:
     - conditions:
       - condition: template
@@ -4673,7 +4678,7 @@
   - target:
       entity_id: input_text.ac_last_manual_learning_type
     data:
-      value: '{{ learning_type }}'
+      value: '{{ final_learning_status }}'
     service: input_text.set_value
   - choose:
     - conditions:
@@ -4706,8 +4711,8 @@
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - data:
-          title: '{{ notify_title_valid_off }}'
-          message: '{{ notify_message_valid_off_cool }}'
+          title: '{{ notify_title_applied_off_short }}'
+          message: '{{ notify_message_applied_off_short }}'
           data:
             ttl: 0
             priority: high
@@ -4751,19 +4756,19 @@
             action: input_number.set_value
         default: []
       - data:
-          title: '{{ notify_title_valid_off }}'
-          message: '{{ notify_message_valid_off_heat }}'
+          title: '{{ notify_title_applied_off_short }}'
+          message: '{{ notify_message_applied_off_short }}'
           data:
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
-        value_template: '{{ (not valid_feedback) and debug_enabled and ignored_reason_code == ''last_action_not_auto_on'' }}'
+        value_template: '{{ (not valid_feedback) and debug_enabled }}'
       sequence:
       - data:
-          title: '{{ notify_title_ignored_off }}'
-          message: '{{ notify_message_ignored_off }}'
+          title: '{{ notify_title_ignored_off_short }}'
+          message: '{{ notify_message_ignored_off_short }}'
           data:
             ttl: 0
             priority: high
@@ -5082,9 +5087,11 @@
   description: 'Detecta el instante exacto en que el usuario apaga manualmente el AC.
     Sólo escribe telemetría del evento manual inicial: actualiza
     `input_datetime.ac_last_manual_off_ts`, clasifica el evento en
-    `input_text.ac_last_manual_event_type`, limpia `input_select.ac_ultimo_modo_no_fan`
-    a `off` y deja la pausa operativa de 5 minutos. No marca feedback de aprendizaje
-    ni estado final manual.
+    `input_text.ac_last_manual_event_type`, marca estado transitorio
+    `manual_off_pending_learning` en `input_text.ac_last_manual_learning_type`,
+    limpia `input_select.ac_ultimo_modo_no_fan` a `off` y deja la pausa operativa
+    de 5 minutos. No decide el resultado final del aprendizaje; eso lo cierra
+    `AC - Learning - Manual OFF feedback`.
 
     '
   triggers:
@@ -5144,6 +5151,11 @@
       value: '{{ manual_event_type }}'
     service: input_text.set_value
   - target:
+      entity_id: input_text.ac_last_manual_learning_type
+    data:
+      value: manual_off_pending_learning
+    service: input_text.set_value
+  - target:
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
       option: 'off'
@@ -5153,7 +5165,7 @@
     action: input_select.select_option
   - data:
       name: AC Manual OFF
-      message: 'manual_off | tipo={{ manual_event_type }} | last_auto={{ last_auto_action }}/{{ last_auto_mode }} | {{ minutes_since_last_auto }} min | helper=off'
+      message: 'manual_off | tipo={{ manual_event_type }} | learning=manual_off_pending_learning | last_auto={{ last_auto_action }}/{{ last_auto_mode }} | {{ minutes_since_last_auto }} min | helper=off'
       entity_id: climate.0200009211c7_climate
     action: logbook.log
   mode: restart
