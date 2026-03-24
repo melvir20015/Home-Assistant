@@ -4391,6 +4391,23 @@
       - stop: 'Ignorado: AUTO OFF en curso.'
     default: []
   - variables:
+      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      recent_auto_off_guard_seconds: 120
+      seconds_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}999999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 999999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(0)) }}{% endif %}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ last_auto_action == 'auto_off' and (seconds_since_last_auto | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) }}"
+      sequence:
+      - data:
+          name: AC Learning Manual OFF
+          message: 'manual_off_guard_blocked_auto_off_race | trigger=feedback | last_auto_action={{ last_auto_action }} | seconds_since_last_auto={{ seconds_since_last_auto }} | guard_seconds={{ recent_auto_off_guard_seconds }}'
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+      - stop: 'Ignorado: origen AUTO OFF reciente'
+    default: []
+  - variables:
       t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
         }}'
       t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none)
@@ -5134,10 +5151,13 @@
       final_mode: 'off'
       final_setpoint: "{% set sp = state_attr('climate.0200009211c7_climate','temperature') %}{{ sp if sp is not none else 'n/a' }}"
       final_fan: "{% set fan = state_attr('climate.0200009211c7_climate','fan_mode') %}{{ fan if fan is not none else 'n/a' }}"
+      last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
+      recent_auto_off_guard_seconds: 120
+      seconds_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}999999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 999999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(0)) }}{% endif %}"
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'') | float(120) }}'
       minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts = as_timestamp(raw, default=none) %}{{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}{% endif %}"
       manual_event_type: "{% if last_auto_action == 'auto_on' and last_auto_mode in ['cool','heat'] and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120)) %}manual_off_detected_after_recent_auto_on_{{ last_auto_mode }}{% else %}manual_off_detected{% endif %}"
@@ -5147,6 +5167,18 @@
       bias_heat_on: '{{ states(''input_number.ac_bias_heat_on'') | float(0) }}'
       bias_heat_off: '{{ states(''input_number.ac_bias_heat_off'') | float(0) }}'
       bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') | float(0) }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ last_auto_action == 'auto_off' or last_change_origin == 'auto_off' or (seconds_since_last_auto | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) }}"
+      sequence:
+      - data:
+          name: AC Manual OFF
+          message: 'manual_off_guard_blocked_auto_off_race | last_auto_action={{ last_auto_action }} | last_change_origin={{ last_change_origin }} | seconds_since_last_auto={{ seconds_since_last_auto }} | guard_seconds={{ recent_auto_off_guard_seconds }}'
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+      - stop: 'Ignorado: posible AUTO OFF reciente (guard anti-carrera).'
+    default: []
   - target:
       entity_id: input_datetime.ac_last_manual_off_ts
     data:

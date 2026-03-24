@@ -115,6 +115,8 @@ Los helpers existentes forman la memoria operativa mínima del sistema. Este doc
 
 Este helper funciona como **bandera explícita** para indicar que un apagado reciente fue provocado por la lógica automática y no por el usuario. Su papel principal es evitar que el sistema confunda un apagado automático con una señal manual de descontento térmico.
 
+Además de esta bandera, el contrato operativo exige una **compuerta temporal anti-carrera** en las rutas de `Manual OFF guard` y `Learning - Manual OFF feedback`. Esa compuerta usa `input_text.ac_last_auto_action`, `input_text.ac_last_change_origin` y `input_datetime.ac_last_auto_ts` para bloquear eventos manuales residuales cuando el `climate` reporta `off` con latencia después de un `AUTO OFF` real.
+
 Debe usarse para responder preguntas como:
 
 - “¿El estado `off` actual proviene de una decisión automática?”
@@ -126,7 +128,7 @@ Debe usarse para responder preguntas como:
 Estas banderas separan el **origen operativo** de los cambios del AC durante una ventana anti-rebote corta.
 
 - `input_boolean.ac_on_por_automatizacion`: debe encenderse inmediatamente antes de cada `AUTO ON`, mantenerse durante toda la secuencia y limpiarse sólo al final con una demora breve para que un cambio provocado por la automatización no dispare `Manual ON` ni `Learning - Manual ON feedback`.
-- `input_boolean.ac_off_por_automatizacion`: debe encenderse inmediatamente antes de cada `AUTO OFF`, mantenerse durante toda la secuencia y limpiarse sólo al final con una demora breve para que un cambio provocado por la automatización no dispare `Manual OFF` ni `Learning - Manual OFF feedback`. En las ramas `COOL` que pasan por `fan_only`, la notificación `Cool↓` debe emitirse dentro de la misma transacción que hace `fan_only -> off`, idealmente después de confirmar `hvac_mode: off` con una espera corta y determinística. Así se evita depender de una automatización separada que observe cambios de estado y se eliminan falsos positivos o pérdidas por desincronización.
+- `input_boolean.ac_off_por_automatizacion`: debe encenderse inmediatamente antes de cada `AUTO OFF`, mantenerse durante toda la secuencia y limpiarse sólo al final con una demora breve para que un cambio provocado por la automatización no dispare `Manual OFF` ni `Learning - Manual OFF feedback`. Además, debe coexistir con una compuerta temporal por contexto (`last_auto_action`, `last_change_origin`, `last_auto_ts`) para suprimir falsos `manual_off` causados por latencia de actualización del `climate`. En las ramas `COOL` que pasan por `fan_only`, la notificación `Cool↓` debe emitirse dentro de la misma transacción que hace `fan_only -> off`, idealmente después de confirmar `hvac_mode: off` con una espera corta y determinística. Así se evita depender de una automatización separada que observe cambios de estado y se eliminan falsos positivos o pérdidas por desincronización.
 - Si un usuario enciende o apaga desde el botón físico del AC, control IR, app propia del AC o desde la UI manual de Home Assistant **sin pasar por una automatización**, ese evento sigue siendo manual.
 - Si Home Assistant ejecuta el cambio desde una automatización, aunque el cambio termine reflejándose en la misma entidad `climate`, el evento debe clasificarse como automático y nunca debe contaminar aprendizaje manual.
 
