@@ -3506,7 +3506,7 @@
       - target:
           entity_id: input_number.ac_cool_cycle_contract_setpoint
         data:
-          value: '{{ cool_setpoint if cool_setpoint is not none else 0 }}'
+          value: '{{ cool_setpoint_contract if cool_setpoint_contract is not none else 0 }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_contract_setpoint_effective
@@ -3659,7 +3659,7 @@
         data:
           name: AC Auto Trace
           message: >-
-            cool_normalized | sp_writer={{ 'manual_lock' if manual_sp_protected_lock_active else 'auto_on' }} | permit={{ auto_on_presence_reason }} | SPsrc=auto_on | {{ cool_ctx_brief }} | On={{ cool_on }} | Off={{ cool_off }} | SensorOff={{ cool_sensor_off }} | SPt={{ cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{ cool_setpoint_effective }} | SP_logic_c={{ cool_setpoint_effective_c }} | SP_sent_f={{ cool_setpoint_sent_f }} | Calc={{ cool_off_learning_source }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason }} | Min={{ minutes_since_last_auto }}
+            cool_normalized | sp_writer={{ 'manual_lock' if manual_sp_protected_lock_active else 'auto_on' }} | permit={{ auto_on_presence_reason }} | SPsrc=auto_on | {{ cool_ctx_brief }} | On={{ cool_on }} | Off={{ cool_off }} | SensorOff={{ cool_sensor_off }} | SP_contract={{ cool_setpoint_contract }} | SPt={{ cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{ cool_setpoint_effective }} | SP_logic_c={{ cool_setpoint_effective_c }} | SP_sent_f={{ cool_setpoint_sent_f }} | Calc={{ cool_off_learning_source }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -3724,6 +3724,41 @@
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         action: input_boolean.turn_off
+    - conditions:
+      - condition: template
+        value_template: "{{ cur_mode == 'cool'\n   and cool_cycle_contract_active\n   and cool_cycle_contract_setpoint is not none\n   and ac_set_effective_normalized is not none\n   and ((((ac_set_effective_normalized | float) - (cool_cycle_contract_setpoint | float)) | abs) >= 0.11) }}"
+      sequence:
+      - variables:
+          cool_contract_applied_sp: '{{ ac_set_effective_normalized }}'
+          cool_contract_setpoint_c: '{{ cool_cycle_contract_setpoint }}'
+          cool_contract_delta_sp: '{{ ((cool_contract_applied_sp | float) - (cool_contract_setpoint_c | float)) | round(2) }}'
+          cool_contract_abs_delta_sp: '{{ (cool_contract_delta_sp | float(0)) | abs | round(2) }}'
+          cool_contract_hw_equivalent_c: >-
+            {% if cool_cycle_contract_setpoint is none %}
+              {{ none }}
+            {% else %}
+              {% set sp_f = ((((cool_cycle_contract_setpoint | float) * 9 / 5) + 32) | round(0)) %}
+              {% set sp_f = [[sp_f, 75] | min, 68] | max %}
+              {{ (((sp_f | float) - 32) * 5 / 9) | round(2) }}
+            {% endif %}
+          cool_contract_hw_delta: >-
+            {% if cool_contract_hw_equivalent_c is none %}
+              {{ none }}
+            {% else %}
+              {{ ((cool_contract_applied_sp | float) - (cool_contract_hw_equivalent_c | float)) | abs | round(2) }}
+            {% endif %}
+          cool_contract_deviation_tag: >-
+            {% if cool_contract_hw_delta is not none and (cool_contract_hw_delta | float(99)) < 0.11 %}
+              desvio_hw
+            {% else %}
+              desvio_{{ last_change_origin_raw if last_change_origin_raw not in ['', 'unknown', 'unavailable', 'none'] else 'writer_desconocido' }}
+            {% endif %}
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_contract_desvio | tag={{ cool_contract_deviation_tag }} | SP_aplicado={{ cool_contract_applied_sp }} | SP_contract={{ cool_contract_setpoint_c }} | Δ={{ cool_contract_delta_sp }} | Δabs={{ cool_contract_abs_delta_sp }} | SP_hw_ref={{ cool_contract_hw_equivalent_c if cool_contract_hw_equivalent_c is not none else 'na' }} | writer={{ last_change_origin_raw if last_change_origin_raw not in ['', 'unknown', 'unavailable', 'none'] else 'na' }} | branch={{ last_auto_branch if last_auto_branch not in ['', 'unknown', 'unavailable', 'none'] else 'na' }}
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and cool_setpoint_effective is not none\n   and ac_set_effective_normalized is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (not manual_override_active)\n   and manual_sp_protected_lock_active }}"
@@ -4017,11 +4052,15 @@
     cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
       raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
       }}\n{% endif %}"
+    # Contrato explícito para cool normal:
+    #   cool_setpoint_contract = cool_off_contract - 0.5 °C
+    # donde `cool_off_contract` es el umbral contractual de apagado del ciclo.
     # Regla contractual de control para cool: SP_logic_c = (cool_off - 0.5 °C) con
     # límites operativos. La lógica interna SIEMPRE trabaja en °C.
     # Si el equipo obliga pasos enteros en °F, se calcula un valor físico aparte
     # (`SP_sent_f`) sólo para envío al equipo, sin retroalimentar la lógica.
-    cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
+    cool_setpoint_contract: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
+    cool_setpoint_theoretical: '{{ cool_setpoint_contract }}'
     cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min, 21] | max | round(2) }}\n{% endif %}"
     cool_effective_sp_soft_gap: '{{ states(''input_number.ac_cool_effective_sp_soft_gap'') | float(0.8) }}'
     cool_effective_sp_hard_gap: '{{ states(''input_number.ac_cool_effective_sp_hard_gap'') | float(1.4) }}'

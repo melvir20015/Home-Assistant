@@ -536,7 +536,10 @@ Antes de formar la clave contextual, la automatización normaliza el estado real
   - presencia.
 - `cool_off_target` sigue derivándose del bucket contextual aprendido, pero ahora aplica un ajuste fino de demanda sin romper los límites existentes.
 - `cool_on_target` sigue saliendo de `cool_off_target`, preservando la geometría del sistema, aunque el diferencial ahora también se modula por franja, clima, tendencia y presencia.
-- Regla contractual de decisión para `cool`: **`SP = Off - 0.5 °C`** y luego saturado a límites operativos (`21.0 °C` a `24.0 °C`).
+- Regla contractual explícita de decisión para `cool`: **`cool_setpoint_contract = cool_off_contract - 0.5 °C`** y luego saturado a límites operativos (`21.0 °C` a `24.0 °C`).
+- Para cada ciclo `cool normal`, deben persistirse como contrato mínimo:
+  - `input_number.ac_cool_cycle_contract_off` (`cool_off_contract`);
+  - `input_number.ac_cool_cycle_contract_setpoint` (`cool_setpoint_contract`).
 - La lógica interna debe usar siempre ese valor en °C como fuente única de verdad (`SP_logic_c` / `cool_setpoint_effective_c`).
 - Si el equipo obliga setpoint entero en °F, ese valor de actuación debe mantenerse aparte (`SP_sent_f`) y **no** debe reingresar para recalcular la lógica.
 - El aprendizaje contextual y la memoria de setpoint efectivo ya no deben asumir una clave de cuatro dimensiones; cualquier helper o resumen debe tratar la dimensión climática como obligatoria dentro de la clave base.
@@ -596,6 +599,20 @@ Para evitar confusiones futuras, la documentación debe separar tres conceptos:
 
 La automatización de `cool normal` debe decidir con **presencia efectiva**, pero la documentación y el aprendizaje deben poder distinguir si esa presencia efectiva provenía de ocupación observada, del teléfono o de una retención temporal por acción manual del usuario.
 
+### 10.5. Auditoría contractual de setpoint durante ejecución
+
+En cada ejecución con `cur_mode = cool`, la automatización debe comparar:
+
+- `setpoint aplicado` (normalizado desde el equipo), contra
+- `setpoint contractual` del ciclo (`input_number.ac_cool_cycle_contract_setpoint`).
+
+Si hay desvío relevante, el log debe etiquetarlo así:
+
+- **`desvio_hw`**: cuando el desvío corresponde a cuantización/redondeo esperado del equipo (por ejemplo, al convertir entre °C y °F enteros);
+- **`desvio_<writer>`**: cuando el desvío proviene de una escritura de automatización, usando el writer responsable (`auto_on`, `cool_sp_sync`, `cool_cycle_step`, etc.).
+
+El objetivo es que cualquier desalineación quede trazable sin ambigüedad entre “limitación física del dispositivo” y “decisión lógica de una rama automática”.
+
 ## 11. Bucket contextual completo
 
 El bucket contextual es la clave semántica completa con la que el sistema agrupa decisiones comparables. Debe ser suficientemente expresivo para que dos eventos del mismo bucket realmente representen un contexto parecido, y suficientemente estable para que el aprendizaje no se fragmente en cientos de combinaciones irrepetibles.
@@ -631,6 +648,14 @@ Ejemplo:
 - uso: registrar que en tardes muy calurosas, con presencia efectiva real, el sistema sí llegó a `AUTO ON` y qué umbral interior disparó el encendido.
 
 Ese historial alimenta la calibración de `cool_on` para el mismo contexto, evitando mezclarlo con noches o con tardes sin presencia efectiva.
+
+#### Regresión mínima obligatoria para rama `cool normal`
+
+Las pruebas de regresión de `cool normal` deben verificar también el contrato:
+
+1. que `cool_off_contract` y `cool_setpoint_contract` quedan persistidos en helpers de ciclo al `AUTO ON`;
+2. que se cumple `cool_setpoint_contract = cool_off_contract - 0.5` (respetando saturación operativa definida);
+3. que, en ejecución, cualquier diferencia entre setpoint aplicado y contractual genera etiqueta de desvío (`desvio_hw` o `desvio_<writer>`).
 
 ### 11.4. Uso del bucket para `cool_off`
 
