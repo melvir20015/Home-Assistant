@@ -1638,11 +1638,31 @@
         data:
           hvac_mode: cool
         action: climate.set_hvac_mode
+      - variables:
+          sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_target: '{{ cool_initial_setpoint_selected }}'
+          writer_id: auto_on
+          manual_lock_state: '{{ manual_sp_protected_lock_active }}'
+          bucket: '{{ cool_context }}'
       - target:
           entity_id: '{{ climate_ent }}'
         data:
           temperature: '{{ cool_initial_setpoint_selected }}'
         action: climate.set_temperature
+      - variables:
+          sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_write_status: >-
+            {% if sp_after is not none and sp_target is not none and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}
+              applied
+            {% else %}
+              blocked
+            {% endif %}
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+          entity_id: '{{ climate_ent }}'
       - choose:
         - conditions:
           - condition: template
@@ -3575,11 +3595,26 @@
           - condition: template
             value_template: '{{ manual_sp_protected_lock_active }}'
           sequence:
+          - variables:
+              sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+              sp_target: '{{ cool_setpoint_effective }}'
+              writer_id: auto_on
+              manual_lock_state: '{{ manual_sp_protected_lock_active }}'
+              bucket: '{{ cool_context_bucket }}'
           - target:
               entity_id: input_text.ac_last_change_origin
             data:
-              value: sp_writer_blocked_manual_lock
+              value: manual_override
             service: input_text.set_value
+          - variables:
+              sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+              sp_write_status: blocked
+          - action: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+              entity_id: climate.0200009211c7_climate
           - action: logbook.log
             data:
               name: AC Auto Trace
@@ -3587,11 +3622,36 @@
                 cool_auto_on_manual_lock_hold | sp_writer=manual_lock | SPsrc=auto_on | SPkeep={{ ac_set_effective_normalized if ac_set_effective_normalized is not none else 'na' }} | SPe_calc={{ cool_setpoint_effective if cool_setpoint_effective is not none else 'na' }} | lock_explicit={{ manual_sp_lock_explicit }} | evidence_recent={{ manual_sp_recent_user_evidence }}
               entity_id: climate.0200009211c7_climate
         default:
+        - variables:
+            sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+            sp_target: '{{ cool_setpoint_effective }}'
+            writer_id: auto_on
+            manual_lock_state: '{{ manual_sp_protected_lock_active }}'
+            bucket: '{{ cool_context_bucket }}'
+        - target:
+            entity_id: input_text.ac_last_change_origin
+          data:
+            value: auto_on
+          service: input_text.set_value
         - target:
             entity_id: climate.0200009211c7_climate
           data:
             temperature: '{{ cool_setpoint_effective }}'
           action: climate.set_temperature
+        - variables:
+            sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+            sp_write_status: >-
+              {% if sp_after is not none and sp_target is not none and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}
+                applied
+              {% else %}
+                blocked
+              {% endif %}
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: >-
+              sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+            entity_id: climate.0200009211c7_climate
       - variables:
           cool_auto_reason: >-
             {{ 'auto emergency' if emergency_hot else 'auto_on_cool' }}
@@ -3668,11 +3728,26 @@
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and cool_setpoint_effective is not none\n   and ac_set_effective_normalized is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (not manual_override_active)\n   and manual_sp_protected_lock_active }}"
       sequence:
+      - variables:
+          sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_target: '{{ cool_setpoint_effective }}'
+          writer_id: cool_sp_sync
+          manual_lock_state: '{{ manual_sp_protected_lock_active }}'
+          bucket: '{{ cool_context_bucket }}'
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
-          value: sp_writer_blocked_manual_lock
+          value: manual_override
         service: input_text.set_value
+      - variables:
+          sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_write_status: blocked
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_datetime.ac_last_cool_sp_sync_notify_ts
         data:
@@ -3693,11 +3768,36 @@
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and (not emergency_latched)\n   and cool_setpoint_effective is not none\n   and ac_set_effective_normalized is not none\n   and (cool_sync_delta | float(0)) >= 0.2\n   and (not manual_override_active)\n   and (not manual_sp_protected_lock_active)\n   and (not manual_sp_feedback_future_only_active) }}"
       sequence:
+      - variables:
+          sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_target: '{{ cool_setpoint_effective }}'
+          writer_id: cool_sp_sync
+          manual_lock_state: '{{ manual_sp_protected_lock_active }}'
+          bucket: '{{ cool_context_bucket }}'
+      - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: cool_sp_sync
+        service: input_text.set_value
       - target:
           entity_id: climate.0200009211c7_climate
         data:
           temperature: '{{ cool_setpoint_effective }}'
         action: climate.set_temperature
+      - variables:
+          sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_write_status: >-
+            {% if sp_after is not none and sp_target is not none and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}
+              applied
+            {% else %}
+              blocked
+            {% endif %}
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
@@ -3708,11 +3808,6 @@
         data:
           value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none else 0 }}'
         action: input_number.set_value
-      - target:
-          entity_id: input_text.ac_last_change_origin
-        data:
-          value: cool_sp_sync
-        service: input_text.set_value
       - action: logbook.log
         data:
           name: AC Auto Trace
@@ -5821,11 +5916,36 @@
       - condition: template
         value_template: '{{ cycle_active and cur_mode == ''cool'' and insufficient_progress and can_reduce and (not manual_sp_protected_lock_active) }}'
       sequence:
+      - variables:
+          sp_before: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_target: '{{ next_setpoint }}'
+          writer_id: cool_cycle_step
+          manual_lock_state: '{{ manual_sp_protected_lock_active }}'
+          bucket: '{{ effective_bucket }}'
+      - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: cool_cycle_step
+        service: input_text.set_value
       - target:
           entity_id: climate.0200009211c7_climate
         data:
           temperature: '{{ next_setpoint }}'
         action: climate.set_temperature
+      - variables:
+          sp_after: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_write_status: >-
+            {% if sp_after is not none and sp_target is not none and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}
+              applied
+            {% else %}
+              blocked
+            {% endif %}
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+          entity_id: '{{ climate_ent }}'
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
@@ -5836,11 +5956,6 @@
         data:
           value: '{{ next_setpoint }}'
         action: input_number.set_value
-      - target:
-          entity_id: input_text.ac_last_change_origin
-        data:
-          value: cool_cycle_step
-        service: input_text.set_value
       - target:
           entity_id: input_datetime.ac_cool_cycle_last_step_at
         data:
