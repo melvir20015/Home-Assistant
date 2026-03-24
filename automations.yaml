@@ -5623,7 +5623,40 @@
       manual_override_should_activate: '{{ ignore_reason == ''none'' and manual_override_candidate }}'
       learning_applied_this_cycle: '{{ feedback_or_override_apply }}'
       sync_should_pause_after_feedback: false
-      feedback_mobile_notify: '{{ feedback_or_override_apply and (not stabilization_window_active) }}'
+      feedback_ignored_relevant_user_cause: >-
+        {{ (not apply_feedback)
+           and manual_sp_real_change
+           and manual_interaction_recent
+           and (not immediate_same_value_echo)
+           and (ignore_reason == 'none') }}
+      feedback_mobile_notify: '{{ apply_feedback or feedback_ignored_relevant_user_cause }}'
+      aprendizaje_aplicado_en_este_ciclo: >-
+        {% if stabilization_window_active %}
+          Aprendió (ventana temprana): ajuste suave aplicado y confirmado.
+        {% else %}
+          Aprendió en este ciclo: ajuste aplicado.
+        {% endif %}
+      aprendizaje_guardado_para_proximo_ciclo: >-
+        Aprendizaje guardado para próximo ciclo (sin aplicar ahora).
+      feedback_ignored_short_reason: >-
+        {% if manual_feedback_kind == 'manual_sp_equal_to_auto' %}
+          ignorado: SP manual igual al automático
+        {% elif manual_feedback_kind == 'manual_sp_without_auto_reference' %}
+          ignorado: sin referencia automática reciente
+        {% elif ignore_reason not in ['none',''] %}
+          ignorado: {{ ignore_reason }}
+        {% else %}
+          ignorado: sin delta útil para aprendizaje
+        {% endif %}
+      feedback_mobile_state: '{{ ''aprendió'' if apply_feedback else ''ignorado'' }}'
+      feedback_mobile_message: >-
+        {% if apply_feedback %}
+          {{ aprendizaje_aplicado_en_este_ciclo }}
+        {% elif feedback_ignored_relevant_user_cause %}
+          {{ aprendizaje_guardado_para_proximo_ciclo }} | {{ feedback_ignored_short_reason }}
+        {% else %}
+          {{ feedback_ignored_short_reason }}
+        {% endif %}
       manual_sp_override_active: >-
         {{ is_state('input_boolean.ac_manual_setpoint_override_active','on')
            and manual_sp_override_until_raw not in ['unknown','unavailable','none','']
@@ -5814,13 +5847,8 @@
             value_template: '{{ feedback_mobile_notify }}'
           sequence:
           - data:
-              title: '{{ ''AC SP respetado'' if manual_override_should_activate else ''AC feedback SP'' }}'
-              message: >-
-                {% if manual_override_should_activate %}
-                  {{ manual_override_notify_message }}{% if learning_applied_this_cycle %} || SP aprendido para próxima vez | {{ audit_message }}{% endif %}
-                {% else %}
-                  SP aprendido para próxima vez | {{ audit_message }}
-                {% endif %}
+              title: 'AC SP {{ feedback_mobile_state }}'
+              message: '{{ feedback_mobile_message }}'
               data:
                 ttl: 0
                 priority: high
