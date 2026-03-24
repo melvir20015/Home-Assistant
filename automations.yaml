@@ -1490,6 +1490,12 @@
         data:
           hvac_mode: 'off'
         action: climate.set_hvac_mode
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: >-
+            cool_off_dynamic_trace | ctx={{ 'emergency' if (tout|float) < 17 else 'normal' }} | base_off={{ cool_off }} | dp_offset={{ dp_offset }} | dyn_off={{ cool_normal_off_dynamic if (tout|float) >= 17 else 'n/a' }} | stop={{ (cool_emergency_off|float) if (tout|float) < 17 else (cool_stop_threshold|float) }} | reason={{ cool_off_reason | trim }}
+          entity_id: '{{ climate_ent }}'
       - data:
           title: AC AUTO OFF
           message: '{{ notif_base }} | Prev=cool | Act=Off | Stop={{ (cool_emergency_off|float)
@@ -1499,7 +1505,7 @@
             | trim) != ''Promedio'' else ''Promedio'' }} | SensorDelta={{ sensor_temp_delta
             }} | SensorColdEnabled={{ ''ON'' if cool_sensor_off_enabled else ''OFF''
             }} | Ctx={{ ''Emerg'' if (tout|float) < 17 else ''Normal'' }} | On={{
-            cool_on }} | Off={{ cool_off }} | Bedroom={{ bedroom_temp }} | Cold={{
+            cool_on }} | OffBase={{ cool_off }} | OffDyn={{ cool_normal_off_dynamic if (tout|float) >= 17 else ''n/a'' }} | Bedroom={{ bedroom_temp }} | Cold={{
             cold_sensor_name }}={{ cold_temp }} | SensorOFF={{ cool_sensor_off_name
             }}={{ cool_sensor_off_temp }}<= {{ cool_sensor_off_trigger if (tout|float)
             >= 17 else ''n/a'' }} | EOn={{ cool_emergency_on }} EOff={{ cool_emergency_off
@@ -2104,7 +2110,10 @@
     cool_off: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ 23.0 if month
       in [11,12,1,2,3] else 21.3 if (month in [6,7,8,9] and tout>=30) else 22.5 }}\n{%
       endif %}"
-    cool_stop_threshold: '{{ cool_off }}'
+    cool_normal_off_min: 20.8
+    cool_normal_off_max: 23.4
+    cool_normal_off_dynamic: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {% set base_off = cool_off | float %}\n  {% set humidity_adjustment = dp_offset | float(0) %}\n  {% set raw_off = base_off + humidity_adjustment %}\n  {{ [[raw_off, cool_normal_off_max | float] | min, cool_normal_off_min | float] | max | round(2) }}\n{% endif %}"
+    cool_stop_threshold: '{{ cool_normal_off_dynamic if (tout is not none and (tout|float) >= 17) else cool_off }}'
     cool_last_useful_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none
       }}\n{% else %}\n  {{ [((cool_stop_threshold | float) - 1.0), cool_ramp_min_setpoint]
       | max | round(1) }}\n{% endif %}"
@@ -2137,8 +2146,8 @@
     cool_off_reason: "{% if cur_mode != 'cool' or tin is none or tout is none %}\n
       \  none\n{% elif (tout|float) < 17 and (tout|float) >= (cool_emergency_outdoor_min|float)
       and (cool_emergency_off is not none) and (tin|float) <= (cool_emergency_off|float)
-      %}\n  Promedio\n{% elif (tout|float) >= 17 and (cool_off is not none) %}\n
-      \ {% if (tin|float) <= (cool_off|float) %}\n    Promedio\n  {% elif cool_asymmetric_off_ready %}\n    Asimetria_1C\n  {% elif cool_sensor_off_enabled
+      %}\n  Promedio\n{% elif (tout|float) >= 17 and (cool_stop_threshold is not none) %}\n
+      \ {% if (tin|float) <= (cool_stop_threshold|float) %}\n    Promedio\n  {% elif cool_asymmetric_off_ready %}\n    Asimetria_1C\n  {% elif cool_sensor_off_enabled
       and (cool_sensor_off_temp is not none) and (cool_sensor_off_trigger is not
       none) and ((cool_sensor_off_temp|float) <= (cool_sensor_off_trigger|float))
       %}\n    {{ cool_sensor_off_name }}\n  {% else %}\n    none\n  {% endif %}\n{%
