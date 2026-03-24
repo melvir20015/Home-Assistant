@@ -1771,10 +1771,24 @@
 {% else %}
   {{ none }}
 {% endif %}"
+              loop_hot_temp: "{% if loop_t1 is none and loop_t2 is none %}
+  {{ none }}
+{% elif loop_t2 is none %}
+  {{ loop_t1 | round(2) }}
+{% elif loop_t1 is none %}
+  {{ loop_t2 | round(2) }}
+{% else %}
+  {{ (loop_t1 if loop_t1 >= loop_t2 else loop_t2) | round(2) }}
+{% endif %}"
               loop_cool_sensor_off_enabled: "{% if loop_sensor_temp_delta is none %}
   {{ true }}
 {% else %}
   {{ (loop_sensor_temp_delta | float(99)) <= (cool_sensor_off_delta_max | float(1)) }}
+{% endif %}"
+              loop_asymmetric_off_ready: "{% if cool_off is none or loop_cold_temp is none or loop_hot_temp is none %}
+  {{ false }}
+{% else %}
+  {{ (loop_cold_temp | float) <= (cool_off | float) and (((loop_hot_temp | float) - (loop_cold_temp | float)) >= (cool_asymmetry_delta_trigger | float(1))) }}
 {% endif %}"
               loop_cool_off_reason: "{% if loop_hvac_mode != 'cool' or loop_tin is none or tout is none %}
   none
@@ -1783,6 +1797,8 @@
 {% elif (tout|float) >= 17 and (cool_off is not none) %}
   {% if (loop_tin|float) <= (cool_off|float) %}
     Promedio
+  {% elif loop_asymmetric_off_ready %}
+    Asimetria_1C
   {% elif loop_cool_sensor_off_enabled and (loop_cool_sensor_off_temp is not none) and (cool_sensor_off_trigger is not none) and ((loop_cool_sensor_off_temp|float) <= (cool_sensor_off_trigger|float)) %}
     {{ loop_cool_sensor_off_name }}
   {% else %}
@@ -2064,7 +2080,7 @@
     last_effective_setpoint: '{{ states(''input_number.ac_night_cool_last_effective_setpoint'') | float(none) }}'
     cool_last_useful_memory_hours: 72
     cool_ramp_short_cycle_guard_min: 8
-    cool_ramp_step: 0.5
+    cool_ramp_step: 0.0
     cool_ramp_initial_wait_min: 30
     cool_ramp_followup_wait_min: 10
     cool_ramp_min_setpoint: 20
@@ -2090,7 +2106,7 @@
       endif %}"
     cool_stop_threshold: '{{ cool_off }}'
     cool_last_useful_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none
-      }}\n{% else %}\n  {{ [((cool_stop_threshold | float) - 0.5), cool_ramp_min_setpoint]
+      }}\n{% else %}\n  {{ [((cool_stop_threshold | float) - 1.0), cool_ramp_min_setpoint]
       | max | round(1) }}\n{% endif %}"
     cool_last_useful_setpoint: "{% set memory_valid = last_effective_setpoint is not
       none and (hours_since_last_effective | float(99999)) <= (cool_last_useful_memory_hours
@@ -2099,7 +2115,7 @@
       + ((last_effective_setpoint | float) * 0.3)) | round(1) }}\n{% else %}\n  {{
       cool_last_useful_base_setpoint | float | round(1) }}\n{% endif %}"
     # La rampa nocturna conserva la banda `cool_on`/`cool_off` para decidir el ciclo.
-    # El setpoint inicial arranca en `cool_off - 0.5` y la memoria guarda el último
+    # El setpoint inicial arranca en `cool_off - 1.0` y la memoria guarda el último
     # setpoint útil aplicado justo antes del apagado por confort para reutilizarlo
     # sólo como aprendizaje contextual, sin depender de consumo ni condensador.
     cool_ramp_initial_setpoint: "{% if cool_last_useful_base_setpoint is none %}\n
@@ -2113,6 +2129,8 @@
     cool_sensor_off_temp: "{% if bedroom_temp is not none %}\n  {{ bedroom_temp |
       round(2) }}\n{% elif cold_temp is not none %}\n  {{ cold_temp | round(2) }}\n{%
       else %}\n  {{ none }}\n{% endif %}"
+    cool_asymmetry_delta_trigger: 1.0
+    cool_asymmetric_off_ready: "{% if cool_off is none or cold_temp is none or hot_temp is none %}\n  {{ false }}\n{% else %}\n  {{ (cold_temp | float) <= (cool_off | float) and (((hot_temp | float) - (cold_temp | float)) >= (cool_asymmetry_delta_trigger | float(1))) }}\n{% endif %}"
     cool_sensor_off_name: "{% if bedroom_temp is not none %}\n  Cuarto\n{% elif
       cold_sensor_name is not none %}\n  {{ loop_cold_sensor_name }}\n{% else %}\n  none\n{%
       endif %}"
@@ -2120,7 +2138,7 @@
       \  none\n{% elif (tout|float) < 17 and (tout|float) >= (cool_emergency_outdoor_min|float)
       and (cool_emergency_off is not none) and (tin|float) <= (cool_emergency_off|float)
       %}\n  Promedio\n{% elif (tout|float) >= 17 and (cool_off is not none) %}\n
-      \ {% if (tin|float) <= (cool_off|float) %}\n    Promedio\n  {% elif cool_sensor_off_enabled
+      \ {% if (tin|float) <= (cool_off|float) %}\n    Promedio\n  {% elif cool_asymmetric_off_ready %}\n    Asimetria_1C\n  {% elif cool_sensor_off_enabled
       and (cool_sensor_off_temp is not none) and (cool_sensor_off_trigger is not
       none) and ((cool_sensor_off_temp|float) <= (cool_sensor_off_trigger|float))
       %}\n    {{ cool_sensor_off_name }}\n  {% else %}\n    none\n  {% endif %}\n{%
