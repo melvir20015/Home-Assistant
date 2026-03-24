@@ -1587,7 +1587,7 @@
           cool_stop_threshold_selected: "{{ cool_emergency_off if ((tout|float) <
             17) else cool_stop_threshold }}"
           cool_initial_setpoint_selected: "{{ cool_setpoint_emerg if ((tout|float)
-            < 17) else cool_ramp_initial_setpoint }}"
+            < 17) else cool_normal_initial_setpoint_dynamic }}"
           cool_learning_reference_selected: "{{ cool_setpoint_emerg if ((tout|float)
             < 17) else cool_last_useful_setpoint }}"
       - target:
@@ -1693,7 +1693,7 @@
       - variables:
           cool_push_reason: >-
             {{ 'Mot=auto emergencia' if cool_context == 'emergency' else 'Mot=auto umbral' }}
-          cool_push_summary: 'Rampa térmica | Init={{ cool_initial_setpoint_selected }} | Espera={{ cool_ramp_initial_wait_min }}m/{{ cool_ramp_followup_wait_min }}m | Stop={{ cool_stop_threshold_selected }} | Learn={{ cool_learning_reference_selected }}'
+          cool_push_summary: 'Rampa térmica | Init={{ cool_initial_setpoint_selected }} | OffDyn={{ cool_normal_off_dynamic if cool_context == ''normal'' else ''n/a'' }} | dp_offset={{ dp_offset }} | dewpoint={{ dewpoint }} | Espera={{ cool_ramp_initial_wait_min }}m/{{ cool_ramp_followup_wait_min }}m | Stop={{ cool_stop_threshold_selected }} | Learn={{ cool_learning_reference_selected }}'
           cool_mobile_title_local: Cool noche
           cool_mobile_message_local: >-
             {% set reason = cool_push_reason | default('', true) | trim %}
@@ -2113,6 +2113,7 @@
     cool_normal_off_min: 20.8
     cool_normal_off_max: 23.4
     cool_normal_off_dynamic: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {% set base_off = cool_off | float %}\n  {% set humidity_adjustment = dp_offset | float(0) %}\n  {% set raw_off = base_off + humidity_adjustment %}\n  {{ [[raw_off, cool_normal_off_max | float] | min, cool_normal_off_min | float] | max | round(2) }}\n{% endif %}"
+    cool_normal_initial_setpoint_dynamic: "{% if cool_normal_off_dynamic is none %}\n  {{ none }}\n{% else %}\n  {% set base_init = (cool_normal_off_dynamic | float | round(1)) - 1.0 %}\n  {{ [base_init, cool_ramp_min_setpoint | float] | max | round(1) }}\n{% endif %}"
     cool_stop_threshold: '{{ cool_normal_off_dynamic if (tout is not none and (tout|float) >= 17) else cool_off }}'
     cool_last_useful_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none
       }}\n{% else %}\n  {{ [((cool_stop_threshold | float) - 1.0), cool_ramp_min_setpoint]
