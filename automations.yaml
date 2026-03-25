@@ -5260,14 +5260,25 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: "{{ last_auto_action == 'auto_off' or last_change_origin == 'auto_off' or (seconds_since_last_auto | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) }}"
+        value_template: "{{ last_auto_action == 'auto_off' and (seconds_since_last_auto | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) and last_change_origin == 'auto_off' }}"
       sequence:
       - data:
           name: AC Manual OFF
-          message: 'manual_off_guard_blocked_auto_off_race | last_auto_action={{ last_auto_action }} | last_change_origin={{ last_change_origin }} | seconds_since_last_auto={{ seconds_since_last_auto }} | guard_seconds={{ recent_auto_off_guard_seconds }}'
+          message: 'manual_off_guard_blocked_recent_auto_off | last_auto_action={{ last_auto_action }} | last_change_origin={{ last_change_origin }} | seconds_since_last_auto={{ seconds_since_last_auto }} | guard_seconds={{ recent_auto_off_guard_seconds }}'
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - stop: 'Ignorado: posible AUTO OFF reciente (guard anti-carrera).'
+    default: []
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ last_auto_action == 'auto_on' and last_auto_mode in ['cool','heat'] and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120)) }}"
+      sequence:
+      - data:
+          name: AC Manual OFF
+          message: 'manual_off_valid_after_recent_auto_on | last_auto_action={{ last_auto_action }} | last_auto_mode={{ last_auto_mode }} | minutes_since_last_auto={{ minutes_since_last_auto }} | feedback_window_min={{ feedback_window_min }}'
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
     default: []
   - target:
       entity_id: input_datetime.ac_last_manual_off_ts
