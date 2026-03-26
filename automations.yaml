@@ -4484,6 +4484,27 @@
   mode: restart
 - id: '1773894905330'
   alias: AC - Learning - Manual OFF feedback
+  # Matriz única de elegibilidad de aprendizaje manual (OFF/ON)
+  #
+  # PRIORIDAD DE DESCARTE (primer motivo inválido gana, orden estricto):
+  #   1) learning_disabled
+  #   2) origen no manual esperado (not_manual / ambiguous_origin)
+  #   3) guarda técnica por carrera auto reciente (recent_auto_*_race o auto_off_flag_active)
+  #   4) acción auto previa incompatible (last_action_not_auto_on / last_action_not_auto_off)
+  #   5) modo final/no previo no aprendible
+  #   6) ventana de feedback vencida (feedback_window_min)
+  #   7) regla contextual específica (runtime contextual corto, cool sin comfort gap)
+  #   8) no_valid_learning
+  #
+  # VENTANAS/UMBRAL UNIFICADOS:
+  #   - feedback_window_min := input_number.ac_feedback_window_minutes (fallback 120 min)
+  #   - guardas anti-carrera auto reciente := 120 s (OFF y ON)
+  #
+  # ELEGIBILIDAD RESUMIDA:
+  #   - manual_off: rama FUERTE si corrige auto_on reciente en cool/heat + dentro de ventana.
+  #                 rama CONTEXTUAL (cool) si no hay auto_off técnico, modo cool y runtime >= 8 min.
+  #   - manual_on : válido sólo si corrige auto_off reciente + dentro de ventana
+  #                 y final_mode in [cool, heat]; para cool exige comfort_gap previo.
   trace:
     stored_traces: 50
   description: 'Evalúa si un apagado manual detectado previamente constituye feedback
@@ -4609,6 +4630,7 @@
         | float(99999)) <= (feedback_window_min | float(120)) }}"
       valid_feedback_contextual_cool: "{{ learning_enabled
    and contextual_cool_base_eligible
+   and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120))
    and (minutes_since_last_auto | float(99999)) >= (min_operating_minutes_contextual | float(8)) }}"
       valid_feedback: '{{ valid_feedback_strong or valid_feedback_contextual_cool }}'
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
@@ -4671,11 +4693,11 @@
 {% elif last_auto_mode
         not in ['cool','heat'] %}
   manual_off_feedback_ignored_last_mode_not_learnable
+{% elif (minutes_since_last_auto
+        | float(99999)) > (feedback_window_min | float(120)) %}
+  manual_off_feedback_ignored_window_expired
 {% elif last_auto_mode == 'cool' and (minutes_since_last_auto | float(99999)) < (min_operating_minutes_contextual | float(8)) %}
   manual_off_feedback_ignored_contextual_runtime_short
-{% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(120)) and last_auto_mode != 'cool' %}
-  manual_off_feedback_ignored_window_expired
 {%
         else %}
   manual_off_feedback_ignored_no_valid_learning
@@ -4708,10 +4730,10 @@
   auto_off_flag_active
 {% elif last_auto_action != 'auto_on' and (not contextual_cool_base_eligible) %}
   last_action_not_auto_on
-{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(120)) %}
-  window_expired
 {% elif last_auto_mode not in ['cool','heat'] %}
   last_mode_not_learnable
+{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(120)) %}
+  window_expired
 {% elif last_auto_mode == 'cool' and (minutes_since_last_auto | float(99999)) < (min_operating_minutes_contextual | float(8)) %}
   contextual_runtime_short
 {% else %}
@@ -4793,6 +4815,7 @@
       notify_message_applied_off_short: '{{ ''aprendizaje '' ~ feedback_strength ~ '' · '' ~ last_auto_mode }}'
       notify_title_ignored_off_short: 'AC OFF manual ignorado'
       notify_message_ignored_off_short: '{{ ignored_reason_summary }}'
+      notify_ignored_user: "{{ ignored_reason_code not in ['not_manual','auto_off_flag_active'] }}"
   - choose:
     - conditions:
       - condition: template
@@ -4928,7 +4951,7 @@
         action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
-        value_template: '{{ (not valid_feedback) and debug_enabled }}'
+        value_template: '{{ (not valid_feedback) and debug_enabled and notify_ignored_user }}'
       sequence:
       - data:
           title: '{{ notify_title_ignored_off_short }}'
@@ -4981,6 +5004,23 @@
       - stop: 'Ignorado: AUTO OFF en curso.'
     default: []
   - delay: 00:00:15
+  - variables:
+      last_auto_action_guard: '{{ states(''input_text.ac_last_auto_action'') }}'
+      last_auto_ts_guard_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      recent_auto_on_guard_seconds: 120
+      seconds_since_last_auto_guard: "{% set raw = last_auto_ts_guard_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}999999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 999999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(0)) }}{% endif %}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ last_auto_action_guard == 'auto_on' and (seconds_since_last_auto_guard | float(999999)) <= (recent_auto_on_guard_seconds | float(120)) }}"
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Learning Manual ON
+          message: 'manual_on_guard_blocked_auto_on_race | trigger=feedback | last_auto_action={{ last_auto_action_guard }} | seconds_since_last_auto={{ seconds_since_last_auto_guard }} | guard_seconds={{ recent_auto_on_guard_seconds }}'
+          entity_id: climate.0200009211c7_climate
+      - stop: 'Ignorado: origen AUTO ON reciente'
+    default: []
   - variables:
       climate_ent: climate.0200009211c7_climate
       final_mode: '{{ states(climate_ent) }}'
@@ -5066,7 +5106,7 @@
         not in ['cool','heat'] %}
   manual_on_feedback_ignored_final_mode_not_learnable
 {% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(45)) %}
+        | float(99999)) > (feedback_window_min | float(120)) %}
   manual_on_feedback_ignored_window_expired
 {% elif final_mode == 'cool' and not cool_comfort_gap_feedback %}
   manual_on_feedback_ignored_cool_not_before_auto_on
@@ -5082,7 +5122,7 @@
   last_action_not_auto_off
 {% elif final_mode not in ['cool','heat'] %}
   final_mode_not_learnable
-{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(45)) %}
+{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(120)) %}
   window_expired
 {% elif final_mode == 'cool' and not cool_comfort_gap_feedback %}
   cool_not_before_auto_on
