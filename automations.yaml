@@ -87,6 +87,8 @@
       input_text.ac_last_auto_fan: '{{ states(''input_text.ac_last_auto_fan'') }}'
       input_datetime.ac_last_auto_off_marker_ts: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'')
         }}'
+      input_text.ac_last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'')
+        }}'
       input_text.ac_last_manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'')
         }}'
       input_text.ac_last_manual_learning_type: '{{ states(''input_text.ac_last_manual_learning_type'')
@@ -1517,6 +1519,7 @@
       if tout <= 5 else 22.0 if tout >= 17 else (23.0 - ((tout-5)/12)) %}\n  {{ (base
       + min(wind*0.05,0.8)) | round(2) }}\n{% endif %}"
     heat_off: '{{ (heat_on + 2) if heat_on is not none else none }}'
+    auto_off_marker_nonce: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    t(/5)\n  {% elif trigger.platform == 'state' %}\n    s:{{ trigger.entity_id.split('.')[-1]
       }}=>{{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
@@ -1738,6 +1741,11 @@
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         action: input_datetime.set_datetime
       - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -1798,10 +1806,21 @@
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
-      - delay: 00:00:05
-      - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_off
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: climate.0200009211c7_climate
+            state: 'off'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_off_por_automatizacion
+            action: input_boolean.turn_off
+        default:
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ auto_on_allowed and auto_on_presence_gate and (not recent_any_auto_on)
@@ -2121,6 +2140,11 @@
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         action: input_datetime.set_datetime
       - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -2181,10 +2205,21 @@
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
-      - delay: 00:00:05
-      - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_off
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: climate.0200009211c7_climate
+            state: 'off'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_off_por_automatizacion
+            action: input_boolean.turn_off
+        default:
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'heat'\n   and tout is not none\n   and tout
@@ -2295,6 +2330,11 @@
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         action: input_datetime.set_datetime
       - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -2317,10 +2357,21 @@
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
-      - delay: 00:00:05
-      - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_off
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: climate.0200009211c7_climate
+            state: 'off'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_off_por_automatizacion
+            action: input_boolean.turn_off
+        default:
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'heat'\n   and heat_off is not none\n   and
@@ -2403,6 +2454,11 @@
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         action: input_datetime.set_datetime
       - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -2425,10 +2481,21 @@
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
-      - delay: 00:00:05
-      - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_off
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: climate.0200009211c7_climate
+            state: 'off'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_off_por_automatizacion
+            action: input_boolean.turn_off
+        default:
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: '{{ cur_mode == ''cool'' and (not emergency_latched) and (not
@@ -2584,6 +2651,11 @@
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         action: input_datetime.set_datetime
       - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -2658,10 +2730,21 @@
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
-      - delay: 00:00:05
-      - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_off
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: climate.0200009211c7_climate
+            state: 'off'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_off_por_automatizacion
+            action: input_boolean.turn_off
+        default:
+        - action: logbook.log
+          data:
+            name: AC Auto Trace
+            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ (not emergency_latched) and auto_on_allowed and auto_on_presence_gate
@@ -3903,17 +3986,21 @@
         %}999999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 999999
         if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(0)) }}{%
         endif %}'
+      last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') }}'
+      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
+      seconds_since_auto_off_marker: '{% set raw = last_auto_off_marker_ts_raw | default('''', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in [''unknown'',''unavailable'',''none'',''''] %}999999{% else %}{% set ts_marker = as_timestamp(raw, default=none) %}{{ 999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0)) }}{% endif %}'
+      auto_off_nonce_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce not in ['''' ,''unknown'',''unavailable'',''none''] }}'
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ last_auto_action == ''auto_off'' and (seconds_since_last_auto
-          | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) }}'
+        value_template: '{{ last_auto_action == ''auto_off'' and ((seconds_since_last_auto
+          | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) or auto_off_nonce_correlation_active) }}'
       sequence:
       - data:
           name: AC Learning Manual OFF
           message: manual_off_guard_blocked_auto_off_race | trigger=feedback | last_auto_action={{
             last_auto_action }} | seconds_since_last_auto={{ seconds_since_last_auto
-            }} | guard_seconds={{ recent_auto_off_guard_seconds }}
+            }} | seconds_since_auto_off_marker={{ seconds_since_auto_off_marker }} | marker_nonce={{ last_auto_off_marker_nonce }} | marker_active={{ auto_off_nonce_correlation_active }} | guard_seconds={{ recent_auto_off_guard_seconds }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - stop: 'Ignorado: origen AUTO OFF reciente'
@@ -3958,6 +4045,11 @@
       manual_off_detected: '{{ last_change_origin == ''manual_off'' }}'
       auto_off_flag_active: '{{ is_state(''input_boolean.ac_off_por_automatizacion'',
         ''on'') }}'
+      last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') }}'
+      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
+      seconds_since_auto_off_marker: '{% set raw = last_auto_off_marker_ts_raw | default('''', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in [''unknown'',''unavailable'',''none'',''''] %}999999{% else %}{% set ts_marker = as_timestamp(raw, default=none) %}{{ 999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0)) }}{% endif %}'
+      auto_off_nonce_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce not in ['''' ,''unknown'',''unavailable'',''none''] }}'
+      recent_auto_off_evidence: '{{ last_auto_action == ''auto_off'' and ((minutes_since_last_auto | float(99999)) <= ((recent_auto_off_guard_seconds | float(120)) / 60) or auto_off_nonce_correlation_active) }}'
       contextual_cool_base_eligible: '{{ manual_off_detected and (not auto_off_flag_active)
         and last_auto_mode == ''cool'' and last_auto_action != ''auto_off'' }}'
       valid_feedback_strong: "{{ learning_enabled and last_change_origin == 'manual_off'
@@ -4117,7 +4209,7 @@
         '' · '' ~ last_auto_mode }}'
       notify_title_ignored_off_short: AC OFF manual ignorado
       notify_message_ignored_off_short: '{{ ignored_reason_summary }}'
-      notify_ignored_user: '{{ ignored_reason_code not in [''not_manual'',''auto_off_flag_active'']
+      notify_ignored_user: '{{ ignored_reason_code not in [''not_manual'',''auto_off_flag_active'',''last_action_not_auto_on''] and not (ignored_reason_code == ''contextual_runtime_short'' and recent_auto_off_evidence)
         }}'
   - choose:
     - conditions:
@@ -4621,6 +4713,7 @@
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'')
         }}'
+      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
@@ -4636,7 +4729,7 @@
         999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0))
         }}{% endif %}'
       auto_off_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999))
-        <= (recent_auto_off_guard_seconds | float(120)) }}'
+        <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce not in ['''' ,''unknown'',''unavailable'',''none''] }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
         | float(120) }}'
       minutes_since_last_auto: '{% set raw = last_auto_ts_raw | default('''', true)
@@ -4668,7 +4761,7 @@
           message: manual_off_guard_blocked_recent_auto_off | last_auto_action={{
             last_auto_action }} | last_change_origin={{ last_change_origin }} | seconds_since_last_auto={{
             seconds_since_last_auto }} | seconds_since_auto_off_marker={{ seconds_since_auto_off_marker
-            }} | marker_active={{ auto_off_correlation_active }} | guard_seconds={{
+            }} | marker_nonce={{ last_auto_off_marker_nonce }} | marker_active={{ auto_off_correlation_active }} | guard_seconds={{
             recent_auto_off_guard_seconds }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log

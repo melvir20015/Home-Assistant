@@ -14,6 +14,10 @@ ac_last_auto_fan:
   name: "AC Last Auto Fan"
   max: 50
 
+ac_last_auto_off_marker_nonce:
+  name: "AC Last AUTO OFF Marker Nonce"
+  max: 80
+
 ac_last_manual_event_type:
   name: "AC Last Manual Detection Type"
   max: 60
