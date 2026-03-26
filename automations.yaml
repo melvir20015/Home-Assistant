@@ -3986,21 +3986,32 @@
         %}999999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 999999
         if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(0)) }}{%
         endif %}'
-      last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') }}'
-      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
-      seconds_since_auto_off_marker: '{% set raw = last_auto_off_marker_ts_raw | default('''', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in [''unknown'',''unavailable'',''none'',''''] %}999999{% else %}{% set ts_marker = as_timestamp(raw, default=none) %}{{ 999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0)) }}{% endif %}'
-      auto_off_nonce_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce not in ['''' ,''unknown'',''unavailable'',''none''] }}'
+      last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'')
+        }}'
+      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'')
+        | default('''', true) | trim }}'
+      seconds_since_auto_off_marker: '{% set raw = last_auto_off_marker_ts_raw | default('''',
+        true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in [''unknown'',''unavailable'',''none'','''']
+        %}999999{% else %}{% set ts_marker = as_timestamp(raw, default=none) %}{{
+        999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0))
+        }}{% endif %}'
+      auto_off_nonce_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999))
+        <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce
+        not in ['''' ,''unknown'',''unavailable'',''none''] }}'
   - choose:
     - conditions:
       - condition: template
         value_template: '{{ last_auto_action == ''auto_off'' and ((seconds_since_last_auto
-          | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) or auto_off_nonce_correlation_active) }}'
+          | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) or auto_off_nonce_correlation_active)
+          }}'
       sequence:
       - data:
           name: AC Learning Manual OFF
           message: manual_off_guard_blocked_auto_off_race | trigger=feedback | last_auto_action={{
             last_auto_action }} | seconds_since_last_auto={{ seconds_since_last_auto
-            }} | seconds_since_auto_off_marker={{ seconds_since_auto_off_marker }} | marker_nonce={{ last_auto_off_marker_nonce }} | marker_active={{ auto_off_nonce_correlation_active }} | guard_seconds={{ recent_auto_off_guard_seconds }}
+            }} | seconds_since_auto_off_marker={{ seconds_since_auto_off_marker }}
+            | marker_nonce={{ last_auto_off_marker_nonce }} | marker_active={{ auto_off_nonce_correlation_active
+            }} | guard_seconds={{ recent_auto_off_guard_seconds }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - stop: 'Ignorado: origen AUTO OFF reciente'
@@ -4045,11 +4056,21 @@
       manual_off_detected: '{{ last_change_origin == ''manual_off'' }}'
       auto_off_flag_active: '{{ is_state(''input_boolean.ac_off_por_automatizacion'',
         ''on'') }}'
-      last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') }}'
-      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
-      seconds_since_auto_off_marker: '{% set raw = last_auto_off_marker_ts_raw | default('''', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in [''unknown'',''unavailable'',''none'',''''] %}999999{% else %}{% set ts_marker = as_timestamp(raw, default=none) %}{{ 999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0)) }}{% endif %}'
-      auto_off_nonce_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce not in ['''' ,''unknown'',''unavailable'',''none''] }}'
-      recent_auto_off_evidence: '{{ last_auto_action == ''auto_off'' and ((minutes_since_last_auto | float(99999)) <= ((recent_auto_off_guard_seconds | float(120)) / 60) or auto_off_nonce_correlation_active) }}'
+      last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'')
+        }}'
+      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'')
+        | default('''', true) | trim }}'
+      seconds_since_auto_off_marker: '{% set raw = last_auto_off_marker_ts_raw | default('''',
+        true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in [''unknown'',''unavailable'',''none'','''']
+        %}999999{% else %}{% set ts_marker = as_timestamp(raw, default=none) %}{{
+        999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0))
+        }}{% endif %}'
+      auto_off_nonce_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999))
+        <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce
+        not in ['''' ,''unknown'',''unavailable'',''none''] }}'
+      recent_auto_off_evidence: '{{ last_auto_action == ''auto_off'' and ((minutes_since_last_auto
+        | float(99999)) <= ((recent_auto_off_guard_seconds | float(120)) / 60) or
+        auto_off_nonce_correlation_active) }}'
       contextual_cool_base_eligible: '{{ manual_off_detected and (not auto_off_flag_active)
         and last_auto_mode == ''cool'' and last_auto_action != ''auto_off'' }}'
       valid_feedback_strong: "{{ learning_enabled and last_change_origin == 'manual_off'
@@ -4209,7 +4230,8 @@
         '' · '' ~ last_auto_mode }}'
       notify_title_ignored_off_short: AC OFF manual ignorado
       notify_message_ignored_off_short: '{{ ignored_reason_summary }}'
-      notify_ignored_user: '{{ ignored_reason_code not in [''not_manual'',''auto_off_flag_active'',''last_action_not_auto_on''] and not (ignored_reason_code == ''contextual_runtime_short'' and recent_auto_off_evidence)
+      notify_ignored_user: '{{ ignored_reason_code not in [''not_manual'',''auto_off_flag_active'',''last_action_not_auto_on'']
+        and not (ignored_reason_code == ''contextual_runtime_short'' and recent_auto_off_evidence)
         }}'
   - choose:
     - conditions:
@@ -4713,7 +4735,8 @@
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'')
         }}'
-      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
+      last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'')
+        | default('''', true) | trim }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
@@ -4729,7 +4752,8 @@
         999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0))
         }}{% endif %}'
       auto_off_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999))
-        <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce not in ['''' ,''unknown'',''unavailable'',''none''] }}'
+        <= (recent_auto_off_guard_seconds | float(120)) and last_auto_off_marker_nonce
+        not in ['''' ,''unknown'',''unavailable'',''none''] }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
         | float(120) }}'
       minutes_since_last_auto: '{% set raw = last_auto_ts_raw | default('''', true)
@@ -4761,8 +4785,9 @@
           message: manual_off_guard_blocked_recent_auto_off | last_auto_action={{
             last_auto_action }} | last_change_origin={{ last_change_origin }} | seconds_since_last_auto={{
             seconds_since_last_auto }} | seconds_since_auto_off_marker={{ seconds_since_auto_off_marker
-            }} | marker_nonce={{ last_auto_off_marker_nonce }} | marker_active={{ auto_off_correlation_active }} | guard_seconds={{
-            recent_auto_off_guard_seconds }}
+            }} | marker_nonce={{ last_auto_off_marker_nonce }} | marker_active={{
+            auto_off_correlation_active }} | guard_seconds={{ recent_auto_off_guard_seconds
+            }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - stop: 'Ignorado: posible AUTO OFF reciente (guard anti-carrera).'
@@ -6004,4 +6029,27 @@
             }} | run={{ runtime_min }} | sp_min={{ min_setpoint }}
           entity_id: '{{ climate_ent }}'
     default: []
+  mode: single
+- id: '1774567690253'
+  alias: Enciende Ventilador por deteccion de Gas
+  description: ''
+  triggers:
+  - type: unsafe
+    device_id: af2b927ca1f543338752460f251edaff
+    entity_id: a60dd6686d3f7c94942a6586eba04977
+    domain: binary_sensor
+    trigger: device
+  conditions: []
+  actions:
+  - action: climate.turn_on
+    metadata: {}
+    data: {}
+  - action: climate.set_fan_mode
+    metadata: {}
+    data:
+      fan_mode: High
+  - action: climate.set_hvac_mode
+    metadata: {}
+    data:
+      hvac_mode: fan_only
   mode: single
