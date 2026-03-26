@@ -4555,6 +4555,10 @@
       min_operating_minutes_contextual: 8
       manual_off_detected: '{{ last_change_origin == ''manual_off'' }}'
       auto_off_flag_active: '{{ is_state(''input_boolean.ac_off_por_automatizacion'', ''on'') }}'
+      contextual_cool_base_eligible: "{{ manual_off_detected
+   and (not auto_off_flag_active)
+   and last_auto_mode == 'cool'
+   and last_auto_action != 'auto_off' }}"
       valid_feedback_strong: "{{ learning_enabled
    and last_change_origin == 'manual_off'
    and last_auto_action == 'auto_on'
@@ -4563,9 +4567,7 @@
    and (minutes_since_last_auto
         | float(99999)) <= (feedback_window_min | float(120)) }}"
       valid_feedback_contextual_cool: "{{ learning_enabled
-   and manual_off_detected
-   and (not auto_off_flag_active)
-   and last_auto_mode == 'cool'
+   and contextual_cool_base_eligible
    and (minutes_since_last_auto | float(99999)) >= (min_operating_minutes_contextual | float(8)) }}"
       valid_feedback: '{{ valid_feedback_strong or valid_feedback_contextual_cool }}'
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0) }}'
@@ -4623,7 +4625,7 @@
   manual_off_feedback_ignored_not_manual
 {% elif auto_off_flag_active %}
   manual_off_feedback_ignored_auto_off_flag_active
-{% elif last_auto_action != 'auto_on' and last_auto_mode != 'cool' %}
+{% elif last_auto_action != 'auto_on' and (not contextual_cool_base_eligible) %}
   manual_off_feedback_ignored_last_action_not_auto_on
 {% elif last_auto_mode
         not in ['cool','heat'] %}
@@ -4663,7 +4665,7 @@
   not_manual
 {% elif auto_off_flag_active %}
   auto_off_flag_active
-{% elif last_auto_action != 'auto_on' and last_auto_mode != 'cool' %}
+{% elif last_auto_action != 'auto_on' and (not contextual_cool_base_eligible) %}
   last_action_not_auto_on
 {% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(120)) %}
   window_expired
@@ -4684,7 +4686,7 @@
 {% elif ignored_reason_code == 'not_manual' %}
   Ign: origen.
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
-  Ign: sin auto previa.
+  Ign: sin auto_on previa.
 {% elif ignored_reason_code == 'auto_off_flag_active' %}
   Ign: auto-off activo.
 {% elif ignored_reason_code == 'window_expired' %}
@@ -4697,7 +4699,7 @@
   Ign: sin match.
 {% endif %}"
       ignored_reason_line: "{% if ignored_reason_code == 'last_action_not_auto_on' %}
-  AC no aprendió OFF manual: última auto fue OFF, no ON.
+  AC no aprendió OFF manual: sin auto_on previa válida.
 {% elif ignored_reason_code == 'learning_disabled' %}
   AC no aprendió OFF manual: aprendizaje desactivado.
 {% elif ignored_reason_code == 'not_manual' %}
@@ -4722,7 +4724,7 @@
 {% elif ignored_reason_code == 'not_manual' %}
   Ign: origen
 {% elif ignored_reason_code == 'last_action_not_auto_on' %}
-  Ign: sin auto previa
+  Ign: sin auto_on previa
 {% elif ignored_reason_code == 'auto_off_flag_active' %}
   Ign: auto-off activo
 {% elif ignored_reason_code == 'last_mode_not_learnable' %}
