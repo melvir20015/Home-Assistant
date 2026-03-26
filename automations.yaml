@@ -81,6 +81,7 @@
       input_text.ac_last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       input_text.ac_last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       input_text.ac_last_auto_fan: '{{ states(''input_text.ac_last_auto_fan'') }}'
+      input_datetime.ac_last_auto_off_marker_ts: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') }}'
       input_text.ac_last_manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'') }}'
       input_text.ac_last_manual_learning_type: '{{ states(''input_text.ac_last_manual_learning_type'') }}'
       input_text.ac_last_manual_feedback_mode: '{{ states(''input_text.ac_last_manual_feedback_mode'') }}'
@@ -2436,6 +2437,11 @@
           value: '{{ sensor_delta }}'
         action: input_number.set_value
       - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -2496,7 +2502,10 @@
           message: >-
             hito=rama_completada | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - delay: 00:00:45
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - delay: 00:00:05
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -2808,6 +2817,11 @@
           value: '{{ sensor_delta }}'
         action: input_number.set_value
       - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -2869,7 +2883,10 @@
           message: >-
             hito=rama_completada | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - delay: 00:00:45
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - delay: 00:00:05
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -2977,6 +2994,11 @@
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
         action: input_boolean.turn_off
       - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -2998,7 +3020,10 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
-      - delay: 00:00:45
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - delay: 00:00:05
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -3079,6 +3104,11 @@
           value: '{{ sensor_delta }}'
         action: input_number.set_value
       - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -3100,7 +3130,10 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
-      - delay: 00:00:45
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - delay: 00:00:05
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -3250,6 +3283,11 @@
           value: '{{ sensor_delta }}'
         action: input_number.set_value
       - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
@@ -3317,7 +3355,10 @@
           message: >-
             hito=rama_completada | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - delay: 00:00:45
+      - wait_template: "{{ is_state('climate.0200009211c7_climate', 'off') }}"
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - delay: 00:00:05
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         action: input_boolean.turn_off
@@ -5236,7 +5277,12 @@
         entity_id: input_boolean.ac_off_por_automatizacion
         state: 'on'
       sequence:
-      - stop: 'Ignorado: AUTO OFF en curso.'
+      - data:
+          name: AC Manual OFF
+          message: 'manual_off_guard_blocked_auto_off_flag_active | reason=auto_off_flag_on'
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+      - stop: 'Ignorado: AUTO OFF en curso (flag activo).'
     default: []
   - variables:
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
@@ -5245,11 +5291,14 @@
       final_fan: "{% set fan = state_attr('climate.0200009211c7_climate','fan_mode') %}{{ fan if fan is not none else 'n/a' }}"
       last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       recent_auto_off_guard_seconds: 120
       seconds_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}999999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 999999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(0)) }}{% endif %}"
+      seconds_since_auto_off_marker: "{% set raw = last_auto_off_marker_ts_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}999999{% else %}{% set ts_marker = as_timestamp(raw, default=none) %}{{ 999999 if ts_marker is none else ((as_timestamp(now()) - ts_marker) | round(0)) }}{% endif %}"
+      auto_off_correlation_active: '{{ (seconds_since_auto_off_marker | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'') | float(120) }}'
       minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts = as_timestamp(raw, default=none) %}{{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}{% endif %}"
       manual_event_type: "{% if last_auto_action == 'auto_on' and last_auto_mode in ['cool','heat'] and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120)) %}manual_off_detected_after_recent_auto_on_{{ last_auto_mode }}{% else %}manual_off_detected{% endif %}"
@@ -5262,11 +5311,11 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: "{{ last_auto_action == 'auto_off' and (seconds_since_last_auto | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) and last_change_origin == 'auto_off' }}"
+        value_template: "{{ last_auto_action == 'auto_off' and ((seconds_since_last_auto | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) or auto_off_correlation_active) }}"
       sequence:
       - data:
           name: AC Manual OFF
-          message: 'manual_off_guard_blocked_recent_auto_off | last_auto_action={{ last_auto_action }} | last_change_origin={{ last_change_origin }} | seconds_since_last_auto={{ seconds_since_last_auto }} | guard_seconds={{ recent_auto_off_guard_seconds }}'
+          message: 'manual_off_guard_blocked_recent_auto_off | last_auto_action={{ last_auto_action }} | last_change_origin={{ last_change_origin }} | seconds_since_last_auto={{ seconds_since_last_auto }} | seconds_since_auto_off_marker={{ seconds_since_auto_off_marker }} | marker_active={{ auto_off_correlation_active }} | guard_seconds={{ recent_auto_off_guard_seconds }}'
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - stop: 'Ignorado: posible AUTO OFF reciente (guard anti-carrera).'
