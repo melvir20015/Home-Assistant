@@ -1047,9 +1047,14 @@
         data:
           name: AC Auto Trace
           message: cool_night_ramp_start | ctx={{ cool_context }} | init={{ cool_initial_setpoint_selected
-            }} | stop={{ cool_stop_threshold_selected }} | learn_ref={{ cool_learning_reference_selected
-            }} | wait_initial={{ cool_ramp_initial_wait_min }}m | wait_step={{ cool_ramp_followup_wait_min
-            }}m
+            }} | off_dynamic={{ cool_normal_off_dynamic if cool_context == 'normal' else
+            'n/a' }} | off_floor={{ ((cool_normal_off_dynamic | float) | int(0, 'floor'))
+            if cool_context == 'normal' and cool_normal_off_dynamic is not none else
+            'n/a' }} | setpoint_inicial_calculado={{ (((cool_normal_off_dynamic |
+            float) | int(0, 'floor')) - 1) if cool_context == 'normal' and cool_normal_off_dynamic
+            is not none else 'n/a' }} | stop={{ cool_stop_threshold_selected }} |
+            learn_ref={{ cool_learning_reference_selected }} | wait_initial={{ cool_ramp_initial_wait_min
+            }}m | wait_step={{ cool_ramp_followup_wait_min }}m
           entity_id: '{{ climate_ent }}'
       - variables:
           cool_push_reason: '{{ ''Mot=auto emergencia'' if cool_context == ''emergency''
@@ -1469,9 +1474,10 @@
       cool_normal_off_max | float] | min, cool_normal_off_min | float] | max | round(2)
       }}\n{% endif %}"
     cool_normal_initial_setpoint_dynamic: "{% if cool_normal_off_dynamic is none %}\n
-      \ {{ none }}\n{% else %}\n  {% set base_init = (cool_normal_off_dynamic | float
-      | round(1)) - 1.0 %}\n  {{ [base_init, cool_ramp_min_setpoint | float] | max
-      | round(1) }}\n{% endif %}"
+      \ {{ none }}\n{% else %}\n  {% set off_entero = (cool_normal_off_dynamic |
+      float) | int(0, 'floor') %}\n  {% set setpoint_inicial = off_entero - 1 %}\n
+      \ {{ [setpoint_inicial, cool_ramp_min_setpoint | float] | max | round(1) }}\n{%
+      endif %}"
     cool_stop_threshold: '{{ cool_normal_off_dynamic if (tout is not none and (tout|float)
       >= 17) else cool_off }}'
     cool_last_useful_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none
