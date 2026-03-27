@@ -1497,7 +1497,7 @@
       >= 17) else cool_off }}'
     cool_last_useful_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none
       }}\n{% else %}\n  {{ [((cool_stop_threshold | float) - 1.0), cool_ramp_min_setpoint]
-      | max | round(1)) }}\n{% endif %}"
+      | max | round(1) }}\n{% endif %}"
     cool_last_useful_setpoint: "{% set memory_recent = last_effective_setpoint is not
       none and (hours_since_last_effective | float(99999)) <= (cool_last_useful_memory_hours
       | float) %}\n{% set memory_bucket_match = (last_effective_bucket == cool_night_context_bucket)
