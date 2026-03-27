@@ -749,9 +749,9 @@
     SOLO cuando hace ON/OFF.
 
     '
-  triggers:
+  trigger:
   - minutes: /5
-    trigger: time_pattern
+    platform: time_pattern
   - entity_id:
     - weather.openweathermap
     - sensor.lumi_lumi_weather_cuarto_temperatura
@@ -762,18 +762,18 @@
     - binary_sensor.presencia_ok_estable
     - binary_sensor.presencia_s24_estable
     - binary_sensor.presencia_movimiento_estable
-    trigger: state
+    platform: state
   - entity_id: binary_sensor.presencia_movimiento_estable
     to: 'on'
-    trigger: state
+    platform: state
   - entity_id: binary_sensor.presencia_s24_estable
     to: 'on'
-    trigger: state
-  conditions:
+    platform: state
+  condition:
   - condition: time
     after: '21:00:00'
     before: 07:00:00
-  actions:
+  action:
   - choose:
     - conditions:
       - condition: template
@@ -783,11 +783,11 @@
           entity_id: '{{ climate_ent }}'
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - data:
           title: AC OFF (sin presencia)
           message: '{{ notif_base }} | Prev={{ cur_mode }} | R=sin_pres'
-        action: '{{ notify_service }}'
+        service: '{{ notify_service }}'
     - conditions:
       - condition: template
         value_template: '{{ tin is none or tout is none }}'
@@ -801,12 +801,12 @@
           entity_id: '{{ climate_ent }}'
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - data:
           title: AC OFF (cool bloqueado por frío exterior)
           message: '{{ notif_base }} | Prev=cool | R=ext_bajo | Min={{ cool_emergency_outdoor_min
             }}'
-        action: '{{ notify_service }}'
+        service: '{{ notify_service }}'
     - conditions:
       - condition: template
         value_template: '{{ cur_mode==''heat'' and tout >= heat_force_off_outdoor
@@ -816,12 +816,12 @@
           entity_id: '{{ climate_ent }}'
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - data:
           title: AC OFF (heat bloqueado por exterior templado)
           message: '{{ notif_base }} | Prev=heat | R=ext_templ | Umbral={{ heat_force_off_outdoor
             }}'
-        action: '{{ notify_service }}'
+        service: '{{ notify_service }}'
     - conditions:
       - condition: template
         value_template: '{{ cur_mode==''heat'' and heat_off is not none and tin>=heat_off
@@ -831,12 +831,12 @@
           entity_id: '{{ climate_ent }}'
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - data:
           title: AC AUTO OFF
           message: '{{ notif_base }} | Prev=heat | R=heat_off | On={{ heat_on }} Off={{
             heat_off }}'
-        action: '{{ notify_service }}'
+        service: '{{ notify_service }}'
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and tin is not none and tout is
@@ -846,8 +846,8 @@
           entity_id: '{{ climate_ent }}'
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
-      - action: logbook.log
+        service: climate.set_hvac_mode
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: cool_off_dynamic_trace | ctx={{ 'emergency' if (tout|float) < 17
@@ -872,7 +872,7 @@
             >= 17 else ''n/a'' }} | EOn={{ cool_emergency_on }} EOff={{ cool_emergency_off
             }} | LastUseful={{ last_effective_setpoint }} | Set={{ cool_setpoint_emerg
             if (tout|float) < 17 else cool_setpoint_normal }}'
-        action: '{{ notify_service }}'
+        service: '{{ notify_service }}'
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and tout is not none\n   and (tout|float)
@@ -884,7 +884,7 @@
           entity_id: '{{ climate_ent }}'
         data:
           temperature: '{{ cool_setpoint_emerg }}'
-        action: climate.set_temperature
+        service: climate.set_temperature
       - choose:
         - conditions:
           - condition: template
@@ -895,7 +895,7 @@
               entity_id: '{{ climate_ent }}'
             data:
               fan_mode: Low
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         default: []
     - conditions:
       - condition: template
@@ -908,12 +908,12 @@
           entity_id: '{{ climate_ent }}'
         data:
           hvac_mode: heat
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - target:
           entity_id: '{{ climate_ent }}'
         data:
           temperature: 28
-        action: climate.set_temperature
+        service: climate.set_temperature
       - choose:
         - conditions:
           - condition: template
@@ -924,13 +924,13 @@
               entity_id: '{{ climate_ent }}'
             data:
               fan_mode: Low
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         default: []
       - data:
           title: AC HEAT ON
           message: '{{ notif_base }} | Act=HEAT | On={{ heat_on }} Off={{ heat_off
             }} | Set=28 Fan=Low | Prev={{ cur_mode }}'
-        action: '{{ notify_service }}'
+        service: '{{ notify_service }}'
     - conditions:
       - condition: template
         value_template: "{{ cur_mode != 'cool'\n   and tin is not none and tout is
@@ -956,15 +956,15 @@
             < 17) else cool_last_useful_setpoint }}'
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: cool
-        action: input_select.select_option
+        service: input_select.select_option
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
@@ -972,7 +972,7 @@
           - input_datetime.ac_night_cool_last_bootstrap_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -1002,12 +1002,12 @@
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: '{{ cool_initial_setpoint_selected | float }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: '{{ climate_ent }}'
         data:
           hvac_mode: cool
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - variables:
           sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
           sp_target: '{{ cool_initial_setpoint_selected }}'
@@ -1018,13 +1018,13 @@
           entity_id: '{{ climate_ent }}'
         data:
           temperature: '{{ cool_initial_setpoint_selected }}'
-        action: climate.set_temperature
+        service: climate.set_temperature
       - variables:
           sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
           sp_write_status: "{% if sp_after is not none and sp_target is not none and
             ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}\n  applied\n{%
             else %}\n  blocked\n{% endif %}"
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before
@@ -1044,9 +1044,9 @@
               entity_id: '{{ climate_ent }}'
             data:
               fan_mode: Low
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         default: []
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: cool_night_ramp_start | ctx={{ cool_context }} | init={{ cool_initial_setpoint_selected
@@ -1080,7 +1080,7 @@
           data:
             ttl: 0
             priority: high
-        action: '{{ notify_service }}'
+        service: '{{ notify_service }}'
       - variables:
           loop_started_ts: '{{ as_timestamp(now()) }}'
           cool_ramp_loop_timeout_min: 180
@@ -1183,7 +1183,7 @@
                 data:
                   value: ramp_window_exit
                 service: input_text.set_value
-              - action: logbook.log
+              - service: logbook.log
                 data:
                   name: AC Auto Trace
                   message: cool_night_ramp_window_exit | idx={{ repeat.index }} |
@@ -1191,10 +1191,10 @@
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - target:
                   entity_id: input_boolean.ac_on_por_automatizacion
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - stop: Rampa detenida por salir de la ventana 21:00-07:00.
             - conditions:
               - condition: template
@@ -1211,7 +1211,7 @@
                 data:
                   value: ramp_timeout_exit
                 service: input_text.set_value
-              - action: logbook.log
+              - service: logbook.log
                 data:
                   name: AC Auto Trace
                   message: cool_night_ramp_timeout_exit | idx={{ repeat.index }} |
@@ -1220,10 +1220,10 @@
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - target:
                   entity_id: input_boolean.ac_on_por_automatizacion
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - stop: Rampa detenida por timeout de seguridad.
             - conditions:
               - condition: template
@@ -1239,7 +1239,7 @@
                 data:
                   value: ramp_presence_exit
                 service: input_text.set_value
-              - action: logbook.log
+              - service: logbook.log
                 data:
                   name: AC Auto Trace
                   message: cool_night_ramp_presence_exit | idx={{ repeat.index }}
@@ -1247,10 +1247,10 @@
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - target:
                   entity_id: input_boolean.ac_on_por_automatizacion
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - stop: Rampa detenida por pérdida de presencia.
             - conditions:
               - condition: template
@@ -1266,7 +1266,7 @@
                 data:
                   value: ramp_hvac_exit
                 service: input_text.set_value
-              - action: logbook.log
+              - service: logbook.log
                 data:
                   name: AC Auto Trace
                   message: cool_night_ramp_hvac_exit | idx={{ repeat.index }} | hvac={{
@@ -1274,10 +1274,10 @@
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - target:
                   entity_id: input_boolean.ac_on_por_automatizacion
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - stop: Rampa detenida porque el equipo salió de cool.
             - conditions:
               - condition: template
@@ -1287,7 +1287,7 @@
                   entity_id: input_number.ac_night_cool_last_effective_setpoint
                 data:
                   value: '{{ loop_setpoint }}'
-                action: input_number.set_value
+                service: input_number.set_value
               - target:
                   entity_id: input_text.ac_night_cool_last_effective_bucket
                 data:
@@ -1297,12 +1297,12 @@
                   entity_id: input_datetime.ac_night_cool_last_effective_ts
                 data:
                   datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-                action: input_datetime.set_datetime
+                service: input_datetime.set_datetime
               - target:
                   entity_id: input_number.ac_last_auto_setpoint
                 data:
                   value: '{{ loop_setpoint }}'
-                action: input_number.set_value
+                service: input_number.set_value
               - target:
                   entity_id: input_text.ac_last_auto_branch
                 data:
@@ -1313,7 +1313,7 @@
                 data:
                   value: ramp_ready_for_off
                 service: input_text.set_value
-              - action: logbook.log
+              - service: logbook.log
                 data:
                   name: AC Auto Trace
                   message: cool_night_ramp_ready_for_comfort_off | idx={{ repeat.index
@@ -1324,10 +1324,10 @@
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - target:
                   entity_id: input_boolean.ac_on_por_automatizacion
-                action: input_boolean.turn_off
+                service: input_boolean.turn_off
               - stop: Rampa detenida; sigue apagado normal por confort.
             - conditions:
               - condition: template
@@ -1337,12 +1337,12 @@
                   entity_id: '{{ climate_ent }}'
                 data:
                   temperature: '{{ loop_next_setpoint }}'
-                action: climate.set_temperature
+                service: climate.set_temperature
               - target:
                   entity_id: input_number.ac_last_auto_setpoint
                 data:
                   value: '{{ loop_next_setpoint }}'
-                action: input_number.set_value
+                service: input_number.set_value
               - target:
                   entity_id: input_text.ac_last_auto_branch
                 data:
@@ -1353,7 +1353,7 @@
                 data:
                   value: ramp_step
                 service: input_text.set_value
-              - action: logbook.log
+              - service: logbook.log
                 data:
                   name: AC Auto Trace
                   message: cool_night_ramp_step | idx={{ repeat.index }} | wait={{
@@ -1372,7 +1372,7 @@
               data:
                 value: ramp_hold
               service: input_text.set_value
-            - action: logbook.log
+            - service: logbook.log
               data:
                 name: AC Auto Trace
                 message: cool_night_ramp_hold | idx={{ repeat.index }} | set={{ loop_setpoint
@@ -1386,11 +1386,11 @@
             value_template: '{{ false }}'
       - target:
           entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
-        action: input_boolean.turn_off
+        service: input_boolean.turn_off
       - delay: 00:00:10
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
-        action: input_boolean.turn_off
+        service: input_boolean.turn_off
     default: []
   mode: single
   variables:
@@ -1570,10 +1570,10 @@
     `off` representa reposo/sin modo recordado; no se usa `idle`.
 
     '
-  triggers:
-  - trigger: time_pattern
+  trigger:
+  - platform: time_pattern
     minutes: /5
-  - trigger: state
+  - platform: state
     entity_id:
     - weather.openweathermap
     - sensor.lumi_lumi_weather_cuarto_temperatura
@@ -1586,17 +1586,17 @@
     - person.ivan
     - input_boolean.ac_bloqueo_cambio_modo_2h
     - input_select.ac_ultimo_modo_no_fan
-  conditions:
+  condition:
   - condition: time
     after: 07:01:00
     before: '20:59:00'
-  actions:
+  action:
   - choose:
     - conditions:
       - condition: template
         value_template: '{{ cool_main_control_error }}'
       sequence:
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Main
           message: '{{ cool_main_control_audit }}'
@@ -1607,12 +1607,12 @@
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
+        service: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
         value_template: '{{ cool_main_control_blocked }}'
       sequence:
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Main
           message: '{{ cool_main_control_audit }}'
@@ -1626,8 +1626,8 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: 'off'
-        action: input_select.select_option
-      - action: logbook.log
+        service: input_select.select_option
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: latch_emergency_cleared | reason=ac_off | last_mode_no_fan={{ last_mode_no_fan
@@ -1663,13 +1663,13 @@
             }} | Hora={{ cool_cycle_hito_ts }}
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - choose:
         - conditions:
           - condition: template
             value_template: '{{ cur_mode == ''cool'' }}'
           sequence:
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: hito=entrada_fan_only | {{ cool_cycle_final_message }}
@@ -1678,7 +1678,7 @@
               entity_id: climate.0200009211c7_climate
             data:
               hvac_mode: fan_only
-            action: climate.set_hvac_mode
+            service: climate.set_hvac_mode
           - choose:
             - conditions:
               - condition: template
@@ -1689,10 +1689,10 @@
                   entity_id: climate.0200009211c7_climate
                 data:
                   fan_mode: Low
-                action: climate.set_fan_mode
+                service: climate.set_fan_mode
             default: []
           - delay: '{{ fan_dry_delay }}'
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: hito=fan_dry_delay_finalizado | delay={{ fan_dry_delay }} |
@@ -1705,7 +1705,7 @@
           - input_datetime.ac_last_auto_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -1735,42 +1735,42 @@
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_datetime.ac_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_off_marker_nonce
         data:
@@ -1780,13 +1780,13 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
-      - action: logbook.log
+        service: climate.set_hvac_mode
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=off_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=mensaje_preparado | {{ cool_cycle_final_message }}
@@ -1797,8 +1797,8 @@
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
-      - action: logbook.log
+        service: notify.mobile_app_samsung_s24
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=notify_ejecutado | {{ cool_cycle_final_message }}
@@ -1808,28 +1808,28 @@
         data:
           option: 'off'
         continue_on_error: true
-        action: input_select.select_option
+        service: input_select.select_option
       - choose:
         - conditions:
           - condition: template
             value_template: '{{ states(''input_select.ac_ultimo_modo_no_fan'') ==
               ''off'' }}'
           sequence:
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: hito=helper_estado_saneado | helper=input_select.ac_ultimo_modo_no_fan
                 | valor=off | {{ cool_cycle_final_message }}
               entity_id: input_select.ac_ultimo_modo_no_fan
         default:
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: error_saneamiento_estado | helper=input_select.ac_ultimo_modo_no_fan
               | esperado=off | actual={{ states('input_select.ac_ultimo_modo_no_fan')
               }} | {{ cool_cycle_final_message }}
             entity_id: input_select.ac_ultimo_modo_no_fan
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=rama_completada | {{ cool_cycle_final_message }}
@@ -1845,9 +1845,9 @@
           sequence:
           - target:
               entity_id: input_boolean.ac_off_por_automatizacion
-            action: input_boolean.turn_off
+            service: input_boolean.turn_off
         default:
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
@@ -1868,19 +1868,19 @@
         default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: emergency_cool
-        action: input_select.select_option
+        service: input_select.select_option
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
           - input_datetime.ac_last_auto_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -1910,70 +1910,70 @@
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: '{{ emergency_setpoint }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id:
           - input_datetime.ac_cool_cycle_started_at
           - input_datetime.ac_cool_cycle_last_step_at
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_number.ac_cool_cycle_start_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
           value: '{{ emergency_setpoint if emergency_setpoint is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_boolean.ac_manual_setpoint_override_active
-        action: input_boolean.turn_off
+        service: input_boolean.turn_off
       - target:
           entity_id: input_datetime.ac_manual_setpoint_override_until
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: cool
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - target:
           entity_id: input_text.ac_last_change_origin
         data:
@@ -1983,8 +1983,8 @@
           entity_id: climate.0200009211c7_climate
         data:
           temperature: '{{ emergency_setpoint }}'
-        action: climate.set_temperature
-      - action: logbook.log
+        service: climate.set_temperature
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: cool_emergency_on | permit={{ auto_on_presence_reason }} | SPsrc=emergency
@@ -2001,7 +2001,7 @@
               entity_id: climate.0200009211c7_climate
             data:
               fan_mode: '{{ emergency_fan_mode }}'
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         - conditions:
           - condition: template
             value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
@@ -2011,7 +2011,7 @@
               entity_id: climate.0200009211c7_climate
             data:
               fan_mode: Auto
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         default: []
       - variables:
           cool_push_kind: true
@@ -2029,11 +2029,11 @@
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
+        service: notify.mobile_app_samsung_s24
       - delay: 00:00:10
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
-        action: input_boolean.turn_off
+        service: input_boolean.turn_off
     - conditions:
       - condition: template
         value_template: '{{ emergency_latched and emergency_off_ready and cur_mode
@@ -2068,8 +2068,8 @@
             }} | Hora={{ cool_cycle_hito_ts }}
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_on
-      - action: logbook.log
+        service: input_boolean.turn_on
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=entrada_fan_only | {{ cool_cycle_final_message }}
@@ -2078,7 +2078,7 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: fan_only
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - choose:
         - conditions:
           - condition: template
@@ -2089,10 +2089,10 @@
               entity_id: climate.0200009211c7_climate
             data:
               fan_mode: Low
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         default: []
       - delay: '{{ fan_dry_delay }}'
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=fan_dry_delay_finalizado | delay={{ fan_dry_delay }} | {{
@@ -2104,7 +2104,7 @@
           - input_datetime.ac_last_auto_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -2134,42 +2134,42 @@
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_datetime.ac_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_off_marker_nonce
         data:
@@ -2179,13 +2179,13 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
-      - action: logbook.log
+        service: climate.set_hvac_mode
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=off_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=mensaje_preparado | {{ cool_cycle_final_message }}
@@ -2196,8 +2196,8 @@
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
-      - action: logbook.log
+        service: notify.mobile_app_samsung_s24
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=notify_ejecutado | {{ cool_cycle_final_message }}
@@ -2207,28 +2207,28 @@
         data:
           option: 'off'
         continue_on_error: true
-        action: input_select.select_option
+        service: input_select.select_option
       - choose:
         - conditions:
           - condition: template
             value_template: '{{ states(''input_select.ac_ultimo_modo_no_fan'') ==
               ''off'' }}'
           sequence:
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: hito=helper_estado_saneado | helper=input_select.ac_ultimo_modo_no_fan
                 | valor=off | {{ cool_cycle_final_message }}
               entity_id: input_select.ac_ultimo_modo_no_fan
         default:
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: error_saneamiento_estado | helper=input_select.ac_ultimo_modo_no_fan
               | esperado=off | actual={{ states('input_select.ac_ultimo_modo_no_fan')
               }} | {{ cool_cycle_final_message }}
             entity_id: input_select.ac_ultimo_modo_no_fan
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=rama_completada | {{ cool_cycle_final_message }}
@@ -2244,9 +2244,9 @@
           sequence:
           - target:
               entity_id: input_boolean.ac_off_por_automatizacion
-            action: input_boolean.turn_off
+            service: input_boolean.turn_off
         default:
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
@@ -2258,14 +2258,14 @@
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
           - input_datetime.ac_last_auto_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -2295,37 +2295,37 @@
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - variables:
           cycle_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim
             }}'
@@ -2341,7 +2341,7 @@
           entity_id: '{{ effective_bucket_helper }}'
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_text.ac_cool_effective_setpoint_map
         data:
@@ -2351,15 +2351,15 @@
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
-        action: input_boolean.turn_off
+        service: input_boolean.turn_off
       - target:
           entity_id: input_datetime.ac_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_off_marker_nonce
         data:
@@ -2369,7 +2369,7 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:15
         continue_on_timeout: true
@@ -2377,14 +2377,14 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: 'off'
-        action: input_select.select_option
+        service: input_select.select_option
       - data:
           title: AC AUTO OFF
           message: 'AC AUTO OFF: calor exterior en HEAT'
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
+        service: notify.mobile_app_samsung_s24
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
@@ -2396,9 +2396,9 @@
           sequence:
           - target:
               entity_id: input_boolean.ac_off_por_automatizacion
-            action: input_boolean.turn_off
+            service: input_boolean.turn_off
         default:
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
@@ -2411,14 +2411,14 @@
       sequence:
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
           - input_datetime.ac_last_auto_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -2448,42 +2448,42 @@
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_datetime.ac_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_off_marker_nonce
         data:
@@ -2493,7 +2493,7 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:15
         continue_on_timeout: true
@@ -2501,14 +2501,14 @@
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: 'off'
-        action: input_select.select_option
+        service: input_select.select_option
       - data:
           title: AC AUTO OFF
           message: 'AC AUTO OFF: objetivo HEAT alcanzado'
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
+        service: notify.mobile_app_samsung_s24
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
@@ -2520,9 +2520,9 @@
           sequence:
           - target:
               entity_id: input_boolean.ac_off_por_automatizacion
-            action: input_boolean.turn_off
+            service: input_boolean.turn_off
         default:
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
@@ -2574,8 +2574,8 @@
             }} | Hora={{ cool_cycle_hito_ts }}
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
-        action: input_boolean.turn_on
-      - action: logbook.log
+        service: input_boolean.turn_on
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=entrada_fan_only | {{ cool_cycle_final_message }}
@@ -2584,7 +2584,7 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: fan_only
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - choose:
         - conditions:
           - condition: template
@@ -2595,10 +2595,10 @@
               entity_id: climate.0200009211c7_climate
             data:
               fan_mode: Low
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         default: []
       - delay: '{{ fan_dry_delay }}'
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=fan_dry_delay_finalizado | delay={{ fan_dry_delay }} | {{
@@ -2610,7 +2610,7 @@
           - input_datetime.ac_last_auto_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -2645,42 +2645,42 @@
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_datetime.ac_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_off_marker_nonce
         data:
@@ -2690,13 +2690,13 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
-        action: climate.set_hvac_mode
-      - action: logbook.log
+        service: climate.set_hvac_mode
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=off_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: cool_off | Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | Demand={{
@@ -2710,7 +2710,7 @@
             Det={{ cool_cycle_off_cause_detail }} | Min={{ minutes_since_last_auto
             }}
           entity_id: climate.0200009211c7_climate
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=mensaje_preparado | {{ cool_cycle_final_message }}
@@ -2721,8 +2721,8 @@
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
-      - action: logbook.log
+        service: notify.mobile_app_samsung_s24
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=notify_ejecutado | {{ cool_cycle_final_message }}
@@ -2732,28 +2732,28 @@
         data:
           option: 'off'
         continue_on_error: true
-        action: input_select.select_option
+        service: input_select.select_option
       - choose:
         - conditions:
           - condition: template
             value_template: '{{ states(''input_select.ac_ultimo_modo_no_fan'') ==
               ''off'' }}'
           sequence:
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: hito=helper_estado_saneado | helper=input_select.ac_ultimo_modo_no_fan
                 | valor=off | {{ cool_cycle_final_message }}
               entity_id: input_select.ac_ultimo_modo_no_fan
         default:
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: error_saneamiento_estado | helper=input_select.ac_ultimo_modo_no_fan
               | esperado=off | actual={{ states('input_select.ac_ultimo_modo_no_fan')
               }} | {{ cool_cycle_final_message }}
             entity_id: input_select.ac_ultimo_modo_no_fan
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: hito=rama_completada | {{ cool_cycle_final_message }}
@@ -2769,9 +2769,9 @@
           sequence:
           - target:
               entity_id: input_boolean.ac_off_por_automatizacion
-            action: input_boolean.turn_off
+            service: input_boolean.turn_off
         default:
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
@@ -2793,19 +2793,19 @@
         default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: heat
-        action: input_select.select_option
+        service: input_select.select_option
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
           - input_datetime.ac_last_auto_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -2835,47 +2835,47 @@
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: '{{ heat_setpoint }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: heat
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - target:
           entity_id: climate.0200009211c7_climate
         data:
           temperature: '{{ heat_setpoint }}'
-        action: climate.set_temperature
+        service: climate.set_temperature
       - choose:
         - conditions:
           - condition: template
@@ -2886,7 +2886,7 @@
               entity_id: climate.0200009211c7_climate
             data:
               fan_mode: '{{ fan_day_mode }}'
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         - conditions:
           - condition: template
             value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
@@ -2896,9 +2896,9 @@
               entity_id: climate.0200009211c7_climate
             data:
               fan_mode: Auto
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         default: []
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: heat_normal_on | permit={{ auto_on_presence_reason }} | SP={{ heat_setpoint
@@ -2910,11 +2910,11 @@
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
+        service: notify.mobile_app_samsung_s24
       - delay: 00:00:10
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
-        action: input_boolean.turn_off
+        service: input_boolean.turn_off
     - conditions:
       - condition: template
         value_template: "{{ (not emergency_latched) and auto_on_allowed and auto_on_presence_gate
@@ -2932,19 +2932,19 @@
         default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: cool
-        action: input_select.select_option
+        service: input_select.select_option
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
           - input_datetime.ac_last_auto_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
@@ -2979,86 +2979,86 @@
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
           value: "{{ ac_set_effective_normalized\n   if manual_sp_protected_lock_active
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
             if cool_setpoint_effective is not none else 0) }}"
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id:
           - input_datetime.ac_cool_cycle_started_at
           - input_datetime.ac_cool_cycle_last_step_at
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_number.ac_cool_cycle_start_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
           value: "{{ ac_set_effective_normalized\n   if manual_sp_protected_lock_active
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
             if cool_setpoint_effective is not none else 0) }}"
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_contract_on
         data:
           value: '{{ cool_on if cool_on is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_contract_off
         data:
           value: '{{ cool_off if cool_off is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_contract_sensor_off
         data:
           value: '{{ cool_sensor_off if cool_sensor_off is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_contract_setpoint
         data:
           value: '{{ cool_setpoint_contract if cool_setpoint_contract is not none
             else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_contract_setpoint_effective
         data:
           value: "{{ ac_set_effective_normalized\n   if manual_sp_protected_lock_active
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
             if cool_setpoint_effective is not none else 0) }}"
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_text.ac_cool_cycle_contract_bucket
         data:
@@ -3073,13 +3073,13 @@
           entity_id: input_datetime.ac_cool_cycle_contract_started_at
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_number.ac_cool_effective_sp_inconsistency_hits
         data:
           value: '{{ cool_effective_sp_reset_hits if cool_effective_sp_ignored else
             0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_text.ac_cool_effective_sp_last_inconsistent_bucket
         data:
@@ -3094,7 +3094,7 @@
               entity_id: '{{ cool_effective_sp_helper }}'
             data:
               value: '{{ cool_setpoint | float(0) }}'
-            action: input_number.set_value
+            service: input_number.set_value
           - choose:
             - conditions:
               - condition: template
@@ -3104,7 +3104,7 @@
                   entity_id: '{{ cool_related_daytime_helper }}'
                 data:
                   value: '{{ cool_setpoint | float(0) }}'
-                action: input_number.set_value
+                service: input_number.set_value
             default: []
           - target:
               entity_id: input_text.ac_cool_effective_setpoint_map
@@ -3112,7 +3112,7 @@
               value: '{{ ((cool_context_bucket ~ ''='' ~ (''%.2f'' | format(cool_setpoint
                 | float(0))))[:255]) }}'
             service: input_text.set_value
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: cool_sph_reset | bucket={{ cool_context_bucket }} | bucket_rel={{
@@ -3125,20 +3125,20 @@
         default: []
       - target:
           entity_id: input_boolean.ac_manual_setpoint_override_active
-        action: input_boolean.turn_off
+        service: input_boolean.turn_off
       - target:
           entity_id: input_datetime.ac_manual_setpoint_override_until
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
-        action: input_boolean.turn_on
+        service: input_boolean.turn_on
       - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: cool
-        action: climate.set_hvac_mode
+        service: climate.set_hvac_mode
       - choose:
         - conditions:
           - condition: template
@@ -3160,7 +3160,7 @@
               sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none)
                 }}'
               sp_write_status: blocked
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: sp_write | writer={{ writer_id }} | before={{ sp_before if
@@ -3175,13 +3175,13 @@
             data:
               value: '{{ sp_before if sp_before is not none else (ac_set_effective_normalized
                 if ac_set_effective_normalized is not none else 0) }}'
-            action: input_number.set_value
-          - action: logbook.log
+            service: input_number.set_value
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: writer={{ writer_id }} blocked_by=manual_sp_lock
               entity_id: climate.0200009211c7_climate
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: cool_auto_on_manual_lock_hold | sp_writer=manual_lock | SPsrc=auto_on
@@ -3208,13 +3208,13 @@
             entity_id: climate.0200009211c7_climate
           data:
             temperature: '{{ cool_setpoint_effective_soft_resume }}'
-          action: climate.set_temperature
+          service: climate.set_temperature
         - variables:
             sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
             sp_write_status: "{% if sp_after is not none and sp_target is not none
               and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}\n  applied\n{%
               else %}\n  blocked\n{% endif %}"
-        - action: logbook.log
+        - service: logbook.log
           data:
             name: AC Auto Trace
             message: sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before
@@ -3227,7 +3227,7 @@
       - variables:
           cool_auto_reason: '{{ ''auto emergency'' if emergency_hot else ''auto_on_cool''
             }}'
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: cool_normalized | sp_writer={{ 'manual_lock' if manual_sp_protected_lock_active
@@ -3246,7 +3246,7 @@
           - condition: template
             value_template: '{{ cool_effective_sp_ignored }}'
           sequence:
-          - action: logbook.log
+          - service: logbook.log
             data:
               name: AC Auto Trace
               message: cool_sph_ignored_inconsistency | bucket={{ cool_context_bucket
@@ -3267,7 +3267,7 @@
               entity_id: climate.0200009211c7_climate
             data:
               fan_mode: Low
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         - conditions:
           - condition: template
             value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
@@ -3277,7 +3277,7 @@
               entity_id: climate.0200009211c7_climate
             data:
               fan_mode: Auto
-            action: climate.set_fan_mode
+            service: climate.set_fan_mode
         default: []
       - variables:
           cool_push_kind: true
@@ -3310,11 +3310,11 @@
           data:
             ttl: 0
             priority: high
-        action: notify.mobile_app_samsung_s24
+        service: notify.mobile_app_samsung_s24
       - delay: 00:00:10
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
-        action: input_boolean.turn_off
+        service: input_boolean.turn_off
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and cool_cycle_contract_active\n
@@ -3342,7 +3342,7 @@
             \ desvio_{{ last_change_origin_raw if last_change_origin_raw not in ['',
             'unknown', 'unavailable', 'none'] else 'writer_desconocido' }}\n{% endif
             %}"
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: cool_contract_desvio | tag={{ cool_contract_deviation_tag }} |
@@ -3362,7 +3362,7 @@
           \  and (not cool_sp_sync_guard_allow)\n   and cool_sp_sync_skip_reason !=
           'none' }}"
       sequence:
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: '{{ cool_sp_sync_skip_reason }} | writer=cool_sp_sync | SPsrc=sync
@@ -3394,7 +3394,7 @@
       - variables:
           sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
           sp_write_status: blocked
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before
@@ -3409,8 +3409,8 @@
         data:
           value: '{{ sp_before if sp_before is not none else (ac_set_effective_normalized
             if ac_set_effective_normalized is not none else 0) }}'
-        action: input_number.set_value
-      - action: logbook.log
+        service: input_number.set_value
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: writer={{ writer_id }} blocked_by=manual_sp_lock
@@ -3419,14 +3419,14 @@
           entity_id: input_datetime.ac_last_cool_sp_sync_notify_ts
         data:
           datetime: '{{ ts }}'
-        action: input_datetime.set_datetime
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_number.ac_last_cool_sp_sync_notified
         data:
           value: '{{ cool_setpoint_effective if cool_setpoint_effective is not none
             else 0 }}'
-        action: input_number.set_value
-      - action: logbook.log
+        service: input_number.set_value
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: sp_writer_blocked_manual_lock | sp_writer=manual_lock | SPsrc=sync
@@ -3458,13 +3458,13 @@
           entity_id: climate.0200009211c7_climate
         data:
           temperature: '{{ cool_setpoint_effective_soft_resume }}'
-        action: climate.set_temperature
+        service: climate.set_temperature
       - variables:
           sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
           sp_write_status: "{% if sp_after is not none and sp_target is not none and
             ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}\n  applied\n{%
             else %}\n  blocked\n{% endif %}"
-      - action: logbook.log
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before
@@ -3479,14 +3479,14 @@
         data:
           value: '{{ cool_setpoint_effective_soft_resume if cool_setpoint_effective_soft_resume
             is not none else 0 }}'
-        action: input_number.set_value
+        service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
           value: '{{ cool_setpoint_effective_soft_resume if cool_setpoint_effective_soft_resume
             is not none else 0 }}'
-        action: input_number.set_value
-      - action: logbook.log
+        service: input_number.set_value
+      - service: logbook.log
         data:
           name: AC Auto Trace
           message: cool_sp_sync | sp_writer=sync | SPsrc=sync | {{ cool_ctx_brief
@@ -3503,12 +3503,12 @@
               entity_id: input_datetime.ac_last_cool_sp_sync_notify_ts
             data:
               datetime: '{{ ts }}'
-            action: input_datetime.set_datetime
+            service: input_datetime.set_datetime
           - target:
               entity_id: input_number.ac_last_cool_sp_sync_notified
             data:
               value: '{{ cool_setpoint_effective }}'
-            action: input_number.set_value
+            service: input_number.set_value
           - variables:
               cool_push_kind: sync
               cool_push_reason: Mot=sync
@@ -3526,7 +3526,7 @@
               data:
                 ttl: 0
                 priority: high
-            action: notify.mobile_app_samsung_s24
+            service: notify.mobile_app_samsung_s24
         default: []
     default: []
   variables:
