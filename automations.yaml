@@ -945,10 +945,13 @@
       sequence:
       - variables:
           cool_context: '{{ ''emergency'' if ((tout|float) < 17) else ''normal'' }}'
+          cool_context_bucket_selected: '{{ cool_night_context_bucket }}'
           cool_stop_threshold_selected: '{{ cool_emergency_off if ((tout|float) <
             17) else cool_stop_threshold }}'
           cool_initial_setpoint_selected: '{{ cool_setpoint_emerg if ((tout|float)
             < 17) else cool_normal_initial_setpoint_dynamic }}'
+          cool_initial_setpoint_source: '{{ ''contractual_fallback'' if ((tout|float)
+            < 17) else cool_normal_initial_setpoint_source }}'
           cool_learning_reference_selected: '{{ cool_setpoint_emerg if ((tout|float)
             < 17) else cool_last_useful_setpoint }}'
       - target:
@@ -1047,6 +1050,7 @@
         data:
           name: AC Auto Trace
           message: cool_night_ramp_start | ctx={{ cool_context }} | init={{ cool_initial_setpoint_selected
+            }} | source={{ cool_initial_setpoint_source }} | bucket={{ cool_context_bucket_selected
             }} | off_dynamic={{ cool_normal_off_dynamic if cool_context == 'normal' else
             'n/a' }} | off_floor={{ ((cool_normal_off_dynamic | float) | int(0, 'floor'))
             if cool_context == 'normal' and cool_normal_off_dynamic is not none else
@@ -1285,6 +1289,11 @@
                   value: '{{ loop_setpoint }}'
                 action: input_number.set_value
               - target:
+                  entity_id: input_text.ac_night_cool_last_effective_bucket
+                data:
+                  value: '{{ cool_context_bucket_selected }}'
+                service: input_text.set_value
+              - target:
                   entity_id: input_datetime.ac_night_cool_last_effective_ts
                 data:
                   datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
@@ -1308,9 +1317,10 @@
                 data:
                   name: AC Auto Trace
                   message: cool_night_ramp_ready_for_comfort_off | idx={{ repeat.index
-                    }} | useful_set={{ loop_setpoint }} | tin={{ loop_tin }} | stop={{
-                    cool_stop_threshold_selected }} | reason={{ loop_cool_off_reason
-                    | trim }} | sensor_off={{ loop_cool_sensor_off_temp }}
+                    }} | useful_set={{ loop_setpoint }} | bucket={{ cool_context_bucket_selected
+                    }} | source=effective_memory | tin={{ loop_tin }} | stop={{ cool_stop_threshold_selected
+                    }} | reason={{ loop_cool_off_reason | trim }} | sensor_off={{ loop_cool_sensor_off_temp
+                    }}
                   entity_id: '{{ climate_ent }}'
               - target:
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
@@ -1446,6 +1456,8 @@
       if last_effective_ts else 99999 }}'
     last_effective_setpoint: '{{ states(''input_number.ac_night_cool_last_effective_setpoint'')
       | float(none) }}'
+    last_effective_bucket: '{{ states(''input_text.ac_night_cool_last_effective_bucket'')
+      | default('''', true) | trim }}'
     cool_last_useful_memory_hours: 72
     cool_ramp_short_cycle_guard_min: 8
     cool_ramp_step: 0.2
@@ -1473,6 +1485,9 @@
       | float(0) %}\n  {% set raw_off = base_off + humidity_adjustment %}\n  {{ [[raw_off,
       cool_normal_off_max | float] | min, cool_normal_off_min | float] | max | round(2)
       }}\n{% endif %}"
+    cool_night_branch: cool_night_ramp
+    cool_night_context_bucket: '{{ cool_night_branch ~ '':'' ~ (''emergency'' if ((tout|float)
+      < 17) else ''normal'') }}'
     cool_normal_initial_setpoint_dynamic: "{% if cool_normal_off_dynamic is none %}\n
       \ {{ none }}\n{% else %}\n  {% set off_entero = (cool_normal_off_dynamic |
       float) | int(0, 'floor') %}\n  {% set setpoint_inicial = off_entero - 1 %}\n
@@ -1483,12 +1498,22 @@
     cool_last_useful_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none
       }}\n{% else %}\n  {{ [((cool_stop_threshold | float) - 1.0), cool_ramp_min_setpoint]
       | max | round(1) }}\n{% endif %}"
-    cool_last_useful_setpoint: "{% set memory_valid = last_effective_setpoint is not
+    cool_last_useful_setpoint: "{% set memory_recent = last_effective_setpoint is not
       none and (hours_since_last_effective | float(99999)) <= (cool_last_useful_memory_hours
-      | float) %}\n{% if cool_last_useful_base_setpoint is none %}\n  {{ none }}\n{%
-      elif memory_valid %}\n  {{ (((cool_last_useful_base_setpoint | float) * 0.7)
-      + ((last_effective_setpoint | float) * 0.3)) | round(1) }}\n{% else %}\n  {{
-      cool_last_useful_base_setpoint | float | round(1) }}\n{% endif %}"
+      | float) %}\n{% set memory_bucket_match = (last_effective_bucket == cool_night_context_bucket)
+      %}\n{% set memory_consistent = memory_recent and memory_bucket_match and cool_last_useful_base_setpoint
+      is not none and ((((last_effective_setpoint | float) - (cool_last_useful_base_setpoint
+      | float)) | abs) <= 0.7) %}\n{% if cool_last_useful_base_setpoint is none %}\n
+      \ {{ none }}\n{% elif memory_consistent %}\n  {{ last_effective_setpoint | float
+      | round(1) }}\n{% else %}\n  {{ cool_last_useful_base_setpoint | float | round(1)
+      }}\n{% endif %}"
+    cool_normal_initial_setpoint_source: "{% set memory_recent = last_effective_setpoint
+      is not none and (hours_since_last_effective | float(99999)) <= (cool_last_useful_memory_hours
+      | float) %}\n{% set memory_bucket_match = (last_effective_bucket == cool_night_context_bucket)
+      %}\n{% set memory_consistent = memory_recent and memory_bucket_match and cool_last_useful_base_setpoint
+      is not none and ((((last_effective_setpoint | float) - (cool_last_useful_base_setpoint
+      | float)) | abs) <= 0.7) %}\n{{ 'effective_memory' if memory_consistent else
+      'contractual_fallback' }}"
     cool_ramp_initial_setpoint: "{% if cool_last_useful_base_setpoint is none %}\n
       \  {{ none }}\n{% else %}\n  {{ cool_last_useful_base_setpoint | float | round(1)
       }}\n{% endif %}"
