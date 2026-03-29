@@ -313,6 +313,16 @@ ac_feedback_window_minutes:
   initial: 120
   unit_of_measurement: "min"
 
+
+ac_manual_on_min_off_window_minutes:
+  name: "AC Manual ON Min OFF Window Minutes"
+  min: 0
+  max: 180
+  step: 1
+  mode: box
+  initial: 60
+  unit_of_measurement: "min"
+
 ac_last_cool_sp_sync_notified:
   name: "AC Last Cool Sync Notified Setpoint"
   min: 16

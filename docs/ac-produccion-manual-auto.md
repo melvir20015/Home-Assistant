@@ -142,6 +142,18 @@ Si el usuario vuelve a encender manualmente poco después de un `AUTO OFF` váli
 - se clasifica en `input_text.ac_last_manual_learning_type`;
 - los sesgos del modo correspondiente se ajustan para retrasar apagados automáticos futuros mal calibrados.
 
+### Ventana mínima de apagado previo para aprendizaje `manual_on`
+
+Además de la ventana máxima (`input_number.ac_feedback_window_minutes`), el aprendizaje por encendido manual usa una ventana mínima explícita:
+
+- `input_number.ac_manual_on_min_off_window_minutes` (default: **60 min**).
+
+Regla:
+
+- si `minutes_since_last_auto < ac_manual_on_min_off_window_minutes` ⇒ descarte `min_off_window_not_met`;
+- si `minutes_since_last_auto > ac_feedback_window_minutes` ⇒ descarte `window_expired`;
+- sólo en el rango válido se considera `manual_on` elegible para aprendizaje.
+
 ## Papel de `emergency_cool`
 
 `emergency_cool` no es el flujo normal de enfriamiento.

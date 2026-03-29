@@ -4391,6 +4391,7 @@
       notify_ignored_user: '{{ ignored_reason_code not in [''not_manual'',''auto_off_flag_active'',''last_action_not_auto_on'']
         and not (ignored_reason_code == ''contextual_runtime_short'' and recent_auto_off_evidence)
         }}'
+      learning_summary_payload: "ultimo=OFF|fecha={{ ts }}|resultado={{ 'aplicado' if valid_feedback else 'no_aplicado' }}|motivo={{ discard_reason }}|contexto={{ learning_context_compact }}|delta={{ learning_change_applied | replace('\n',' ') | trim }}"
   - choose:
     - conditions:
       - condition: template
@@ -4442,6 +4443,11 @@
     data:
       value: '{{ final_learning_status }}'
     service: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_manual_learning_summary
+    data:
+      value: '{{ learning_summary_payload }}'
+    service: input_text.set_value
   - choose:
     - conditions:
       - condition: template
@@ -4472,13 +4478,6 @@
         data:
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
-      - data:
-          title: '{{ notify_title_learning_structured }}'
-          message: '{{ notify_message_learning_structured }}'
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
         value_template: '{{ valid_feedback and last_auto_mode == ''heat'' }}'
@@ -4517,13 +4516,6 @@
                 2] | min, -2] | max | round(1) }}'
             action: input_number.set_value
         default: []
-      - data:
-          title: '{{ notify_title_learning_structured }}'
-          message: '{{ notify_message_learning_structured }}'
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
         value_template: '{{ (not valid_feedback) and debug_enabled and notify_ignored_user
@@ -4532,6 +4524,19 @@
       - data:
           title: '{{ notify_title_ignored_off_short }}'
           message: '{{ notify_message_ignored_off_short }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+    default: []
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ valid_feedback }}'
+      sequence:
+      - data:
+          title: '{{ notify_title_learning_structured }}'
+          message: '{{ notify_message_learning_structured }}'
           data:
             ttl: 0
             priority: high
@@ -4616,6 +4621,8 @@
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
       feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
         | float(120) }}'
+      min_off_window_min: '{{ states(''input_number.ac_manual_on_min_off_window_minutes'')
+        | float(60) }}'
       last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
         }}'
@@ -4633,6 +4640,7 @@
         }}'
       valid_feedback: "{{ learning_enabled and last_change_origin == 'manual_on' and
         last_auto_action == 'auto_off'\n  and final_mode in ['cool','heat'] and (minutes_since_last_auto
+        | float(99999)) >= (min_off_window_min | float(60)) and (minutes_since_last_auto
         | float(99999)) <= (feedback_window_min | float(120)) and ((final_mode ==
         'cool' and cool_comfort_gap_feedback) or final_mode == 'heat') }}"
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0)
@@ -4670,15 +4678,17 @@
         {% elif last_change_origin != ''manual_on'' %} manual_on_feedback_ignored_ambiguous_origin
         {% elif last_auto_action != ''auto_off'' %} manual_on_feedback_ignored_last_action_not_auto_off
         {% elif final_mode not in [''cool'',''heat''] %} manual_on_feedback_ignored_final_mode_not_learnable
-        {% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min |
-        float(120)) %} manual_on_feedback_ignored_window_expired {% elif final_mode
+        {% elif (minutes_since_last_auto | float(99999)) < (min_off_window_min |
+        float(60)) %} manual_on_feedback_ignored_min_off_window_not_met {% elif (minutes_since_last_auto
+        | float(99999)) > (feedback_window_min | float(120)) %} manual_on_feedback_ignored_window_expired {% elif final_mode
         == ''cool'' and not cool_comfort_gap_feedback %} manual_on_feedback_ignored_cool_not_before_auto_on
         {% else %} manual_on_feedback_ignored_no_valid_learning {% endif %}'
       ignored_reason_code: '{% if not learning_enabled %} learning_disabled {% elif
         last_change_origin != ''manual_on'' %} ambiguous_origin {% elif last_auto_action
         != ''auto_off'' %} last_action_not_auto_off {% elif final_mode not in [''cool'',''heat'']
         %} final_mode_not_learnable {% elif (minutes_since_last_auto | float(99999))
-        > (feedback_window_min | float(120)) %} window_expired {% elif final_mode
+        < (min_off_window_min | float(60)) %} min_off_window_not_met {% elif (minutes_since_last_auto
+        | float(99999)) > (feedback_window_min | float(120)) %} window_expired {% elif final_mode
         == ''cool'' and not cool_comfort_gap_feedback %} cool_not_before_auto_on {%
         else %} no_valid_learning {% endif %}'
       learning_apply_state: '{% if valid_feedback %} applied_with_real_changes {%
@@ -4689,7 +4699,8 @@
         %} Ign: learning off {% elif ignored_reason_code == ''ambiguous_origin'' %}
         Ign: origen {% elif ignored_reason_code == ''last_action_not_auto_off'' %}
         Ign: sin auto previa {% elif ignored_reason_code == ''final_mode_not_learnable''
-        %} Ign: modo {% elif ignored_reason_code == ''window_expired'' %} Ign: ventana
+        %} Ign: modo {% elif ignored_reason_code == ''min_off_window_not_met'' %}
+        Ign: min off {% elif ignored_reason_code == ''window_expired'' %} Ign: ventana
         {% elif ignored_reason_code == ''cool_not_before_auto_on'' %} Ign: sin auto
         previa {% else %} Ign: sin match {% endif %}'
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
@@ -4746,6 +4757,11 @@
         learning_change_applied }}\numbral_antes_despues={{ learning_threshold_before_after
         }}\ncontexto={{ learning_context_compact }}\nmotivo_descarte={{ discard_reason
         }}"
+      notify_expected: '{{ valid_feedback }}'
+      learning_summary_payload: "ultimo=ON|fecha={{ ts }}|resultado={{ 'aplicado'
+        if valid_feedback else 'no_aplicado' }}|motivo={{ discard_reason }}|contexto={{
+        learning_context_compact }}|delta={{ learning_change_applied | replace('\n',' ')
+        | trim }}"
       learning_audit_message: "{% if valid_feedback %}\n  learning_ok | src=manual_on
         | mode={{ final_mode }} | type={{ learning_type }} | detail={% if final_mode
         == 'cool' %}{{ cool_branch_audit }}{% else %}heat_bias_ok{% endif %} | min={{
@@ -4757,6 +4773,26 @@
     data:
       value: '{{ final_learning_status }}'
     service: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_manual_learning_summary
+    data:
+      value: '{{ learning_summary_payload }}'
+    service: input_text.set_value
+  - action: logbook.log
+    data:
+      name: AC Learning Manual ON Audit
+      message: manual_on_learning_event_detected | trigger={{ trigger.to_state.state if trigger.to_state else 'unknown' }}
+      entity_id: climate.0200009211c7_climate
+  - action: logbook.log
+    data:
+      name: AC Learning Manual ON Audit
+      message: manual_on_learning_context_evaluated | mode={{ final_mode }} | last_auto_action={{ last_auto_action }} | min_since_auto={{ minutes_since_last_auto }} | min_off_window={{ min_off_window_min }} | event={{ manual_event_type }}
+      entity_id: climate.0200009211c7_climate
+  - action: logbook.log
+    data:
+      name: AC Learning Manual ON Audit
+      message: manual_on_learning_decision | apply={{ 'yes' if valid_feedback else 'no' }} | reason={{ ignored_reason_code if not valid_feedback else 'applied' }}
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -4818,13 +4854,6 @@
         data:
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
-      - data:
-          title: '{{ notify_title_learning_structured }}'
-          message: '{{ notify_message_learning_structured }}'
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
         value_template: '{{ valid_feedback and final_mode == ''heat'' }}'
@@ -4863,6 +4892,12 @@
                 2] | min, -2] | max | round(1) }}'
             action: input_number.set_value
         default: []
+    default: []
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ notify_expected }}'
+      sequence:
       - data:
           title: '{{ notify_title_learning_structured }}'
           message: '{{ notify_message_learning_structured }}'
@@ -4870,7 +4905,17 @@
             ttl: 0
             priority: high
         action: notify.mobile_app_samsung_s24
-    default: []
+    default:
+    - action: logbook.log
+      data:
+        name: AC Learning Manual ON Audit
+        message: manual_on_learning_notification_skipped | reason={{ ignored_reason_code }}
+        entity_id: climate.0200009211c7_climate
+  - action: logbook.log
+    data:
+      name: AC Learning Manual ON Audit
+      message: manual_on_learning_notification_status | emitida={{ 'si' if notify_expected else 'no' }}
+      entity_id: climate.0200009211c7_climate
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
