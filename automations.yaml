@@ -1054,8 +1054,8 @@
             }} | off_dynamic={{ cool_normal_off_dynamic if cool_context == 'normal' else
             'n/a' }} | off_floor={{ ((cool_normal_off_dynamic | float) | int(0, 'floor'))
             if cool_context == 'normal' and cool_normal_off_dynamic is not none else
-            'n/a' }} | setpoint_inicial_calculado={{ (((cool_normal_off_dynamic |
-            float) | int(0, 'floor')) - 1) if cool_context == 'normal' and cool_normal_off_dynamic
+            'n/a' }} | setpoint_fijo_contractual={{ (((cool_normal_off_dynamic | float)
+            - 1.5) | int(0, 'floor')) if cool_context == 'normal' and cool_normal_off_dynamic
             is not none else 'n/a' }} | stop={{ cool_stop_threshold_selected }} |
             learn_ref={{ cool_learning_reference_selected }} | wait_initial={{ cool_ramp_initial_wait_min
             }}m | wait_step={{ cool_ramp_followup_wait_min }}m
@@ -1163,11 +1163,8 @@
                 | float(1)) }} {% endif %}'
               loop_no_more_cooldown: '{{ loop_high_delta_block or loop_bedroom_comfort_reached
                 }}'
-              loop_can_reduce: '{{ loop_cycle_active and (loop_setpoint | float(99))
-                > (cool_ramp_min_setpoint | float(0)) and not loop_no_more_cooldown
-                }}'
-              loop_next_setpoint: '{{ [((loop_setpoint | float) - cool_ramp_step),
-                cool_ramp_min_setpoint] | max | round(1) }}'
+              loop_can_reduce: '{{ false }}'
+              loop_next_setpoint: '{{ loop_setpoint }}'
           - choose:
             - conditions:
               - condition: template
@@ -1334,32 +1331,22 @@
                 value_template: '{{ loop_can_reduce }}'
               sequence:
               - target:
-                  entity_id: '{{ climate_ent }}'
-                data:
-                  temperature: '{{ loop_next_setpoint }}'
-                service: climate.set_temperature
-              - target:
-                  entity_id: input_number.ac_last_auto_setpoint
-                data:
-                  value: '{{ loop_next_setpoint }}'
-                service: input_number.set_value
-              - target:
                   entity_id: input_text.ac_last_auto_branch
                 data:
-                  value: cool_night_ramp_step
+                  value: cool_night_setpoint_fijo_contractual
                 service: input_text.set_value
               - target:
                   entity_id: input_text.ac_last_auto_action
                 data:
-                  value: ramp_step
+                  value: setpoint_fijo_contractual
                 service: input_text.set_value
               - service: logbook.log
                 data:
                   name: AC Auto Trace
-                  message: cool_night_ramp_step | idx={{ repeat.index }} | wait={{
-                    ramp_wait_minutes }}m | from={{ loop_setpoint }} | to={{ loop_next_setpoint
-                    }} | tin={{ loop_tin }} | stop={{ cool_stop_threshold_selected
-                    }} | sensor_off={{ loop_cool_sensor_off_temp }}
+                  message: cool_night_setpoint_fijo_contractual | idx={{ repeat.index
+                    }} | wait={{ ramp_wait_minutes }}m | set={{ loop_setpoint }} |
+                    tin={{ loop_tin }} | stop={{ cool_stop_threshold_selected }} |
+                    sensor_off={{ loop_cool_sensor_off_temp }}
                   entity_id: '{{ climate_ent }}'
             default:
             - target:
@@ -1489,10 +1476,10 @@
     cool_night_context_bucket: '{{ cool_night_branch ~ '':'' ~ (''emergency'' if ((tout|float)
       < 17) else ''normal'') }}'
     cool_normal_initial_setpoint_dynamic: "{% if cool_normal_off_dynamic is none %}\n
-      \ {{ none }}\n{% else %}\n  {% set off_entero = (cool_normal_off_dynamic |
-      float) | int(0, 'floor') %}\n  {% set setpoint_inicial = off_entero - 1 %}\n
-      \ {{ [setpoint_inicial, cool_ramp_min_setpoint | float] | max | round(1) }}\n{%
-      endif %}"
+      \ {{ none }}\n{% else %}\n  {% set sp_raw = (cool_normal_off_dynamic | float)
+      - 1.5 %}\n  {% set sp_int = sp_raw | int(0, 'floor') %}\n  {% set sp_contractual
+      = [sp_int, (cool_ramp_min_setpoint | float)] | max %}\n  {# Contrato entero:
+      23.3 -> 21, 23.5 -> 22 #}\n  {{ sp_contractual | int }}\n{% endif %}"
     cool_stop_threshold: '{{ cool_normal_off_dynamic if (tout is not none and (tout|float)
       >= 17) else cool_off }}'
     cool_last_useful_base_setpoint: "{% if cool_stop_threshold is none %}\n  {{ none

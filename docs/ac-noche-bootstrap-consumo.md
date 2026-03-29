@@ -12,25 +12,26 @@ mantiene la banda de control nocturna con dos umbrales:
 - `cool_on`: temperatura promedio que habilita el encendido de `cool`.
 - `cool_off`: temperatura promedio que dispara el apagado por confort.
 
-Cuando la rama nocturna entra en `cool`, el setpoint inicial normal ya no busca
-“forzar” el compresor ni validar consumo. Ahora arranca directamente en
-`cool_off - 0.5 °C`, respetando un mínimo de seguridad (`cool_ramp_min_setpoint`).
+Cuando la rama nocturna entra en `cool`, el setpoint inicial normal usa contrato
+entero fijo: `floor(cool_off_dinamico - 1.5)`, con límite inferior operativo en
+`cool_ramp_min_setpoint`.
 
 ## Secuencia de rampa térmica
 
 Para el contexto normal (`tout >= 17 °C`), la secuencia quedó así:
 
 1. Enciende `cool` con fan `Low`.
-2. Aplica el setpoint inicial `cool_off - 0.5 °C`.
+2. Aplica el setpoint inicial contractual entero `floor(cool_off_dinamico - 1.5)`.
+   - Ejemplos contractuales:
+     - `23.3 -> 21`
+     - `23.5 -> 22`
 3. Espera `30` minutos (`cool_ramp_initial_wait_min`).
 4. En cada iteración relee estado vivo: temperatura interior promedio actual,
    presencia efectiva actual, modo HVAC vigente, temperatura del sensor local de
    corte y razón de apagado aplicable en ese instante.
-5. Si el equipo sigue en `cool` y la temperatura promedio real (`loop_tin`) aún
-   está por arriba de `cool_off`, baja el setpoint `0.5 °C`.
-6. Repite el paso anterior cada `10` minutos (`cool_ramp_followup_wait_min`) con
-   escalones de `0.5 °C` (`cool_ramp_step`) mientras el ciclo siga activo.
-7. Si la razón de apagado vigente pasa a `Promedio` o al sensor local habilitado,
+5. No se realizan ajustes intra-ciclo de setpoint (la reducción por `cool_night_ramp_step`
+   quedó desactivada para mantener “setpoint fijo contractual” durante todo el loop).
+6. Si la razón de apagado vigente pasa a `Promedio` o al sensor local habilitado,
    la rampa se detiene y el apagado se deja a la rama normal de confort, sin nuevos
    ajustes de setpoint.
 
@@ -90,7 +91,7 @@ Aunque algunos helpers conservan nombres legacy (`*_bootstrap_*`) por compatibil
 las trazas y mensajes ahora reflejan la nueva semántica:
 
 - `cool_night_ramp_start`
-- `cool_night_ramp_step`
+- `cool_night_setpoint_fijo_contractual`
 - `cool_night_ramp_ready_for_comfort_off`
 - `cool_night_ramp_hold`
 - `cool_night_ramp_presence_exit`
@@ -100,9 +101,9 @@ las trazas y mensajes ahora reflejan la nueva semántica:
 
 La notificación móvil de arranque también cambió para describir:
 
-- inicio en `cool_off - 0.5 °C`;
+- inicio con contrato entero `floor(cool_off_dinamico - 1.5)`;
 - espera inicial de `30` minutos;
-- pasos de `10` minutos;
+- monitoreo cada `10` minutos sin cambios de setpoint intra-ciclo;
 - aprendizaje del último setpoint útil.
 
 ## Protecciones
