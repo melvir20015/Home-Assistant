@@ -4360,12 +4360,8 @@
         }}\n{% else %}\n  On {{ cur_bias_heat_on }}→{{ heat_on_after }} | Off {{
         cur_bias_heat_off }}→{{ heat_off_after }}{% if quick_feedback %} | SP {{ cur_bias_heat_setpoint
         }}→{{ heat_setpoint_after }}{% endif %}\n{% endif %}"
-      learning_context_compact: '{{ cool_learning_bucket }} | rama={{ last_auto_branch
-        if last_auto_branch not in [''unknown'',''unavailable'',''none'',''''] else
-        ''n/a'' }} | franja={{ cool_learning_bucket.split('':'')[2] if '':'' in cool_learning_bucket
-        else ''n/a'' }} | presencia={{ cool_learning_bucket.split('':'')[4] if '':'
-        in cool_learning_bucket else ''n/a'' }} | humedad={{ cool_learning_bucket.split('':'')[1]
-        if '':'' in cool_learning_bucket else ''n/a'' }}'
+      learning_context_compact: >-
+        {{ cool_learning_bucket }} | rama={{ last_auto_branch if last_auto_branch not in ['unknown','unavailable','none',''] else 'n/a' }} | franja={{ cool_learning_bucket.split(':')[2] if ':' in cool_learning_bucket else 'n/a' }} | presencia={{ cool_learning_bucket.split(':')[4] if ':' in cool_learning_bucket else 'n/a' }} | humedad={{ cool_learning_bucket.split(':')[1] if ':' in cool_learning_bucket else 'n/a' }}
       discard_reason: '{{ ignored_reason_code if not valid_feedback else ''n/a'' }}'
       notify_title_learning_structured: AC aprendizaje manual OFF
       notify_message_learning_structured: "accion_manual_detectada={{ manual_action_detected
