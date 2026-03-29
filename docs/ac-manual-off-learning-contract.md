@@ -98,3 +98,65 @@ Los sesgos aprendidos deben permanecer acotados para evitar que varios eventos s
 Con ese límite, incluso usando un paso fijo de `+0.25`, el sistema conserva memoria útil del feedback manual sin desbordar la lógica base ni desplazar indefinidamente los umbrales.
 
 No deben enviarse notificaciones push de debug para `AUTO ON evaluado`, `AUTO ON abortado` ni para aprendizajes ignorados.
+
+## Capa unificada de resultado de aprendizaje manual (ON/OFF)
+
+Desde esta versión, tanto `AC - Learning - Manual OFF feedback` como `AC - Learning - Manual ON feedback`
+usan una capa común de resultado con dos estados mutuamente excluyentes:
+
+1. `evaluated_not_applied`: el evento manual se evaluó, pero no hubo cambios reales en umbrales/sesgos.
+2. `applied_with_real_changes`: el evento manual sí produjo cambios reales.
+
+El helper `input_text.ac_last_manual_learning_type` ahora persiste el resultado en formato:
+
+- `applied_with_real_changes:<detalle>`
+- `evaluated_not_applied:<detalle>`
+
+Ejemplos:
+
+- `applied_with_real_changes:manual_off_learning_applied`
+- `evaluated_not_applied:manual_on_learning_ignored_window_expired`
+
+### Contrato del mensaje estructurado
+
+Cuando el aprendizaje es **aplicado** (`applied_with_real_changes`), se emite push móvil estructurado
+con título:
+
+- `AC aprendizaje manual OFF` (rama OFF)
+- `AC aprendizaje manual ON` (rama ON)
+
+Campos obligatorios del mensaje (una línea por campo):
+
+1. `accion_manual_detectada` (`ON`/`OFF`)
+2. `resultado_aprendizaje_efectivo` (`sí`/`no`)
+3. `cambio_aplicado` (ej: `Off +0.25 | On +0.25 | Setpoint +0.0`)
+4. `umbral_antes_despues` (ej: `Off 24.00→24.25 | On 24.50→24.75`)
+5. `contexto` (bucket/rama/franja/presencia/humedad)
+6. `motivo_descarte` (`n/a` si aplicó; código explícito si no aplicó)
+
+Ejemplo OFF aplicado:
+
+```text
+accion_manual_detectada=OFF
+resultado_aprendizaje_efectivo=sí
+cambio_aplicado=Off +0.25 | On +0.25 | Setpoint +0.0
+umbral_antes_despues=Off 24.00→24.25 | On 24.50→24.75
+contexto=exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia | rama=cool_normal_on | franja=franja_1001_1500 | presencia=presencia | humedad=humedad_normal
+motivo_descarte=n/a
+```
+
+Ejemplo ON no aplicado (para trazabilidad en helpers/logbook, sin push obligatorio):
+
+```text
+accion_manual_detectada=ON
+resultado_aprendizaje_efectivo=no
+cambio_aplicado=ninguno
+umbral_antes_despues=sin cambio
+contexto=exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia | rama=cool_normal_on | franja=franja_1001_1500 | presencia=presencia | humedad=humedad_normal
+motivo_descarte=window_expired
+```
+
+### Cuándo se emite
+
+- **Push estructurado:** sólo cuando `applied_with_real_changes` (hay aprendizaje efectivo con cambios reales).
+- **Estado de resultado en helper:** siempre, tanto para aplicado como para evaluado sin aplicación.

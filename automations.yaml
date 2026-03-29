@@ -4257,9 +4257,10 @@
         == ''cool'' and (minutes_since_last_auto | float(99999)) < (min_operating_minutes_contextual
         | float(8)) %} contextual_runtime_short {% else %} no_valid_learning {% endif
         %}'
-      final_learning_status: '{% if valid_feedback %} manual_off_learning_applied
-        {% else %} manual_off_learning_ignored_{{ ignored_reason_code }} {% endif
-        %}'
+      learning_apply_state: '{% if valid_feedback %} applied_with_real_changes {%
+        else %} evaluated_not_applied {% endif %}'
+      final_learning_status: '{{ learning_apply_state }}:{% if valid_feedback %}manual_off_learning_applied{%
+        else %}manual_off_learning_ignored_{{ ignored_reason_code }}{% endif %}'
       ignored_reason_summary: '{% if ignored_reason_code == ''learning_disabled''
         %} Ign: learning off. {% elif ignored_reason_code == ''not_manual'' %} Ign:
         origen. {% elif ignored_reason_code == ''last_action_not_auto_on'' %} Ign:
@@ -4302,10 +4303,34 @@
         src=manual_off | final={{ final_learning_status }} | type={{ learning_type
         }} | reason={{ ignored_reason_code }} | msg={{ ignored_reason_line }} | min={{
         minutes_since_last_auto }} | trig={{ ts }}\n{% endif %}"
-      notify_title_applied_off_short: AC OFF manual aplicado
-      notify_message_applied_off_short: '{{ ''aprendizaje '' ~ feedback_strength ~
-        '' · '' ~ last_auto_mode }}'
-      notify_title_ignored_off_short: AC OFF manual ignorado
+      manual_action_detected: OFF
+      learning_effective_yesno: '{% if valid_feedback %}sí{% else %}no{% endif %}'
+      learning_change_applied: "{% if not valid_feedback %}\n  ninguno\n{% elif last_auto_mode
+        == 'cool' %}\n  Off +0.25 | On +0.25 | Setpoint +0.0\n{% elif quick_feedback
+        %}\n  On -{{ step_main }} | Off -{{ step_main }} | Setpoint -0.5\n{% else
+        %}\n  On -{{ step_main }} | Off -{{ step_main }} | Setpoint +0.0\n{% endif
+        %}"
+      learning_threshold_before_after: "{% if not valid_feedback %}\n  sin cambio\n{%
+        elif last_auto_mode == 'cool' %}\n  Off {{ '%.2f' | format(cool_bucket_previous_value
+        | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f'
+        | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float)
+        }}\n{% else %}\n  On {{ cur_bias_heat_on }}→{{ heat_on_after }} | Off {{
+        cur_bias_heat_off }}→{{ heat_off_after }}{% if quick_feedback %} | SP {{ cur_bias_heat_setpoint
+        }}→{{ heat_setpoint_after }}{% endif %}\n{% endif %}"
+      learning_context_compact: '{{ cool_learning_bucket }} | rama={{ last_auto_branch
+        if last_auto_branch not in [''unknown'',''unavailable'',''none'',''''] else
+        ''n/a'' }} | franja={{ cool_learning_bucket.split('':'')[2] if '':'' in cool_learning_bucket
+        else ''n/a'' }} | presencia={{ cool_learning_bucket.split('':'')[4] if '':'
+        in cool_learning_bucket else ''n/a'' }} | humedad={{ cool_learning_bucket.split('':'')[1]
+        if '':'' in cool_learning_bucket else ''n/a'' }}'
+      discard_reason: '{{ ignored_reason_code if not valid_feedback else ''n/a'' }}'
+      notify_title_learning_structured: AC aprendizaje manual OFF
+      notify_message_learning_structured: "accion_manual_detectada={{ manual_action_detected
+        }}\nresultado_aprendizaje_efectivo={{ learning_effective_yesno }}\ncambio_aplicado={{
+        learning_change_applied }}\numbral_antes_despues={{ learning_threshold_before_after
+        }}\ncontexto={{ learning_context_compact }}\nmotivo_descarte={{ discard_reason
+        }}"
+      notify_title_ignored_off_short: AC aprendizaje manual OFF descartado
       notify_message_ignored_off_short: '{{ ignored_reason_summary }}'
       notify_ignored_user: '{{ ignored_reason_code not in [''not_manual'',''auto_off_flag_active'',''last_action_not_auto_on'']
         and not (ignored_reason_code == ''contextual_runtime_short'' and recent_auto_off_evidence)
@@ -4392,8 +4417,8 @@
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - data:
-          title: '{{ notify_title_applied_off_short }}'
-          message: '{{ notify_message_applied_off_short }}'
+          title: '{{ notify_title_learning_structured }}'
+          message: '{{ notify_message_learning_structured }}'
           data:
             ttl: 0
             priority: high
@@ -4437,8 +4462,8 @@
             action: input_number.set_value
         default: []
       - data:
-          title: '{{ notify_title_applied_off_short }}'
-          message: '{{ notify_message_applied_off_short }}'
+          title: '{{ notify_title_learning_structured }}'
+          message: '{{ notify_message_learning_structured }}'
           data:
             ttl: 0
             priority: high
@@ -4600,6 +4625,10 @@
         > (feedback_window_min | float(120)) %} window_expired {% elif final_mode
         == ''cool'' and not cool_comfort_gap_feedback %} cool_not_before_auto_on {%
         else %} no_valid_learning {% endif %}'
+      learning_apply_state: '{% if valid_feedback %} applied_with_real_changes {%
+        else %} evaluated_not_applied {% endif %}'
+      final_learning_status: '{{ learning_apply_state }}:{% if valid_feedback %}manual_on_learning_applied{%
+        else %}manual_on_learning_ignored_{{ ignored_reason_code }}{% endif %}'
       ignored_reason_summary: '{% if ignored_reason_code == ''learning_disabled''
         %} Ign: learning off {% elif ignored_reason_code == ''ambiguous_origin'' %}
         Ign: origen {% elif ignored_reason_code == ''last_action_not_auto_off'' %}
@@ -4632,14 +4661,35 @@
         | float) }}→{{ ''%.2f'' | format(cool_off_after | float) }}'
       auto_off_fix_suffix: '{{ '' · corrige AUTO OFF reciente'' if last_auto_action
         == ''auto_off'' else '''' }}'
-      notify_title_valid_cool: 'AC aprendió: ON manual tras AUTO OFF'
-      notify_title_valid_heat: 'AC aprendió: ON manual tras AUTO OFF'
-      notify_message_valid_cool: '{{ cool_bucket_short }}{{ auto_off_fix_suffix }}'
-      notify_message_valid_heat: calor · bias on {{ cur_bias_heat_on }}→{{ ((cur_bias_heat_on
-        | float) + (step_main | float)) | round(2) }} · off {{ cur_bias_heat_off }}→{{
-        ((cur_bias_heat_off | float) + (step_main | float)) | round(2) }}{% if quick_feedback
-        %} · sp {{ cur_bias_heat_setpoint }}→{{ ((cur_bias_heat_setpoint | float)
-        + 0.5) | round(1) }}{% endif %}{{ auto_off_fix_suffix }}
+      manual_action_detected: ON
+      learning_effective_yesno: '{% if valid_feedback %}sí{% else %}no{% endif %}'
+      learning_change_applied: "{% if not valid_feedback %}\n  ninguno\n{% elif final_mode
+        == 'cool' %}\n  Off -0.25 | On -0.25 | Setpoint -0.25 teórico\n{% elif quick_feedback
+        %}\n  On +{{ step_main }} | Off +{{ step_main }} | Setpoint +0.5\n{% else
+        %}\n  On +{{ step_main }} | Off +{{ step_main }} | Setpoint +0.0\n{% endif
+        %}"
+      learning_threshold_before_after: "{% if not valid_feedback %}\n  sin cambio\n{%
+        elif final_mode == 'cool' %}\n  Off {{ '%.2f' | format(cool_bucket_previous_value
+        | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f'
+        | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float)
+        }}\n{% else %}\n  On {{ cur_bias_heat_on }}→{{ ((cur_bias_heat_on | float)
+        + (step_main | float)) | round(2) }} | Off {{ cur_bias_heat_off }}→{{ ((cur_bias_heat_off
+        | float) + (step_main | float)) | round(2) }}{% if quick_feedback %} | SP
+        {{ cur_bias_heat_setpoint }}→{{ ((cur_bias_heat_setpoint | float) + 0.5)
+        | round(1) }}{% endif %}\n{% endif %}"
+      learning_context_compact: '{{ cool_learning_bucket }} | rama={{ last_auto_branch
+        if last_auto_branch not in [''unknown'',''unavailable'',''none'',''''] else
+        ''n/a'' }} | franja={{ cool_learning_bucket.split('':'')[2] if '':'' in cool_learning_bucket
+        else ''n/a'' }} | presencia={{ cool_learning_bucket.split('':'')[4] if '':'
+        in cool_learning_bucket else ''n/a'' }} | humedad={{ cool_learning_bucket.split('':'')[1]
+        if '':'' in cool_learning_bucket else ''n/a'' }}'
+      discard_reason: '{{ ignored_reason_code if not valid_feedback else ''n/a'' }}'
+      notify_title_learning_structured: AC aprendizaje manual ON
+      notify_message_learning_structured: "accion_manual_detectada={{ manual_action_detected
+        }}\nresultado_aprendizaje_efectivo={{ learning_effective_yesno }}\ncambio_aplicado={{
+        learning_change_applied }}\numbral_antes_despues={{ learning_threshold_before_after
+        }}\ncontexto={{ learning_context_compact }}\nmotivo_descarte={{ discard_reason
+        }}"
       learning_audit_message: "{% if valid_feedback %}\n  learning_ok | src=manual_on
         | mode={{ final_mode }} | type={{ learning_type }} | detail={% if final_mode
         == 'cool' %}{{ cool_branch_audit }}{% else %}heat_bias_ok{% endif %} | min={{
@@ -4649,7 +4699,7 @@
   - target:
       entity_id: input_text.ac_last_manual_learning_type
     data:
-      value: '{{ learning_type }}'
+      value: '{{ final_learning_status }}'
     service: input_text.set_value
   - choose:
     - conditions:
@@ -4713,8 +4763,8 @@
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - data:
-          title: '{{ notify_title_valid_cool }}'
-          message: '{{ notify_message_valid_cool }}'
+          title: '{{ notify_title_learning_structured }}'
+          message: '{{ notify_message_learning_structured }}'
           data:
             ttl: 0
             priority: high
@@ -4758,8 +4808,8 @@
             action: input_number.set_value
         default: []
       - data:
-          title: '{{ notify_title_valid_heat }}'
-          message: '{{ notify_message_valid_heat }}'
+          title: '{{ notify_title_learning_structured }}'
+          message: '{{ notify_message_learning_structured }}'
           data:
             ttl: 0
             priority: high
