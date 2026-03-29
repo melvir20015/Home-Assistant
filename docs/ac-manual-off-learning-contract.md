@@ -115,7 +115,7 @@ El helper `input_text.ac_last_manual_learning_type` ahora persiste el resultado 
 Ejemplos:
 
 - `applied_with_real_changes:manual_off_learning_applied`
-- `evaluated_not_applied:manual_on_learning_ignored_window_expired`
+- `evaluated_not_applied:manual_on_learning_ignored_antirebote`
 
 ### Contrato del mensaje estructurado
 
@@ -129,19 +129,21 @@ Campos obligatorios del mensaje (una línea por campo):
 
 1. `accion_manual_detectada` (`ON`/`OFF`)
 2. `resultado_aprendizaje_efectivo` (`sí`/`no`)
-3. `cambio_aplicado` (ej: `Off +0.25 | On +0.25 | Setpoint +0.0`)
-4. `umbral_antes_despues` (ej: `Off 24.00→24.25 | On 24.50→24.75`)
-5. `contexto` (bucket/rama/franja/presencia/humedad)
-6. `motivo_descarte` (`n/a` si aplicó; código explícito si no aplicó)
+3. `peso_aplicado` (si no aplica: valor calculado igualmente reportado)
+4. `cambio_aplicado` (ej: `Off +0.25 | On +0.25 | Setpoint +0.0`)
+5. `umbral_antes_despues` (ej: `Off 24.00→24.25 | On 24.50→24.75`)
+6. `contexto` (bucket/rama/franja/presencia/humedad y origen de humedad)
+7. `motivo_descarte` (`n/a` si aplicó; código explícito si no aplicó)
 
 Ejemplo OFF aplicado:
 
 ```text
 accion_manual_detectada=OFF
 resultado_aprendizaje_efectivo=sí
+peso_aplicado=1.00
 cambio_aplicado=Off +0.25 | On +0.25 | Setpoint +0.0
 umbral_antes_despues=Off 24.00→24.25 | On 24.50→24.75
-contexto=exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia | rama=cool_normal_on | franja=franja_1001_1500 | presencia=presencia | humedad=humedad_normal
+contexto=exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia | rama=cool_normal_on | franja_auto=franja_1001_1500 | franja_actual=franja_1001_1500 | presencia_auto=presencia | presencia_actual=presencia | humedad_auto=humedad_normal | humedad_actual=humedad_normal | humedad_fuente=promedio_h1_h2
 motivo_descarte=n/a
 ```
 
@@ -150,10 +152,11 @@ Ejemplo ON no aplicado (para trazabilidad en helpers/logbook, sin push obligator
 ```text
 accion_manual_detectada=ON
 resultado_aprendizaje_efectivo=no
+peso_aplicado=0.42
 cambio_aplicado=ninguno
 umbral_antes_despues=sin cambio
-contexto=exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia | rama=cool_normal_on | franja=franja_1001_1500 | presencia=presencia | humedad=humedad_normal
-motivo_descarte=window_expired
+contexto=exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia | rama=cool_normal_on | franja_auto=franja_1001_1500 | franja_actual=franja_1801_2059 | presencia_auto=presencia | presencia_actual=sin_presencia | humedad_auto=humedad_normal | humedad_actual=humedad_alta | humedad_fuente=promedio_h1_h2
+motivo_descarte=antirebote
 ```
 
 ### Cuándo se emite

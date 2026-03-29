@@ -4614,15 +4614,31 @@
       final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
       final_fan: '{{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'')
         is not none else ''n/a'' }}'
+      t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
+        }}'
+      t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none)
+        }}'
+      h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
+      h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'') | float(none) }}'
+      hin: '{% if h1 is not none and h2 is not none %} {{ ((h1 + h2) / 2) | round(1)
+        }} {% elif h1 is not none %} {{ h1 | round(1) }} {% elif h2 is not none %}
+        {{ h2 | round(1) }} {% else %} {{ none }} {% endif %}'
+      sensor_delta: '{% if t1 is not none and t2 is not none %} {{ (t1 - t2) | abs
+        | round(2) }} {% else %} {{ 0 }} {% endif %}'
+      s24_raw: '{{ states(''device_tracker.samsung_s24'') }}'
+      person_raw: '{{ states(''person.ivan'') }}'
+      manual_presence_until_raw: '{{ states(''input_datetime.ac_manual_presence_until'')
+        }}'
+      presence_phone_home: '{{ (s24_raw in [''home'',''on'']) or (person_raw == ''home'')
+        }}'
+      presence_temp_from_manual: "{{ manual_presence_until_raw not in ['unknown','unavailable','none','']\n  and as_timestamp(now()) < as_timestamp(manual_presence_until_raw) }}"
+      presence_effective_bool: '{{ presence_phone_home or presence_temp_from_manual
+        }}'
       manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'') }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
       last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
-      feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'')
-        | float(120) }}'
-      min_off_window_min: '{{ states(''input_number.ac_manual_on_min_off_window_minutes'')
-        | float(60) }}'
       last_change_origin: '{{ states(''input_text.ac_last_change_origin'') }}'
       lr_small: '{{ states(''input_number.ac_learning_rate_small'') | float(0.05)
         }}'
@@ -4630,19 +4646,29 @@
         }}'
       learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'')
         }}'
+      debounce_seconds: 10
       minutes_since_last_auto: '{% set raw = last_auto_ts_raw | default('''', true)
         | trim %} {% set raw_lower = raw | lower %} {% if raw_lower in [''unknown'',''unavailable'',''none'','''']
         %} 99999 {% else %} {% set ts = as_timestamp(raw, default=none) %} {{ 99999
         if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }} {% endif
         %}'
+      seconds_since_last_auto: '{% set raw = last_auto_ts_raw | default('''', true)
+        | trim %} {% set raw_lower = raw | lower %} {% if raw_lower in [''unknown'',''unavailable'',''none'','''']
+        %} 999999 {% else %} {% set ts = as_timestamp(raw, default=none) %} {{ 999999
+        if ts is none else ((as_timestamp(now()) - ts) | round(0)) }} {% endif %}'
       quick_feedback: '{{ (minutes_since_last_auto | float(99999)) <= 10 }}'
       cool_comfort_gap_feedback: '{{ manual_event_type == ''manual_on_due_to_comfort_gap_cool''
         }}'
-      valid_feedback: "{{ learning_enabled and last_change_origin == 'manual_on' and
-        last_auto_action == 'auto_off'\n  and final_mode in ['cool','heat'] and (minutes_since_last_auto
-        | float(99999)) >= (min_off_window_min | float(60)) and (minutes_since_last_auto
-        | float(99999)) <= (feedback_window_min | float(120)) and ((final_mode ==
-        'cool' and cool_comfort_gap_feedback) or final_mode == 'heat') }}"
+      hm: '{{ now().strftime(''%H:%M'') }}'
+      current_tod_bucket: "{% if '07:00' <= hm <= '10:00' %}\n  franja_0700_1000\n{% elif '10:01' <= hm <= '15:00' %}\n  franja_1001_1500\n{% elif '15:01' <= hm <= '18:00' %}\n  franja_1501_1800\n{% elif '18:01' <= hm <= '20:59' %}\n  franja_1801_2059\n{% else %}\n  franja_fuera_rango\n{% endif %}"
+      current_humidity_bucket: "{% if hin is not none and (hin | float) >= 66 %}\n  humedad_muy_alta\n{% elif hin is not none and (hin | float) >= 58 %}\n  humedad_alta\n{% else %}\n  humedad_normal\n{% endif %}"
+      current_presence_bucket: "{% if presence_effective_bool %}\n  presencia\n{% else %}\n  sin_presencia\n{% endif %}"
+      anti_rebote_ok: '{{ (seconds_since_last_auto | float(999999)) >= (debounce_seconds
+        | float(10)) }}'
+      base_eligible: "{{ learning_enabled and last_change_origin == 'manual_on' and
+        last_auto_action == 'auto_off' and final_mode in ['cool','heat'] and anti_rebote_ok
+        and ((final_mode == 'cool' and cool_comfort_gap_feedback) or final_mode ==
+        'heat') }}"
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0)
         }}'
       cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'')
@@ -4653,6 +4679,24 @@
         ['', 'unknown', 'unavailable', 'none'] %}\n  exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia\n{%
         else %}\n  {{ raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0]
         }}\n{% endif %}"
+      auto_ctx_humidity_bucket: "{% set parts = cool_learning_bucket.split(':') %}{%
+        if parts | length >= 5 %}{{ parts[1] }}{% else %}humedad_normal{% endif %}"
+      auto_ctx_tod_bucket: "{% set parts = cool_learning_bucket.split(':') %}{% if
+        parts | length >= 5 %}{{ parts[2] }}{% else %}franja_1001_1500{% endif %}"
+      auto_ctx_presence_bucket: "{% set parts = cool_learning_bucket.split(':') %}{%
+        if parts | length >= 5 %}{{ parts[4] }}{% else %}presencia{% endif %}"
+      age_weight: "{% set mins = minutes_since_last_auto | float(99999) %}\n{% if
+        mins <= 2 %}\n  1.00\n{% elif mins <= 10 %}\n  0.95\n{% elif mins <= 30 %}\n  0.80\n{% elif mins <= 120 %}\n  0.60\n{% elif mins <= 360 %}\n  0.40\n{% else %}\n  0.25\n{% endif %}"
+      context_similarity: "{% set score = 0.0 %}\n{% set score = score + (0.40 if
+        (auto_ctx_tod_bucket | trim) == (current_tod_bucket | trim) else 0.0) %}\n{% set score = score + (0.30 if (auto_ctx_presence_bucket | trim) == (current_presence_bucket
+        | trim) else 0.0) %}\n{% set score = score + (0.30 if (auto_ctx_humidity_bucket
+        | trim) == (current_humidity_bucket | trim) else 0.0) %}\n{{ score | round(2)
+        }}"
+      learning_weight_raw: '{{ ((age_weight | float(0.25)) * 0.45) + ((context_similarity
+        | float(0.0)) * 0.55) }}'
+      learning_weight: '{{ [[learning_weight_raw | float(0.15), 1.0] | min, 0.15]
+        | max | round(2) }}'
+      valid_feedback: '{{ base_eligible }}'
       cool_learning_bucket_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~
         (cool_learning_bucket | replace('':'',''_'') ) }}'
       cool_learning_bucket_summary_value: "{% set raw = cool_learning_summary_raw
@@ -4665,7 +4709,12 @@
       cur_bias_heat_setpoint: '{{ states(''input_number.ac_bias_heat_setpoint'') |
         float(0) }}'
       step_main: '{{ (lr_large if quick_feedback else lr_small) | float }}'
-      cool_branch_step: 0.25
+      weighted_step_main: '{{ ((step_main | float) * (learning_weight | float(1)))
+        | round(2) }}'
+      heat_setpoint_step: '{{ ((0.5 if quick_feedback else 0) * (learning_weight
+        | float(1))) | round(2) }}'
+      cool_branch_step: '{{ [[(0.25 * (learning_weight | float(1))), 0.25] | min,
+        0.05] | max | round(2) }}'
       cool_bucket_previous_value: '{% set helper_raw = states(cool_learning_bucket_helper)
         %} {% set helper_value = helper_raw | float(none) %} {{ helper_value if helper_value
         is not none else (cool_learning_bucket_summary_value if cool_learning_bucket_summary_value
@@ -4678,17 +4727,13 @@
         {% elif last_change_origin != ''manual_on'' %} manual_on_feedback_ignored_ambiguous_origin
         {% elif last_auto_action != ''auto_off'' %} manual_on_feedback_ignored_last_action_not_auto_off
         {% elif final_mode not in [''cool'',''heat''] %} manual_on_feedback_ignored_final_mode_not_learnable
-        {% elif (minutes_since_last_auto | float(99999)) < (min_off_window_min |
-        float(60)) %} manual_on_feedback_ignored_min_off_window_not_met {% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(120)) %} manual_on_feedback_ignored_window_expired {% elif final_mode
+        {% elif not anti_rebote_ok %} manual_on_feedback_ignored_antirebote {% elif final_mode
         == ''cool'' and not cool_comfort_gap_feedback %} manual_on_feedback_ignored_cool_not_before_auto_on
         {% else %} manual_on_feedback_ignored_no_valid_learning {% endif %}'
       ignored_reason_code: '{% if not learning_enabled %} learning_disabled {% elif
         last_change_origin != ''manual_on'' %} ambiguous_origin {% elif last_auto_action
         != ''auto_off'' %} last_action_not_auto_off {% elif final_mode not in [''cool'',''heat'']
-        %} final_mode_not_learnable {% elif (minutes_since_last_auto | float(99999))
-        < (min_off_window_min | float(60)) %} min_off_window_not_met {% elif (minutes_since_last_auto
-        | float(99999)) > (feedback_window_min | float(120)) %} window_expired {% elif final_mode
+        %} final_mode_not_learnable {% elif not anti_rebote_ok %} anti_rebote {% elif final_mode
         == ''cool'' and not cool_comfort_gap_feedback %} cool_not_before_auto_on {%
         else %} no_valid_learning {% endif %}'
       learning_apply_state: '{% if valid_feedback %} applied_with_real_changes {%
@@ -4699,8 +4744,7 @@
         %} Ign: learning off {% elif ignored_reason_code == ''ambiguous_origin'' %}
         Ign: origen {% elif ignored_reason_code == ''last_action_not_auto_off'' %}
         Ign: sin auto previa {% elif ignored_reason_code == ''final_mode_not_learnable''
-        %} Ign: modo {% elif ignored_reason_code == ''min_off_window_not_met'' %}
-        Ign: min off {% elif ignored_reason_code == ''window_expired'' %} Ign: ventana
+        %} Ign: modo {% elif ignored_reason_code == ''anti_rebote'' %} Ign: antirebote
         {% elif ignored_reason_code == ''cool_not_before_auto_on'' %} Ign: sin auto
         previa {% else %} Ign: sin match {% endif %}'
       manual_off_block: '{{ states(''input_boolean.ac_bloqueo_cambio_modo_2h'') }}'
@@ -4714,7 +4758,8 @@
       cool_setpoint_after: '{{ ((cool_off_after | float) - 0.5) | round(2) }}'
       cool_learning_summary: '{{ cool_learning_bucket ~ ''='' ~ (''%.2f'' | format(cool_off_after
         | float)) }}'
-      cool_branch_audit: RamaCool -0.25 | Bucket {{ cool_learning_bucket }} | Off
+      cool_branch_audit: RamaCool -{{ cool_branch_step }} (peso={{ learning_weight
+        }}) | Bucket {{ cool_learning_bucket }} | Off
         {{ '%.2f' | format(cool_bucket_previous_value | float) }}→{{ '%.2f' | format(cool_off_after
         | float) }} | On {{ '%.2f' | format(cool_on_before | float) }}→{{ '%.2f' |
         format(cool_on_after | float) }} | SP teo {{ '%.2f' | format(cool_setpoint_after
@@ -4731,43 +4776,48 @@
       manual_action_detected: ON
       learning_effective_yesno: '{% if valid_feedback %}sí{% else %}no{% endif %}'
       learning_change_applied: "{% if not valid_feedback %}\n  ninguno\n{% elif final_mode
-        == 'cool' %}\n  Off -0.25 | On -0.25 | Setpoint -0.25 teórico\n{% elif quick_feedback
-        %}\n  On +{{ step_main }} | Off +{{ step_main }} | Setpoint +0.5\n{% else
-        %}\n  On +{{ step_main }} | Off +{{ step_main }} | Setpoint +0.0\n{% endif
+        == 'cool' %}\n  Off -{{ cool_branch_step }} | On -{{ cool_branch_step }} |
+        Setpoint -{{ cool_branch_step }} teórico\n{% else %}\n  On +{{ weighted_step_main
+        }} | Off +{{ weighted_step_main }} | Setpoint +{{ heat_setpoint_step }}\n{%
+        endif
         %}"
       learning_threshold_before_after: "{% if not valid_feedback %}\n  sin cambio\n{%
         elif final_mode == 'cool' %}\n  Off {{ '%.2f' | format(cool_bucket_previous_value
         | float) }}→{{ '%.2f' | format(cool_off_after | float) }} | On {{ '%.2f'
         | format(cool_on_before | float) }}→{{ '%.2f' | format(cool_on_after | float)
         }}\n{% else %}\n  On {{ cur_bias_heat_on }}→{{ ((cur_bias_heat_on | float)
-        + (step_main | float)) | round(2) }} | Off {{ cur_bias_heat_off }}→{{ ((cur_bias_heat_off
-        | float) + (step_main | float)) | round(2) }}{% if quick_feedback %} | SP
-        {{ cur_bias_heat_setpoint }}→{{ ((cur_bias_heat_setpoint | float) + 0.5)
-        | round(1) }}{% endif %}\n{% endif %}"
+        + (weighted_step_main | float)) | round(2) }} | Off {{ cur_bias_heat_off
+        }}→{{ ((cur_bias_heat_off | float) + (weighted_step_main | float)) | round(2)
+        }}{% if quick_feedback %} | SP {{ cur_bias_heat_setpoint }}→{{ ((cur_bias_heat_setpoint
+        | float) + (heat_setpoint_step | float)) | round(2) }}{% endif %}\n{% endif
+        %}"
       learning_context_compact: '{{ cool_learning_bucket }} | rama={{ last_auto_branch
         if last_auto_branch not in [''unknown'',''unavailable'',''none'',''''] else
-        ''n/a'' }} | franja={{ cool_learning_bucket.split('':'')[2] if '':'' in cool_learning_bucket
-        else ''n/a'' }} | presencia={{ cool_learning_bucket.split('':'')[4] if '':'
-        in cool_learning_bucket else ''n/a'' }} | humedad={{ cool_learning_bucket.split('':'')[1]
-        if '':'' in cool_learning_bucket else ''n/a'' }}'
+        ''n/a'' }} | franja_auto={{ auto_ctx_tod_bucket }} | franja_actual={{ current_tod_bucket
+        }} | presencia_auto={{ auto_ctx_presence_bucket }} | presencia_actual={{ current_presence_bucket
+        }} | humedad_auto={{ auto_ctx_humidity_bucket }} | humedad_actual={{ current_humidity_bucket
+        }} | humedad_fuente=promedio_h1_h2 | delta_sensores={{ sensor_delta }}'
       discard_reason: '{{ ignored_reason_code if not valid_feedback else ''n/a'' }}'
       notify_title_learning_structured: AC aprendizaje manual ON
       notify_message_learning_structured: "accion_manual_detectada={{ manual_action_detected
-        }}\nresultado_aprendizaje_efectivo={{ learning_effective_yesno }}\ncambio_aplicado={{
+        }}\nresultado_aprendizaje_efectivo={{ learning_effective_yesno }}\npeso_aplicado={{
+        learning_weight }}\ncambio_aplicado={{
         learning_change_applied }}\numbral_antes_despues={{ learning_threshold_before_after
         }}\ncontexto={{ learning_context_compact }}\nmotivo_descarte={{ discard_reason
         }}"
       notify_expected: '{{ valid_feedback }}'
       learning_summary_payload: "ultimo=ON|fecha={{ ts }}|resultado={{ 'aplicado'
         if valid_feedback else 'no_aplicado' }}|motivo={{ discard_reason }}|contexto={{
-        learning_context_compact }}|delta={{ learning_change_applied | replace('\n',' ')
-        | trim }}"
+        learning_context_compact }}|peso={{ learning_weight }}|delta={{ learning_change_applied
+        | replace('\n',' ') | trim }}"
       learning_audit_message: "{% if valid_feedback %}\n  learning_ok | src=manual_on
         | mode={{ final_mode }} | type={{ learning_type }} | detail={% if final_mode
         == 'cool' %}{{ cool_branch_audit }}{% else %}heat_bias_ok{% endif %} | min={{
-        minutes_since_last_auto }}\n{% else %}\n  learning_skip | src=manual_on |
-        type={{ learning_type }} | reason={{ ignored_reason_code }} | min={{ minutes_since_last_auto
-        }}\n{% endif %}"
+        minutes_since_last_auto }} | peso={{ learning_weight }} | similitud_ctx={{
+        context_similarity }}\n{% else %}\n  learning_skip | src=manual_on | type={{
+        learning_type }} | reason={{ ignored_reason_code }} | min={{ minutes_since_last_auto
+        }} | anti_rebote_ok={{ anti_rebote_ok }} | peso_calc={{ learning_weight }}
+        | similitud_ctx={{ context_similarity }}\n{% endif %}"
   - target:
       entity_id: input_text.ac_last_manual_learning_type
     data:
@@ -4786,12 +4836,12 @@
   - action: logbook.log
     data:
       name: AC Learning Manual ON Audit
-      message: manual_on_learning_context_evaluated | mode={{ final_mode }} | last_auto_action={{ last_auto_action }} | min_since_auto={{ minutes_since_last_auto }} | min_off_window={{ min_off_window_min }} | event={{ manual_event_type }}
+      message: manual_on_learning_context_evaluated | mode={{ final_mode }} | event={{ manual_event_type }} | last_auto_action={{ last_auto_action }} | min_since_auto={{ minutes_since_last_auto }} | sec_since_auto={{ seconds_since_last_auto }} | anti_rebote_ok={{ anti_rebote_ok }} | peso={{ learning_weight }} | similitud_ctx={{ context_similarity }} | ctx_auto={{ cool_learning_bucket }} | ctx_actual={{ current_tod_bucket }}:{{ current_humidity_bucket }}:{{ current_presence_bucket }}
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     data:
       name: AC Learning Manual ON Audit
-      message: manual_on_learning_decision | apply={{ 'yes' if valid_feedback else 'no' }} | reason={{ ignored_reason_code if not valid_feedback else 'applied' }}
+      message: manual_on_learning_decision | eligible={{ 'yes' if base_eligible else 'no' }} | apply={{ 'yes' if valid_feedback else 'no' }} | reason={{ ignored_reason_code if not valid_feedback else 'applied' }} | delta={{ learning_change_applied | replace('\n',' ') | trim }} | peso={{ learning_weight }}
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -4871,13 +4921,15 @@
       - target:
           entity_id: input_number.ac_bias_heat_on
         data:
-          value: '{% set raw = (cur_bias_heat_on | float) + (step_main | float) %}
+          value: '{% set raw = (cur_bias_heat_on | float) + (weighted_step_main |
+            float) %}
             {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - target:
           entity_id: input_number.ac_bias_heat_off
         data:
-          value: '{% set raw = (cur_bias_heat_off | float) + (step_main | float) %}
+          value: '{% set raw = (cur_bias_heat_off | float) + (weighted_step_main |
+            float) %}
             {{ [[raw, 3] | min, -3] | max | round(2) }}'
         action: input_number.set_value
       - choose:
@@ -4888,8 +4940,8 @@
           - target:
               entity_id: input_number.ac_bias_heat_setpoint
             data:
-              value: '{% set raw = (cur_bias_heat_setpoint | float) + 0.5 %} {{ [[raw,
-                2] | min, -2] | max | round(1) }}'
+              value: '{% set raw = (cur_bias_heat_setpoint | float) + (heat_setpoint_step
+                | float) %} {{ [[raw, 2] | min, -2] | max | round(2) }}'
             action: input_number.set_value
         default: []
     default: []

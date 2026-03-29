@@ -142,17 +142,39 @@ Si el usuario vuelve a encender manualmente poco después de un `AUTO OFF` váli
 - se clasifica en `input_text.ac_last_manual_learning_type`;
 - los sesgos del modo correspondiente se ajustan para retrasar apagados automáticos futuros mal calibrados.
 
-### Ventana mínima de apagado previo para aprendizaje `manual_on`
+### Elegibilidad consolidada para aprendizaje `manual_on`
 
-Además de la ventana máxima (`input_number.ac_feedback_window_minutes`), el aprendizaje por encendido manual usa una ventana mínima explícita:
+El encendido manual tras `AUTO OFF` se considera feedback elegible sin imponer un tiempo mínimo funcional largo.
 
-- `input_number.ac_manual_on_min_off_window_minutes` (default: **60 min**).
+Reglas actuales:
 
-Regla:
+- se mantiene sólo un **anti-rebote técnico corto** (`debounce_seconds`, default 10 s) para evitar dobles toques accidentales;
+- ya no se descarta por “demasiado pronto” usando `ac_manual_on_min_off_window_minutes`;
+- ya no se aplica un descarte binario por ventana máxima para antigüedad;
+- se exige coherencia de origen (`manual_on`), acción previa (`auto_off`) y modo aprendible (`cool/heat`).
 
-- si `minutes_since_last_auto < ac_manual_on_min_off_window_minutes` ⇒ descarte `min_off_window_not_met`;
-- si `minutes_since_last_auto > ac_feedback_window_minutes` ⇒ descarte `window_expired`;
-- sólo en el rango válido se considera `manual_on` elegible para aprendizaje.
+### Peso de aprendizaje por antigüedad + contexto
+
+En vez de un corte fijo por tiempo, el ajuste se modula con `peso_aprendizaje`:
+
+- `tiempo_desde_off_auto` aporta `age_weight` en escala `[0.25, 1.00]` (decaimiento por tramos);
+- similitud de contexto aporta `context_similarity` en escala `[0.00, 1.00]`, comparando:
+  - franja horaria (`franja_*`),
+  - presencia (`presencia`/`sin_presencia`),
+  - humedad (`humedad_*`).
+
+Fórmula:
+
+- `learning_weight_raw = age_weight * 0.45 + context_similarity * 0.55`
+- `peso_aprendizaje = clamp(learning_weight_raw, 0.15, 1.00)`
+
+Con esto, eventos más viejos no se anulan de forma binaria: aportan menos, pero siguen aportando.
+
+### Límites de seguridad y estabilidad
+
+- Para `cool_normal`, el paso base (`0.25`) se multiplica por `peso_aprendizaje` y se limita por evento a `[0.05, 0.25]`.
+- Se conserva la histéresis mínima entre umbrales: `cool_on = cool_off + 0.5`.
+- Para `heat`, el ajuste de sesgos (`on/off`) también se pondera por `peso_aprendizaje` y se mantiene acotado por los límites de helpers.
 
 ## Papel de `emergency_cool`
 
@@ -192,10 +214,19 @@ También son críticos:
 
 ## Notificaciones de producción
 
-En producción deben ser pocas, cortas y sólo útiles. Ejemplos válidos:
+En producción deben ser pocas, cortas y sólo útiles. Para aprendizaje manual ON/OFF deben responder:
 
+- acción manual detectada (`ON`/`OFF`);
+- si el aprendizaje fue efectivo;
+- umbrales antes/después;
+- peso aplicado (cuando hay ponderación contextual);
+- bucket/contexto relevante.
+
+Ejemplos válidos:
+
+- `AC aprendizaje manual ON | efectivo=sí | peso=0.78 | Off 24.00→23.80 | On 24.50→24.30 | ctx=franja_1801_2059/presencia/humedad_alta`
+- `AC aprendizaje manual ON | efectivo=no | motivo=antirebote | ctx=franja_1001_1500/sin_presencia/humedad_normal`
 - `AC aprendió: OFF manual tras AUTO COOL | +0.25 on/off`
-- `AC aprendió: ON manual por ausencia | presencia temporal activada`
 - `AC AUTO OFF: ausencia 30m`
 
 No se deben enviar notificaciones por:
@@ -204,6 +235,8 @@ No se deben enviar notificaciones por:
 - abortos de ramas automáticas;
 - detecciones manuales sin aprendizaje válido;
 - debug técnico que ya queda en logbook.
+
+> Nota de coherencia: cuando el mensaje menciona humedad del aprendizaje, debe indicar que usa **promedio de sensores** (`h1/h2`). Si una decisión preventiva depende de un sensor individual, eso debe aparecer explícito como “sensor individual”.
 
 ## Snapshots JSON recomendados para diagnóstico futuro
 
