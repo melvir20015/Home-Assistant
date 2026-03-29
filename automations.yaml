@@ -2531,25 +2531,28 @@
       - condition: template
         value_template: '{{ cur_mode == ''cool'' and (not emergency_latched) and (not
           manual_override_active) and cool_cycle_contract_active and ( (tin is not
-          none and (tin | float) <= (cool_cycle_contract_off | float)) or (t1 is not
+          none and (tin | float) <= (cool_cycle_contract_off_validated | float)) or
+          (t1 is not
           none and cool_cycle_contract_sensor_off is not none and (t1 | float) <=
           (cool_cycle_contract_sensor_off | float)) or (t2 is not none and cool_cycle_contract_sensor_off
           is not none and (t2 | float) <= (cool_cycle_contract_sensor_off | float))
           ) }}'
       sequence:
       - variables:
-          cool_cycle_off_cause: "{% if tin is not none and cool_cycle_contract_off
-            is not none and (tin | float) <= (cool_cycle_contract_off | float) %}\n
+          cool_cycle_off_cause: "{% if tin is not none and cool_cycle_contract_off_validated
+            is not none and (tin | float) <= (cool_cycle_contract_off_validated | float)
+            %}\n
             \ meta_alcanzada\n{% elif t1 is not none and cool_cycle_contract_sensor_off
             is not none and (t1 | float) <= (cool_cycle_contract_sensor_off | float)
             %}\n  corte_preventivo_t1\n{% elif t2 is not none and cool_cycle_contract_sensor_off
             is not none and (t2 | float) <= (cool_cycle_contract_sensor_off | float)
             %}\n  corte_preventivo_t2\n{% else %}\n  no_clasificado\n{% endif %}"
           cool_cycle_off_cause_detail: "{% if cool_cycle_off_cause == 'meta_alcanzada'
-            %}\n  Prom={{ tin }}<=Off={{ cool_cycle_contract_off }}\n{% elif cool_cycle_off_cause
-            == 'corte_preventivo_t1' %}\n  t1={{ t1 }}<=SensorOff={{ cool_cycle_contract_sensor_off
+            %}\n  Prom={{ tin }}<=OffProm={{ cool_cycle_contract_off_validated }}\n{%
+            elif cool_cycle_off_cause
+            == 'corte_preventivo_t1' %}\n  t1={{ t1 }}<=SensorHardStop={{ cool_cycle_contract_sensor_off
             }}\n{% elif cool_cycle_off_cause == 'corte_preventivo_t2' %}\n  t2={{
-            t2 }}<=SensorOff={{ cool_cycle_contract_sensor_off }}\n{% else %}\n  Prom={{
+            t2 }}<=SensorHardStop={{ cool_cycle_contract_sensor_off }}\n{% else %}\n  Prom={{
             tin if tin is not none else 'n/a' }} | t1={{ t1 if t1 is not none else
             'n/a' }} | t2={{ t2 if t2 is not none else 'n/a' }}\n{% endif %}"
           cool_cycle_contract_snapshot: Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason
@@ -2565,13 +2568,29 @@
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
           cool_cycle_final_message: Rama={{ cool_cycle_branch }} | Contrato(On={{
-            cool_cycle_contract_on if cool_cycle_contract_on is not none else 'n/a'
-            }}, Off={{ cool_cycle_contract_off if cool_cycle_contract_off is not none
-            else 'n/a' }}, OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off
-            is not none else 'n/a' }}, SP={{ cool_cycle_contract_setpoint_effective
+            cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is
+            not none else 'n/a' }}, OffProm={{ cool_cycle_contract_off_validated if
+            cool_cycle_contract_off_validated is not none else 'n/a' }}, SensorHardStop={{
+            cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not
+            none else 'n/a' }}, Fuente={{ 'sensor_critico' if cool_cycle_off_cause
+            in ['corte_preventivo_t1','corte_preventivo_t2'] else 'promedio' }}, SP={{
+            cool_cycle_contract_setpoint_effective
             if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}) |
             Causa={{ cool_cycle_off_cause }} | Detalle={{ cool_cycle_off_cause_detail
             }} | Hora={{ cool_cycle_hito_ts }}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_cycle_contract_validation_warning != ''none'' }}'
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: '{{ cool_cycle_contract_validation_warning }} | on_raw={{ cool_cycle_contract_on
+                }} | off_raw={{ cool_cycle_contract_off }} | on_fix={{ cool_cycle_contract_on_validated
+                }} | off_fix={{ cool_cycle_contract_off_validated }}'
+              entity_id: climate.0200009211c7_climate
+        default: []
       - target:
           entity_id: input_boolean.ac_off_por_automatizacion
         service: input_boolean.turn_on
@@ -2702,9 +2721,11 @@
           message: cool_off | Tin={{ tin }} | Tout={{ tout }} | H={{ hin }} | Demand={{
             cool_demand_score }} | Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket
             not in ['','unknown','unavailable','none'] else cool_context_detail }}
-            | On={{ cool_cycle_contract_on }} | Off={{ cool_cycle_contract_off }}
-            | SensorOff={{ cool_cycle_contract_sensor_off }} | SPt={{ cool_cycle_contract_setpoint
-            }} | SPe={{ cool_cycle_contract_setpoint_effective }} | Calc={{ cool_cycle_contract_reason
+            | On={{ cool_cycle_contract_on_validated }} | OffProm={{ cool_cycle_contract_off_validated
+            }} | SensorHardStop={{ cool_cycle_contract_sensor_off }} | Fuente={{ 'sensor_critico'
+            if cool_cycle_off_cause in ['corte_preventivo_t1','corte_preventivo_t2']
+            else 'promedio' }} | SPt={{ cool_cycle_contract_setpoint }} | SPe={{ cool_cycle_contract_setpoint_effective
+            }} | Calc={{ cool_cycle_contract_reason
             if cool_cycle_contract_reason not in ['','unknown','unavailable','none']
             else cool_off_learning_source }} | Causa={{ cool_cycle_off_cause }} |
             Det={{ cool_cycle_off_cause_detail }} | Min={{ minutes_since_last_auto
@@ -3034,12 +3055,12 @@
       - target:
           entity_id: input_number.ac_cool_cycle_contract_on
         data:
-          value: '{{ cool_on if cool_on is not none else 0 }}'
+          value: '{{ cool_on_validated if cool_on_validated is not none else 0 }}'
         service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_contract_off
         data:
-          value: '{{ cool_off if cool_off is not none else 0 }}'
+          value: '{{ cool_off_validated if cool_off_validated is not none else 0 }}'
         service: input_number.set_value
       - target:
           entity_id: input_number.ac_cool_cycle_contract_sensor_off
@@ -3232,8 +3253,9 @@
           name: AC Auto Trace
           message: cool_normalized | sp_writer={{ 'manual_lock' if manual_sp_protected_lock_active
             else 'auto_on' }} | permit={{ auto_on_presence_reason }} | SPsrc=auto_on
-            | {{ cool_ctx_brief }} | On={{ cool_on }} | Off={{ cool_off }} | SensorOff={{
-            cool_sensor_off }} | SP_contract={{ cool_setpoint_contract }} | SPt={{
+            | {{ cool_ctx_brief }} | On={{ cool_on_validated }} | OffProm={{ cool_off_validated
+            }} | SensorHardStop={{ cool_sensor_off }} | FuenteOff={{ cool_contract_off_source_label
+            }} | SP_contract={{ cool_setpoint_contract }} | SPt={{
             cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry
             is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{
             cool_setpoint_effective }} | SP_logic_c={{ cool_setpoint_effective_c }}
@@ -3294,9 +3316,10 @@
             Calc={{ contract_calc if contract_calc not in ['''', ''unknown'', ''unavailable'',
             ''none''] else cool_off_learning_source }} | Dem={{ cool_demand_score
             }} | Encendido en={{ contract_on if contract_on is not none else ''n/a''
-            }} | Apagado en={{ contract_off if contract_off is not none else ''n/a''
-            }} | Corte preventivo sensor={{ contract_sensor_off if contract_sensor_off
-            is not none else ''n/a'' }} | Setpoint teórico={{ contract_setpoint if
+            }} | Apagado promedio en={{ contract_off if contract_off is not none else
+            ''n/a'' }} | Corte por sensor individual (hard stop)={{ contract_sensor_off
+            if contract_sensor_off is not none else ''n/a'' }} | Fuente apagado={{
+            cool_contract_off_source_label }} | Setpoint teórico={{ contract_setpoint if
             contract_setpoint is not none else ''n/a'' }} | Setpoint efectivo={{ contract_setpoint_effective
             if contract_setpoint_effective is not none else ''n/a'' }} | Fan=Low'
           cool_mobile_title_local: Cool↑
@@ -3751,6 +3774,21 @@
     cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
       raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
       }}\n{% endif %}"
+    cool_min_hysteresis: 0.35
+    cool_limits_reordered: '{{ cool_on is not none and cool_off is not none and (cool_on
+      | float) <= ((cool_off | float) + (cool_min_hysteresis | float(0.35))) }}'
+    cool_off_validated: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{
+      (cool_off | float) | round(2) }}\n{% endif %}"
+    cool_on_validated: "{% if cool_on is none %}\n  {{ none }}\n{% elif cool_off_validated
+      is none %}\n  {{ (cool_on | float) | round(2) }}\n{% elif cool_limits_reordered
+      %}\n  {{ ((cool_off_validated | float) + (cool_min_hysteresis | float(0.35)))
+      | round(2) }}\n{% else %}\n  {{ (cool_on | float) | round(2) }}\n{% endif %}"
+    cool_sensor_off_semantics: sensor_critico_hard_stop
+    cool_sensor_off_between_band: "{% if cool_sensor_off is none or cool_off_validated
+      is none or cool_on_validated is none %}\n  {{ false }}\n{% else %}\n  {{ (cool_sensor_off
+      | float) > (cool_off_validated | float) and (cool_sensor_off | float) < (cool_on_validated
+      | float) }}\n{% endif %}"
+    cool_contract_off_source_label: promedio + sensor_critico
     cool_setpoint_contract: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n
       \ {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
     cool_setpoint_theoretical: '{{ cool_setpoint_contract }}'
@@ -3832,6 +3870,21 @@
       | default('''', true) | trim }}'
     cool_cycle_contract_reason: '{{ states(''input_text.ac_cool_cycle_contract_reason'')
       | default('''', true) | trim }}'
+    cool_cycle_min_hysteresis: 0.35
+    cool_cycle_contract_limits_reordered: '{{ cool_cycle_contract_on is not none and
+      cool_cycle_contract_off is not none and (cool_cycle_contract_on | float) <=
+      ((cool_cycle_contract_off | float) + (cool_cycle_min_hysteresis | float(0.35)))
+      }}'
+    cool_cycle_contract_off_validated: "{% if cool_cycle_contract_off is none %}\n
+      \ {{ none }}\n{% else %}\n  {{ (cool_cycle_contract_off | float) | round(2)
+      }}\n{% endif %}"
+    cool_cycle_contract_on_validated: "{% if cool_cycle_contract_on is none %}\n  {{
+      none }}\n{% elif cool_cycle_contract_limits_reordered %}\n  {{ ((cool_cycle_contract_off_validated
+      | float) + (cool_cycle_min_hysteresis | float(0.35))) | round(2) }}\n{% else
+      %}\n  {{ (cool_cycle_contract_on | float) | round(2) }}\n{% endif %}"
+    cool_cycle_contract_validation_warning: "{% if cool_cycle_contract_limits_reordered
+      %}\n  warn_reorden_umbral_cool:on_leq_off+histeresis\n{% else %}\n  none\n{%
+      endif %}"
     cool_cycle_contract_started_at_raw: '{{ states(''input_datetime.ac_cool_cycle_contract_started_at'')
       }}'
     cool_cycle_contract_active: "{{ states('input_text.ac_last_auto_branch') == 'cool_normal_on'\n
@@ -3969,8 +4022,8 @@
       | float) }}'
     manual_off_block_txt: '{{ ''ON'' if manual_off_block else ''OFF'' }}'
     cool_main_control_demand: "{{ (not emergency_latched)\n   and cur_mode != 'cool'\n
-      \  and tin is not none\n   and cool_on is not none\n   and (tin | float) >=
-      (cool_on | float) }}"
+      \  and tin is not none\n   and cool_on_validated is not none\n   and (tin |
+      float) >= (cool_on_validated | float) }}"
     cool_main_control_error: "{{ cool_main_control_demand\n   and auto_on_allowed\n
       \  and auto_on_presence_gate\n   and (not recent_any_auto_on)\n   and (not locked
       or last_mode_no_fan != 'heat')\n   and (cool_setpoint is none or cool_setpoint_effective
@@ -3987,14 +4040,17 @@
       last_mode_no_fan == ''heat'' %}lock_heat {% else %}compuerta{% endif %}'
     cool_main_control_audit: "{% if cool_main_control_error %}\n  main_control_error
       | branch=cool | reason=sp_template | Tin={{ tin if tin is not none else 'na'
-      }} | On={{ cool_on if cool_on is not none else 'na' }} | SPt={{ cool_setpoint
+      }} | On={{ cool_on_validated if cool_on_validated is not none else 'na' }} |
+      SPt={{ cool_setpoint
       if cool_setpoint is not none else 'na' }} | SPe={{ cool_setpoint_effective if
       cool_setpoint_effective is not none else 'na' }} | Bucket={{ cool_context_detail
-      }} | Trig={{ trig }}\n{% elif cool_main_control_blocked %}\n  main_control_blocked
+      }} | Trig={{ trig }} | Warn={{ 'reorden_on_off' if cool_limits_reordered else
+      'none' }}\n{% elif cool_main_control_blocked %}\n  main_control_blocked
       | branch=cool | reason={{ cool_main_control_block_reason }} | Tin={{ tin if
-      tin is not none else 'na' }} | On={{ cool_on if cool_on is not none else 'na'
-      }} | Bucket={{ cool_context_detail }} | Trig={{ trig }}\n{% else %}\n  none\n{%
-      endif %}"
+      tin is not none else 'na' }} | On={{ cool_on_validated if cool_on_validated
+      is not none else 'na' }} | Bucket={{ cool_context_detail }} | Trig={{ trig }}
+      | Warn={{ 'reorden_on_off' if cool_limits_reordered else 'none' }}\n{% else
+      %}\n  none\n{% endif %}"
     ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    /5min\n  {% elif trigger.platform == 'state' %}\n    {{ trigger.entity_id
