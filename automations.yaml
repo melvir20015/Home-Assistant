@@ -777,6 +777,29 @@
   - choose:
     - conditions:
       - condition: template
+        value_template: '{{ night_ramp_in_progress }}'
+      sequence:
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: night_loop_preempted_by_new_trigger
+        service: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: night_loop_preempted_by_new_trigger
+        service: input_text.set_value
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: night_loop_preempted_by_new_trigger | trigger={{ trigger.platform
+            if trigger is defined else 'unknown' }} | ts={{ now().strftime('%Y-%m-%d
+            %H:%M:%S') }}
+          entity_id: '{{ climate_ent }}'
+    default: []
+  - choose:
+    - conditions:
+      - condition: template
         value_template: '{{ (not presence_ok) and cur_mode != ''off'' }}'
       sequence:
       - target:
@@ -1404,7 +1427,7 @@
           entity_id: input_boolean.ac_on_por_automatizacion
         service: input_boolean.turn_off
     default: []
-  mode: single
+  mode: restart
   variables:
     climate_ent: climate.0200009211c7_climate
     notify_service: notify.mobile_app_samsung_s24

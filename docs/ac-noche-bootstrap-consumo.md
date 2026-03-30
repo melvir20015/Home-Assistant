@@ -110,10 +110,23 @@ La notificación móvil de arranque también cambió para describir:
 
 - No inicia un nuevo ciclo si el AC se apagó hace menos de `8` minutos.
 - No reentra si `input_boolean.ac_night_cool_bootstrap_in_progress` ya está en `on`.
-- Aunque la rampa sigue siendo un loop persistente dentro de una automatización en
-  `mode: single`, las decisiones críticas ya no usan snapshots del bloque inicial:
-  cada paso relee sensores/estado con `states(...)` y helpers derivados locales del
-  propio `repeat`.
+- Política de concurrencia activa: `mode: restart`. Si entra un trigger nuevo
+  mientras una corrida larga sigue viva, Home Assistant cancela la corrida previa
+  y relanza la automatización con variables frescas.
+- Al detectar `night_ramp_in_progress` al inicio de una nueva ejecución, se deja
+  traza explícita `night_loop_preempted_by_new_trigger` en:
+  - `input_text.ac_last_auto_branch`
+  - `input_text.ac_last_auto_action`
+  - `logbook.log` (`AC Auto Trace`)
+- Con `restart`, la rama de apagado por confort (`cool_off_reason != 'none'`) se
+  evalúa en la corrida nueva inmediatamente, sin esperar a que termine un loop viejo.
+- Tradeoff documentado: `queued` también evita perder triggers, pero prioriza orden
+  de llegada y puede introducir latencia (ejecuciones en cola con estado envejecido).
+  Para este caso se prefiere `restart` porque maximiza frescura de decisión y evita
+  falsos “no se apaga” cuando cambian sensores durante una rampa larga.
+- Aunque la rampa sigue siendo un loop persistente, las decisiones críticas no usan
+  snapshots del bloque inicial: cada paso relee sensores/estado con `states(...)`
+  y helpers derivados locales del propio `repeat`.
 - Se detiene si se pierde presencia.
 - Se detiene si el equipo sale de `cool`.
 - Se detiene en cuanto la razón de apagado vigente indique `Promedio` o el sensor
