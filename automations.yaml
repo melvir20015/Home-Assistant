@@ -933,6 +933,31 @@
         service: '{{ notify_service }}'
     - conditions:
       - condition: template
+        value_template: "{{ night_ramp_in_progress\n   and cur_mode != 'cool'\n   and (minutes_since_last_off | float(99999)) >= (night_ramp_stale_reset_min |
+          float(20))\n}}"
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
+        service: input_boolean.turn_off
+      - target:
+          entity_id: input_text.ac_last_auto_branch
+        data:
+          value: cool_night_ramp_stale_flag_reset
+        service: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_auto_action
+        data:
+          value: ramp_flag_auto_reset
+        service: input_text.set_value
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: cool_night_ramp_stale_flag_reset | cur_mode={{ cur_mode }} | minutes_since_last_off={{
+            (minutes_since_last_off | float(99999)) | round(2) }} | threshold={{ night_ramp_stale_reset_min
+            }} | ts={{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+          entity_id: '{{ climate_ent }}'
+    - conditions:
+      - condition: template
         value_template: "{{ cur_mode != 'cool'\n   and tin is not none and tout is
           not none\n   and (\n     (\n       (tout|float) < 17\n       and (tout|float)
           >= (cool_emergency_outdoor_min|float)\n       and (cool_emergency_on is
@@ -1437,6 +1462,7 @@
       | float(0) }}'
     minutes_since_last_off: '{{ ((as_timestamp(now()) - last_off_ts) / 60) if last_off_ts
       else 99999 }}'
+    night_ramp_stale_reset_min: 20
     last_effective_ts: '{{ state_attr(''input_datetime.ac_night_cool_last_effective_ts'',
       ''timestamp'') | float(0) }}'
     hours_since_last_effective: '{{ ((as_timestamp(now()) - last_effective_ts) / 3600)

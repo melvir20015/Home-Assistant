@@ -121,3 +121,33 @@ La notificación móvil de arranque también cambió para describir:
 - Se detiene explícitamente si el loop sale de la ventana `21:00–07:00`.
 - Se detiene por timeout de seguridad tras `180` minutos para evitar ejecuciones
   eternas ante estados inconsistentes.
+
+## Recuperación automática de flag de rampa atascado
+
+Se agregó una compuerta de sanidad para limpiar automáticamente
+`input_boolean.ac_night_cool_bootstrap_in_progress` cuando queda pegado en `on`
+por reinicios o errores, pero el equipo **ya no está en `cool`**.
+
+La limpieza se ejecuta al inicio de la evaluación nocturna cuando se cumple:
+
+- `night_ramp_in_progress == true`
+- `cur_mode != 'cool'`
+- `minutes_since_last_off >= night_ramp_stale_reset_min` (umbral configurable,
+  por defecto `20` minutos)
+
+Acciones de recuperación:
+
+- apaga `input_boolean.ac_night_cool_bootstrap_in_progress`;
+- registra `input_text.ac_last_auto_branch = cool_night_ramp_stale_flag_reset`;
+- registra `input_text.ac_last_auto_action = ramp_flag_auto_reset`;
+- deja evidencia en `logbook.log` con `cur_mode`, minutos desde último apagado,
+  umbral aplicado y timestamp.
+
+Esta recuperación **no compromete** la protección anti-ciclo-corto:
+`cool_ramp_short_cycle_guard_min` se mantiene intacto y sigue validándose al
+momento de permitir un nuevo encendido en `cool`. Es decir, esta rama sólo limpia
+estado inválido; no fuerza encendidos.
+
+Ejemplo de traza esperada:
+
+- `cool_night_ramp_stale_flag_reset | cur_mode=off | minutes_since_last_off=34.2 | threshold=20 | ts=2026-03-30 02:15:00`
