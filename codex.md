@@ -1,0 +1,250 @@
+# Documento fuente de verdad: Diseño y operación de la automatización HVAC
+
+## 1. Propósito y alcance
+
+### Objetivo general
+Definir el contrato operativo de una automatización de confort térmico para un apartamento de **800 ft²**, priorizando estabilidad, eficiencia y claridad de comportamiento para ocupación humana real.
+
+### Cobertura temporal
+- La automatización cubre como franja principal el **horario diurno** (periodo de uso más frecuente).
+- Fuera de la franja diurna, el sistema puede operar con reglas complementarias de menor agresividad para evitar oscilaciones innecesarias.
+
+### Relación con control nocturno
+- Si existe control nocturno separado, este documento actúa como contrato de referencia para evitar contradicciones.
+- El modo nocturno debe:
+  - respetar límites de seguridad térmica,
+  - no sobrescribir aprendizaje contextual fuera de su ámbito,
+  - devolver el control al contrato diurno sin discontinuidades al inicio del siguiente periodo.
+
+---
+
+## 2. Definiciones y entidades
+
+### Climate principal
+- Entidad principal de climatización (ejemplo: `climate.sala`).
+- Modos esperados para este contrato: `off`, `fan_only`, `cool`.
+- Cambios a `heat` son tratados como intervención explícita del usuario y bloquean automatismos incompatibles.
+
+### Sensores internos (temperatura/humedad)
+- Fuente primaria para decisión térmica:
+  - temperatura interior (`sensor.temp_interior`),
+  - humedad interior (`sensor.humedad_interior`).
+- Deben ser estables y con actualización periódica confiable.
+
+### Fuente exterior OpenWeather
+- Fuente auxiliar para contexto ambiental externo:
+  - temperatura exterior,
+  - humedad exterior (si está disponible),
+  - condición climática resumida.
+- Se usa para modular umbrales y aprendizaje contextual.
+
+### Presencia
+La presencia válida se considera **activa** cuando se cumple:
+1. detección de movimiento estable durante **3 minutos**, y
+2. confirmación de presencia del dispositivo **S24/home**.
+
+### Helpers exclusivos de esta automatización
+Todos los helpers listados aquí son de uso exclusivo y no deben compartirse con otras automatizaciones.
+
+- `input_boolean.hvac_auto_gate` — compuerta maestro AUTO ON/OFF.
+- `input_boolean.hvac_manual_override` — marca intervención manual temporal.
+- `input_boolean.hvac_emergency_mode` — estado de rama de emergencia.
+- `input_number.hvac_context_setpoint` — setpoint aprendido por contexto.
+- `input_text.hvac_context_key` — clave de contexto activa.
+- `input_datetime.hvac_last_manual_action` — trazabilidad de última acción manual.
+- `timer.hvac_post_cool_dry` — secado post-cool (3 min).
+
+---
+
+## 3. Reglas de presencia y seguridad
+
+### Compuerta de AUTO ON/OFF
+- Si `hvac_auto_gate = ON`, la automatización puede actuar según el contrato.
+- Si `hvac_auto_gate = OFF`, la automatización no debe cambiar modo ni setpoint (excepto protecciones de seguridad definidas).
+
+### Excepción por encendido manual con botón físico
+- Cuando el usuario enciende manualmente desde botón físico, el evento se respeta como intención prioritaria.
+- Se habilita `hvac_manual_override` durante la ventana de transición/confirmación.
+- No se debe apagar ni revertir de inmediato por falta temporal de condiciones automáticas.
+
+### Comportamiento ante pérdida de presencia
+- Si se pierde presencia válida:
+  - se inicia ventana de gracia corta para evitar apagados por ruido,
+  - tras confirmarse ausencia sostenida, se permite transición a estado de ahorro (`off` o `fan_only` según reglas activas),
+  - se preserva contexto para reanudación rápida cuando vuelva presencia.
+
+---
+
+## 4. Contrato térmico
+
+### Fórmulas base
+Se define el umbral de apagado de frío (`cool_off`) y encendido (`cool_on`) con histéresis positiva:
+
+- `cool_off = T_objetivo_contexto + ajuste_estacional + ajuste_franja + ajuste_clima`
+- `cool_on = cool_off + h`
+
+Donde:
+- `h` = histéresis (valor recomendado: `0.6 °C`, ajustable entre `0.4` y `0.8`).
+- Encender frío cuando `T_interior >= cool_on`.
+- Apagar frío cuando `T_interior <= cool_off`.
+
+### Tablas por estación / franja / clima
+
+#### Ajuste estacional (`ajuste_estacional`)
+- Verano: `+0.3`
+- Entretiempo: `0.0`
+- Invierno cálido interior: `-0.2`
+
+#### Ajuste por franja (`ajuste_franja`)
+- Diurna principal: `0.0`
+- Pre-nocturna (si aplica): `-0.2`
+
+#### Ajuste por clima exterior (`ajuste_clima`)
+- Exterior muy cálido/húmedo: `+0.2`
+- Exterior templado: `0.0`
+- Exterior fresco: `-0.2`
+
+### Límites de seguridad
+- Nunca forzar setpoint automático fuera de rangos de seguridad.
+- Evitar ciclos cortos mediante histéresis y ventanas mínimas de permanencia.
+
+### Setpoint contractual
+El setpoint objetivo de operación en `cool` debe cumplir:
+
+- `setpoint_contractual = floor(cool_off) - 1`
+- Rango obligatorio: **`[17, 23]`**
+
+Aplicación:
+- `setpoint_final = clamp(setpoint_contractual, 17, 23)`
+
+---
+
+## 5. Rama de emergencia
+
+### Criterios de entrada
+Se entra a emergencia cuando ocurra cualquiera de las siguientes condiciones críticas:
+- temperatura interior por encima de umbral extremo definido,
+- inconsistencia severa de sensores principales,
+- comportamiento anómalo del climate (sin respuesta en ventana operativa),
+- regla explícita de seguridad activada por el usuario.
+
+### Criterios de salida
+- Se recuperan sensores confiables y estado normal del equipo por una ventana estable.
+- Se desactiva condición crítica que originó el estado.
+- Se registra evento de salida y se reengancha al contrato estándar de forma progresiva.
+
+### Prioridades y bloqueos
+- En emergencia, las reglas normales quedan subordinadas.
+- Se bloquean automatismos no críticos (aprendizaje y microajustes) hasta estabilizar.
+- La seguridad del equipo y del confort básico prevalece sobre optimización energética.
+
+---
+
+## 6. Aprendizaje contextual
+
+### Clave de contexto
+- La clave contextual (`hvac_context_key`) debe componerse con variables estables, por ejemplo:
+  - estación,
+  - franja horaria,
+  - estado exterior resumido,
+  - presencia válida.
+
+### Reglas de ajuste por interacción manual
+- **Manual OFF**: ajustar contexto con `+0.25`.
+- **Manual ON**: ajustar contexto con `-0.25`.
+
+Interpretación: reflejar preferencia del usuario en la dirección esperada para reducir fricción futura.
+
+### Espera de 60 s para captura final en manual ON
+- Ante encendido manual con intención de uso térmico, esperar **60 s** antes de capturar valor final para aprendizaje.
+- Evita registrar valores transitorios durante cambios de modo.
+
+### Setpoint por contexto sin regresión
+- El setpoint aprendido por contexto no debe retroceder por ruido o eventos ambiguos.
+- Si el usuario define un nuevo valor manual válido, este **reemplaza de inmediato** al valor contextual previo.
+
+---
+
+## 7. Flujo manual power (`off -> fan_only`)
+
+### Secuencia base
+1. Detectar transición manual `off -> fan_only`.
+2. Esperar **30 s**.
+3. Ejecutar auto-cambio a `cool` cuando se mantengan condiciones del contrato.
+
+### Excepciones
+- Si durante la espera o inmediatamente después el usuario cambia explícitamente a `heat`,
+  - cancelar auto-cambio a `cool`,
+  - registrar excepción,
+  - respetar preferencia manual.
+
+### Aprendizaje asociado
+- Registrar la secuencia como señal contextual de intención de enfriamiento asistido.
+- Integrar al aprendizaje sólo si no hubo conflicto de modo.
+
+---
+
+## 8. Secado post-cool
+
+Al terminar ciclo de `cool`, activar `fan_only` por **3 minutos** para secado post-cool y reducción de humedad residual del sistema.
+
+- Inicio: transición de salida de `cool`.
+- Fin: expiración de `timer.hvac_post_cool_dry`.
+- Cancelación: intervención manual incompatible o entrada de emergencia.
+
+---
+
+## 9. Notificaciones
+
+### Tipos
+- **ON**: activación de enfriamiento o transición relevante de encendido.
+- **OFF**: apagado o paso a estado de ahorro.
+- **Aprendizaje**: actualización contextual por acciones manuales.
+
+### Formato compacto con decimales
+- Mensajes deben incluir valores clave (temperatura interior, `cool_on`, `cool_off`, setpoint) con **1 decimal** cuando aplique.
+- Priorizar estructura breve y consistente.
+
+### Abreviaturas oficiales
+- `Tin`: temperatura interior.
+- `Tout`: temperatura exterior.
+- `Hin`: humedad interior.
+- `SP`: setpoint.
+- `Ctx`: contexto.
+- `Emg`: emergencia.
+
+### Política de recorte para S24
+- Limitar longitud para garantizar lectura en notificación móvil S24.
+- Priorizar: acción + motivo + valor crítico.
+- Mover detalles extendidos al logbook.
+
+---
+
+## 10. Observabilidad y mantenimiento
+
+### Eventos de logbook requeridos
+Registrar como mínimo:
+- cambios de modo automáticos y manuales detectados,
+- entrada/salida de emergencia,
+- aplicación de setpoint contractual,
+- ajustes de aprendizaje contextual,
+- bloqueos por presencia o por compuerta AUTO.
+
+### Checklist para futuras modificaciones
+Antes de cambiar reglas:
+1. Validar impacto en histéresis y ciclos cortos.
+2. Verificar compatibilidad con presencia y seguridad.
+3. Confirmar que no rompe flujo manual `off -> fan_only`.
+4. Revisar notificaciones compactas para S24.
+5. Documentar decisión en sección de trazabilidad.
+
+### Criterios para no mezclar helpers
+- Cada helper de este contrato debe tener prefijo `hvac_` y propósito único.
+- Prohibido reutilizar estos helpers en otras automatizaciones.
+- Si se requiere dato compartido, crear helper neutro separado y documentarlo explícitamente.
+
+---
+
+## Decisiones tomadas (fecha y motivo)
+
+- **2026-04-05** — Se crea `codex.md` como fuente de verdad inicial del contrato HVAC para centralizar diseño, operación, seguridad, aprendizaje y mantenibilidad en un único documento trazable.
