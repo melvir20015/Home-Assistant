@@ -1674,6 +1674,11 @@
         value_template: '{{ presence_away_30m and cur_mode != ''off'' and (not manual_override_active)
           }}'
       sequence:
+      - service: logbook.log
+        data:
+          name: AC DDA Audit
+          message: ac_dda_branch=presence_off | trigger={{ trig }} | mode={{ cur_mode }}
+          entity_id: climate.0200009211c7_climate
       - variables:
           cool_cycle_contract_snapshot: Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason
             not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source
@@ -1753,7 +1758,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_off
         service: input_text.set_value
@@ -1895,6 +1900,12 @@
           != 'cool'\n     or (ac_set | float(0)) != (emergency_setpoint | float)\n
           \    or ac_fan != emergency_fan_mode\n   ) }}"
       sequence:
+      - service: logbook.log
+        data:
+          name: AC DDA Audit
+          message: ac_dda_branch=emergency_on | trigger={{ trig }} | mode={{ cur_mode
+            }}
+          entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
           - condition: template
@@ -1928,7 +1939,7 @@
           value: auto_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_on
         service: input_text.set_value
@@ -2011,7 +2022,7 @@
           hvac_mode: cool
         service: climate.set_hvac_mode
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: cool_emergency_on
         service: input_text.set_value
@@ -2075,6 +2086,11 @@
         value_template: '{{ emergency_latched and emergency_off_ready and cur_mode
           != ''off'' and (not manual_override_active) }}'
       sequence:
+      - service: logbook.log
+        data:
+          name: AC DDA Audit
+          message: ac_dda_branch=emergency_off | trigger={{ trig }} | mode={{ cur_mode }}
+          entity_id: climate.0200009211c7_climate
       - variables:
           cool_cycle_contract_snapshot: Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason
             not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source
@@ -2152,7 +2168,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_off
         service: input_text.set_value
@@ -2313,7 +2329,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_off
         service: input_text.set_value
@@ -2363,13 +2379,13 @@
           value: '{{ sensor_delta }}'
         service: input_number.set_value
       - variables:
-          cycle_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim
+          cycle_bucket: '{{ states(''input_text.ac_dda_last_context_bucket'') | trim
             }}'
           effective_bucket: '{% set raw = cycle_bucket %} {% if raw in ['''', ''unknown'',
             ''unavailable'', ''none''] %} exterior_templado:humedad_normal:franja_1001_1500:desconocido:presencia
             {% else %} {{ raw.split('':subiendo'')[0].split('':bajando'')[0].split('':estable'')[0]
             }} {% endif %}'
-          effective_bucket_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_''
+          effective_bucket_helper: '{{ ''input_number.ac_dda_cool_effective_sp_bucket_''
             ~ (effective_bucket | replace('':'',''_'') ) }}'
           effective_summary: '{{ ((effective_bucket ~ ''='' ~ (''%.2f'' | format(ac_set
             | float(0))))[:255]) }}'
@@ -2379,7 +2395,7 @@
           value: '{{ ac_set if ac_set is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_text.ac_cool_effective_setpoint_map
+          entity_id: input_text.ac_dda_cool_effective_setpoint_map
         data:
           value: '{{ effective_summary }}'
         service: input_text.set_value
@@ -2466,7 +2482,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_off
         service: input_text.set_value
@@ -2574,6 +2590,11 @@
           is not none and (t2 | float) <= (cool_cycle_contract_sensor_off | float))
           ) }}'
       sequence:
+      - service: logbook.log
+        data:
+          name: AC DDA Audit
+          message: ac_dda_branch=cool_normal_off | trigger={{ trig }} | mode={{ cur_mode }}
+          entity_id: climate.0200009211c7_climate
       - variables:
           cool_cycle_off_cause: "{% if tin is not none and cool_cycle_contract_off_validated
             is not none and (tin | float) <= (cool_cycle_contract_off_validated | float)
@@ -2672,7 +2693,7 @@
           value: cool_normal_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_context_bucket
+          entity_id: input_text.ac_dda_last_context_bucket
         data:
           value: '{{ cool_context_detail }}'
         service: input_text.set_value
@@ -2682,7 +2703,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_off
         service: input_text.set_value
@@ -2874,7 +2895,7 @@
           value: auto_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_on
         service: input_text.set_value
@@ -2980,6 +3001,12 @@
           float)\n   and cur_mode != 'cool'\n   and (not locked or last_mode_no_fan
           != 'heat') }}"
       sequence:
+      - service: logbook.log
+        data:
+          name: AC DDA Audit
+          message: ac_dda_branch=cool_normal_on | trigger={{ trig }} | mode={{ cur_mode
+            }}
+          entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
           - condition: template
@@ -3008,7 +3035,7 @@
           value: cool_normal_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_context_bucket
+          entity_id: input_text.ac_dda_last_context_bucket
         data:
           value: '{{ cool_context_detail }}'
         service: input_text.set_value
@@ -3018,7 +3045,7 @@
           value: auto_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_on
         service: input_text.set_value
@@ -3089,45 +3116,45 @@
             if cool_setpoint_effective is not none else 0) }}"
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_cool_cycle_contract_on
+          entity_id: input_number.ac_dda_cool_cycle_contract_on
         data:
           value: '{{ cool_on_validated if cool_on_validated is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_cool_cycle_contract_off
+          entity_id: input_number.ac_dda_cool_cycle_contract_off
         data:
           value: '{{ cool_off_validated if cool_off_validated is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_cool_cycle_contract_sensor_off
+          entity_id: input_number.ac_dda_cool_cycle_contract_sensor_off
         data:
           value: '{{ cool_sensor_off if cool_sensor_off is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_cool_cycle_contract_setpoint
+          entity_id: input_number.ac_dda_cool_cycle_contract_setpoint
         data:
           value: '{{ cool_setpoint_contract if cool_setpoint_contract is not none
             else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_cool_cycle_contract_setpoint_effective
+          entity_id: input_number.ac_dda_cool_cycle_contract_setpoint_effective
         data:
           value: "{{ ac_set_effective_normalized\n   if manual_sp_protected_lock_active
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
             if cool_setpoint_effective is not none else 0) }}"
         service: input_number.set_value
       - target:
-          entity_id: input_text.ac_cool_cycle_contract_bucket
+          entity_id: input_text.ac_dda_cool_cycle_contract_bucket
         data:
           value: '{{ cool_context_detail }}'
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_cool_cycle_contract_reason
+          entity_id: input_text.ac_dda_cool_cycle_contract_reason
         data:
           value: '{{ cool_off_learning_source }}'
         service: input_text.set_value
       - target:
-          entity_id: input_datetime.ac_cool_cycle_contract_started_at
+          entity_id: input_datetime.ac_dda_cool_cycle_contract_started_at
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
@@ -3164,7 +3191,7 @@
                 service: input_number.set_value
             default: []
           - target:
-              entity_id: input_text.ac_cool_effective_setpoint_map
+              entity_id: input_text.ac_dda_cool_effective_setpoint_map
             data:
               value: '{{ ((cool_context_bucket ~ ''='' ~ (''%.2f'' | format(cool_setpoint
                 | float(0))))[:255]) }}'
@@ -3209,7 +3236,7 @@
               manual_lock_state: '{{ manual_sp_lock_active }}'
               bucket: '{{ cool_context_bucket }}'
           - target:
-              entity_id: input_text.ac_last_change_origin
+              entity_id: input_text.ac_dda_last_change_origin
             data:
               value: manual_override
             service: input_text.set_value
@@ -3257,7 +3284,7 @@
             manual_lock_state: '{{ manual_sp_lock_active }}'
             bucket: '{{ cool_context_bucket }}'
         - target:
-            entity_id: input_text.ac_last_change_origin
+            entity_id: input_text.ac_dda_last_change_origin
           data:
             value: auto_on
           service: input_text.set_value
@@ -3340,13 +3367,13 @@
       - variables:
           cool_push_kind: true
           cool_push_reason: Mot=auto umbral
-          cool_push_summary: '{% set contract_bucket = states(''input_text.ac_cool_cycle_contract_bucket'')
-            | default('''', true) | trim %} {% set contract_calc = states(''input_text.ac_cool_cycle_contract_reason'')
-            | default('''', true) | trim %} {% set contract_on = states(''input_number.ac_cool_cycle_contract_on'')
-            | float(none) %} {% set contract_off = states(''input_number.ac_cool_cycle_contract_off'')
-            | float(none) %} {% set contract_sensor_off = states(''input_number.ac_cool_cycle_contract_sensor_off'')
-            | float(none) %} {% set contract_setpoint = states(''input_number.ac_cool_cycle_contract_setpoint'')
-            | float(none) %} {% set contract_setpoint_effective = states(''input_number.ac_cool_cycle_contract_setpoint_effective'')
+          cool_push_summary: '{% set contract_bucket = states(''input_text.ac_dda_cool_cycle_contract_bucket'')
+            | default('''', true) | trim %} {% set contract_calc = states(''input_text.ac_dda_cool_cycle_contract_reason'')
+            | default('''', true) | trim %} {% set contract_on = states(''input_number.ac_dda_cool_cycle_contract_on'')
+            | float(none) %} {% set contract_off = states(''input_number.ac_dda_cool_cycle_contract_off'')
+            | float(none) %} {% set contract_sensor_off = states(''input_number.ac_dda_cool_cycle_contract_sensor_off'')
+            | float(none) %} {% set contract_setpoint = states(''input_number.ac_dda_cool_cycle_contract_setpoint'')
+            | float(none) %} {% set contract_setpoint_effective = states(''input_number.ac_dda_cool_cycle_contract_setpoint_effective'')
             | float(none) %} Bucket={{ contract_bucket if contract_bucket not in ['''',
             ''unknown'', ''unavailable'', ''none''] else cool_context_detail }} |
             Calc={{ contract_calc if contract_calc not in ['''', ''unknown'', ''unavailable'',
@@ -3446,7 +3473,7 @@
           manual_lock_state: '{{ manual_sp_lock_active }}'
           bucket: '{{ cool_context_bucket }}'
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: manual_override
         service: input_text.set_value
@@ -3509,7 +3536,7 @@
           manual_lock_state: '{{ manual_sp_lock_active }}'
           bucket: '{{ cool_context_bucket }}'
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: cool_sp_sync
         service: input_text.set_value
@@ -3623,7 +3650,7 @@
     presence_real_now: '{{ mov_raw == ''on'' }}'
     presence_phone_home: '{{ (s24_raw in [''home'',''on'']) or (person_raw == ''home'')
       }}'
-    manual_presence_until_raw: '{{ states(''input_datetime.ac_manual_presence_until'')
+    manual_presence_until_raw: '{{ states(''input_datetime.ac_dda_manual_presence_until'')
       }}'
     presence_temp_from_manual: "{% if manual_presence_until_raw in ['unknown','unavailable','none','']
       %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw)
@@ -3643,9 +3670,9 @@
     learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
     cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0)
       }}'
-    cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'')
+    cool_learning_summary_raw: '{{ states(''input_text.ac_dda_cool_contextual_learning_map'')
       | trim }}'
-    cool_effective_sp_summary_raw: '{{ states(''input_text.ac_cool_effective_setpoint_map'')
+    cool_effective_sp_summary_raw: '{{ states(''input_text.ac_dda_cool_effective_setpoint_map'')
       | trim }}'
     last_manual_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'') }}'
     cool_tod_bucket: "{% set hm = now().strftime('%H:%M') %}\n{% if '07:00' <= hm
@@ -3711,9 +3738,9 @@
     cool_effective_sp_summary_note: '{% if cool_effective_sp_summary_raw in ['''',
       ''unknown'', ''unavailable'', ''none''] %}sin_resumen {% else %}{{ cool_effective_sp_summary_raw
       }}{% endif %}'
-    cool_context_learning_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~
+    cool_context_learning_helper: '{{ ''input_number.ac_dda_cool_learning_bucket_'' ~
       (cool_context_bucket | replace('':'',''_'') ) }}'
-    cool_effective_sp_helper: '{{ ''input_number.ac_cool_effective_sp_bucket_'' ~
+    cool_effective_sp_helper: '{{ ''input_number.ac_dda_cool_effective_sp_bucket_'' ~
       (cool_context_bucket | replace('':'',''_'') ) }}'
     cool_context_learning_summary_value: "{% set raw = cool_learning_summary_note
       | default('', true) | trim %} {% set prefix = cool_context_bucket ~ '=' %} {%
@@ -3760,77 +3787,104 @@
       [[raw, 26.0] | min, (heat_on | float) + 0.6] | max | round(2) }}\n{% endif %}"
     heat_setpoint: '{% set raw = 28 + (bias_heat_setpoint if learning_enabled else
       0) %} {{ [[raw, 30] | min, 24] | max | round(1) }}'
-    cool_on_base: "{% if tout is none %}\n  {{ none }}\n{% elif tout < 17 %}\n  {{
-      none }}\n{% else %}\n  {% set anchor_tout = 18.1 %}\n  {% set anchor_cool_on
-      = 24.0 %}\n  {% set k = 0.10 %}\n  {% set offset = 0.5 %}\n  {% set humidity_adj
-      = 0 if hin is none else (-0.25 if hin >= 65 else -0.10 if hin >= 58 else 0)
-      %}\n  {% set raw = (anchor_cool_on - (k * (tout - anchor_tout))) + offset +
-      humidity_adj %}\n  {{ [[raw, 24.7] | min, 24.0] | max | round(2) }}\n{% endif
-      %}"
-    cool_demand_score: "{% if cool_contextual_base_off is none %}\n  {{ none }}\n{%
-      else %}\n  {% set score = 0 %}\n  {% if tin is not none %}\n    {% set score
-      = score + ((((tin | float) - 23.0) * 18) | round(0) | int) %}\n  {% endif %}\n
-      \ {% if tout is not none %}\n    {% set score = score + ((((tout | float) -
-      24.0) * 8) | round(0) | int) %}\n  {% endif %}\n  {% if hin is not none %}\n
-      \   {% set score = score + ((((hin | float) - 55.0) * 1.0) | round(0) | int)
-      %}\n  {% endif %}\n  {% set score = score + (10 if cool_tod_bucket == 'franja_1001_1500'
-      else 6 if cool_tod_bucket == 'franja_1501_1800' else 3 if cool_tod_bucket ==
-      'franja_1801_2059' else 1 if cool_tod_bucket == 'franja_0700_1000' else -2)
-      %}\n  {% set score = score + (7 if cool_weather_bucket == 'soleado' else 5 if
-      cool_weather_bucket == 'tormenta' else 4 if cool_weather_bucket == 'parcial'
-      else 2 if cool_weather_bucket == 'lluvia' else 1 if cool_weather_bucket == 'nublado'
-      else -1 if cool_weather_bucket == 'niebla' else 0) %}\n  {% set score = score
-      + (-8 if cool_presence_bucket == 'ausencia' else 6) %}\n  {% set score = score
-      + (6 if cool_thermal_trend_bucket == 'subiendo' else -4 if cool_thermal_trend_bucket
-      == 'bajando' else 0) %}\n  {{ score | int }}\n{% endif %}"
-    cool_off_learning_source: "{% if cool_contextual_base_off is none %}\n  none\n{%
-      elif cool_context_learning_entry is not none %}\n  aprendizaje\n{% else %}\n
-      \ base_contextual\n{% endif %}"
-    cool_off_target: "{% if cool_contextual_base_off is none %}\n  {{ none }}\n{%
-      else %}\n  {% set learned = cool_context_learning_entry %}\n  {% set raw = learned
-      if learned is not none else cool_contextual_base_off %}\n  {% set demand_adj
-      = 0 if cool_demand_score is none else [(((cool_demand_score | float) - 20) *
-      0.008), 0.18] | min %}\n  {% set trend_adj = -0.05 if cool_thermal_trend_bucket
-      == 'subiendo' else 0.03 if cool_thermal_trend_bucket == 'bajando' else 0 %}\n
-      \ {% set weather_adj = -0.05 if cool_weather_bucket in ['soleado', 'tormenta']
-      else -0.02 if cool_weather_bucket == 'parcial' else 0 %}\n  {% set presence_adj
-      = 0.05 if cool_presence_bucket == 'ausencia' else 0 %}\n  {% set raw = raw -
-      demand_adj + trend_adj + weather_adj + presence_adj %}\n  {{ [[raw, 25.7] |
-      min, 22.4] | max | round(2) }}\n{% endif %}"
-    cool_off: '{{ cool_off_target }}'
-    cool_on_target: "{% if cool_off_target is none %}\n  {{ none }}\n{% else %}\n
-      \ {% set spread = 0.52 %}\n  {% set spread = spread + (0.04 if cool_presence_bucket
-      == 'ausencia' else 0) %}\n  {% set spread = spread + (0.03 if cool_tod_bucket
-      in ['franja_0700_1000', 'franja_fuera_rango'] else 0) %}\n  {% set spread =
-      spread - (0.03 if cool_weather_bucket in ['soleado', 'tormenta'] else 0) %}\n
-      \ {% set spread = spread - (0.04 if cool_thermal_trend_bucket == 'subiendo'
-      else 0) %}\n  {% set raw = (cool_off_target | float) + spread %}\n  {{ [[raw,
-      26.2] | min, 22.9] | max | round(2) }}\n{% endif %}"
-    cool_on: '{{ cool_on_target }}'
-    cool_sensor_off: "{% if cool_off is none %}\n  {{ 23.2 }}\n{% else %}\n  {% set
-      raw = (cool_off | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2)
-      }}\n{% endif %}"
-    cool_min_hysteresis: 0.35
-    cool_limits_reordered: '{{ cool_on is not none and cool_off is not none and (cool_on
-      | float) <= ((cool_off | float) + (cool_min_hysteresis | float(0.35))) }}'
-    cool_off_validated: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n  {{
-      (cool_off | float) | round(2) }}\n{% endif %}"
-    cool_on_validated: "{% if cool_on is none %}\n  {{ none }}\n{% elif cool_off_validated
-      is none %}\n  {{ (cool_on | float) | round(2) }}\n{% elif cool_limits_reordered
-      %}\n  {{ ((cool_off_validated | float) + (cool_min_hysteresis | float(0.35)))
-      | round(2) }}\n{% else %}\n  {{ (cool_on | float) | round(2) }}\n{% endif %}"
+    ac_dda_context_delta_off_helper: '{{ ''input_number.ac_dda_cool_delta_off_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
+    ac_dda_context_delta_on_helper: '{{ ''input_number.ac_dda_cool_delta_on_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
+    ac_dda_context_delta_off: '{{ states(ac_dda_context_delta_off_helper) | float(0) }}'
+    ac_dda_context_delta_on: '{{ states(ac_dda_context_delta_on_helper) | float(0) }}'
+    ac_dda_hysteresis_min: 0.35
+    ac_dda_hysteresis_max: 1.1
+    ac_dda_cool_calc_off_raw: "{% if tout is none or (tout | float) < 17 %}
+  {{ none }}
+{% else %}
+  {% set season_adj = -0.20 if now().month in [6,7,8,9] else -0.08 if now().month in [4,5,10] else 0.12 %}
+  {% set tod_adj = -0.20 if cool_tod_bucket == 'franja_1001_1500' else -0.12 if cool_tod_bucket == 'franja_1501_1800' else -0.06 if cool_tod_bucket == 'franja_1801_2059' else 0.02 if cool_tod_bucket == 'franja_0700_1000' else 0.10 %}
+  {% set weather_adj = -0.12 if cool_weather_bucket == 'soleado' else -0.08 if cool_weather_bucket == 'parcial' else -0.04 if cool_weather_bucket == 'nublado' else -0.06 if cool_weather_bucket == 'lluvia' else 0.04 if cool_weather_bucket == 'niebla' else -0.10 if cool_weather_bucket == 'tormenta' else 0 %}
+  {% set apparent_adj = [(((tout | float) - 24.0) * -0.04), 0.7] | max %}
+  {% set humidity_adj = 0 if hin is none else [(((hin | float) - 56.0) * -0.015), -0.35] | max %}
+  {% set learning_adj = ac_dda_context_delta_off | float(0) %}
+  {% set presence_adj = 0.08 if cool_presence_bucket == 'ausencia' else -0.03 %}
+  {% set base = 24.6 + season_adj + tod_adj + weather_adj + apparent_adj + humidity_adj + learning_adj + presence_adj %}
+  {{ base | round(2) }}
+{% endif %}"
+    ac_dda_cool_calc_off: "{% if ac_dda_cool_calc_off_raw is none %}
+  {{ none }}
+{% else %}
+  {{ [[(ac_dda_cool_calc_off_raw | float), 25.7] | min, 22.0] | max | round(2) }}
+{% endif %}"
+    ac_dda_cool_calc_hysteresis_raw: "{% if ac_dda_cool_calc_off is none %}
+  {{ none }}
+{% else %}
+  {% set base = 0.52 %}
+  {% set weather_mod = -0.04 if cool_weather_bucket in ['soleado','tormenta'] else 0.02 if cool_weather_bucket in ['niebla','lluvia'] else 0 %}
+  {% set humidity_mod = -0.03 if hin is not none and (hin | float) >= 66 else 0.02 if hin is not none and (hin | float) <= 48 else 0 %}
+  {% set trend_mod = -0.04 if cool_thermal_trend_bucket == 'subiendo' else 0.03 if cool_thermal_trend_bucket == 'bajando' else 0 %}
+  {% set learning_mod = ac_dda_context_delta_on | float(0) %}
+  {{ (base + weather_mod + humidity_mod + trend_mod + learning_mod) | round(2) }}
+{% endif %}"
+    ac_dda_cool_calc_hysteresis: "{% if ac_dda_cool_calc_hysteresis_raw is none %}
+  {{ none }}
+{% else %}
+  {{ [[(ac_dda_cool_calc_hysteresis_raw | float), (ac_dda_hysteresis_max | float)] | min, (ac_dda_hysteresis_min | float)] | max | round(2) }}
+{% endif %}"
+    cool_off: '{{ ac_dda_cool_calc_off }}'
+    cool_on: "{% if cool_off is none or ac_dda_cool_calc_hysteresis is none %}
+  {{ none }}
+{% else %}
+  {{ ((cool_off | float) + (ac_dda_cool_calc_hysteresis | float)) | round(2) }}
+{% endif %}"
+    cool_min_hysteresis: '{{ ac_dda_hysteresis_min }}'
+    cool_limits_reordered: '{{ cool_on is not none and cool_off is not none and (cool_on | float) <= ((cool_off | float) + (cool_min_hysteresis | float(0.35))) }}'
+    cool_off_validated: "{% if cool_off is none %}
+  {{ none }}
+{% else %}
+  {{ [[(cool_off | float), 25.7] | min, 22.0] | max | round(2) }}
+{% endif %}"
+    cool_on_validated: "{% if cool_on is none %}
+  {{ none }}
+{% elif cool_off_validated is none %}
+  {{ (cool_on | float) | round(2) }}
+{% elif cool_limits_reordered %}
+  {{ ((cool_off_validated | float) + (cool_min_hysteresis | float(0.35))) | round(2) }}
+{% else %}
+  {{ [[(cool_on | float), 26.2] | min, ((cool_off_validated | float) + (cool_min_hysteresis | float(0.35)))] | max | round(2) }}
+{% endif %}"
+    cool_sensor_off: "{% if cool_off_validated is none %}
+  {{ 23.2 }}
+{% else %}
+  {% set raw = (cool_off_validated | float) - 0.3 %}
+  {{ [[raw, 24.0] | min, 22.8] | max | round(2) }}
+{% endif %}"
     cool_sensor_off_semantics: sensor_critico_hard_stop
-    cool_sensor_off_between_band: "{% if cool_sensor_off is none or cool_off_validated
-      is none or cool_on_validated is none %}\n  {{ false }}\n{% else %}\n  {{ (cool_sensor_off
-      | float) > (cool_off_validated | float) and (cool_sensor_off | float) < (cool_on_validated
-      | float) }}\n{% endif %}"
+    cool_sensor_off_between_band: "{% if cool_sensor_off is none or cool_off_validated is none or cool_on_validated is none %}
+  {{ false }}
+{% else %}
+  {{ (cool_sensor_off | float) > (cool_off_validated | float) and (cool_sensor_off | float) < (cool_on_validated | float) }}
+{% endif %}"
     cool_contract_off_source_label: promedio + sensor_critico
-    cool_setpoint_contract: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n
-      \ {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
+    cool_setpoint_contract: "{% if cool_off_validated is none %}
+  {{ none }}
+{% else %}
+  {% set sp = ((cool_off_validated | float) | int(0, 'floor')) - 1 %}
+  {{ [[sp, 23] | min, 17] | max }}
+{% endif %}"
     cool_setpoint_theoretical: '{{ cool_setpoint_contract }}'
-    cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{% else
-      %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw, 24] | min,
-      21] | max | round(2) }}\n{% endif %}"
+    cool_setpoint: '{{ cool_setpoint_contract }}'
+    cool_demand_score: "{% if tin is none or cool_off_validated is none %}
+  {{ none }}
+{% else %}
+  {% set thermal_gap = ((tin | float) - (cool_off_validated | float)) * 20 %}
+  {% set tod_score = 9 if cool_tod_bucket == 'franja_1001_1500' else 6 if cool_tod_bucket == 'franja_1501_1800' else 3 if cool_tod_bucket == 'franja_1801_2059' else 1 %}
+  {% set weather_score = 5 if cool_weather_bucket in ['soleado','tormenta'] else 3 if cool_weather_bucket == 'parcial' else 1 if cool_weather_bucket == 'nublado' else 0 %}
+  {% set presence_score = 5 if cool_presence_bucket == 'presencia' else -4 %}
+  {{ (thermal_gap + tod_score + weather_score + presence_score) | round(0) | int }}
+{% endif %}"
+    cool_off_learning_source: "{% if cool_off is none %}
+  none
+{% elif (ac_dda_context_delta_off | float(0)) != 0 or (ac_dda_context_delta_on | float(0)) != 0 %}
+  aprendizaje_contextual_dda
+{% else %}
+  base_contextual_dda
+{% endif %}"
     cool_effective_sp_soft_gap: '{{ states(''input_number.ac_cool_effective_sp_soft_gap'')
       | float(0.8) }}'
     cool_effective_sp_hard_gap: '{{ states(''input_number.ac_cool_effective_sp_hard_gap'')
@@ -3853,7 +3907,7 @@
       ~ cool_weather_bucket ~ ':' ~ cool_presence_bucket }}\n{% else %}\n  {{ none
       }}\n{% endif %}"
     cool_related_daytime_helper: "{% if cool_related_daytime_bucket is not none %}\n
-      \ {{ 'input_number.ac_cool_effective_sp_bucket_' ~ (cool_related_daytime_bucket
+      \ {{ 'input_number.ac_dda_cool_effective_sp_bucket_' ~ (cool_related_daytime_bucket
       | replace(':','_')) }}\n{% else %}\n  {{ none }}\n{% endif %}"
     cool_effective_sp_delta: "{% if cool_setpoint is none or cool_effective_sp_entry
       is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_setpoint | float) - (cool_effective_sp_entry
@@ -3892,19 +3946,19 @@
       | round(0) %}\n  {{ [[sp_f, 75] | min, 68] | max | int }}\n{% endif %}"
     cool_setpoint_f: '{{ cool_setpoint_sent_f }}'
     cool_setpoint_effective: '{{ cool_setpoint_effective_c }}'
-    cool_cycle_contract_on: '{{ states(''input_number.ac_cool_cycle_contract_on'')
+    cool_cycle_contract_on: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'')
       | float(none) }}'
-    cool_cycle_contract_off: '{{ states(''input_number.ac_cool_cycle_contract_off'')
+    cool_cycle_contract_off: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'')
       | float(none) }}'
-    cool_cycle_contract_sensor_off: '{{ states(''input_number.ac_cool_cycle_contract_sensor_off'')
+    cool_cycle_contract_sensor_off: '{{ states(''input_number.ac_dda_cool_cycle_contract_sensor_off'')
       | float(none) }}'
-    cool_cycle_contract_setpoint: '{{ states(''input_number.ac_cool_cycle_contract_setpoint'')
+    cool_cycle_contract_setpoint: '{{ states(''input_number.ac_dda_cool_cycle_contract_setpoint'')
       | float(none) }}'
-    cool_cycle_contract_setpoint_effective: '{{ states(''input_number.ac_cool_cycle_contract_setpoint_effective'')
+    cool_cycle_contract_setpoint_effective: '{{ states(''input_number.ac_dda_cool_cycle_contract_setpoint_effective'')
       | float(none) }}'
-    cool_cycle_contract_bucket: '{{ states(''input_text.ac_cool_cycle_contract_bucket'')
+    cool_cycle_contract_bucket: '{{ states(''input_text.ac_dda_cool_cycle_contract_bucket'')
       | default('''', true) | trim }}'
-    cool_cycle_contract_reason: '{{ states(''input_text.ac_cool_cycle_contract_reason'')
+    cool_cycle_contract_reason: '{{ states(''input_text.ac_dda_cool_cycle_contract_reason'')
       | default('''', true) | trim }}'
     cool_cycle_min_hysteresis: 0.35
     cool_cycle_contract_limits_reordered: '{{ cool_cycle_contract_on is not none and
@@ -3921,7 +3975,7 @@
     cool_cycle_contract_validation_warning: "{% if cool_cycle_contract_limits_reordered
       %}\n  warn_reorden_umbral_cool:on_leq_off+histeresis\n{% else %}\n  none\n{%
       endif %}"
-    cool_cycle_contract_started_at_raw: '{{ states(''input_datetime.ac_cool_cycle_contract_started_at'')
+    cool_cycle_contract_started_at_raw: '{{ states(''input_datetime.ac_dda_cool_cycle_contract_started_at'')
       }}'
     cool_cycle_contract_active: "{{ states('input_text.ac_last_auto_branch') == 'cool_normal_on'\n
       \  and cool_cycle_contract_off is not none\n   and cool_cycle_contract_on is
@@ -3976,7 +4030,7 @@
       \  and (manual_sp_override_until_ts | float(0)) > as_timestamp(now()) }}"
     manual_sp_lock_explicit: '{{ is_state(''input_boolean.ac_manual_setpoint_override_active'',''on'')
       }}'
-    last_change_origin_raw: '{{ states(''input_text.ac_last_change_origin'') | default('''',
+    last_change_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''',
       true) | trim }}'
     manual_sp_recent_user_evidence: "{{ last_auto_mode == 'cool'\n   and last_auto_branch
       == 'cool_normal_on'\n   and (minutes_since_last_auto | float(99999)) <= (manual_sp_lock_window_min
@@ -3996,7 +4050,7 @@
       else %}\n    {{ ((ac_set_effective_normalized | float) + (step if delta > 0
       else -step)) | round(2) }}\n  {% endif %}\n{% else %}\n  {{ cool_setpoint_effective
       }}\n{% endif %}"
-    manual_sp_feedback_future_only_active: "{{ states('input_text.ac_last_change_origin')
+    manual_sp_feedback_future_only_active: "{{ states('input_text.ac_dda_last_change_origin')
       == 'manual_sp_feedback_future_only'\n   and (minutes_since_last_auto | float(99999))
       <= 2 }}"
     cool_adaptive_window_minutes: '{{ states(''input_number.ac_cool_adaptive_window_minutes'')
