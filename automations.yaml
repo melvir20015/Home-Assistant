@@ -3617,7 +3617,7 @@
     default: []
   variables:
     climate_ent: climate.0200009211c7_climate
-    fan_dry_delay: 00:05:00
+    fan_dry_delay: 00:03:00
     t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
       }}'
     t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
@@ -5305,7 +5305,30 @@
         if trigger.to_state else 'unknown' }} | automation_flags=on:{{ states('input_boolean.ac_on_por_automatizacion')
         }},off:{{ states('input_boolean.ac_off_por_automatizacion') }}
       entity_id: climate.0200009211c7_climate
-  - delay: 00:00:15
+  - variables:
+      manual_fan_only_bootstrap: '{{ trigger.to_state is not none and trigger.to_state.state
+        == ''fan_only'' }}'
+      manual_presence_until_forced: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d
+        %H:%M:%S'') }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ manual_fan_only_bootstrap }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_manual_presence_until
+        data:
+          datetime: '{{ manual_presence_until_forced }}'
+        action: input_datetime.set_datetime
+      - action: logbook.log
+        data:
+          name: AC Manual Trace
+          message: manual_on_fan_only_bootstrap | presencia_temporal={{ manual_presence_until_forced
+            }} | wait=30s
+          entity_id: climate.0200009211c7_climate
+      - delay: 00:00:30
+    default:
+    - delay: 00:00:15
   - variables:
       climate_ent: climate.0200009211c7_climate
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
@@ -5490,8 +5513,9 @@
         else %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw,
         24] | min, 21] | max | round(2) }}\n{% endif %}"
       auto_on_blocked_by_presence: '{{ not presence_strict_for_manual_guard }}'
-      cool_auto_blocked_by_threshold: '{{ final_mode == ''cool'' and ( cool_on is
-        none or tin is none or (tin | float(0)) < (cool_on | float(999)) ) }}'
+      cool_auto_blocked_by_threshold: '{{ final_mode == ''cool'' and (not manual_force_cool_needed)
+        and ( cool_on is none or tin is none or (tin | float(0)) < (cool_on | float(999))
+        ) }}'
       heat_auto_blocked_by_threshold: '{{ final_mode == ''heat'' and ( heat_on is
         none or tin is none or (tin | float(999)) > (heat_on | float(-999)) or (tout
         | float(99)) >= (heat_force_off_outdoor | float) ) }}'
@@ -5511,6 +5535,147 @@
       notify_title_presence_gap: 'AC manual por ausencia: presencia temporal activada'
       notify_message_presence_gap: AC encendido manual sin presencia detectada; se
         activa presencia temporal.
+      manual_force_cool_needed: '{{ manual_fan_only_bootstrap and final_mode == ''fan_only''
+        }}'
+      cool_branch_step_manual: 0.25
+      cool_off_forced_before: '{{ cool_context_learning_entry if cool_context_learning_entry
+        is not none else cool_contextual_base_off }}'
+      cool_off_forced_after: "{% if cool_off_forced_before is none %}\n  {{ none }}\n{% else
+        %}\n  {{ [[(cool_off_forced_before | float) - (cool_branch_step_manual |
+        float), 25.7] | min, 22.4] | max | round(2) }}\n{% endif %}"
+      cool_on_forced_before: "{% if cool_off_forced_before is none %}\n  {{ none }}\n{% else
+        %}\n  {{ ((cool_off_forced_before | float) + 0.5) | round(2) }}\n{% endif
+        %}"
+      cool_on_forced_after: "{% if cool_off_forced_after is none %}\n  {{ none }}\n{% else
+        %}\n  {{ ((cool_off_forced_after | float) + 0.5) | round(2) }}\n{% endif
+        %}"
+      cool_sp_forced_after: "{% if cool_off_forced_after is none %}\n  {{ none }}\n{% else
+        %}\n  {{ ((cool_off_forced_after | float) - 0.5) | round(2) }}\n{% endif
+        %}"
+      cool_learning_summary_forced: "{% if cool_off_forced_after is none %}\n  {{
+        states('input_text.ac_cool_contextual_learning_map') }}\n{% else %}\n  {{
+        cool_context_bucket ~ '=' ~ ('%.2f' | format(cool_off_forced_after | float))
+        }}\n{% endif %}"
+      manual_s24_context_brief: '{{ cool_tod_bucket | replace(''franja_'','''') }}
+        | {{ cool_outdoor_bucket | replace(''exterior_'',''ext_'') }} | {{ cool_humidity_bucket
+        | replace(''humedad_'',''hum_'') }} | {{ ''pres'' if presence_effective else
+        ''aus'' }}'
+      manual_s24_values_brief: Tin={{ '%.2f' | format(tin if tin is not none else
+        0) }} Tout={{ '%.2f' | format(tout if tout is not none else 0) }} H={{ '%.2f'
+        | format(hin if hin is not none else 0) }} On={{ '%.2f' | format(cool_on_forced_after
+        if cool_on_forced_after is not none else (cool_on if cool_on is not none
+        else 0)) }} Off={{ '%.2f' | format(cool_off_forced_after if cool_off_forced_after
+        is not none else (cool_off if cool_off is not none else 0)) }} SP={{ '%.2f'
+        | format(cool_sp_forced_after if cool_sp_forced_after is not none else (cool_setpoint
+        if cool_setpoint is not none else 0)) }} Fan={{ final_fan }}
+      manual_s24_on_full: '{{ now().strftime(''%H:%M:%S'') }} | ON | {{ manual_s24_context_brief
+        }} | {{ manual_s24_values_brief }} | Mot=off->fan_only_sin_heat_30s | ΔL=-0.25'
+      manual_s24_on_compact: '{{ manual_s24_on_full | truncate(220, true, ''…'') }}'
+      manual_s24_learning_full: '{{ now().strftime(''%H:%M:%S'') }} | aprendizaje
+        | {{ manual_s24_context_brief }} | Off {{ ''%.2f'' | format(cool_off_forced_before
+        if cool_off_forced_before is not none else 0) }}→{{ ''%.2f'' | format(cool_off_forced_after
+        if cool_off_forced_after is not none else 0) }} | On {{ ''%.2f'' | format(cool_on_forced_before
+        if cool_on_forced_before is not none else 0) }}→{{ ''%.2f'' | format(cool_on_forced_after
+        if cool_on_forced_after is not none else 0) }} | Δ=-0.25'
+      manual_s24_learning_compact: '{{ manual_s24_learning_full | truncate(220, true,
+        ''…'') }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ manual_force_cool_needed and final_mode != ''heat'' }}'
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_on_por_automatizacion
+        service: input_boolean.turn_on
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: manual_on_fan_only_force_cool_precheck | mode={{ final_mode }} |
+            cool_on_gate_ignored=yes | wait=30s
+          entity_id: climate.0200009211c7_climate
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: cool
+        action: climate.set_hvac_mode
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_sp_forced_after is not none }}'
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              temperature: '{{ cool_sp_forced_after }}'
+            action: climate.set_temperature
+        default: []
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none and\n
+              \  'Low' in state_attr(climate_ent,'fan_modes') }}"
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: Low
+            action: climate.set_fan_mode
+        default: []
+      - target:
+          entity_id: input_text.ac_last_change_origin
+        data:
+          value: manual_on_fan_only_auto_cool
+        service: input_text.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_off_forced_after is not none }}'
+          sequence:
+          - target:
+              entity_id: '{{ cool_context_learning_helper }}'
+            data:
+              value: '{{ cool_off_forced_after }}'
+            action: input_number.set_value
+          - target:
+              entity_id: input_text.ac_cool_contextual_learning_map
+            data:
+              value: '{{ cool_learning_summary_forced }}'
+            service: input_text.set_value
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: s24_notify_trace | tipo=ON | detalle={{ manual_s24_on_full }}
+          entity_id: climate.0200009211c7_climate
+      - data:
+          title: AC S24 ON
+          message: '{{ manual_s24_on_compact }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: s24_notify_trace | tipo=aprendizaje | detalle={{ manual_s24_learning_full
+            }}
+          entity_id: climate.0200009211c7_climate
+      - data:
+          title: AC S24 aprendizaje
+          message: '{{ manual_s24_learning_compact }}'
+          data:
+            ttl: 0
+            priority: high
+        action: notify.mobile_app_samsung_s24
+      - delay: 00:00:10
+      - target:
+          entity_id: input_boolean.ac_on_por_automatizacion
+        service: input_boolean.turn_off
+    default: []
+  - variables:
+      final_mode: '{{ states(climate_ent) }}'
+      final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
+      final_fan: "{{ state_attr(climate_ent,'fan_mode')\n   if state_attr(climate_ent,'fan_mode')
+        is not none else 'n/a' }}"
   - target:
       entity_id: input_datetime.ac_last_manual_final_ts
     data:
