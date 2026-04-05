@@ -4300,11 +4300,11 @@
         and last_auto_action == 'auto_on'\n  and last_auto_mode in ['cool','heat']
         and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120))
         }}"
-      valid_feedback_contextual_cool: '{{ learning_enabled and contextual_cool_base_eligible
-        and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120))
-        and (minutes_since_last_auto | float(99999)) >= (min_operating_minutes_contextual
-        | float(8)) }}'
-      valid_feedback: '{{ valid_feedback_strong or valid_feedback_contextual_cool
+      valid_feedback_contextual_cool: '{{ learning_enabled and contextual_cool_base_eligible }}'
+      manual_off_event_signature: '{{ states(''input_datetime.ac_last_manual_off_ts'') ~ ''|'' ~ last_auto_action ~ ''|'' ~ last_auto_mode }}'
+      last_manual_off_event_signature: '{{ states(''input_text.ac_learning_last_manual_off_signature'') | default('''', true) | trim }}'
+      duplicate_manual_off_event: '{{ manual_off_event_signature == last_manual_off_event_signature }}'
+      valid_feedback: '{{ (valid_feedback_strong or valid_feedback_contextual_cool) and (not duplicate_manual_off_event)
         }}'
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0)
         }}'
@@ -4396,12 +4396,10 @@
         %} · sp {{ cur_bias_heat_setpoint }}→{{ heat_setpoint_after }}{% endif %}
       ignored_reason_code: '{% if not learning_enabled %} learning_disabled {% elif
         last_change_origin != ''manual_off'' %} not_manual {% elif auto_off_flag_active
-        %} auto_off_flag_active {% elif last_auto_action != ''auto_on'' and (not contextual_cool_base_eligible)
+        %} auto_off_flag_active {% elif duplicate_manual_off_event %} duplicate_event {% elif last_auto_action != ''auto_on'' and (not contextual_cool_base_eligible)
         %} last_action_not_auto_on {% elif last_auto_mode not in [''cool'',''heat'']
         %} last_mode_not_learnable {% elif (minutes_since_last_auto | float(99999))
-        > (feedback_window_min | float(120)) %} window_expired {% elif last_auto_mode
-        == ''cool'' and (minutes_since_last_auto | float(99999)) < (min_operating_minutes_contextual
-        | float(8)) %} contextual_runtime_short {% else %} no_valid_learning {% endif
+        > (feedback_window_min | float(120)) %} window_expired {% else %} no_valid_learning {% endif
         %}'
       learning_apply_state: '{% if valid_feedback %} applied_with_real_changes {%
         else %} evaluated_not_applied {% endif %}'
@@ -4413,8 +4411,7 @@
         sin auto_on previa. {% elif ignored_reason_code == ''auto_off_flag_active''
         %} Ign: auto-off activo. {% elif ignored_reason_code == ''window_expired''
         %} Ign: ventana. {% elif ignored_reason_code == ''last_mode_not_learnable''
-        %} Ign: modo. {% elif ignored_reason_code == ''contextual_runtime_short''
-        %} Ign: runtime corto. {% else %} Ign: sin match. {% endif %}'
+        %} Ign: modo. {% else %} Ign: sin match. {% endif %}'
       ignored_reason_line: '{% if ignored_reason_code == ''last_action_not_auto_on''
         %} AC no aprendió OFF manual: sin auto_on previa válida. {% elif ignored_reason_code
         == ''learning_disabled'' %} AC no aprendió OFF manual: aprendizaje desactivado.
@@ -4423,8 +4420,7 @@
         %} AC no aprendió OFF manual: AUTO OFF en curso. {% elif ignored_reason_code
         == ''window_expired'' %} AC no aprendió OFF manual: ventana de feedback vencida.
         {% elif ignored_reason_code == ''last_mode_not_learnable'' %} AC no aprendió
-        OFF manual: último modo no aprendible. {% elif ignored_reason_code == ''contextual_runtime_short''
-        %} AC no aprendió OFF manual: runtime contextual insuficiente. {% else %}
+        OFF manual: último modo no aprendible. {% else %}
         AC no aprendió OFF manual: sin criterio de aprendizaje válido. {% endif %}'
       learning_status_label: '{% if valid_feedback %} aprendizaje {{ feedback_strength
         }} aplicado {% elif ignored_reason_code == ''learning_disabled'' %} Ign: learning
@@ -4432,8 +4428,7 @@
         ignored_reason_code == ''not_manual'' %} Ign: origen {% elif ignored_reason_code
         == ''last_action_not_auto_on'' %} Ign: sin auto_on previa {% elif ignored_reason_code
         == ''auto_off_flag_active'' %} Ign: auto-off activo {% elif ignored_reason_code
-        == ''last_mode_not_learnable'' %} Ign: modo {% elif ignored_reason_code ==
-        ''contextual_runtime_short'' %} Ign: runtime corto {% else %} Ign: sin match
+        == ''last_mode_not_learnable'' %} Ign: modo {% else %} Ign: sin match
         {% endif %}'
       adjusted_biases_valid: '{% if last_auto_mode == ''cool'' %} {{ cool_branch_audit
         }} {% elif last_auto_mode == ''heat'' %} ac_bias_heat_on {{ cur_bias_heat_on
@@ -4533,6 +4528,21 @@
       entity_id: input_text.ac_last_manual_learning_summary
     data:
       value: '{{ learning_summary_payload }}'
+    service: input_text.set_value
+  - target:
+      entity_id: input_text.ac_learning_last_manual_off_signature
+    data:
+      value: '{{ manual_off_event_signature }}'
+    service: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_learning_context_key
+    data:
+      value: '{{ cool_learning_bucket }}'
+    service: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_learning_metadata
+    data:
+      value: '{{ (''ts='' ~ ts ~ ''|src='' ~ ''manual_off'' ~ ''|ctx='' ~ cool_learning_bucket ~ ''|before='' ~ (''%.2f'' | format(cool_bucket_previous_value | float)) ~ ''|after='' ~ (''%.2f'' | format(cool_off_after | float)) ~ ''|reason='' ~ (ignored_reason_code if not valid_feedback else ''applied''))[:255] }}'
     service: input_text.set_value
   - choose:
     - conditions:
@@ -4669,7 +4679,7 @@
       sequence:
       - stop: 'Ignorado: AUTO OFF en curso.'
     default: []
-  - delay: 00:00:15
+  - delay: 00:01:00
   - variables:
       last_auto_action_guard: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_ts_guard_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
@@ -4751,8 +4761,12 @@
       current_presence_bucket: "{% if presence_effective_bool %}\n  presencia\n{% else %}\n  sin_presencia\n{% endif %}"
       anti_rebote_ok: '{{ (seconds_since_last_auto | float(999999)) >= (debounce_seconds
         | float(10)) }}'
+      manual_on_event_signature: '{{ states(''input_datetime.ac_last_manual_on_ts'') ~ ''|'' ~ last_auto_action ~ ''|'' ~ final_mode }}'
+      last_manual_on_event_signature: '{{ states(''input_text.ac_learning_last_manual_on_signature'') | default('''', true) | trim }}'
+      duplicate_manual_on_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
       base_eligible: "{{ learning_enabled and last_change_origin == 'manual_on' and
         last_auto_action == 'auto_off' and final_mode in ['cool','heat'] and anti_rebote_ok
+        and (not duplicate_manual_on_event)
         and ((final_mode == 'cool' and cool_comfort_gap_feedback) or final_mode ==
         'heat') }}"
       cur_cool_off_learned: '{{ states(''input_number.ac_cool_off_learned'') | float(24.0)
@@ -4799,8 +4813,7 @@
         | round(2) }}'
       heat_setpoint_step: '{{ ((0.5 if quick_feedback else 0) * (learning_weight
         | float(1))) | round(2) }}'
-      cool_branch_step: '{{ [[(0.25 * (learning_weight | float(1))), 0.25] | min,
-        0.05] | max | round(2) }}'
+      cool_branch_step: 0.25
       cool_bucket_previous_value: '{% set helper_raw = states(cool_learning_bucket_helper)
         %} {% set helper_value = helper_raw | float(none) %} {{ helper_value if helper_value
         is not none else (cool_learning_bucket_summary_value if cool_learning_bucket_summary_value
@@ -4819,7 +4832,7 @@
       ignored_reason_code: '{% if not learning_enabled %} learning_disabled {% elif
         last_change_origin != ''manual_on'' %} ambiguous_origin {% elif last_auto_action
         != ''auto_off'' %} last_action_not_auto_off {% elif final_mode not in [''cool'',''heat'']
-        %} final_mode_not_learnable {% elif not anti_rebote_ok %} anti_rebote {% elif final_mode
+        %} final_mode_not_learnable {% elif not anti_rebote_ok %} anti_rebote {% elif duplicate_manual_on_event %} duplicate_event {% elif final_mode
         == ''cool'' and not cool_comfort_gap_feedback %} cool_not_before_auto_on {%
         else %} no_valid_learning {% endif %}'
       learning_apply_state: '{% if valid_feedback %} applied_with_real_changes {%
@@ -4862,8 +4875,8 @@
       manual_action_detected: ON
       learning_effective_yesno: '{% if valid_feedback %}sí{% else %}no{% endif %}'
       learning_change_applied: "{% if not valid_feedback %}\n  ninguno\n{% elif final_mode
-        == 'cool' %}\n  Off -{{ cool_branch_step }} | On -{{ cool_branch_step }} |
-        Setpoint -{{ cool_branch_step }} teórico\n{% else %}\n  On +{{ weighted_step_main
+        == 'cool' %}\n  Off -0.25 | On -0.25 |
+        Setpoint -0.25 teórico\n{% else %}\n  On +{{ weighted_step_main
         }} | Off +{{ weighted_step_main }} | Setpoint +{{ heat_setpoint_step }}\n{%
         endif
         %}"
@@ -4913,6 +4926,21 @@
       entity_id: input_text.ac_last_manual_learning_summary
     data:
       value: '{{ learning_summary_payload }}'
+    service: input_text.set_value
+  - target:
+      entity_id: input_text.ac_learning_last_manual_on_signature
+    data:
+      value: '{{ manual_on_event_signature }}'
+    service: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_learning_context_key
+    data:
+      value: '{{ cool_learning_bucket }}'
+    service: input_text.set_value
+  - target:
+      entity_id: input_text.ac_last_learning_metadata
+    data:
+      value: '{{ (''ts='' ~ ts ~ ''|src='' ~ ''manual_on'' ~ ''|ctx='' ~ cool_learning_bucket ~ ''|before='' ~ (''%.2f'' | format(cool_bucket_previous_value | float)) ~ ''|after='' ~ (''%.2f'' | format(cool_off_after | float)) ~ ''|reason='' ~ (ignored_reason_code if not valid_feedback else ''applied''))[:255] }}'
     service: input_text.set_value
   - action: logbook.log
     data:
@@ -5892,10 +5920,11 @@
         0.12] | min }} {% elif effective_sp_inconsistency_reason == ''soft_gap'' %}{{
         [feedback_weight | float(0.4), 0.20] | min }} {% else %}{{ feedback_weight
         }} {% endif %}'
-      effective_sp_after: "{% if manual_override_should_activate %}\n  {{ new_sp_num
-        | float(last_auto_setpoint | float(22)) }}\n{% elif apply_feedback %}\n  {{
-        new_sp_num | float(last_auto_setpoint | float(22)) | round(2) }}\n{% else
-        %}\n  {{ effective_bucket_previous_value | float(none) }}\n{% endif %}"
+      effective_sp_after: "{% if feedback_or_override_apply and new_sp_num is not none %}
+  {{ [[(new_sp_num | float) | round(0), 23] | min, 17] | max | int }}
+{% else %}
+  {{ [[(effective_bucket_previous_value | float(22)) | round(0), 23] | min, 17] | max | int }}
+{% endif %}"
       effective_summary: '{{ ((cool_bucket_selected ~ ''='' ~ (''%.2f'' | format(effective_sp_after
         | float(0))))[:255]) }}'
       cool_learning_summary_raw: '{{ states(''input_text.ac_cool_contextual_learning_map'')
@@ -5913,15 +5942,24 @@
         }}'
       reinforce_effective_needed: '{{ apply_feedback and manual_feedback_kind == ''manual_sp_lower_than_auto''
         and insufficient_progress }}'
-      contextual_learning_sp_target: "{% if feedback_or_override_apply %}\n  {{ new_sp_num
-        | float(cool_learning_previous_value | float(24)) }}\n{% else %}\n  {{ cool_learning_previous_value
-        | float(none) }}\n{% endif %}"
-      cool_learning_after: "{% if feedback_or_override_apply %}\n  {{ contextual_learning_sp_target
-        }}\n{% elif not reinforce_effective_needed %}\n  {{ cool_learning_previous_value
-        | float(none) }}\n{% else %}\n  {% set target = (new_sp_num | float(24)) +
-        0.5 %}\n  {% set lowered = ((cool_learning_previous_value | float(target))
-        * 0.65) + (target * 0.35) %}\n  {{ [[lowered, 25.7] | min, 22.4] | max | round(2)
-        }}\n{% endif %}"
+      manual_sp_preferido_ctx: "{% if new_sp_num is none %}
+  {{ none }}
+{% else %}
+  {{ [[(new_sp_num | float) | round(0), 23] | min, 17] | max | int }}
+{% endif %}"
+      contextual_learning_sp_target: "{% if feedback_or_override_apply %}
+  {{ manual_sp_preferido_ctx if manual_sp_preferido_ctx is not none else ([[ (cool_learning_previous_value | float(22)) | round(0), 23] | min, 17] | max | int) }}
+{% else %}
+  {{ [[(cool_learning_previous_value | float(22)) | round(0), 23] | min, 17] | max | int }}
+{% endif %}"
+      cool_learning_after: "{% if feedback_or_override_apply %}
+  {{ contextual_learning_sp_target }}
+{% elif not reinforce_effective_needed %}
+  {{ [[(cool_learning_previous_value | float(22)) | round(0), 23] | min, 17] | max | int }}
+{% else %}
+  {% set target = manual_sp_preferido_ctx if manual_sp_preferido_ctx is not none else 22 %}
+  {{ [[target, 23] | min, 17] | max | int }}
+{% endif %}"
       cool_learning_summary: '{% set final_value = cool_learning_after if feedback_or_override_apply
         else (cool_learning_after if reinforce_effective_needed else cool_learning_previous_value)
         %} {{ ((cool_bucket_selected ~ ''='' ~ (''%.2f'' | format(final_value | float(0))))[:255])
@@ -6013,6 +6051,16 @@
           entity_id: input_text.ac_last_manual_sp_result_summary
         data:
           value: '{{ manual_sp_resumen }}'
+        service: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_learning_metadata
+        data:
+          value: '{{ (''ts='' ~ now().strftime(''%Y-%m-%d %H:%M:%S'') ~ ''|src=manual_sp|ctx='' ~ cool_bucket_selected ~ ''|before='' ~ (effective_bucket_previous_value if effective_bucket_previous_value is not none else ''na'') ~ ''|after='' ~ (effective_sp_after if effective_sp_after is not none else ''na''))[:255] }}'
+        service: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_learning_context_key
+        data:
+          value: '{{ cool_bucket_selected }}'
         service: input_text.set_value
       - target:
           entity_id: '{{ effective_bucket_helper }}'

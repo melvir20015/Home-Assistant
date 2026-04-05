@@ -58,6 +58,22 @@ ac_last_change_origin:
   name: "AC Last Change Origin"
   max: 40
 
+ac_learning_last_manual_off_signature:
+  name: "AC Learning Last Manual OFF Signature"
+  max: 140
+
+ac_learning_last_manual_on_signature:
+  name: "AC Learning Last Manual ON Signature"
+  max: 140
+
+ac_last_learning_context_key:
+  name: "AC Last Learning Context Key"
+  max: 180
+
+ac_last_learning_metadata:
+  name: "AC Last Learning Metadata"
+  max: 255
+
 ac_cool_contextual_learning_map:
   # `input_text` solo conserva un resumen corto del último bucket persistido.
   # El estado contextual completo vive en helpers numéricos por bucket.
