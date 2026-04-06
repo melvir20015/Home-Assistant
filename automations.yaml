@@ -3148,7 +3148,7 @@
       - target:
           entity_id: input_text.ac_dda_cool_cycle_contract_reason
         data:
-          value: "{% if cool_contract_values_valid %}{{ cool_off_learning_source }}{% else %}{{ cool_contract_invalid_reason }}{% endif %}"
+          value: "{% if cool_contract_values_valid %}{{ cool_off_learning_source }}{% else %}contract_invalid:{{ cool_contract_invalid_reason }}|keep_last_valid{% endif %}"
         service: input_text.set_value
       - target:
           entity_id: input_datetime.ac_dda_cool_cycle_contract_started_at
@@ -4931,6 +4931,34 @@
       hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
       cond_owm: '{{ states(''weather.openweathermap'') | lower }}'
       tout: '{{ tout_owm if tout_owm is not none else none }}'
+      contract_on_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') }}'
+      contract_off_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') }}'
+      contract_on: '{{ contract_on_raw | float(none) }}'
+      contract_off: '{{ contract_off_raw | float(none) }}'
+      contract_valid: '{{ contract_on is not none and contract_off is not none and
+        (contract_on | float) > (contract_off | float) and (contract_off | float)
+        >= 22 and (contract_off | float) <= 25.7 and (contract_on | float) <= 26.2
+        }}'
+      cool_on_validated: "{% if contract_valid %}\n  {{ (contract_on | float) | round(2)
+        }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      cool_off_validated: "{% if contract_valid %}\n  {{ (contract_off | float) |
+        round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      contract_on_fallback_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'')
+        }}'
+      contract_off_fallback_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'')
+        }}'
+      contract_on_fallback: '{{ contract_on_fallback_raw | float(none) }}'
+      contract_off_fallback: '{{ contract_off_fallback_raw | float(none) }}'
+      contract_fallback_valid: '{{ contract_on_fallback is not none and contract_off_fallback
+        is not none and (contract_on_fallback | float) > (contract_off_fallback |
+        float) and (contract_off_fallback | float) >= 22 and (contract_off_fallback
+        | float) <= 25.7 and (contract_on_fallback | float) <= 26.2 }}'
+      contract_on_display: "{% if cool_on_validated is not none %}\n  {{ cool_on_validated
+        }}\n{% elif contract_fallback_valid %}\n  {{ (contract_on_fallback | float)
+        | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      contract_off_display: "{% if cool_off_validated is not none %}\n  {{ cool_off_validated
+        }}\n{% elif contract_fallback_valid %}\n  {{ (contract_off_fallback | float)
+        | round(2) }}\n{% else %}\n  {{ none }}\n{% endif %}"
       presence_effective: '{% set mov_raw = states(''binary_sensor.presencia_movimiento_estable'')
         %} {% set s24_raw = states(''device_tracker.samsung_s24'') %} {% set person_raw
         = states(''person.ivan'') %} {% set presence_ok = is_state(''binary_sensor.presencia_ok_estable'',''on'')
@@ -5384,7 +5412,7 @@
           sequence:
           - data:
               title: AC SP manual
-              message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_on'') | float) >= 17 else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_off'') | float) >= 17 else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado={{ ''aplicado'' if feedback_or_override_apply else ''ignorado'' }} Razón={{ manual_sp_reason_output }}'
+              message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(contract_on_display | float) if contract_on_display is not none else ''n/a'' }} Off={{ ''%.1f'' | format(contract_off_display | float) if contract_off_display is not none else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado={{ ''aplicado'' if feedback_or_override_apply else ''ignorado'' }} Razón={{ manual_sp_reason_output }}'
               data:
                 ttl: 0
                 priority: high
@@ -5429,7 +5457,7 @@
         entity_id: '{{ climate_ent }}'
     - data:
         title: AC SP manual
-        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_on'') | float) >= 17 else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_off'') | float) >= 17 else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado=ignorado Razón={{ manual_sp_reason_output }}'
+        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(contract_on_display | float) if contract_on_display is not none else ''n/a'' }} Off={{ ''%.1f'' | format(contract_off_display | float) if contract_off_display is not none else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado=ignorado Razón={{ manual_sp_reason_output }}'
         data:
           ttl: 0
           priority: high

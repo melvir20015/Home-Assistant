@@ -378,3 +378,30 @@ Antes de cambiar reglas:
 - **Impacto operativo:**
   - `Tout` y `H` en notificaciones compactas OFF/ON se construyen desde OWM.
   - El componente climático del contexto/bucket y la razón de contrato se deriva de `cond_owm` para evitar mezcla de fuentes exteriores legacy.
+
+---
+
+## 13. Política final de visualización para notificaciones `Src=ManualSP` (2026-04-06)
+
+### Variables contractuales normalizadas obligatorias
+En la automatización **`AC - Feedback manual de setpoint en cool activo`** se define la cadena local:
+- `contract_on_raw`, `contract_off_raw` (lectura cruda de helpers),
+- `contract_on`, `contract_off` (parseo numérico seguro),
+- `contract_valid` (validez contractual).
+
+La validez contractual sigue exactamente el mismo criterio operativo de `Learning ON/OFF`:
+- `on > off`,
+- `off ∈ [22.0, 25.7]`,
+- `on <= 26.2`.
+
+### Prioridad de fuentes para `On/Off` en `Src=ManualSP`
+Orden estricto de resolución:
+1. **Fuente primaria validada localmente** (`cool_on_validated/cool_off_validated` calculadas desde `contract_on/contract_off` cuando `contract_valid=true`).
+2. **Último snapshot válido** persistido en helpers contractuales del ciclo (`input_number.ac_dda_cool_cycle_contract_on/off`) cuando la lectura primaria no resulte válida en ese instante.
+3. **`n/a`** únicamente si también falla la fuente de snapshot válido (sin dato numérico usable o fuera de contrato).
+
+### Política de persistencia contractual en la automatización principal
+En la automatización principal (rama de escritura contractual):
+- `input_number.ac_dda_cool_cycle_contract_on/off` **solo se actualizan cuando el contrato es válido**.
+- Si el contrato no valida, **no se escribe `0`** ni se pisa el último valor bueno.
+- La trazabilidad del descarte se guarda en `input_text.ac_dda_cool_cycle_contract_reason` con prefijo `contract_invalid:` y sufijo `|keep_last_valid`.
