@@ -1895,10 +1895,21 @@
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: "{{ auto_on_allowed and auto_on_presence_gate and (not recent_any_auto_on)
-          and emergency_hot\n   and (not emergency_latched)\n   and (\n     cur_mode
-          != 'cool'\n     or (ac_set | float(0)) != (emergency_setpoint | float)\n
-          \    or ac_fan != emergency_fan_mode\n   ) }}"
+        value_template: '{{ auto_on_should_audit_denied }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: auto_on_denied | reason={{ auto_on_block_reason }} | Tin={{ tin
+            if tin is not none else 'na' }} | Tout={{ tout if tout is not none else
+            'na' }} | On={{ cool_on_validated if cool_on_validated is not none else
+            'na' }} | Off={{ cool_off_validated if cool_off_validated is not none else
+            'na' }}
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: "{{ auto_on_enable_final\n   and auto_on_target_branch ==
+          'emergency_on' }}"
       sequence:
       - service: logbook.log
         data:
@@ -1906,13 +1917,6 @@
           message: ac_dda_branch=emergency_on | trigger={{ trig }} | mode={{ cur_mode
             }}
           entity_id: climate.0200009211c7_climate
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
-          sequence:
-          - stop: 'AUTO ON abortado: manual OFF < 5 min.'
-        default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         service: input_boolean.turn_on
@@ -2856,19 +2860,9 @@
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: "{{ (not emergency_latched) and auto_on_allowed and auto_on_presence_gate
-          and (not recent_any_auto_on) and heat_on is not none\n   and tin is not
-          none\n   and (tin | float) <= (heat_on | float)\n   and (tout | float(99))
-          < (heat_force_off_outdoor | float)\n   and cur_mode != 'heat'\n   and (not
-          locked or last_mode_no_fan not in ['cool','emergency_cool']) }}"
+        value_template: "{{ auto_on_enable_final\n   and auto_on_target_branch ==
+          'heat_normal_on' }}"
       sequence:
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
-          sequence:
-          - stop: 'AUTO ON abortado: manual OFF < 5 min.'
-        default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         service: input_boolean.turn_on
@@ -2995,11 +2989,8 @@
         service: input_boolean.turn_off
     - conditions:
       - condition: template
-        value_template: "{{ (not emergency_latched) and auto_on_allowed and auto_on_presence_gate
-          and (not recent_any_auto_on) and cool_on is not none\n   and cool_setpoint
-          is not none\n   and tin is not none\n   and (tin | float) >= (cool_on |
-          float)\n   and cur_mode != 'cool'\n   and (not locked or last_mode_no_fan
-          != 'heat') }}"
+        value_template: "{{ auto_on_enable_final\n   and auto_on_target_branch ==
+          'cool_normal_on' }}"
       sequence:
       - service: logbook.log
         data:
@@ -3007,13 +2998,6 @@
           message: ac_dda_branch=cool_normal_on | trigger={{ trig }} | mode={{ cur_mode
             }}
           entity_id: climate.0200009211c7_climate
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ (minutes_since_manual_off | float(99999)) < 5 }}'
-          sequence:
-          - stop: 'AUTO ON abortado: manual OFF < 5 min.'
-        default: []
       - target:
           entity_id: input_boolean.ac_on_por_automatizacion
         service: input_boolean.turn_on
@@ -3656,14 +3640,13 @@
       %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw)
       }}\n{% endif %}"
     presence_sensor_strict: '{{ presence_ok and presence_real_now }}'
-    presence_effective: '{{ presence_phone_home or presence_sensor_strict or presence_temp_from_manual
+    presence_effective: '{{ presence_sensor_strict or presence_phone_home or presence_temp_from_manual
       }}'
-    auto_on_presence_gate: '{{ presence_phone_home or presence_sensor_strict }}'
-    auto_on_presence_reason: "{% if presence_phone_home %}\n  phone_home\n{% elif
-      presence_sensor_strict %}\n  sensor_strict\n{% elif presence_temp_from_manual
-      %}\n  manual_presence_exception_blocked_for_auto_on\n{% else %}\n  blocked\n{%
+    auto_on_presence_gate: '{{ presence_sensor_strict or presence_phone_home }}'
+    auto_on_presence_reason: "{% if presence_sensor_strict %}\n  movimiento_y_presencia_real\n{% elif
+      presence_phone_home %}\n  phone_home\n{% elif presence_temp_from_manual %}\n
+      \ manual_presence_exception_blocked_for_auto_on\n{% else %}\n  sin_presencia\n{%
       endif %}"
-    auto_on_allowed: '{{ auto_on_presence_gate and (not manual_off_block) }}'
     presence_away_30m: "{{ (not presence_effective)\n   and is_state('binary_sensor.presencia_movimiento_estable','off')\n
       \  and (person_raw != 'home')\n   and (s24_raw not in ['home','on']) }}"
     away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
@@ -4108,26 +4091,53 @@
     minutes_since_manual_off: "{% if last_manual_off_ts_raw in ['unknown','unavailable','none','']
       %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_manual_off_ts_raw))
       / 60) | round(1) }}\n{% endif %}"
-    manual_off_block: '{{ (minutes_since_manual_off | float(99999)) < (manual_off_hold_minutes
-      | float) }}'
+    last_manual_event_type_raw: '{{ states(''input_text.ac_last_manual_event_type'')
+      | default('''', true) | trim }}'
+    manual_off_event_active: "{{ last_manual_event_type_raw.startswith('manual_off_')\n
+      \  or last_manual_event_type_raw == 'manual_off_detected' }}"
+    manual_off_block: "{{ manual_off_event_active\n   and (minutes_since_manual_off
+      | float(99999)) < (manual_off_hold_minutes | float) }}"
     manual_off_block_txt: '{{ ''ON'' if manual_off_block else ''OFF'' }}'
+    auto_on_threshold_emergency_match: "{{ (not emergency_latched)\n   and emergency_hot\n
+      \  and (\n     cur_mode != 'cool'\n     or (ac_set | float(0)) != (emergency_setpoint
+      | float)\n     or ac_fan != emergency_fan_mode\n   ) }}"
+    auto_on_threshold_heat_match: "{{ (not emergency_latched)\n   and heat_on is not
+      none\n   and tin is not none\n   and (tin | float) <= (heat_on | float)\n   and
+      (tout | float(99)) < (heat_force_off_outdoor | float)\n   and cur_mode != 'heat'
+      }}"
+    auto_on_threshold_cool_match: "{{ (not emergency_latched)\n   and cool_on is not
+      none\n   and cool_setpoint is not none\n   and tin is not none\n   and (tin |
+      float) >= (cool_on | float)\n   and cur_mode != 'cool' }}"
+    auto_on_target_branch: "{% if auto_on_threshold_emergency_match %}\n  emergency_on\n{%
+      elif auto_on_threshold_heat_match %}\n  heat_normal_on\n{% elif auto_on_threshold_cool_match
+      %}\n  cool_normal_on\n{% else %}\n  none\n{% endif %}"
+    auto_on_threshold_match: '{{ auto_on_target_branch != ''none'' }}'
+    auto_on_locked_conflict: "{% if auto_on_target_branch == 'heat_normal_on' %}\n
+      \ {{ locked and last_mode_no_fan in ['cool','emergency_cool'] }}\n{% elif auto_on_target_branch
+      == 'cool_normal_on' %}\n  {{ locked and last_mode_no_fan == 'heat' }}\n{% else
+      %}\n  false\n{% endif %}"
+    auto_on_enable_final: "{{ auto_on_threshold_match\n   and auto_on_presence_gate\n
+      \  and (not manual_off_block)\n   and (not recent_any_auto_on)\n   and (not
+      auto_on_locked_conflict) }}"
+    auto_on_block_reason: "{% if auto_on_enable_final %}\n  none\n{% elif not auto_on_presence_gate
+      %}\n  sin_presencia\n{% elif manual_off_block %}\n  manual_pause\n{% elif auto_on_locked_conflict
+      %}\n  locked_cool_heat\n{% elif recent_any_auto_on %}\n  recent_auto_on\n{%
+      elif not auto_on_threshold_match %}\n  threshold_no_match\n{% else %}\n  compuerta\n{%
+      endif %}"
+    auto_on_should_audit_denied: '{{ cur_mode != ''cool'' and cur_mode != ''heat''
+      and (not auto_on_enable_final) }}'
     cool_main_control_demand: "{{ (not emergency_latched)\n   and cur_mode != 'cool'\n
       \  and tin is not none\n   and cool_on_validated is not none\n   and (tin |
       float) >= (cool_on_validated | float) }}"
-    cool_main_control_error: "{{ cool_main_control_demand\n   and auto_on_allowed\n
-      \  and auto_on_presence_gate\n   and (not recent_any_auto_on)\n   and (not locked
-      or last_mode_no_fan != 'heat')\n   and (cool_setpoint is none or cool_setpoint_effective
-      is none) }}"
-    cool_main_control_ready: "{{ cool_main_control_demand\n   and auto_on_allowed\n
-      \  and auto_on_presence_gate\n   and (not recent_any_auto_on)\n   and cool_setpoint
-      is not none\n   and cool_setpoint_effective is not none\n   and (not locked
-      or last_mode_no_fan != 'heat') }}"
+    cool_main_control_error: "{{ cool_main_control_demand\n   and auto_on_enable_final\n
+      \  and auto_on_target_branch == 'cool_normal_on'\n   and (cool_setpoint is
+      none or cool_setpoint_effective is none) }}"
+    cool_main_control_ready: "{{ cool_main_control_demand\n   and auto_on_enable_final\n
+      \  and auto_on_target_branch == 'cool_normal_on'\n   and cool_setpoint is not
+      none\n   and cool_setpoint_effective is not none }}"
     cool_main_control_blocked: '{{ cool_main_control_demand and (not cool_main_control_ready)
       and (not cool_main_control_error) }}'
-    cool_main_control_block_reason: '{% if not auto_on_presence_gate %}sin_pres_auto_on
-      {% elif auto_on_presence_reason == ''blocked'' %}sin_pres_auto_on {% elif manual_off_block
-      %}pausa_manual {% elif recent_any_auto_on %}auto_reciente {% elif locked and
-      last_mode_no_fan == ''heat'' %}lock_heat {% else %}compuerta{% endif %}'
+    cool_main_control_block_reason: '{{ auto_on_block_reason }}'
     cool_main_control_audit: "{% if cool_main_control_error %}\n  main_control_error
       | branch=cool | reason=sp_template | Tin={{ tin if tin is not none else 'na'
       }} | On={{ cool_on_validated if cool_on_validated is not none else 'na' }} |
@@ -5105,6 +5115,16 @@
         entity_id: input_boolean.ac_off_por_automatizacion
         state: 'on'
       sequence:
+      - target:
+          entity_id: input_text.ac_last_manual_event_type
+        data:
+          value: auto_off_guard_ignored_flag_active
+        service: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_manual_learning_type
+        data:
+          value: auto_off_guard_ignored
+        service: input_text.set_value
       - data:
           name: AC Manual OFF
           message: manual_off_guard_blocked_auto_off_flag_active | reason=auto_off_flag_on
@@ -5168,6 +5188,16 @@
           | float(999999)) <= (recent_auto_off_guard_seconds | float(120)) or auto_off_correlation_active)
           }}'
       sequence:
+      - target:
+          entity_id: input_text.ac_last_manual_event_type
+        data:
+          value: auto_off_guard_ignored_recent_auto_off
+        service: input_text.set_value
+      - target:
+          entity_id: input_text.ac_last_manual_learning_type
+        data:
+          value: auto_off_guard_ignored
+        service: input_text.set_value
       - data:
           name: AC Manual OFF
           message: manual_off_guard_blocked_recent_auto_off | last_auto_action={{
