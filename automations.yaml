@@ -27,7 +27,7 @@
   alias: AC - Saneamiento defensivo banderas auto
   trace:
     stored_traces: 50
-  description: 'Evita que `input_boolean.ac_on_por_automatizacion` o `input_boolean.ac_off_por_automatizacion`
+  description: 'Evita que `input_boolean.ac_dda_on_por_automatizacion` o `input_boolean.ac_dda_off_por_automatizacion`
     queden pegadas más allá de una ventana operativa razonable y refuerza la clasificación
     del último origen de cambio sin generar ruido al usuario.
 
@@ -42,9 +42,9 @@
       | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in [''unknown'',''unavailable'',''none'','''']
       %}99999{% else %}{% set ts = as_timestamp(raw, default=none) %}{{ 99999 if ts
       is none else (((as_timestamp(now()) - ts) / 60) | round(1)) }}{% endif %}'
-    on_stuck: '{{ is_state(''input_boolean.ac_on_por_automatizacion'',''on'') and
+    on_stuck: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') and
       (minutes_since_last_auto | float(99999)) >= 2 }}'
-    off_stuck: '{{ is_state(''input_boolean.ac_off_por_automatizacion'',''on'') and
+    off_stuck: '{{ is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') and
       (minutes_since_last_auto | float(99999)) >= 10 }}'
   action:
   - choose:
@@ -55,8 +55,8 @@
       - service: input_boolean.turn_off
         target:
           entity_id:
-          - input_boolean.ac_on_por_automatizacion
-          - input_boolean.ac_off_por_automatizacion
+          - input_boolean.ac_dda_on_por_automatizacion
+          - input_boolean.ac_dda_off_por_automatizacion
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -89,13 +89,13 @@
         }}'
       input_text.ac_last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'')
         }}'
-      input_text.ac_last_manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'')
+      input_text.ac_dda_last_manual_event_type: '{{ states(''input_text.ac_dda_last_manual_event_type'')
         }}'
-      input_text.ac_last_manual_learning_type: '{{ states(''input_text.ac_last_manual_learning_type'')
+      input_text.ac_dda_last_manual_learning_type: '{{ states(''input_text.ac_dda_last_manual_learning_type'')
         }}'
       input_text.ac_last_manual_feedback_mode: '{{ states(''input_text.ac_last_manual_feedback_mode'')
         }}'
-      input_text.ac_last_change_origin: '{{ states(''input_text.ac_last_change_origin'')
+      input_text.ac_dda_last_change_origin: '{{ states(''input_text.ac_dda_last_change_origin'')
         }}'
     missing_helpers: "{% set ns = namespace(items=[]) %} {% for entity_id, value in
       helper_states.items() %}\n  {% if value in ['unknown','unavailable'] %}\n    {%
@@ -1003,7 +1003,7 @@
           cool_learning_reference_selected: '{{ cool_setpoint_emerg if ((tout|float)
             < 17) else cool_last_useful_setpoint }}'
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_on
       - target:
           entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
@@ -1032,7 +1032,7 @@
           value: ramp_start
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_on
         service: input_text.set_value
@@ -1238,7 +1238,7 @@
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
                 service: input_boolean.turn_off
               - target:
-                  entity_id: input_boolean.ac_on_por_automatizacion
+                  entity_id: input_boolean.ac_dda_on_por_automatizacion
                 service: input_boolean.turn_off
               - stop: Rampa detenida por salir de la ventana 21:00-07:00.
             - conditions:
@@ -1267,7 +1267,7 @@
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
                 service: input_boolean.turn_off
               - target:
-                  entity_id: input_boolean.ac_on_por_automatizacion
+                  entity_id: input_boolean.ac_dda_on_por_automatizacion
                 service: input_boolean.turn_off
               - stop: Rampa detenida por timeout de seguridad.
             - conditions:
@@ -1294,7 +1294,7 @@
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
                 service: input_boolean.turn_off
               - target:
-                  entity_id: input_boolean.ac_on_por_automatizacion
+                  entity_id: input_boolean.ac_dda_on_por_automatizacion
                 service: input_boolean.turn_off
               - stop: Rampa detenida por pérdida de presencia.
             - conditions:
@@ -1321,7 +1321,7 @@
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
                 service: input_boolean.turn_off
               - target:
-                  entity_id: input_boolean.ac_on_por_automatizacion
+                  entity_id: input_boolean.ac_dda_on_por_automatizacion
                 service: input_boolean.turn_off
               - stop: Rampa detenida porque el equipo salió de cool.
             - conditions:
@@ -1371,7 +1371,7 @@
                   entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
                 service: input_boolean.turn_off
               - target:
-                  entity_id: input_boolean.ac_on_por_automatizacion
+                  entity_id: input_boolean.ac_dda_on_por_automatizacion
                 service: input_boolean.turn_off
               - stop: Rampa detenida; sigue apagado normal por confort.
             - conditions:
@@ -1424,7 +1424,7 @@
         service: input_boolean.turn_off
       - delay: 00:00:10
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_off
     default: []
   mode: restart
@@ -1703,7 +1703,7 @@
             Causa={{ cool_cycle_real_off_cause }} | Detalle={{ cool_cycle_real_off_detail
             }} | Hora={{ cool_cycle_hito_ts }}
       - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
+          entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
       - choose:
         - conditions:
@@ -1885,7 +1885,7 @@
             state: 'off'
           sequence:
           - target:
-              entity_id: input_boolean.ac_off_por_automatizacion
+              entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
         default:
         - service: logbook.log
@@ -1918,7 +1918,7 @@
             }}
           entity_id: climate.0200009211c7_climate
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_on
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
@@ -2083,7 +2083,7 @@
         service: notify.mobile_app_samsung_s24
       - delay: 00:00:10
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_off
     - conditions:
       - condition: template
@@ -2123,7 +2123,7 @@
             Causa={{ cool_cycle_real_off_cause }} | Detalle={{ cool_cycle_real_off_detail
             }} | Hora={{ cool_cycle_hito_ts }}
       - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
+          entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
       - service: logbook.log
         data:
@@ -2299,7 +2299,7 @@
             state: 'off'
           sequence:
           - target:
-              entity_id: input_boolean.ac_off_por_automatizacion
+              entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
         default:
         - service: logbook.log
@@ -2313,7 +2313,7 @@
           >= heat_force_off_outdoor\n   and (not manual_override_active) }}"
       sequence:
       - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
+          entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
       - target:
           entity_id:
@@ -2451,7 +2451,7 @@
             state: 'off'
           sequence:
           - target:
-              entity_id: input_boolean.ac_off_por_automatizacion
+              entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
         default:
         - service: logbook.log
@@ -2466,7 +2466,7 @@
           manual_override_active) }}"
       sequence:
       - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
+          entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
       - target:
           entity_id:
@@ -2575,7 +2575,7 @@
             state: 'off'
           sequence:
           - target:
-              entity_id: input_boolean.ac_off_por_automatizacion
+              entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
         default:
         - service: logbook.log
@@ -2653,7 +2653,7 @@
               entity_id: climate.0200009211c7_climate
         default: []
       - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
+          entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
       - service: logbook.log
         data:
@@ -2850,7 +2850,7 @@
             state: 'off'
           sequence:
           - target:
-              entity_id: input_boolean.ac_off_por_automatizacion
+              entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
         default:
         - service: logbook.log
@@ -2864,7 +2864,7 @@
           'heat_normal_on' }}"
       sequence:
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_on
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
@@ -2985,7 +2985,7 @@
         service: notify.mobile_app_samsung_s24
       - delay: 00:00:10
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_off
     - conditions:
       - condition: template
@@ -2999,7 +2999,7 @@
             }}
           entity_id: climate.0200009211c7_climate
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_on
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
@@ -3383,7 +3383,7 @@
         service: notify.mobile_app_samsung_s24
       - delay: 00:00:10
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_off
     - conditions:
       - condition: template
@@ -3651,13 +3651,13 @@
       \  and (person_raw != 'home')\n   and (s24_raw not in ['home','on']) }}"
     away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
     learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
-    cool_off_learned_raw: '{{ states(''input_number.ac_cool_off_learned'') | float(0)
+    cool_off_learned_raw: '{{ states(''input_number.ac_dda_cool_off_learned'') | float(0)
       }}'
     cool_learning_summary_raw: '{{ states(''input_text.ac_dda_cool_contextual_learning_map'')
       | trim }}'
     cool_effective_sp_summary_raw: '{{ states(''input_text.ac_dda_cool_effective_setpoint_map'')
       | trim }}'
-    last_manual_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'') }}'
+    last_manual_ts_raw: '{{ states(''input_datetime.ac_dda_last_manual_final_ts'') }}'
     cool_tod_bucket: "{% set hm = now().strftime('%H:%M') %}\n{% if '07:00' <= hm
       <= '10:00' %}\n  franja_0700_1000\n{% elif '10:01' <= hm <= '15:00' %}\n  franja_1001_1500\n{%
       elif '15:01' <= hm <= '18:00' %}\n  franja_1501_1800\n{% elif '18:01' <= hm
@@ -3876,7 +3876,7 @@
       | float(90) }}'
     cool_effective_sp_reset_repeat_limit: '{{ states(''input_number.ac_cool_effective_sp_reset_repeat_limit'')
       | float(2) | round(0) | int }}'
-    cool_last_manual_learning_type: '{{ states(''input_text.ac_last_manual_learning_type'')
+    cool_last_manual_learning_type: '{{ states(''input_text.ac_dda_last_manual_learning_type'')
       | default('''', true) | trim }}'
     cool_last_inconsistent_bucket: '{{ states(''input_text.ac_cool_effective_sp_last_inconsistent_bucket'')
       | default('''', true) | trim }}'
@@ -4069,8 +4069,8 @@
       | float) - (cool_setpoint_effective | float)) | abs >= 0.2\n     or (minutes_since_cool_sync_notify
       | float(99999)) >= (cool_sync_notify_window_min | float(20))\n   )\n   and
       cool_sp_sync_guard_allow }}"
-    last_manual_on_ts_raw: '{{ states(''input_datetime.ac_last_manual_on_ts'') }}'
-    last_manual_final_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'')
+    last_manual_on_ts_raw: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') }}'
+    last_manual_final_ts_raw: '{{ states(''input_datetime.ac_dda_last_manual_final_ts'')
       }}'
     manual_on_hold_minutes: 12
     last_manual_override_ts: '{% set on_ts = as_timestamp(last_manual_on_ts_raw, 0)
@@ -4081,17 +4081,17 @@
       / 60) | round(1) }} {% endif %}'
     manual_on_guard_active: '{{ (minutes_since_manual_on | float(99999)) < (manual_on_hold_minutes
       | float) }}'
-    last_manual_event_type: '{{ states(''input_text.ac_last_manual_event_type'') }}'
+    last_manual_event_type: '{{ states(''input_text.ac_dda_last_manual_event_type'') }}'
     manual_presence_override_active: '{{ last_manual_event_type in [''manual_on_due_to_presence_gap'',''manual_on_due_to_presence_gap_cool'',''manual_on_due_to_presence_gap_heat'']
       and presence_temp_from_manual }}'
     manual_override_active: '{{ manual_on_guard_active or manual_presence_override_active
       }}'
-    last_manual_off_ts_raw: '{{ states(''input_datetime.ac_last_manual_off_ts'') }}'
+    last_manual_off_ts_raw: '{{ states(''input_datetime.ac_dda_last_manual_off_ts'') }}'
     manual_off_hold_minutes: 5
     minutes_since_manual_off: "{% if last_manual_off_ts_raw in ['unknown','unavailable','none','']
       %}\n  99999\n{% else %}\n  {{ ((as_timestamp(now()) - as_timestamp(last_manual_off_ts_raw))
       / 60) | round(1) }}\n{% endif %}"
-    last_manual_event_type_raw: '{{ states(''input_text.ac_last_manual_event_type'')
+    last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'')
       | default('''', true) | trim }}'
     manual_off_event_active: "{{ last_manual_event_type_raw.startswith('manual_off_')\n
       \  or last_manual_event_type_raw == 'manual_off_detected' }}"
@@ -4185,7 +4185,7 @@
     '
   triggers:
   - trigger: state
-    entity_id: input_datetime.ac_last_manual_off_ts
+    entity_id: input_datetime.ac_dda_last_manual_off_ts
   conditions:
   - condition: time
     after: 07:01:00
@@ -4194,19 +4194,19 @@
   - variables:
       contract_version: contract=v1
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-      last_change_origin: '{{ states(''input_text.ac_last_change_origin'') | trim }}'
+      last_change_origin: '{{ states(''input_text.ac_dda_last_change_origin'') | trim }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') | trim }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') | trim }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
-      feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'') | float(120) }}'
-      contract_context_key: "{% set raw = states('input_text.ac_last_auto_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
+      feedback_window_min: '{{ states(''input_number.ac_dda_feedback_window_minutes'') | float(120) }}'
+      contract_context_key: "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
       contract_context_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (contract_context_key | replace('':'',''_'') ) }}'
       context_prev_raw: '{{ states(contract_context_helper) }}'
-      context_prev: "{% set v = context_prev_raw | float(none) %}{{ v if v is not none else (states('input_number.ac_cool_off_learned') | float(24.0)) }}"
+      context_prev: "{% set v = context_prev_raw | float(none) %}{{ v if v is not none else (states('input_number.ac_dda_cool_off_learned') | float(24.0)) }}"
       minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else (((as_timestamp(now()) - ts_auto) / 60) | round(1)) }}{% endif %}"
       valid_feedback: '{{ last_change_origin == ''manual_off'' and last_auto_action == ''auto_on'' and last_auto_mode == ''cool'' and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120)) }}'
-      manual_off_event_signature: '{{ states(''input_datetime.ac_last_manual_off_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ last_auto_action ~ ''|'' ~ last_auto_mode }}'
-      last_manual_off_event_signature: '{{ states(''input_text.ac_learning_last_manual_off_signature'') | default('''', true) | trim }}'
+      manual_off_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_off_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ last_auto_action ~ ''|'' ~ last_auto_mode }}'
+      last_manual_off_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_off_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_off_event_signature == last_manual_off_event_signature }}'
       apply_learning: '{{ valid_feedback and (not duplicate_event) }}'
       learning_step: 0.25
@@ -4228,18 +4228,18 @@
           value: '{{ contract_context_key ~ ''='' ~ (''%.2f'' | format(context_after | float)) }}'
         service: input_text.set_value
       - target:
-          entity_id: input_datetime.ac_last_manual_feedback_ts
+          entity_id: input_datetime.ac_dda_last_manual_feedback_ts
         data:
           datetime: '{{ ts }}'
         action: input_datetime.set_datetime
     default: []
   - target:
-      entity_id: input_text.ac_last_manual_learning_type
+      entity_id: input_text.ac_dda_last_manual_learning_type
     data:
       value: '{{ learning_type }}'
     service: input_text.set_value
   - target:
-      entity_id: input_text.ac_learning_last_manual_off_signature
+      entity_id: input_text.ac_dda_learning_last_manual_off_signature
     data:
       value: '{{ manual_off_event_signature }}'
     service: input_text.set_value
@@ -4259,7 +4259,7 @@
     '
   triggers:
   - trigger: state
-    entity_id: input_datetime.ac_last_manual_on_ts
+    entity_id: input_datetime.ac_dda_last_manual_on_ts
   conditions:
   - condition: time
     after: 07:01:00
@@ -4270,19 +4270,19 @@
       contract_version: contract=v1
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: '{{ states(''climate.0200009211c7_climate'') | trim }}'
-      last_change_origin: '{{ states(''input_text.ac_last_change_origin'') | trim }}'
+      last_change_origin: '{{ states(''input_text.ac_dda_last_change_origin'') | trim }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') | trim }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') | trim }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
-      feedback_window_min: '{{ states(''input_number.ac_feedback_window_minutes'') | float(120) }}'
-      contract_context_key: "{% set raw = states('input_text.ac_last_auto_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
+      feedback_window_min: '{{ states(''input_number.ac_dda_feedback_window_minutes'') | float(120) }}'
+      contract_context_key: "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
       contract_context_helper: '{{ ''input_number.ac_cool_learning_bucket_'' ~ (contract_context_key | replace('':'',''_'') ) }}'
       context_prev_raw: '{{ states(contract_context_helper) }}'
-      context_prev: "{% set v = context_prev_raw | float(none) %}{{ v if v is not none else (states('input_number.ac_cool_off_learned') | float(24.0)) }}"
+      context_prev: "{% set v = context_prev_raw | float(none) %}{{ v if v is not none else (states('input_number.ac_dda_cool_off_learned') | float(24.0)) }}"
       minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else (((as_timestamp(now()) - ts_auto) / 60) | round(1)) }}{% endif %}"
       valid_feedback: '{{ last_change_origin == ''manual_on'' and last_auto_action == ''auto_off'' and last_auto_mode == ''cool'' and final_mode in [''cool'',''fan_only''] and (minutes_since_last_auto | float(99999)) <= (feedback_window_min | float(120)) }}'
-      manual_on_event_signature: '{{ states(''input_datetime.ac_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
-      last_manual_on_event_signature: '{{ states(''input_text.ac_learning_last_manual_on_signature'') | default('''', true) | trim }}'
+      manual_on_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
+      last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
       apply_learning: '{{ valid_feedback and (not duplicate_event) }}'
       learning_step: -0.25
@@ -4304,18 +4304,18 @@
           value: '{{ contract_context_key ~ ''='' ~ (''%.2f'' | format(context_after | float)) }}'
         service: input_text.set_value
       - target:
-          entity_id: input_datetime.ac_last_manual_feedback_ts
+          entity_id: input_datetime.ac_dda_last_manual_feedback_ts
         data:
           datetime: '{{ ts }}'
         action: input_datetime.set_datetime
     default: []
   - target:
-      entity_id: input_text.ac_last_manual_learning_type
+      entity_id: input_text.ac_dda_last_manual_learning_type
     data:
       value: '{{ learning_type }}'
     service: input_text.set_value
   - target:
-      entity_id: input_text.ac_learning_last_manual_on_signature
+      entity_id: input_text.ac_dda_learning_last_manual_on_signature
     data:
       value: '{{ manual_on_event_signature }}'
     service: input_text.set_value
@@ -4345,7 +4345,7 @@
   - choose:
     - conditions:
       - condition: state
-        entity_id: input_boolean.ac_off_por_automatizacion
+        entity_id: input_boolean.ac_dda_off_por_automatizacion
         state: 'on'
       sequence:
       - stop: 'Ignorado: AUTO OFF en curso.'
@@ -4354,30 +4354,30 @@
       contract_version: contract=v1
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       prev_mode: '{{ trigger.from_state.state if trigger.from_state is not none else ''unknown'' }}'
-      contract_context_key: "{% set raw = states('input_text.ac_last_auto_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
+      contract_context_key: "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
       manual_event_type: manual_off_detected_contract_v1
   - target:
-      entity_id: input_datetime.ac_last_manual_off_ts
+      entity_id: input_datetime.ac_dda_last_manual_off_ts
     data:
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
   - target:
-      entity_id: input_datetime.ac_last_manual_final_ts
+      entity_id: input_datetime.ac_dda_last_manual_final_ts
     data:
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
   - target:
-      entity_id: input_text.ac_last_change_origin
+      entity_id: input_text.ac_dda_last_change_origin
     data:
       value: manual_off
     service: input_text.set_value
   - target:
-      entity_id: input_text.ac_last_manual_event_type
+      entity_id: input_text.ac_dda_last_manual_event_type
     data:
       value: '{{ manual_event_type }}'
     service: input_text.set_value
   - target:
-      entity_id: input_text.ac_last_manual_learning_type
+      entity_id: input_text.ac_dda_last_manual_learning_type
     data:
       value: manual_off_pending_learning_contract_v1
     service: input_text.set_value
@@ -4407,7 +4407,7 @@
           duration: 00:03:00
         action: timer.start
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         action: input_boolean.turn_on
       - target:
           entity_id: climate.0200009211c7_climate
@@ -4422,10 +4422,10 @@
         timeout: 00:03:30
         continue_on_timeout: true
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         action: input_boolean.turn_off
       - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
+          entity_id: input_boolean.ac_dda_off_por_automatizacion
         action: input_boolean.turn_on
       - target:
           entity_id: climate.0200009211c7_climate
@@ -4434,7 +4434,7 @@
         action: climate.set_hvac_mode
       - delay: 00:00:02
       - target:
-          entity_id: input_boolean.ac_off_por_automatizacion
+          entity_id: input_boolean.ac_dda_off_por_automatizacion
         action: input_boolean.turn_off
       - action: logbook.log
         data:
@@ -4468,13 +4468,13 @@
   - choose:
     - conditions:
       - condition: state
-        entity_id: input_boolean.ac_off_por_automatizacion
+        entity_id: input_boolean.ac_dda_off_por_automatizacion
         state: 'on'
       sequence:
       - stop: 'Ignorado: AUTO OFF en curso.'
     - conditions:
       - condition: state
-        entity_id: input_boolean.ac_on_por_automatizacion
+        entity_id: input_boolean.ac_dda_on_por_automatizacion
         state: 'on'
       sequence:
       - stop: 'Ignorado: AUTO ON en curso.'
@@ -4489,19 +4489,19 @@
       presence_sensor_strict: '{{ is_state(''binary_sensor.tuya_motion_sensor_occupancy'',''on'') }}'
       presence_phone_home: '{{ (s24_raw in [''home'',''on'']) or (person_raw == ''home'') }}'
       presence_strict_for_manual_guard: '{{ presence_sensor_strict or presence_phone_home }}'
-      contract_context_key: "{% set raw = states('input_text.ac_last_auto_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
+      contract_context_key: "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
   - target:
-      entity_id: input_datetime.ac_last_manual_on_ts
+      entity_id: input_datetime.ac_dda_last_manual_on_ts
     data:
       datetime: '{{ detected_ts }}'
     action: input_datetime.set_datetime
   - target:
-      entity_id: input_text.ac_last_change_origin
+      entity_id: input_text.ac_dda_last_change_origin
     data:
       value: manual_on
     service: input_text.set_value
   - target:
-      entity_id: input_text.ac_last_manual_event_type
+      entity_id: input_text.ac_dda_last_manual_event_type
     data:
       value: manual_on_detected_contract_v1
     service: input_text.set_value
@@ -4527,7 +4527,7 @@
       - condition: template
         value_template: '{{ states(climate_ent) == ''fan_only'' }}'
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         action: input_boolean.turn_on
       - target:
           entity_id: climate.0200009211c7_climate
@@ -4536,10 +4536,10 @@
         action: climate.set_hvac_mode
       - delay: 00:00:02
       - target:
-          entity_id: input_boolean.ac_on_por_automatizacion
+          entity_id: input_boolean.ac_dda_on_por_automatizacion
         action: input_boolean.turn_off
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: manual_on_fan_only_auto_cool_contract_v1
         service: input_text.set_value
@@ -4557,7 +4557,7 @@
       manual_presence_until: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_event_type_final: "{% if not presence_strict_for_manual_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_due_to_presence_gap_contract_v1{% else %}manual_on_detected_contract_v1{% endif %}"
   - target:
-      entity_id: input_datetime.ac_last_manual_final_ts
+      entity_id: input_datetime.ac_dda_last_manual_final_ts
     data:
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
@@ -4567,7 +4567,7 @@
         value_template: '{{ manual_event_type_final == ''manual_on_due_to_presence_gap_contract_v1'' }}'
       sequence:
       - target:
-          entity_id: input_datetime.ac_manual_presence_until
+          entity_id: input_datetime.ac_dda_manual_presence_until
         data:
           datetime: '{{ manual_presence_until }}'
         action: input_datetime.set_datetime
@@ -4578,7 +4578,7 @@
           entity_id: climate.0200009211c7_climate
     default: []
   - target:
-      entity_id: input_text.ac_last_manual_event_type
+      entity_id: input_text.ac_dda_last_manual_event_type
     data:
       value: '{{ manual_event_type_final }}'
     service: input_text.set_value
@@ -4594,17 +4594,17 @@
         action: input_select.select_option
     default: []
   - target:
-      entity_id: input_text.ac_last_manual_final_mode
+      entity_id: input_text.ac_dda_last_manual_final_mode
     data:
       value: '{{ final_mode }}'
     service: input_text.set_value
   - target:
-      entity_id: input_text.ac_last_manual_final_fan
+      entity_id: input_text.ac_dda_last_manual_final_fan
     data:
       value: '{{ final_fan }}'
     service: input_text.set_value
   - target:
-      entity_id: input_number.ac_last_manual_setpoint
+      entity_id: input_number.ac_dda_last_manual_setpoint
     data:
       value: '{{ final_setpoint if final_setpoint is not none else 0 }}'
     action: input_number.set_value
@@ -4661,7 +4661,7 @@
         = states(''person.ivan'') %} {% set presence_ok = is_state(''binary_sensor.presencia_ok_estable'',''on'')
         %} {% set presence_real_now = mov_raw == ''on'' %} {% set presence_phone_home
         = (s24_raw in [''home'',''on'']) or (person_raw == ''home'') %} {% set manual_presence_until_raw
-        = states(''input_datetime.ac_manual_presence_until'') %} {% set presence_temp_from_manual
+        = states(''input_datetime.ac_dda_manual_presence_until'') %} {% set presence_temp_from_manual
         = manual_presence_until_raw not in [''unknown'',''unavailable'',''none'','''']
         and as_timestamp(now()) < as_timestamp(manual_presence_until_raw) %} {{ presence_phone_home
         or (presence_ok and presence_real_now) or presence_temp_from_manual }}'
@@ -4693,7 +4693,7 @@
         %}{{ trend_raw }}{% else %}estable{% endif %}'
       cool_context_detail: '{{ cool_context_bucket ~ '':'' ~ cool_thermal_trend_bucket
         }}'
-      last_auto_bucket_raw: '{{ states(''input_text.ac_last_auto_context_bucket'')
+      last_auto_bucket_raw: '{{ states(''input_text.ac_dda_last_context_bucket'')
         | trim }}'
       cool_bucket_context_detail: "{% if last_auto_bucket_raw in ['','unknown','unavailable','none']
         %}\n  {{ cool_context_detail }}\n{% else %}\n  {{ last_auto_bucket_raw }}\n{%
@@ -4750,7 +4750,7 @@
         | float(0)) }}"
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
-      last_change_origin: '{{ states(''input_text.ac_last_change_origin'') | default('''',
+      last_change_origin: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''',
         true) | trim }}'
       last_change_origin_normalized: '{% set origin = last_change_origin | lower %}
         {% if origin in [''unknown'',''unavailable'',''none'',''''] %}none{% else
@@ -4760,7 +4760,7 @@
         is defined %}\n  {{ trigger.to_state.context.user_id }}\n{% else %}\n  {{
         none }}\n{% endif %}"
       manual_user_confirmed: '{{ trigger_user_id not in [none, '''', ''None''] }}'
-      last_manual_final_ts_raw: '{{ states(''input_datetime.ac_last_manual_final_ts'')
+      last_manual_final_ts_raw: '{{ states(''input_datetime.ac_dda_last_manual_final_ts'')
         | default('''', true) | trim }}'
       minutes_since_manual_interaction: "{% if last_manual_final_ts_raw in ['unknown','unavailable','none','']
         %}99999 {% else %}\n  {% set ts = as_timestamp(last_manual_final_ts_raw, default=none)
@@ -4810,8 +4810,8 @@
         }} min | aprendizaje={{ 'sí' if apply_feedback else 'pendiente' }}
       ignore_reason: "{% if not manual_sp_real_change %}\n  sin_cambio_real\n{% elif
         manual_interaction_recent and not immediate_same_value_echo %}\n  none\n{%
-        elif immediate_same_value_echo %}\n  eco_inmediato_mismo_valor\n{% elif is_state('input_boolean.ac_on_por_automatizacion','on')
-        or is_state('input_boolean.ac_off_por_automatizacion','on') %}\n  bandera_auto_activa\n{%
+        elif immediate_same_value_echo %}\n  eco_inmediato_mismo_valor\n{% elif is_state('input_boolean.ac_dda_on_por_automatizacion','on')
+        or is_state('input_boolean.ac_dda_off_por_automatizacion','on') %}\n  bandera_auto_activa\n{%
         elif device_echo_candidate and auto_setpoint_recent and change_matches_cycle_step_sp
         %}\n  setpoint_echo_from_device\n{% elif device_echo_candidate and auto_setpoint_recent
         and change_matches_last_auto_sp %}\n  device_report_lag\n{% elif device_echo_candidate
@@ -5010,7 +5010,7 @@
         value_template: '{{ feedback_or_override_apply }}'
       sequence:
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: '{{ ''manual_override'' if manual_override_should_activate else ''manual_sp_feedback''
             }}'
@@ -5040,7 +5040,7 @@
             action: input_number.set_value
         default: []
       - target:
-          entity_id: input_text.ac_last_manual_learning_type
+          entity_id: input_text.ac_dda_last_manual_learning_type
         data:
           value: '{{ manual_feedback_kind }}:{{ feedback_phase }}:{{ effective_sp_inconsistency_reason
             }}{% if reinforce_effective_needed %}:refuerzo{% endif %}'
@@ -5081,7 +5081,7 @@
           value: '{{ cool_learning_summary }}'
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_manual_setpoint
+          entity_id: input_number.ac_dda_last_manual_setpoint
         data:
           value: '{{ new_sp_num if new_sp_num is not none else 0 }}'
         action: input_number.set_value
@@ -5125,7 +5125,7 @@
           value_template: '{{ manual_sp_override_active }}'
         sequence:
         - target:
-            entity_id: input_text.ac_last_change_origin
+            entity_id: input_text.ac_dda_last_change_origin
           data:
             value: manual_override
           service: input_text.set_value
@@ -5135,7 +5135,7 @@
             }}'
         sequence:
         - target:
-            entity_id: input_text.ac_last_change_origin
+            entity_id: input_text.ac_dda_last_change_origin
           data:
             value: device_echo
           service: input_text.set_value
@@ -5181,7 +5181,7 @@
       cur_mode: '{{ states(climate_ent) }}'
       last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
-      active_bucket: '{{ states(''input_text.ac_last_auto_context_bucket'') | trim
+      active_bucket: '{{ states(''input_text.ac_dda_last_context_bucket'') | trim
         }}'
       cool_off_target: '{{ states(''input_number.ac_last_auto_tin'') | float(0) -
         (states(''input_number.ac_last_auto_setpoint'') | float(0) - 0.5) if states(''input_number.ac_last_auto_setpoint'')
@@ -5207,7 +5207,7 @@
         'unavailable', 'none', ''] %}\n  99999\n{% else %}\n  {% set ts = as_timestamp(raw,
         default=none) %}\n  {{ 99999 if ts is none else (((as_timestamp(now()) - ts)
         / 60) | round(1)) }}\n{% endif %}"
-      last_change_origin_raw: '{{ states(''input_text.ac_last_change_origin'') | default('''',
+      last_change_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''',
         true) | trim }}'
       manual_sp_lock_window_min: '{% set raw = states(''input_number.ac_manual_setpoint_override_hold_minutes'')
         | float(50) %} {{ [[raw, 60] | min, 45] | max }}'
@@ -5333,7 +5333,7 @@
           manual_lock_state: '{{ manual_sp_lock_active }}'
           bucket: '{{ effective_bucket }}'
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: manual_override
         service: input_text.set_value
@@ -5380,7 +5380,7 @@
           manual_lock_state: '{{ manual_sp_lock_active }}'
           bucket: '{{ effective_bucket }}'
       - target:
-          entity_id: input_text.ac_last_change_origin
+          entity_id: input_text.ac_dda_last_change_origin
         data:
           value: cool_cycle_step
         service: input_text.set_value

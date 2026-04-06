@@ -885,3 +885,78 @@ ac_manual_setpoint_override_hold_minutes:
   mode: box
   unit_of_measurement: "min"
   initial: 50
+
+ac_dda_last_manual_setpoint:
+  name: "AC DDA Last Manual Setpoint"
+  min: 16
+  max: 30
+  step: 0.5
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_dda_feedback_window_minutes:
+  name: "AC DDA Feedback Window Minutes"
+  min: 5
+  max: 180
+  step: 1
+  mode: box
+  initial: 120
+  unit_of_measurement: "min"
+
+ac_dda_cool_off_learned:
+  name: "AC DDA Cool OFF Learned"
+  min: 22.4
+  max: 25.7
+  step: 0.05
+  mode: box
+  unit_of_measurement: "°C"
+  icon: mdi:snowflake-thermometer
+
+ac_dda_manual_on_min_off_window_minutes:
+  name: "AC DDA Manual ON Min OFF Window Minutes"
+  min: 0
+  max: 180
+  step: 1
+  mode: box
+  initial: 60
+  unit_of_measurement: "min"
+
+ac_dda_cool_cycle_contract_on:
+  name: "AC DDA Cool Cycle Contract ON"
+  min: 16
+  max: 30
+  step: 0.01
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_dda_cool_cycle_contract_off:
+  name: "AC DDA Cool Cycle Contract OFF"
+  min: 16
+  max: 30
+  step: 0.01
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_dda_cool_cycle_contract_sensor_off:
+  name: "AC DDA Cool Cycle Contract Sensor OFF"
+  min: 16
+  max: 30
+  step: 0.01
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_dda_cool_cycle_contract_setpoint:
+  name: "AC DDA Cool Cycle Contract Setpoint"
+  min: 16
+  max: 30
+  step: 0.01
+  mode: box
+  unit_of_measurement: "°C"
+
+ac_dda_cool_cycle_contract_setpoint_effective:
+  name: "AC DDA Cool Cycle Contract Setpoint Effective"
+  min: 16
+  max: 30
+  step: 0.01
+  mode: box
+  unit_of_measurement: "°C"

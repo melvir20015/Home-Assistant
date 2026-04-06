@@ -104,3 +104,55 @@ ac_cool_cycle_contract_bucket:
 ac_cool_cycle_contract_reason:
   name: "AC Cool Cycle Contract Reason"
   max: 80
+
+ac_dda_last_manual_event_type:
+  name: "AC DDA Last Manual Detection Type"
+  max: 60
+
+ac_dda_last_manual_learning_type:
+  name: "AC DDA Last Manual Learning Result"
+  max: 60
+
+ac_dda_last_manual_final_mode:
+  name: "AC DDA Last Manual Final Mode"
+  max: 50
+
+ac_dda_last_manual_final_fan:
+  name: "AC DDA Last Manual Final Fan"
+  max: 50
+
+ac_dda_learning_last_manual_off_signature:
+  name: "AC DDA Learning Last Manual OFF Signature"
+  max: 140
+
+ac_dda_learning_last_manual_on_signature:
+  name: "AC DDA Learning Last Manual ON Signature"
+  max: 140
+
+ac_dda_legacy_helper_map:
+  name: "AC DDA Legacy Compatibility Map"
+  max: 255
+
+ac_dda_last_change_origin:
+  name: "AC DDA Last Change Origin"
+  max: 40
+
+ac_dda_last_context_bucket:
+  name: "AC DDA Last Context Bucket"
+  max: 120
+
+ac_dda_cool_contextual_learning_map:
+  name: "AC DDA Cool Contextual Learning Summary"
+  max: 255
+
+ac_dda_cool_effective_setpoint_map:
+  name: "AC DDA Cool Effective Setpoint Summary"
+  max: 255
+
+ac_dda_cool_cycle_contract_bucket:
+  name: "AC DDA Cool Cycle Contract Bucket"
+  max: 120
+
+ac_dda_cool_cycle_contract_reason:
+  name: "AC DDA Cool Cycle Contract Reason"
+  max: 80

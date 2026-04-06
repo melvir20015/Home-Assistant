@@ -77,3 +77,33 @@ ac_cool_cycle_contract_started_at:
   name: "AC Cool Cycle Contract Started At"
   has_date: true
   has_time: true
+
+ac_dda_last_manual_feedback_ts:
+  name: "AC DDA Last Manual Valid Feedback Timestamp"
+  has_date: true
+  has_time: true
+
+ac_dda_last_manual_final_ts:
+  name: "AC DDA Last Manual Final State Timestamp"
+  has_date: true
+  has_time: true
+
+ac_dda_last_manual_on_ts:
+  name: "AC DDA Last Manual ON Timestamp"
+  has_date: true
+  has_time: true
+
+ac_dda_last_manual_off_ts:
+  name: "AC DDA Last Manual OFF Timestamp"
+  has_date: true
+  has_time: true
+
+ac_dda_manual_presence_until:
+  name: "AC DDA Manual Presence Until"
+  has_date: true
+  has_time: true
+
+ac_dda_cool_cycle_contract_started_at:
+  name: "AC DDA Cool Cycle Contract Started At"
+  has_date: true
+  has_time: true

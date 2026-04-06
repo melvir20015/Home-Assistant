@@ -54,3 +54,11 @@ ac_cool_adaptive_cycle_active:
 ac_manual_setpoint_override_active:
   name: "AC Manual Setpoint Override Activo"
   icon: mdi:hand-back-right
+
+ac_dda_off_por_automatizacion:
+  name: AC DDA OFF por automatización (flag)
+  icon: mdi:robot
+
+ac_dda_on_por_automatizacion:
+  name: AC DDA ON por automatización (flag)
+  icon: mdi:robot

@@ -248,3 +248,74 @@ Antes de cambiar reglas:
 ## Decisiones tomadas (fecha y motivo)
 
 - **2026-04-05** — Se crea `codex.md` como fuente de verdad inicial del contrato HVAC para centralizar diseño, operación, seguridad, aprendizaje y mantenibilidad en un único documento trazable.
+
+---
+
+## 11. Migración de helpers a namespace exclusivo `ac_dda_*` (2026-04-06)
+
+### Automatizaciones incluidas en esta migración (5)
+1. `AC - Día dinámico aprendido (principal)`
+2. `AC - Learning - Manual OFF feedback`
+3. `AC - Learning - Manual ON feedback`
+4. `AC - Manual OFF guard + pausa 5 min`
+5. `AC - Manual ON guard + presencia temporal`
+
+### Inventario consolidado de helpers consumidos (principal + auxiliares)
+- **Banderas de origen automático:** `input_boolean.ac_dda_on_por_automatizacion`, `input_boolean.ac_dda_off_por_automatizacion`.
+- **Trazabilidad de eventos manuales:**
+  - `input_datetime.ac_dda_last_manual_on_ts`
+  - `input_datetime.ac_dda_last_manual_off_ts`
+  - `input_datetime.ac_dda_last_manual_final_ts`
+  - `input_datetime.ac_dda_last_manual_feedback_ts`
+  - `input_text.ac_dda_last_manual_event_type`
+  - `input_text.ac_dda_last_manual_learning_type`
+  - `input_text.ac_dda_last_manual_final_mode`
+  - `input_text.ac_dda_last_manual_final_fan`
+  - `input_number.ac_dda_last_manual_setpoint`
+- **Contexto + contratos del ciclo cool:**
+  - `input_text.ac_dda_last_context_bucket`
+  - `input_text.ac_dda_last_change_origin`
+  - `input_text.ac_dda_cool_contextual_learning_map`
+  - `input_text.ac_dda_cool_effective_setpoint_map`
+  - `input_text.ac_dda_cool_cycle_contract_bucket`
+  - `input_text.ac_dda_cool_cycle_contract_reason`
+  - `input_datetime.ac_dda_cool_cycle_contract_started_at`
+  - `input_number.ac_dda_cool_cycle_contract_on`
+  - `input_number.ac_dda_cool_cycle_contract_off`
+  - `input_number.ac_dda_cool_cycle_contract_sensor_off`
+  - `input_number.ac_dda_cool_cycle_contract_setpoint`
+  - `input_number.ac_dda_cool_cycle_contract_setpoint_effective`
+- **Aprendizaje/ventanas de feedback:**
+  - `input_number.ac_dda_feedback_window_minutes`
+  - `input_number.ac_dda_cool_off_learned`
+  - `input_number.ac_dda_manual_on_min_off_window_minutes`
+  - `input_text.ac_dda_learning_last_manual_off_signature`
+  - `input_text.ac_dda_learning_last_manual_on_signature`
+- **Presencia temporal manual:** `input_datetime.ac_dda_manual_presence_until`.
+- **Compatibilidad de transición:** `input_text.ac_dda_legacy_helper_map`.
+
+### Mapa temporal de compatibilidad (`legacy` → `ac_dda_*`)
+- `input_boolean.ac_on_por_automatizacion` → `input_boolean.ac_dda_on_por_automatizacion`
+- `input_boolean.ac_off_por_automatizacion` → `input_boolean.ac_dda_off_por_automatizacion`
+- `input_datetime.ac_last_manual_on_ts` → `input_datetime.ac_dda_last_manual_on_ts`
+- `input_datetime.ac_last_manual_off_ts` → `input_datetime.ac_dda_last_manual_off_ts`
+- `input_datetime.ac_last_manual_final_ts` → `input_datetime.ac_dda_last_manual_final_ts`
+- `input_datetime.ac_last_manual_feedback_ts` → `input_datetime.ac_dda_last_manual_feedback_ts`
+- `input_datetime.ac_manual_presence_until` → `input_datetime.ac_dda_manual_presence_until`
+- `input_text.ac_last_change_origin` → `input_text.ac_dda_last_change_origin`
+- `input_text.ac_last_auto_context_bucket` → `input_text.ac_dda_last_context_bucket`
+- `input_text.ac_last_manual_event_type` → `input_text.ac_dda_last_manual_event_type`
+- `input_text.ac_last_manual_learning_type` → `input_text.ac_dda_last_manual_learning_type`
+- `input_text.ac_last_manual_final_mode` → `input_text.ac_dda_last_manual_final_mode`
+- `input_text.ac_last_manual_final_fan` → `input_text.ac_dda_last_manual_final_fan`
+- `input_text.ac_learning_last_manual_off_signature` → `input_text.ac_dda_learning_last_manual_off_signature`
+- `input_text.ac_learning_last_manual_on_signature` → `input_text.ac_dda_learning_last_manual_on_signature`
+- `input_number.ac_last_manual_setpoint` → `input_number.ac_dda_last_manual_setpoint`
+- `input_number.ac_feedback_window_minutes` → `input_number.ac_dda_feedback_window_minutes`
+- `input_number.ac_cool_off_learned` → `input_number.ac_dda_cool_off_learned`
+- `input_number.ac_manual_on_min_off_window_minutes` → `input_number.ac_dda_manual_on_min_off_window_minutes`
+
+### Política de retiro de dependencias legacy
+1. Mantener lectura/escritura funcional únicamente en `ac_dda_*` para estas 5 automatizaciones.
+2. Validar en trazas que no haya lecturas activas de helpers legacy dentro de estas 5 automatizaciones.
+3. Retirar helpers legacy sólo cuando el resto de automatizaciones externas deje de consumirlos.
