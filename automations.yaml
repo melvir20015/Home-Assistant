@@ -1905,10 +1905,9 @@
         data:
           name: AC Auto Trace
           message: auto_on_denied | reason={{ auto_on_block_reason }} | Tin={{ tin
-            if tin is not none else 'na' }} | Tout={{ tout if tout is not none else
-            'na' }} | On={{ cool_on_validated if cool_on_validated is not none else
-            'na' }} | Off={{ cool_off_validated if cool_off_validated is not none else
-            'na' }}
+            if tin is not none else 'na' }} | On={{ cool_on_validated if cool_on_validated
+            is not none else 'na' }} | branch={{ auto_on_target_branch }} | trig={{
+            trig }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -4126,19 +4125,20 @@
       %}\n  cool_normal_on\n{% else %}\n  none\n{% endif %}"
     auto_on_threshold_match: '{{ auto_on_target_branch != ''none'' }}'
     auto_on_locked_conflict: "{% if auto_on_target_branch == 'heat_normal_on' %}\n
-      \ {{ locked and last_mode_no_fan in ['cool','emergency_cool'] }}\n{% elif auto_on_target_branch
-      == 'cool_normal_on' %}\n  {{ locked and last_mode_no_fan == 'heat' }}\n{% else
-      %}\n  false\n{% endif %}"
+      \ {{ (locked and (last_mode_no_fan in ['cool','emergency_cool'])) | bool }}\n{%
+      elif auto_on_target_branch == 'cool_normal_on' %}\n  {{ (locked and (last_mode_no_fan
+      == 'heat')) | bool }}\n{% elif auto_on_target_branch == 'none' %}\n  {{ false
+      | bool }}\n{% else %}\n  {{ false | bool }}\n{% endif %}"
     auto_on_enable_final: "{{ auto_on_threshold_match\n   and auto_on_presence_gate\n
       \  and (not manual_off_block)\n   and (not recent_any_auto_on)\n   and (not
       auto_on_locked_conflict) }}"
-    auto_on_block_reason: "{% if auto_on_enable_final %}\n  none\n{% elif not auto_on_presence_gate
-      %}\n  sin_presencia\n{% elif manual_off_block %}\n  manual_pause\n{% elif auto_on_locked_conflict
-      %}\n  locked_cool_heat\n{% elif recent_any_auto_on %}\n  recent_auto_on\n{%
-      elif not auto_on_threshold_match %}\n  threshold_no_match\n{% else %}\n  compuerta\n{%
-      endif %}"
-    auto_on_should_audit_denied: '{{ cur_mode != ''cool'' and cur_mode != ''heat''
-      and (not auto_on_enable_final) }}'
+    auto_on_block_reason: "{% if auto_on_enable_final %}\n  none\n{% elif not auto_on_threshold_match
+      %}\n  threshold_no_match\n{% elif not auto_on_presence_gate %}\n  no_presence\n{%
+      elif manual_off_block %}\n  manual_pause\n{% elif locked and auto_on_target_branch
+      != 'none' and auto_on_locked_conflict %}\n  locked_cool_heat\n{% elif recent_any_auto_on
+      %}\n  recent_auto_on\n{% else %}\n  compuerta\n{% endif %}"
+    auto_on_should_audit_denied: "{{ (not auto_on_enable_final)\n   and auto_on_block_reason
+      != 'none' }}"
     cool_main_control_demand: "{{ (not emergency_latched)\n   and cur_mode != 'cool'\n
       \  and tin is not none\n   and cool_on_validated is not none\n   and (tin |
       float) >= (cool_on_validated | float) }}"
