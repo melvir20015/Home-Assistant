@@ -4461,13 +4461,10 @@
       learning_context_compact: >-
         {{ cool_learning_bucket }} | rama={{ last_auto_branch if last_auto_branch not in ['unknown','unavailable','none',''] else 'n/a' }} | franja={{ cool_learning_bucket.split(':')[2] if ':' in cool_learning_bucket else 'n/a' }} | presencia={{ cool_learning_bucket.split(':')[4] if ':' in cool_learning_bucket else 'n/a' }} | humedad={{ cool_learning_bucket.split(':')[1] if ':' in cool_learning_bucket else 'n/a' }}
       discard_reason: '{{ ignored_reason_code if not valid_feedback else ''n/a'' }}'
-      notify_title_learning_structured: AC aprendizaje manual OFF
-      notify_message_learning_structured: "accion_manual_detectada={{ manual_action_detected
-        }}\nresultado_aprendizaje_efectivo={{ learning_effective_yesno }}\ncambio_aplicado={{
-        learning_change_applied }}\numbral_antes_despues={{ learning_threshold_before_after
-        }}\ncontexto={{ learning_context_compact }}\nmotivo_descarte={{ discard_reason
-        }}"
-      notify_title_ignored_off_short: AC aprendizaje manual OFF descartado
+      notify_title_learning_compact: AC aprendizaje | OFF
+      notify_message_learning_compact: >-
+        {{ ts }} | {{ cool_bucket_resume }} | {{ '%.1f' | format((tin if tin is not none else 0) | float) }}/{{ '%.1f' | format((tout if tout is not none else 0) | float) }}/{{ '%.1f' | format((hin if hin is not none else 0) | float) }} | {{ '%.1f' | format((cool_on_after if last_auto_mode == 'cool' else cur_bias_heat_on) | float) }}/{{ '%.1f' | format((cool_off_after if last_auto_mode == 'cool' else cur_bias_heat_off) | float) }} | {{ ('%.1f' | format((cool_setpoint_after if last_auto_mode == 'cool' else cur_bias_heat_setpoint) | float)) if valid_feedback else 'n/a' }}/off | {{ ('aplicado' if valid_feedback else 'ignorado') ~ '/manual_off' }} | {{ (learning_change_applied | replace('\n', ' ') | trim) if valid_feedback else discard_reason }}
+      notify_title_ignored_off_compact: AC aprendizaje | OFF
       notify_message_ignored_off_short: '{{ ignored_reason_summary }}'
       notify_ignored_user: '{{ ignored_reason_code not in [''not_manual'',''auto_off_flag_active'',''last_action_not_auto_on'']
         and not (ignored_reason_code == ''contextual_runtime_short'' and recent_auto_off_evidence)
@@ -4618,7 +4615,7 @@
           }}'
       sequence:
       - data:
-          title: '{{ notify_title_ignored_off_short }}'
+          title: '{{ notify_title_ignored_off_compact }}'
           message: '{{ notify_message_ignored_off_short }}'
           data:
             ttl: 0
@@ -4631,8 +4628,8 @@
         value_template: '{{ valid_feedback }}'
       sequence:
       - data:
-          title: '{{ notify_title_learning_structured }}'
-          message: '{{ notify_message_learning_structured }}'
+          title: '{{ notify_title_learning_compact }}'
+          message: '{{ notify_message_learning_compact }}'
           data:
             ttl: 0
             priority: high
@@ -4897,13 +4894,9 @@
         }} | humedad_auto={{ auto_ctx_humidity_bucket }} | humedad_actual={{ current_humidity_bucket
         }} | humedad_fuente=promedio_h1_h2 | delta_sensores={{ sensor_delta }}'
       discard_reason: '{{ ignored_reason_code if not valid_feedback else ''n/a'' }}'
-      notify_title_learning_structured: AC aprendizaje manual ON
-      notify_message_learning_structured: "accion_manual_detectada={{ manual_action_detected
-        }}\nresultado_aprendizaje_efectivo={{ learning_effective_yesno }}\npeso_aplicado={{
-        learning_weight }}\ncambio_aplicado={{
-        learning_change_applied }}\numbral_antes_despues={{ learning_threshold_before_after
-        }}\ncontexto={{ learning_context_compact }}\nmotivo_descarte={{ discard_reason
-        }}"
+      notify_title_learning_compact: AC aprendizaje | ON
+      notify_message_learning_compact: >-
+        {{ ts }} | {{ cool_bucket_resume }} | {{ '%.1f' | format((t1 if t1 is not none else 0) | float) }}/{{ '%.1f' | format((state_attr(climate_ent, 'current_temperature') if state_attr(climate_ent, 'current_temperature') is not none else 0) | float) }}/{{ '%.1f' | format((hin if hin is not none else 0) | float) }} | {{ '%.1f' | format((cool_on_after if final_mode == 'cool' else ((cur_bias_heat_on | float) + (weighted_step_main | float))) | float) }}/{{ '%.1f' | format((cool_off_after if final_mode == 'cool' else ((cur_bias_heat_off | float) + (weighted_step_main | float))) | float) }} | {{ ('%.1f' | format((cool_setpoint_after if final_mode == 'cool' else ((cur_bias_heat_setpoint | float) + (heat_setpoint_step | float))) | float)) if valid_feedback else 'n/a' }}/{{ final_fan }} | {{ ('aplicado' if valid_feedback else 'ignorado') ~ '/manual_on' }} | {{ (learning_change_applied | replace('\n', ' ') | trim) if valid_feedback else discard_reason }}
       notify_expected: '{{ valid_feedback }}'
       learning_summary_payload: "ultimo=ON|fecha={{ ts }}|resultado={{ 'aplicado'
         if valid_feedback else 'no_aplicado' }}|motivo={{ discard_reason }}|contexto={{
@@ -5065,8 +5058,8 @@
         value_template: '{{ notify_expected }}'
       sequence:
       - data:
-          title: '{{ notify_title_learning_structured }}'
-          message: '{{ notify_message_learning_structured }}'
+          title: '{{ notify_title_learning_compact }}'
+          message: '{{ notify_message_learning_compact }}'
           data:
             ttl: 0
             priority: high
