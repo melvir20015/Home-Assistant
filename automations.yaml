@@ -4211,6 +4211,16 @@
       apply_learning: '{{ valid_feedback and (not duplicate_event) }}'
       learning_step: 0.25
       context_after: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
+      tout: '{{ states(''sensor.temperatura_exterior_metno'') | float(none) }}'
+      hin: "{% set h1 = states('sensor.lumi_lumi_weather_cuarto_humedad') | float(none) %}{% set h2 = states('sensor.lumi_lumi_weather_coco_humedad') | float(none) %}{{ ((h1 + h2) / 2) | round(1) if h1 is not none and h2 is not none else none }}"
+      cool_on_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none) }}'
+      cool_off_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none) }}'
+      sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
+      fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
+      reason_short: "{% if duplicate_event %}dup{% elif last_change_origin != 'manual_off' %}origen{% elif last_auto_action != 'auto_on' %}act_prev{% elif last_auto_mode != 'cool' %}modo_prev{% else %}ventana{% endif %}"
+      delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
+      hhmm: '{{ now().strftime(''%H:%M'') }}'
       learning_type: "{% if apply_learning %}manual_off_learning_applied_contract_v1{% elif duplicate_event %}manual_off_learning_ignored_duplicate_event_contract_v1{% elif last_change_origin != 'manual_off' %}manual_off_learning_ignored_not_manual_contract_v1{% elif last_auto_action != 'auto_on' %}manual_off_learning_ignored_last_action_contract_v1{% elif last_auto_mode != 'cool' %}manual_off_learning_ignored_mode_contract_v1{% else %}manual_off_learning_ignored_window_contract_v1{% endif %}"
   - choose:
     - conditions:
@@ -4248,6 +4258,20 @@
       name: AC Learning Manual OFF
       message: '{{ contract_version }} | manual_off_feedback | ctx={{ contract_context_key }} | apply={{ ''yes'' if apply_learning else ''no'' }} | step=+0.25 | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | min={{ minutes_since_last_auto }} | type={{ learning_type }}'
       entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ apply_learning }}'
+      sequence:
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Learning OFF ✅
+          message: '{{ hhmm }} | Ctx={{ contract_context_key }} | Tin/Tout/H={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }}/{{ ''%.1f'' | format(tout | float) if tout is not none else ''na'' }}/{{ ''%.1f'' | format(hin | float) if hin is not none else ''na'' }} | On/Off={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''na'' }}/{{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''na'' }} | SP/Fan={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''na'' }}/{{ fan_final }} | Src=manual_off_fb | Δ={{ ''%+.2f'' | format(delta_learning | float) }}'
+    default:
+    - service: notify.mobile_app_samsung_s24
+      data:
+        title: AC Learning OFF ⏭️
+        message: '{{ hhmm }} | Ctx={{ contract_context_key }} | Tin/Tout/H={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }}/{{ ''%.1f'' | format(tout | float) if tout is not none else ''na'' }}/{{ ''%.1f'' | format(hin | float) if hin is not none else ''na'' }} | On/Off={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''na'' }}/{{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''na'' }} | SP/Fan={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''na'' }}/{{ fan_final }} | Src=manual_off_fb({{ reason_short }}) | Δ={{ ''%+.2f'' | format(delta_learning | float) }}'
   mode: restart
 - id: '1773895045305'
   alias: AC - Learning - Manual ON feedback
@@ -4287,6 +4311,16 @@
       apply_learning: '{{ valid_feedback and (not duplicate_event) }}'
       learning_step: -0.25
       context_after: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
+      tout: '{{ states(''sensor.temperatura_exterior_metno'') | float(none) }}'
+      hin: "{% set h1 = states('sensor.lumi_lumi_weather_cuarto_humedad') | float(none) %}{% set h2 = states('sensor.lumi_lumi_weather_coco_humedad') | float(none) %}{{ ((h1 + h2) / 2) | round(1) if h1 is not none and h2 is not none else none }}"
+      cool_on_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none) }}'
+      cool_off_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none) }}'
+      sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
+      fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
+      reason_short: "{% if duplicate_event %}dup{% elif last_change_origin != 'manual_on' %}origen{% elif last_auto_action != 'auto_off' %}act_prev{% elif last_auto_mode != 'cool' %}modo_prev{% elif final_mode not in ['cool','fan_only'] %}modo_final{% else %}ventana{% endif %}"
+      delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
+      hhmm: '{{ now().strftime(''%H:%M'') }}'
       learning_type: "{% if apply_learning %}manual_on_learning_applied_contract_v1{% elif duplicate_event %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif last_change_origin != 'manual_on' %}manual_on_learning_ignored_not_manual_contract_v1{% elif last_auto_action != 'auto_off' %}manual_on_learning_ignored_last_action_contract_v1{% elif last_auto_mode != 'cool' %}manual_on_learning_ignored_mode_contract_v1{% else %}manual_on_learning_ignored_window_contract_v1{% endif %}"
   - choose:
     - conditions:
@@ -4324,6 +4358,20 @@
       name: AC Learning Manual ON
       message: '{{ contract_version }} | manual_on_feedback | ctx={{ contract_context_key }} | apply={{ ''yes'' if apply_learning else ''no'' }} | step=-0.25 | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | min={{ minutes_since_last_auto }} | type={{ learning_type }}'
       entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ apply_learning }}'
+      sequence:
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Learning ON ✅
+          message: '{{ hhmm }} | Ctx={{ contract_context_key }} | Tin/Tout/H={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }}/{{ ''%.1f'' | format(tout | float) if tout is not none else ''na'' }}/{{ ''%.1f'' | format(hin | float) if hin is not none else ''na'' }} | On/Off={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''na'' }}/{{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''na'' }} | SP/Fan={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''na'' }}/{{ fan_final }} | Src=manual_on_fb | Δ={{ ''%+.2f'' | format(delta_learning | float) }}'
+    default:
+    - service: notify.mobile_app_samsung_s24
+      data:
+        title: AC Learning ON ⏭️
+        message: '{{ hhmm }} | Ctx={{ contract_context_key }} | Tin/Tout/H={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }}/{{ ''%.1f'' | format(tout | float) if tout is not none else ''na'' }}/{{ ''%.1f'' | format(hin | float) if hin is not none else ''na'' }} | On/Off={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''na'' }}/{{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''na'' }} | SP/Fan={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''na'' }}/{{ fan_final }} | Src=manual_on_fb({{ reason_short }}) | Δ={{ ''%+.2f'' | format(delta_learning | float) }}'
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
