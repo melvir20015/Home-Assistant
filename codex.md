@@ -362,3 +362,10 @@ Antes de cambiar reglas:
    - ejecutar validación YAML,
    - ejecutar `check_config` de Home Assistant en el runtime real donde exista `homeassistant`,
    - confirmar ausencia de errores de `annotatedyaml.loader` en logs de arranque.
+
+### Trazabilidad de mantenimiento (2026-04-06)
+- Se estandarizó `tout` para notificaciones compactas y cálculos relacionados usando cadena de fallback OpenWeatherMap:
+  1. **Primaria:** `state_attr('weather.openweathermap','temperature')`
+  2. **Fallback:** `states('sensor.openweathermap_temperature')`
+  3. Si ambas fuentes vienen `unknown/unavailable/none`, `tout` queda en `none`.
+- Motivo de diseño: **evitar `n/a` por indisponibilidad puntual del proveedor** y mantener continuidad operativa en notificaciones `AC Learning OFF/ON`, `Src=ManualSP` y rutas compactas asociadas a `Src=AutoOFF`.
