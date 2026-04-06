@@ -4777,10 +4777,18 @@
       hin: "{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1)
         }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{
         h2 | round(1) }}{% else %}{{ none }}{% endif %}"
-      cool_on_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none)
-        }}'
-      cool_off_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none)
-        }}'
+      contract_cycle_on_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') }}'
+      contract_cycle_off_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') }}'
+      contract_cycle_on: '{{ contract_cycle_on_raw | float(none) }}'
+      contract_cycle_off: '{{ contract_cycle_off_raw | float(none) }}'
+      contract_cycle_valid: '{{ contract_cycle_on is not none and contract_cycle_off
+        is not none and (contract_cycle_on | float) > (contract_cycle_off | float)
+        and (contract_cycle_off | float) >= 22 and (contract_cycle_off | float) <=
+        25.7 and (contract_cycle_on | float) <= 26.2 }}'
+      cool_on_final: '{% if contract_cycle_valid %}{{ contract_cycle_on | round(2)
+        }}{% else %}{{ none }}{% endif %}'
+      cool_off_final: '{% if contract_cycle_valid %}{{ contract_cycle_off | round(2)
+        }}{% else %}{{ none }}{% endif %}'
       manual_presence_until: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_due_to_presence_gap_contract_v1{% else %}manual_on_detected_contract_v1{% endif %}"
   - target:
@@ -4840,6 +4848,18 @@
       name: AC Manual ON
       message: '{{ contract_version }} | manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else ''n/a'' }} | presence_source={{ presence_source }} | learn_step=-0.25'
       entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ not contract_cycle_valid }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | contract_cycle_invalid | on_raw={{ contract_cycle_on_raw
+            }} | off_raw={{ contract_cycle_off_raw }}'
+          entity_id: climate.0200009211c7_climate
+    default: []
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Manual ON
