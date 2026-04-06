@@ -1694,14 +1694,16 @@
           cool_cycle_branch: presence_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
-          cool_cycle_final_message: Rama={{ cool_cycle_branch }} | Contrato(On={{
-            cool_cycle_contract_on if cool_cycle_contract_on is not none else 'n/a'
-            }}, Off={{ cool_cycle_contract_off if cool_cycle_contract_off is not none
-            else 'n/a' }}, OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off
-            is not none else 'n/a' }}, SP={{ cool_cycle_contract_setpoint_effective
-            if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}) |
-            Causa={{ cool_cycle_real_off_cause }} | Detalle={{ cool_cycle_real_off_detail
-            }} | Hora={{ cool_cycle_hito_ts }}
+          cool_cycle_final_message: Rama={{ cool_cycle_branch }} Causa={{ cool_cycle_real_off_cause
+            }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'na' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'na' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else 'na' }}% On={{
+            '%.1f' | format(cool_cycle_contract_on | float) if cool_cycle_contract_on
+            is not none else 'na' }} Off={{ '%.1f' | format(cool_cycle_contract_off
+            | float) if cool_cycle_contract_off is not none else 'na' }} SP={{ '%.1f'
+            | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective
+            is not none else 'na' }} Fan={{ ac_fan if ac_fan not in ['', 'unknown',
+            'unavailable', 'none'] else 'na' }} Src=AutoOFF Delta=na
       - target:
           entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
@@ -2070,10 +2072,15 @@
           cool_push_summary: SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode
             }} | Vent={{ emergency_window }}
           cool_mobile_title_local: Cool↑
-          cool_mobile_message_local: '{% set reason = cool_push_reason | default('''',
-            true) | trim %} {% set summary = cool_push_summary | default('''', true)
-            | trim %} {{ (reason if reason else ''Mot=sin detalle'') ~ '' | '' ~ (summary
-            if summary else ''Sin detalle'') }}'
+          cool_mobile_message_local: Tin={{ '%.1f' | format(tin | float) if tin is
+            not none else 'na' }} Tout={{ '%.1f' | format(tout | float) if tout is
+            not none else 'na' }} H={{ '%.0f' | format(hin | float) if hin is not
+            none else 'na' }}% On={{ '%.1f' | format(cool_on_final | float) if cool_on_final
+            is not none else 'na' }} Off={{ '%.1f' | format(cool_off_final | float)
+            if cool_off_final is not none else 'na' }} SP={{ '%.1f' | format(emergency_setpoint
+            | float) if emergency_setpoint is not none else 'na' }} Fan={{ emergency_fan_mode
+            if emergency_fan_mode not in ['', 'unknown', 'unavailable', 'none'] else
+            'na' }} Src=AutoON Delta=na
       - data:
           title: '{{ cool_mobile_title_local }}'
           message: '{{ cool_mobile_message_local }}'
@@ -2114,14 +2121,16 @@
           cool_cycle_branch: cool_emergency_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
-          cool_cycle_final_message: Rama={{ cool_cycle_branch }} | Contrato(On={{
-            cool_cycle_contract_on if cool_cycle_contract_on is not none else 'n/a'
-            }}, Off={{ cool_cycle_contract_off if cool_cycle_contract_off is not none
-            else 'n/a' }}, OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off
-            is not none else 'n/a' }}, SP={{ cool_cycle_contract_setpoint_effective
-            if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}) |
-            Causa={{ cool_cycle_real_off_cause }} | Detalle={{ cool_cycle_real_off_detail
-            }} | Hora={{ cool_cycle_hito_ts }}
+          cool_cycle_final_message: Rama={{ cool_cycle_branch }} Causa={{ cool_cycle_real_off_cause
+            }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'na' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'na' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else 'na' }}% On={{
+            '%.1f' | format(cool_cycle_contract_on | float) if cool_cycle_contract_on
+            is not none else 'na' }} Off={{ '%.1f' | format(cool_cycle_contract_off
+            | float) if cool_cycle_contract_off is not none else 'na' }} SP={{ '%.1f'
+            | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective
+            is not none else 'na' }} Fan={{ ac_fan if ac_fan not in ['', 'unknown',
+            'unavailable', 'none'] else 'na' }} Src=AutoOFF Delta=na
       - target:
           entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
@@ -2628,17 +2637,17 @@
           cool_cycle_branch: cool_normal_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
-          cool_cycle_final_message: Rama={{ cool_cycle_branch }} | Contrato(On={{
-            cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is
-            not none else 'n/a' }}, OffProm={{ cool_cycle_contract_off_validated if
-            cool_cycle_contract_off_validated is not none else 'n/a' }}, SensorHardStop={{
-            cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not
-            none else 'n/a' }}, Fuente={{ 'sensor_critico' if cool_cycle_off_cause
-            in ['corte_preventivo_t1','corte_preventivo_t2'] else 'promedio' }}, SP={{
-            cool_cycle_contract_setpoint_effective
-            if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}) |
-            Causa={{ cool_cycle_off_cause }} | Detalle={{ cool_cycle_off_cause_detail
-            }} | Hora={{ cool_cycle_hito_ts }}
+          cool_cycle_final_message: Rama={{ cool_cycle_branch }} Causa={{ cool_cycle_off_cause
+            }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'na' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'na' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else 'na' }}% On={{
+            '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated
+            is not none else 'na' }} Off={{ '%.1f' | format(cool_cycle_contract_off_validated
+            | float) if cool_cycle_contract_off_validated is not none else 'na' }}
+            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float)
+            if cool_cycle_contract_setpoint_effective is not none else 'na' }} Fan={{
+            ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'na'
+            }} Src=AutoOFF Delta=na
       - choose:
         - conditions:
           - condition: template
@@ -3370,10 +3379,14 @@
             contract_setpoint is not none else ''n/a'' }} | Setpoint efectivo={{ contract_setpoint_effective
             if contract_setpoint_effective is not none else ''n/a'' }} | Fan=Low'
           cool_mobile_title_local: Cool↑
-          cool_mobile_message_local: '{% set reason = cool_push_reason | default('''',
-            true) | trim %} {% set summary = cool_push_summary | default('''', true)
-            | trim %} {{ (reason if reason else ''Mot=sin detalle'') ~ '' | '' ~ (summary
-            if summary else ''Sin detalle'') }}'
+          cool_mobile_message_local: Tin={{ '%.1f' | format(tin | float) if tin is
+            not none else 'na' }} Tout={{ '%.1f' | format(tout | float) if tout is
+            not none else 'na' }} H={{ '%.0f' | format(hin | float) if hin is not
+            none else 'na' }}% On={{ '%.1f' | format(cool_on_final | float) if cool_on_final
+            is not none else 'na' }} Off={{ '%.1f' | format(cool_off_final | float)
+            if cool_off_final is not none else 'na' }} SP={{ '%.1f' | format(cool_setpoint_effective
+            | float) if cool_setpoint_effective is not none else 'na' }} Fan=Low
+            Src=AutoON Delta=na
       - data:
           title: '{{ cool_mobile_title_local }}'
           message: '{{ cool_mobile_message_local }}'
@@ -4275,12 +4288,28 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Learning OFF ✅
-          message: '{{ hhmm }} | Ctx={{ contract_context_key }} | Tin/Tout/H={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }}/{{ ''%.1f'' | format(tout | float) if tout is not none else ''na'' }}/{{ ''%.1f'' | format(hin | float) if hin is not none else ''na'' }} | On/Off={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''na'' }}/{{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''na'' }} | SP/Fan={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''na'' }}/{{ fan_final }} | Src=manual_off_fb | Δ={{ ''%+.2f'' | format(delta_learning | float) }}'
+          message: '{{ hhmm }} Ctx={{ contract_context_key }} Tin={{ ''%.1f'' | format(tin
+            | float) if tin is not none else ''na'' }} Tout={{ ''%.1f'' | format(tout
+            | float) if tout is not none else ''na'' }} H={{ ''%.0f'' | format(hin
+            | float) if hin is not none else ''na'' }}% On={{ ''%.1f'' | format(cool_on_final
+            | float) if cool_on_final is not none else ''na'' }} Off={{ ''%.1f'' |
+            format(cool_off_final | float) if cool_off_final is not none else ''na''
+            }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else
+            ''na'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning
+            | float) }}'
     default:
     - service: notify.mobile_app_samsung_s24
       data:
         title: AC Learning OFF ⏭️
-        message: '{{ hhmm }} | Ctx={{ contract_context_key }} | Tin/Tout/H={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }}/{{ ''%.1f'' | format(tout | float) if tout is not none else ''na'' }}/{{ ''%.1f'' | format(hin | float) if hin is not none else ''na'' }} | On/Off={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''na'' }}/{{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''na'' }} | SP/Fan={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''na'' }}/{{ fan_final }} | Src=manual_off_fb({{ reason_short }}) | Δ={{ ''%+.2f'' | format(delta_learning | float) }}'
+        message: '{{ hhmm }} Ctx={{ contract_context_key }} St=skip({{ reason_short }})
+          Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }} Tout={{
+          ''%.1f'' | format(tout | float) if tout is not none else ''na'' }} H={{ ''%.0f''
+          | format(hin | float) if hin is not none else ''na'' }}% On={{ ''%.1f'' |
+          format(cool_on_final | float) if cool_on_final is not none else ''na'' }}
+          Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not
+          none else ''na'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final
+          is not none else ''na'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f''
+          | format(delta_learning | float) }}'
   mode: restart
 - id: '1773895045305'
   alias: AC - Learning - Manual ON feedback
@@ -4385,12 +4414,28 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Learning ON ✅
-          message: '{{ hhmm }} | Ctx={{ contract_context_key }} | Tin/Tout/H={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }}/{{ ''%.1f'' | format(tout | float) if tout is not none else ''na'' }}/{{ ''%.1f'' | format(hin | float) if hin is not none else ''na'' }} | On/Off={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''na'' }}/{{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''na'' }} | SP/Fan={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''na'' }}/{{ fan_final }} | Src=manual_on_fb | Δ={{ ''%+.2f'' | format(delta_learning | float) }}'
+          message: '{{ hhmm }} Ctx={{ contract_context_key }} Tin={{ ''%.1f'' | format(tin
+            | float) if tin is not none else ''na'' }} Tout={{ ''%.1f'' | format(tout
+            | float) if tout is not none else ''na'' }} H={{ ''%.0f'' | format(hin
+            | float) if hin is not none else ''na'' }}% On={{ ''%.1f'' | format(cool_on_final
+            | float) if cool_on_final is not none else ''na'' }} Off={{ ''%.1f'' |
+            format(cool_off_final | float) if cool_off_final is not none else ''na''
+            }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else
+            ''na'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning
+            | float) }}'
     default:
     - service: notify.mobile_app_samsung_s24
       data:
         title: AC Learning ON ⏭️
-        message: '{{ hhmm }} | Ctx={{ contract_context_key }} | Tin/Tout/H={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }}/{{ ''%.1f'' | format(tout | float) if tout is not none else ''na'' }}/{{ ''%.1f'' | format(hin | float) if hin is not none else ''na'' }} | On/Off={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''na'' }}/{{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''na'' }} | SP/Fan={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''na'' }}/{{ fan_final }} | Src=manual_on_fb({{ reason_short }}) | Δ={{ ''%+.2f'' | format(delta_learning | float) }}'
+        message: '{{ hhmm }} Ctx={{ contract_context_key }} St=skip({{ reason_short }})
+          Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''na'' }} Tout={{
+          ''%.1f'' | format(tout | float) if tout is not none else ''na'' }} H={{ ''%.0f''
+          | format(hin | float) if hin is not none else ''na'' }}% On={{ ''%.1f'' |
+          format(cool_on_final | float) if cool_on_final is not none else ''na'' }}
+          Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not
+          none else ''na'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final
+          is not none else ''na'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f''
+          | format(delta_learning | float) }}'
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
@@ -4625,6 +4670,22 @@
       final_mode: '{{ states(climate_ent) }}'
       final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
       final_fan: "{{ state_attr(climate_ent,'fan_mode') if state_attr(climate_ent,'fan_mode') is not none else 'n/a' }}"
+      t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
+        }}'
+      t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
+      h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
+      h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'') | float(none) }}'
+      tin: "{% if t1 is not none and t2 is not none %}{{ ((t1 + t2) / 2) | round(1)
+        }}{% elif t1 is not none %}{{ t1 | round(1) }}{% elif t2 is not none %}{{
+        t2 | round(1) }}{% else %}{{ none }}{% endif %}"
+      tout: '{{ states(''sensor.temperatura_exterior_metno'') | float(none) }}'
+      hin: "{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1)
+        }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{
+        h2 | round(1) }}{% else %}{{ none }}{% endif %}"
+      cool_on_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none)
+        }}'
+      cool_off_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none)
+        }}'
       manual_presence_until: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_due_to_presence_gap_contract_v1{% else %}manual_on_detected_contract_v1{% endif %}"
   - target:
@@ -4684,6 +4745,17 @@
       name: AC Manual ON
       message: '{{ contract_version }} | manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else ''n/a'' }} | presence_source={{ presence_source }} | learn_step=-0.25'
       entity_id: climate.0200009211c7_climate
+  - service: notify.mobile_app_samsung_s24
+    data:
+      title: AC Manual ON
+      message: '{{ now().strftime(''%H:%M'') }} Ctx={{ contract_context_key }} Tin={{
+        ''%.1f'' | format(tin | float) if tin is not none else ''na'' }} Tout={{ ''%.1f''
+        | format(tout | float) if tout is not none else ''na'' }} H={{ ''%.0f'' |
+        format(hin | float) if hin is not none else ''na'' }}% On={{ ''%.1f'' | format(cool_on_final
+        | float) if cool_on_final is not none else ''na'' }} Off={{ ''%.1f'' | format(cool_off_final
+        | float) if cool_off_final is not none else ''na'' }} SP={{ ''%.1f'' | format(final_setpoint
+        | float) if final_setpoint is not none else ''na'' }} Fan={{ final_fan }} Src=ManualON
+        Delta=-0.25'
   mode: restart
 - id: ac_cool_manual_setpoint_feedback
   alias: AC - Feedback manual de setpoint en cool activo
