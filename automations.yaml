@@ -1704,7 +1704,7 @@
             On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
             Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
             SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause }}
       - target:
           entity_id: input_boolean.ac_dda_off_por_automatizacion
@@ -2130,7 +2130,7 @@
             On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
             Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
             SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause }}
       - target:
           entity_id: input_boolean.ac_dda_off_por_automatizacion
@@ -2644,7 +2644,7 @@
             On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
             Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
             SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_off_cause }}
       - choose:
         - conditions:
