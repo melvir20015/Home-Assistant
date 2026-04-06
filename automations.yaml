@@ -4242,7 +4242,7 @@
       ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif last_change_origin != 'manual_off' %}origin_not_manual_off{% else %}unknown_discard{% endif %}"
       reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'origin_not_manual_off' %}origen{% else %}descartado{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
-      hhmm: '{{ now().strftime(''%H:%M'') }}'
+      hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
       learning_type: "{% if apply_learning %}manual_off_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_off_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'origin_not_manual_off' %}manual_off_learning_ignored_not_manual_contract_v1{% else %}manual_off_learning_ignored_unknown_contract_v1{% endif %}"
   - choose:
     - conditions:
@@ -4368,7 +4368,7 @@
       ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif last_change_origin != 'manual_on' %}origin_not_manual_on{% elif not cool_path_feedback %}final_mode_not_cool_path{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(120)) %}feedback_window_expired{% else %}unknown_discard{% endif %}"
       reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'origin_not_manual_on' %}origen{% elif ignored_reason_code == 'final_mode_not_cool_path' %}modo{% elif ignored_reason_code == 'feedback_window_expired' %}ventana{% else %}descartado{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
-      hhmm: '{{ now().strftime(''%H:%M'') }}'
+      hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
       learning_type: "{% if apply_learning %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'origin_not_manual_on' %}manual_on_learning_ignored_not_manual_contract_v1{% elif ignored_reason_code == 'final_mode_not_cool_path' %}manual_on_learning_ignored_final_mode_contract_v1{% elif ignored_reason_code == 'feedback_window_expired' %}manual_on_learning_ignored_window_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
   - choose:
     - conditions:
@@ -4748,7 +4748,7 @@
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Manual ON
-      message: '{{ now().strftime(''%H:%M'') }} Ctx={{ contract_context_key }} Tin={{
+      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Ctx={{ contract_context_key }} Tin={{
         ''%.1f'' | format(tin | float) if tin is not none else ''na'' }} Tout={{ ''%.1f''
         | format(tout | float) if tout is not none else ''na'' }} H={{ ''%.0f'' |
         format(hin | float) if hin is not none else ''na'' }}% On={{ ''%.1f'' | format(cool_on_final
