@@ -319,3 +319,46 @@ Antes de cambiar reglas:
 1. Mantener lectura/escritura funcional únicamente en `ac_dda_*` para estas 5 automatizaciones.
 2. Validar en trazas que no haya lecturas activas de helpers legacy dentro de estas 5 automatizaciones.
 3. Retirar helpers legacy sólo cuando el resto de automatizaciones externas deje de consumirlos.
+
+---
+
+## 12. Intervención única en `automations.yaml` para reinicio limpio (2026-04-06)
+
+### Resumen aplicado
+- Se repararon bloques YAML de la automatización **`AC - Día dinámico aprendido (principal)`** en ramas:
+  - `presence_off`
+  - `emergency_off`
+  - `cool_normal_off`
+- Se reescribieron plantillas largas (`cool_cycle_contract_snapshot`, `cool_cycle_final_message` y detalle de causa) con bloque seguro `>-` para eliminar riesgo de comillas/Jinja mal cerradas.
+- Se normalizó el uso de umbrales mostrados en notificaciones OFF/ManualSP para usar valores contractuales validados y mostrar `n/a` cuando no existan datos válidos.
+- Se confirmó que no hay referencias a `person.alberto`; la presencia telefónica queda acotada a:
+  - `person.ivan`
+  - `device_tracker.samsung_s24`
+  - `binary_sensor.presencia_ok_estable`
+
+### Reglas finales vigentes de notificación compacta
+- Formato de campos requerido y consistente:
+  - `Tin=...`
+  - `Tout=...`
+  - `H=...`
+  - `On=...`
+  - `Off=...`
+  - `SP=...`
+  - `Fan=...`
+  - `Src=...`
+  - `Delta=...`
+- Hora en formato de 12 horas AM/PM sin cero a la izquierda (ej.: `2:22 PM`).
+- Para aprendizaje/manual feedback se conserva salida en ambos casos:
+  - `Resultado=aplicado`
+  - `Resultado=ignorado`
+  - con `Razón=...` breve.
+
+### Checklist operativo de mantenimiento futuro
+1. **Sintaxis segura**: todo template largo de mensaje/snapshot debe ir en `>-`.
+2. **Umbrales visibles**: `On/Off` siempre desde fuente contractual validada; si no, `n/a`.
+3. **Presencia**: no introducir nuevas entidades `person.*` fuera de `person.ivan` en estas 5 automatizaciones.
+4. **Setpoint manual**: mantener detección con delta real, persistencia por contexto en rango `[17,23]`, y bloqueo de rollback durante ventana de override.
+5. **Validación previa a reinicio**:
+   - ejecutar validación YAML,
+   - ejecutar `check_config` de Home Assistant en el runtime real donde exista `homeassistant`,
+   - confirmar ausencia de errores de `annotatedyaml.loader` en logs de arranque.

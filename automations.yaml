@@ -1699,8 +1699,8 @@
             Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }}
             Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }}
             H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
-            On={{ '%.1f' | format(cool_cycle_contract_on | float) if cool_cycle_contract_on is not none and (cool_cycle_contract_on | float) >= 17 else 'n/a' }}
-            Off={{ '%.1f' | format(cool_cycle_contract_off | float) if cool_cycle_contract_off is not none and (cool_cycle_contract_off | float) >= 17 else 'n/a' }}
+            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
+            Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
             SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
             Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause }}
@@ -2103,37 +2103,33 @@
           message: ac_dda_branch=emergency_off | trigger={{ trig }} | mode={{ cur_mode }}
           entity_id: climate.0200009211c7_climate
       - variables:
-          cool_cycle_contract_snapshot: Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason
-            not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source
-            }} | Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket
-            not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail
-            }} | On={{ cool_cycle_contract_on if cool_cycle_contract_on is not none
-            else 'n/a' }} | Off={{ cool_cycle_contract_off if cool_cycle_contract_off
-            is not none else 'n/a' }} | OffSensor={{ cool_cycle_contract_sensor_off
-            if cool_cycle_contract_sensor_off is not none else 'n/a' }} | SP={{ cool_cycle_contract_setpoint_effective
-            if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+          cool_cycle_contract_snapshot: >-
+            Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }}
+            Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }}
+            On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else 'n/a' }}
+            Off={{ cool_cycle_contract_off_validated if cool_cycle_contract_off_validated is not none else 'n/a' }}
+            OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else 'n/a' }}
+            SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
           cool_cycle_real_off_cause: emergencia
-          cool_cycle_real_off_detail: "{% if tin is not none and emergency_off_avg
-            is not none and (tin | float) <= (emergency_off_avg | float) %}\n  Prom={{
-            tin }}<=OffEmerg={{ emergency_off_avg }}\n{% else %}\n  Prom={{ tin if
-            tin is not none else 'n/a' }} | OffEmerg={{ emergency_off_avg if emergency_off_avg
-            is not none else 'n/a' }}\n{% endif %}"
+          cool_cycle_real_off_detail: >-
+            {% if tin is not none and emergency_off_avg is not none and (tin | float) <= (emergency_off_avg | float) %}
+            Prom={{ tin }}<=OffEmerg={{ emergency_off_avg }}
+            {% else %}
+            Prom={{ tin if tin is not none else 'n/a' }} OffEmerg={{ emergency_off_avg if emergency_off_avg is not none else 'n/a' }}
+            {% endif %}
           cool_cycle_branch: cool_emergency_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
-          cool_cycle_final_message: "{{ now().strftime('%I:%M %p') | regex_replace('^0','')
-            }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a'
-            }} Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a'
-            }} H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
-            On={{ '%.1f' | format(cool_cycle_contract_on | float) if cool_cycle_contract_on
-            is not none and (cool_cycle_contract_on | float) >= 17 else 'n/a' }} Off={{
-            '%.1f' | format(cool_cycle_contract_off | float) if cool_cycle_contract_off
-            is not none and (cool_cycle_contract_off | float) >= 17 else 'n/a' }}
-            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float)
-            if cool_cycle_contract_setpoint_effective is not none else 'n/a' }} Fan={{
-            ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a'
-            }} Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause
-            }}
+          cool_cycle_final_message: >-
+            {{ now().strftime('%I:%M %p') | regex_replace('^0','') }}
+            Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
+            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
+            Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
+            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
+            Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause }}
       - target:
           entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
@@ -2628,31 +2624,26 @@
             t2 }}<=SensorHardStop={{ cool_cycle_contract_sensor_off }}\n{% else %}\n  Prom={{
             tin if tin is not none else 'n/a' }} | t1={{ t1 if t1 is not none else
             'n/a' }} | t2={{ t2 if t2 is not none else 'n/a' }}\n{% endif %}"
-          cool_cycle_contract_snapshot: Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason
-            not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source
-            }} | Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket
-            not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail
-            }} | On={{ cool_cycle_contract_on if cool_cycle_contract_on is not none
-            else 'n/a' }} | Off={{ cool_cycle_contract_off if cool_cycle_contract_off
-            is not none else 'n/a' }} | OffSensor={{ cool_cycle_contract_sensor_off
-            if cool_cycle_contract_sensor_off is not none else 'n/a' }} | SP={{ cool_cycle_contract_setpoint_effective
-            if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+          cool_cycle_contract_snapshot: >-
+            Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }}
+            Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }}
+            On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else 'n/a' }}
+            Off={{ cool_cycle_contract_off_validated if cool_cycle_contract_off_validated is not none else 'n/a' }}
+            OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else 'n/a' }}
+            SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
           cool_cycle_branch: cool_normal_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
-          cool_cycle_final_message: "{{ now().strftime('%I:%M %p') | regex_replace('^0','')
-            }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a'
-            }} Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a'
-            }} H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
-            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated
-            is not none and (cool_cycle_contract_on_validated | float) >= 17 else
-            'n/a' }} Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float)
-            if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated
-            | float) >= 17 else 'n/a' }} SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective
-            | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a'
-            }} Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none']
-            else 'n/a' }} Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_off_cause
-            }}
+          cool_cycle_final_message: >-
+            {{ now().strftime('%I:%M %p') | regex_replace('^0','') }}
+            Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
+            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
+            Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
+            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
+            Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_off_cause }}
       - choose:
         - conditions:
           - condition: template
@@ -5335,7 +5326,7 @@
           sequence:
           - data:
               title: AC SP manual
-              message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado={{ ''aplicado'' if feedback_or_override_apply else ''ignorado'' }} Razón={{ manual_sp_reason_output }}'
+              message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_on'') | float) >= 17 else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_off'') | float) >= 17 else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado={{ ''aplicado'' if feedback_or_override_apply else ''ignorado'' }} Razón={{ manual_sp_reason_output }}'
               data:
                 ttl: 0
                 priority: high
@@ -5380,7 +5371,7 @@
         entity_id: '{{ climate_ent }}'
     - data:
         title: AC SP manual
-        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado=ignorado Razón={{ manual_sp_reason_output }}'
+        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_on'') | float) >= 17 else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_off'') | float) >= 17 else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado=ignorado Razón={{ manual_sp_reason_output }}'
         data:
           ttl: 0
           priority: high
