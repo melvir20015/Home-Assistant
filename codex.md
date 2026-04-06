@@ -364,8 +364,12 @@ Antes de cambiar reglas:
    - confirmar ausencia de errores de `annotatedyaml.loader` en logs de arranque.
 
 ### Trazabilidad de mantenimiento (2026-04-06)
-- Se estandarizó `tout` para notificaciones compactas y cálculos relacionados usando cadena de fallback OpenWeatherMap:
-  1. **Primaria:** `state_attr('weather.openweathermap','temperature')`
-  2. **Fallback:** `states('sensor.openweathermap_temperature')`
-  3. Si ambas fuentes vienen `unknown/unavailable/none`, `tout` queda en `none`.
-- Motivo de diseño: **evitar `n/a` por indisponibilidad puntual del proveedor** y mantener continuidad operativa en notificaciones `AC Learning OFF/ON`, `Src=ManualSP` y rutas compactas asociadas a `Src=AutoOFF`.
+- **Fuente externa única (sin fallback):** `weather.openweathermap`.
+- **Atributos OWM usados en contrato y notificaciones:**
+  1. Temperatura exterior: `state_attr('weather.openweathermap','temperature')` → `tout_owm`
+  2. Humedad exterior: `state_attr('weather.openweathermap','humidity')` → `hout_owm`
+  3. Condición climática: `states('weather.openweathermap') | lower` → `cond_owm`
+- **Política contractual vigente:** si OWM no entrega dato válido (`unknown/unavailable/none`) en ese instante, se mantiene la notificación y se muestra `n/a` sin fallback.
+- **Impacto operativo:**
+  - `Tout` y `H` en notificaciones compactas OFF/ON se construyen desde OWM.
+  - El componente climático del contexto/bucket y la razón de contrato se deriva de `cond_owm` para evitar mezcla de fuentes exteriores legacy.

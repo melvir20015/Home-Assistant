@@ -641,7 +641,7 @@
       title: Movimiento detectado en casa
       message: Hubo movimiento después de 1 hora o mas sin actividad.
 - id: aviso_afuera_mas_fresco_cool
-  alias: Aviso - Afuera más fresco que adentro (AC en cool, Met.no)
+  alias: Aviso - Afuera más fresco que adentro (AC en cool, OWM)
   trace:
     stored_traces: 50
   description: Notifica si el AC está en cool y afuera está 5°C más fresco (solo de
@@ -653,7 +653,7 @@
     - climate.0200009211c7_climate
     - sensor.lumi_lumi_weather_cuarto_temperatura
     - sensor.lumi_lumi_weather_coco_temperatura
-    - sensor.temperatura_exterior_metno
+    - weather.openweathermap
   - platform: time_pattern
     minutes: /10
   condition:
@@ -666,8 +666,8 @@
   - condition: template
     value_template: '{% set t_cuarto = states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(0)
       %} {% set t_coco   = states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(0)
-      %} {% set t_in     = (t_cuarto + t_coco) / 2 %} {% set t_out    = states(''sensor.temperatura_exterior_metno'')|float(100)
-      %} {{ t_in - t_out >= 5 }}'
+      %} {% set t_in     = (t_cuarto + t_coco) / 2 %} {% set t_out    = state_attr(''weather.openweathermap'',''temperature'')|float(none)
+      %} {{ t_out is not none and (t_in - t_out) >= 5 }}'
   action:
   - service: notify.mobile_app_samsung_s24
     data:
@@ -1464,9 +1464,10 @@
       %}\n  {% if dp >= 20 %}\n    {{ -0.6 }}\n  {% elif dp >= 18 %}\n    {{ -0.4
       }}\n  {% elif dp >= 16 %}\n    {{ -0.2 }}\n  {% elif dp >= 14 %}\n    {{ -0.1
       }}\n  {% else %}\n    {{ 0 }}\n  {% endif %}\n{% endif %}"
-    tout_owm_primary: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-    tout_owm_fallback: '{{ states(''sensor.openweathermap_temperature'') | float(none) }}'
-    tout: '{% if tout_owm_primary is not none %}{{ tout_owm_primary }}{% elif tout_owm_fallback is not none %}{{ tout_owm_fallback }}{% else %}{{ none }}{% endif %}'
+    tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+    hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+    cond_owm: '{{ states(''weather.openweathermap'') | lower }}'
+    tout: '{{ tout_owm if tout_owm is not none else none }}'
     wind_kmh: '{{ state_attr(''weather.openweathermap'',''wind_speed'')|float(0) }}'
     wind: '{{ (wind_kmh / 3.6) | round(2) }}'
     month: '{{ now().month }}'
@@ -1703,7 +1704,7 @@
             On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
             Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
             SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
+            Fan={{ ac_fan if ac_fan not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause }}
       - target:
           entity_id: input_boolean.ac_dda_off_por_automatizacion
@@ -2129,7 +2130,7 @@
             On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
             Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
             SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
+            Fan={{ ac_fan if ac_fan not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause }}
       - target:
           entity_id: input_boolean.ac_dda_off_por_automatizacion
@@ -2643,7 +2644,7 @@
             On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
             Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
             SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
+            Fan={{ ac_fan if ac_fan not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_off_cause }}
       - choose:
         - conditions:
@@ -3376,7 +3377,7 @@
             contract_setpoint is not none else ''n/a'' }} | Setpoint efectivo={{ contract_setpoint_effective
             if contract_setpoint_effective is not none else ''n/a'' }} | Fan=Low'
           cool_mobile_title_local: Cool↑
-          cool_mobile_message_local: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(cool_setpoint_effective | float) if cool_setpoint_effective is not none else ''n/a'' }} Fan=Low Src=AutoON Delta=n/a'
+          cool_mobile_message_local: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(cool_setpoint_effective | float) if cool_setpoint_effective is not none else ''n/a'' }} Fan=Low Src=AutoON Delta=n/a'
       - data:
           title: '{{ cool_mobile_title_local }}'
           message: '{{ cool_mobile_message_local }}'
@@ -3618,9 +3619,10 @@
       %}\n  {{ h2 | round(1) }}\n{% else %}\n  {{ none }}\n{% endif %}"
     sensor_delta: "{% if t1 is not none and t2 is not none %}\n  {{ (t1 - t2) | abs
       | round(2) }}\n{% else %}\n  {{ 0 }}\n{% endif %}"
-    tout_owm_primary: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-    tout_owm_fallback: '{{ states(''sensor.openweathermap_temperature'') | float(none) }}'
-    tout: '{% if tout_owm_primary is not none %}{{ tout_owm_primary }}{% elif tout_owm_fallback is not none %}{{ tout_owm_fallback }}{% else %}{{ none }}{% endif %}'
+    tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+    hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+    cond_owm: '{{ states(''weather.openweathermap'') | lower }}'
+    tout: '{{ tout_owm if tout_owm is not none else none }}'
     wind_kmh: '{{ state_attr(''weather.openweathermap'',''wind_speed'') | float(0)
       }}'
     wind: '{{ (wind_kmh / 3.6) | round(2) }}'
@@ -3673,8 +3675,7 @@
     cool_humidity_bucket: "{% if hin is not none and (hin | float) >= 66 %}\n  humedad_muy_alta\n{%
       elif hin is not none and (hin | float) >= 58 %}\n  humedad_alta\n{% else %}\n
       \ humedad_normal\n{% endif %}"
-    cool_weather_state_raw: '{{ states(''weather.openweathermap'') | default(''unknown'',
-      true) | lower }}'
+    cool_weather_state_raw: '{{ cond_owm | default(''unknown'', true) | lower }}'
     cool_weather_bucket: "{% set raw = cool_weather_state_raw %}\n{% if raw in ['sunny',
       'clear-night'] %}\n  soleado\n{% elif raw in ['partlycloudy', 'windy', 'windy-variant']
       %}\n  parcial\n{% elif raw in ['cloudy', 'overcast'] %}\n  nublado\n{% elif
@@ -4227,9 +4228,10 @@
       learning_step: 0.25
       context_after: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
       tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
-      tout_owm_primary: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-      tout_owm_fallback: '{{ states(''sensor.openweathermap_temperature'') | float(none) }}'
-      tout: '{% if tout_owm_primary is not none %}{{ tout_owm_primary }}{% elif tout_owm_fallback is not none %}{{ tout_owm_fallback }}{% else %}{{ none }}{% endif %}'
+      tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+      hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+      cond_owm: '{{ states(''weather.openweathermap'') | lower }}'
+      tout: '{{ tout_owm if tout_owm is not none else none }}'
       hin: "{% set h1 = states('sensor.lumi_lumi_weather_cuarto_humedad') | float(none) %}{% set h2 = states('sensor.lumi_lumi_weather_coco_humedad') | float(none) %}{{ ((h1 + h2) / 2) | round(1) if h1 is not none and h2 is not none else none }}"
       contract_cycle_on_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') }}'
       contract_cycle_off_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') }}'
@@ -4334,12 +4336,12 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Learning OFF
-          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_off type={{ learning_type }} reason_code=applied'
+          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_off type={{ learning_type }} reason_code=applied'
     default:
     - service: notify.mobile_app_samsung_s24
       data:
         title: AC Learning OFF
-        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
+        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
   mode: restart
 - id: '1773895045305'
   alias: AC - Learning - Manual ON feedback
@@ -4392,9 +4394,10 @@
       learning_step: -0.25
       context_after: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
       tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
-      tout_owm_primary: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-      tout_owm_fallback: '{{ states(''sensor.openweathermap_temperature'') | float(none) }}'
-      tout: '{% if tout_owm_primary is not none %}{{ tout_owm_primary }}{% elif tout_owm_fallback is not none %}{{ tout_owm_fallback }}{% else %}{{ none }}{% endif %}'
+      tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+      hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+      cond_owm: '{{ states(''weather.openweathermap'') | lower }}'
+      tout: '{{ tout_owm if tout_owm is not none else none }}'
       hin: "{% set h1 = states('sensor.lumi_lumi_weather_cuarto_humedad') | float(none) %}{% set h2 = states('sensor.lumi_lumi_weather_coco_humedad') | float(none) %}{{ ((h1 + h2) / 2) | round(1) if h1 is not none and h2 is not none else none }}"
       contract_cycle_on_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') }}'
       contract_cycle_off_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') }}'
@@ -4499,12 +4502,12 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Learning ON
-          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_on type={{ learning_type }} reason_code=applied'
+          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_on type={{ learning_type }} reason_code=applied'
     default:
     - service: notify.mobile_app_samsung_s24
       data:
         title: AC Learning ON
-        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
+        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
@@ -4542,9 +4545,10 @@
       h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
       h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'') | float(none) }}'
       tin: "{% if t1 is not none and t2 is not none %}{{ ((t1 + t2) / 2) | round(1) }}{% elif t1 is not none %}{{ t1 | round(1) }}{% elif t2 is not none %}{{ t2 | round(1) }}{% else %}{{ none }}{% endif %}"
-      tout_owm_primary: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-      tout_owm_fallback: '{{ states(''sensor.openweathermap_temperature'') | float(none) }}'
-      tout: '{% if tout_owm_primary is not none %}{{ tout_owm_primary }}{% elif tout_owm_fallback is not none %}{{ tout_owm_fallback }}{% else %}{{ none }}{% endif %}'
+      tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+      hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+      cond_owm: '{{ states(''weather.openweathermap'') | lower }}'
+      tout: '{{ tout_owm if tout_owm is not none else none }}'
       hin: "{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1) }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{ h2 | round(1) }}{% else %}{{ none }}{% endif %}"
       cool_on_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none) }}'
       cool_off_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none) }}'
@@ -4587,7 +4591,7 @@
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Manual OFF
-      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP=n/a Fan={{ fan_final }} Src=ManualOFF Delta=+0.25 Resultado=pendiente Razón=esperando_learning_off'
+      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP=n/a Fan={{ fan_final }} Src=ManualOFF Delta=+0.25 Resultado=pendiente Razón=esperando_learning_off'
   - choose:
     - conditions:
       - condition: template
@@ -4766,9 +4770,10 @@
       tin: "{% if t1 is not none and t2 is not none %}{{ ((t1 + t2) / 2) | round(1)
         }}{% elif t1 is not none %}{{ t1 | round(1) }}{% elif t2 is not none %}{{
         t2 | round(1) }}{% else %}{{ none }}{% endif %}"
-      tout_owm_primary: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-      tout_owm_fallback: '{{ states(''sensor.openweathermap_temperature'') | float(none) }}'
-      tout: '{% if tout_owm_primary is not none %}{{ tout_owm_primary }}{% elif tout_owm_fallback is not none %}{{ tout_owm_fallback }}{% else %}{{ none }}{% endif %}'
+      tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+      hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+      cond_owm: '{{ states(''weather.openweathermap'') | lower }}'
+      tout: '{{ tout_owm if tout_owm is not none else none }}'
       hin: "{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1)
         }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{
         h2 | round(1) }}{% else %}{{ none }}{% endif %}"
@@ -4838,7 +4843,7 @@
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Manual ON
-      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Delta=-0.25 Resultado=pendiente Razón=esperando_learning_on'
+      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Delta=-0.25 Resultado=pendiente Razón=esperando_learning_on'
   mode: restart
 - id: ac_cool_manual_setpoint_feedback
   alias: AC - Feedback manual de setpoint en cool activo
@@ -4880,9 +4885,10 @@
       hin: '{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1)
         }} {% elif h1 is not none %}{{ h1 | round(1) }} {% elif h2 is not none %}{{
         h2 | round(1) }} {% else %}{{ none }}{% endif %}'
-      tout_owm_primary: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-      tout_owm_fallback: '{{ states(''sensor.openweathermap_temperature'') | float(none) }}'
-      tout: '{% if tout_owm_primary is not none %}{{ tout_owm_primary }}{% elif tout_owm_fallback is not none %}{{ tout_owm_fallback }}{% else %}{{ none }}{% endif %}'
+      tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+      hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+      cond_owm: '{{ states(''weather.openweathermap'') | lower }}'
+      tout: '{{ tout_owm if tout_owm is not none else none }}'
       presence_effective: '{% set mov_raw = states(''binary_sensor.presencia_movimiento_estable'')
         %} {% set s24_raw = states(''device_tracker.samsung_s24'') %} {% set person_raw
         = states(''person.ivan'') %} {% set presence_ok = is_state(''binary_sensor.presencia_ok_estable'',''on'')
@@ -4902,8 +4908,7 @@
       cool_humidity_bucket: '{% if hin is not none and (hin | float) >= 66 %}humedad_muy_alta{%
         elif hin is not none and (hin | float) >= 58 %}humedad_alta{% else %}humedad_normal{%
         endif %}'
-      cool_weather_state_raw: '{{ states(''weather.openweathermap'') | default(''unknown'',
-        true) | lower }}'
+      cool_weather_state_raw: '{{ cond_owm | default(''unknown'', true) | lower }}'
       cool_weather_bucket: '{% set raw = cool_weather_state_raw %} {% if raw in [''sunny'',
         ''clear-night''] %}soleado {% elif raw in [''partlycloudy'', ''windy'', ''windy-variant'']
         %}parcial {% elif raw in [''cloudy'', ''overcast''] %}nublado {% elif raw
@@ -5337,7 +5342,7 @@
           sequence:
           - data:
               title: AC SP manual
-              message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_on'') | float) >= 17 else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_off'') | float) >= 17 else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado={{ ''aplicado'' if feedback_or_override_apply else ''ignorado'' }} Razón={{ manual_sp_reason_output }}'
+              message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_on'') | float) >= 17 else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_off'') | float) >= 17 else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado={{ ''aplicado'' if feedback_or_override_apply else ''ignorado'' }} Razón={{ manual_sp_reason_output }}'
               data:
                 ttl: 0
                 priority: high
@@ -5382,7 +5387,7 @@
         entity_id: '{{ climate_ent }}'
     - data:
         title: AC SP manual
-        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hin | float) if hin is not none else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_on'') | float) >= 17 else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_off'') | float) >= 17 else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado=ignorado Razón={{ manual_sp_reason_output }}'
+        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_on'') | float) if states(''input_number.ac_dda_cool_cycle_contract_on'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_on'') | float) >= 17 else ''n/a'' }} Off={{ ''%.1f'' | format(states(''input_number.ac_dda_cool_cycle_contract_off'') | float) if states(''input_number.ac_dda_cool_cycle_contract_off'') not in [''unknown'',''unavailable'',''none'',''''] and (states(''input_number.ac_dda_cool_cycle_contract_off'') | float) >= 17 else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado=ignorado Razón={{ manual_sp_reason_output }}'
         data:
           ttl: 0
           priority: high
