@@ -742,7 +742,7 @@
   alias: AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones
   trace:
     stored_traces: 50
-  description: '21:00–07:00: Control nocturno inteligente HEAT/COOL/OFF usando temperatura
+  description: '22:00–06:59: Control nocturno inteligente HEAT/COOL/OFF usando temperatura
     interior vs exterior (OpenWeather apparent_temperature), presencia estable, histéresis,
     bloqueo 2h y ajuste de emergencia por humedad (punto de rocío). Emergencia COOL
     SOLO si exterior aparente < 17°C. Promedio de 2 sensores (temp y humedad). Notifica
@@ -771,8 +771,8 @@
     platform: state
   condition:
   - condition: time
-    after: '21:00:00'
-    before: 07:00:00
+    after: '22:00:00'
+    before: 06:59:00
   action:
   - choose:
     - conditions:
@@ -1240,7 +1240,7 @@
               - target:
                   entity_id: input_boolean.ac_dda_on_por_automatizacion
                 service: input_boolean.turn_off
-              - stop: Rampa detenida por salir de la ventana 21:00-07:00.
+              - stop: Rampa detenida por salir de la ventana 22:00-06:59.
             - conditions:
               - condition: template
                 value_template: '{{ (loop_elapsed_min | float(0)) >= (cool_ramp_loop_timeout_min
@@ -1600,7 +1600,7 @@
   alias: AC - Día dinámico aprendido (principal)
   trace:
     stored_traces: 50
-  description: 'Automatización principal diurna 07:01–20:59. Usa fórmula base + sesgos
+  description: 'Automatización principal diurna 07:01–21:59. Usa fórmula base + sesgos
     aprendidos. Respeta presencia jerárquica, pausa manual de 5 min, presencia temporal
     por encendido manual y aprendizaje por feedback. Presencia telefónica limitada a
     `device_tracker.samsung_s24` y `person.ivan`. En `input_select.ac_ultimo_modo_no_fan`,
@@ -1626,7 +1626,7 @@
   condition:
   - condition: time
     after: 07:01:00
-    before: '20:59:00'
+    before: '21:59:00'
   action:
   - choose:
     - conditions:
@@ -3663,7 +3663,7 @@
     cool_tod_bucket: "{% set hm = now().strftime('%H:%M') %}\n{% if '07:00' <= hm
       <= '10:00' %}\n  franja_0700_1000\n{% elif '10:01' <= hm <= '15:00' %}\n  franja_1001_1500\n{%
       elif '15:01' <= hm <= '18:00' %}\n  franja_1501_1800\n{% elif '18:01' <= hm
-      <= '20:59' %}\n  franja_1801_2059\n{% else %}\n  franja_fuera_rango\n{% endif
+      <= '21:59' %}\n  franja_1801_2059\n{% else %}\n  franja_fuera_rango\n{% endif
       %}"
     cool_outdoor_bucket: "{% if tout is none %}\n  exterior_templado\n{% elif (tout
       | float) >= 31 %}\n  exterior_muy_caliente\n{% elif (tout | float) >= 27 %}\n
@@ -4192,7 +4192,7 @@
   conditions:
   - condition: time
     after: 07:01:00
-    before: '20:59:00'
+    before: '21:59:00'
   actions:
   - variables:
       contract_version: contract=v1
@@ -4352,7 +4352,7 @@
   conditions:
   - condition: time
     after: 07:01:00
-    before: '20:59:00'
+    before: '21:59:00'
   actions:
   - delay: 00:01:00
   - variables:
@@ -4515,7 +4515,7 @@
   conditions:
   - condition: time
     after: 07:01:00
-    before: '20:59:00'
+    before: '21:59:00'
   actions:
   - choose:
     - conditions:
@@ -4653,7 +4653,7 @@
   conditions:
   - condition: time
     after: 07:01:00
-    before: '20:59:00'
+    before: '21:59:00'
   actions:
   - choose:
     - conditions:
@@ -4884,7 +4884,7 @@
       cool_tod_bucket: '{% set hm = now().strftime(''%H:%M'') %} {% if ''07:00'' <=
         hm <= ''10:00'' %}franja_0700_1000{% elif ''10:01'' <= hm <= ''15:00'' %}franja_1001_1500{%
         elif ''15:01'' <= hm <= ''18:00'' %}franja_1501_1800{% elif ''18:01'' <= hm
-        <= ''20:59'' %}franja_1801_2059{% else %}franja_fuera_rango{% endif %}'
+        <= ''21:59'' %}franja_1801_2059{% else %}franja_fuera_rango{% endif %}'
       cool_outdoor_bucket: '{% if tout is none %}exterior_templado {% elif (tout |
         float) >= 31 %}exterior_muy_caliente {% elif (tout | float) >= 27 %}exterior_caliente
         {% else %}exterior_templado{% endif %}'
