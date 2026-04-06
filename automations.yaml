@@ -4365,7 +4365,7 @@
       cool_on_before: '{{ ((cool_bucket_previous_value | float) + 0.5) | round(2)
         }}'
       cool_on_after: '{{ ((cool_off_after | float) + 0.5) | round(2) }}'
-      cool_setpoint_after: '{{ ((cool_off_after | float) - 0.5) | round(2) }}'
+      cool_setpoint_after: "{% if cool_off_after is none %}\n  {{ none }}\n{% else %}\n  {% set sp = ((cool_off_after | float) | int(0, 'floor')) - 1 %}\n  {{ [[sp, 23] | min, 17] | max }}\n{% endif %}"
       cool_learning_summary: '{{ cool_learning_bucket ~ ''='' ~ (''%.2f'' | format(cool_off_after
         | float)) }}'
       heat_on_after: '{{ [[(cur_bias_heat_on | float) - (step_main | float), 3] |
@@ -4448,7 +4448,8 @@
       learning_effective_yesno: '{% if valid_feedback %}sí{% else %}no{% endif %}'
       learning_change_applied: "{% if not valid_feedback %}\n  ninguno\n{% elif last_auto_mode
         == 'cool' %}\n  Off +0.25 | On +0.25 | Setpoint +0.0\n{% elif quick_feedback
-        %}\n  On -{{ step_main }} | Off -{{ step_main }} | Setpoint -0.5\n{% else
+        %}\n  On -{{ step_main }} | Off -{{ step_main }} | Setpoint=floor(Off)-1
+        (clamp 17..23)\n{% else
         %}\n  On -{{ step_main }} | Off -{{ step_main }} | Setpoint +0.0\n{% endif
         %}"
       learning_threshold_before_after: "{% if not valid_feedback %}\n  sin cambio\n{%
@@ -4851,7 +4852,7 @@
       cool_on_before: '{{ ((cool_bucket_previous_value | float) + 0.5) | round(2)
         }}'
       cool_on_after: '{{ ((cool_off_after | float) + 0.5) | round(2) }}'
-      cool_setpoint_after: '{{ ((cool_off_after | float) - 0.5) | round(2) }}'
+      cool_setpoint_after: "{% if cool_off_after is none %}\n  {{ none }}\n{% else %}\n  {% set sp = ((cool_off_after | float) | int(0, 'floor')) - 1 %}\n  {{ [[sp, 23] | min, 17] | max }}\n{% endif %}"
       cool_learning_summary: '{{ cool_learning_bucket ~ ''='' ~ (''%.2f'' | format(cool_off_after
         | float)) }}'
       cool_branch_audit: RamaCool -{{ cool_branch_step }} (peso={{ learning_weight
@@ -5500,11 +5501,10 @@
         else 0) %}\n  {% set raw = (cool_off_target | float) + spread %}\n  {{ [[raw,
         26.2] | min, 22.9] | max | round(2) }}\n{% endif %}"
       cool_on: '{{ cool_on_target }}'
-      cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else
-        %}\n  {{ ((cool_off | float) - 0.5) | round(2) }}\n{% endif %}"
-      cool_setpoint: "{% if cool_setpoint_theoretical is none %}\n  {{ none }}\n{%
-        else %}\n  {% set raw = cool_setpoint_theoretical | float %}\n  {{ [[raw,
-        24] | min, 21] | max | round(2) }}\n{% endif %}"
+      cool_setpoint_theoretical: "{% if cool_off is none %}\n  {{ none }}\n{% else %}\n
+        \ {% set sp = ((cool_off | float) | int(0, 'floor')) - 1 %}\n  {{ [[sp, 23]
+        | min, 17] | max }}\n{% endif %}"
+      cool_setpoint: '{{ cool_setpoint_theoretical }}'
       auto_on_blocked_by_presence: '{{ not presence_strict_for_manual_guard }}'
       cool_auto_blocked_by_threshold: '{{ final_mode == ''cool'' and (not manual_force_cool_needed)
         and ( cool_on is none or tin is none or (tin | float(0)) < (cool_on | float(999))
@@ -5543,8 +5543,8 @@
         %}\n  {{ ((cool_off_forced_after | float) + 0.5) | round(2) }}\n{% endif
         %}"
       cool_sp_forced_after: "{% if cool_off_forced_after is none %}\n  {{ none }}\n{% else
-        %}\n  {{ ((cool_off_forced_after | float) - 0.5) | round(2) }}\n{% endif
-        %}"
+        %}\n  {% set sp = ((cool_off_forced_after | float) | int(0, 'floor')) - 1
+        %}\n  {{ [[sp, 23] | min, 17] | max }}\n{% endif %}"
       cool_learning_summary_forced: "{% if cool_off_forced_after is none %}\n  {{
         states('input_text.ac_cool_contextual_learning_map') }}\n{% else %}\n  {{
         cool_context_bucket ~ '=' ~ ('%.2f' | format(cool_off_forced_after | float))
