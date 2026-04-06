@@ -3106,16 +3106,22 @@
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
             if cool_setpoint_effective is not none else 0) }}"
         service: input_number.set_value
-      - target:
-          entity_id: input_number.ac_dda_cool_cycle_contract_on
-        data:
-          value: '{{ cool_on_validated if cool_on_validated is not none else 0 }}'
-        service: input_number.set_value
-      - target:
-          entity_id: input_number.ac_dda_cool_cycle_contract_off
-        data:
-          value: '{{ cool_off_validated if cool_off_validated is not none else 0 }}'
-        service: input_number.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_contract_values_valid }}'
+          sequence:
+          - target:
+              entity_id: input_number.ac_dda_cool_cycle_contract_on
+            data:
+              value: '{{ cool_on_validated }}'
+            service: input_number.set_value
+          - target:
+              entity_id: input_number.ac_dda_cool_cycle_contract_off
+            data:
+              value: '{{ cool_off_validated }}'
+            service: input_number.set_value
+        default: []
       - target:
           entity_id: input_number.ac_dda_cool_cycle_contract_sensor_off
         data:
@@ -3142,7 +3148,7 @@
       - target:
           entity_id: input_text.ac_dda_cool_cycle_contract_reason
         data:
-          value: '{{ cool_off_learning_source }}'
+          value: "{% if cool_contract_values_valid %}{{ cool_off_learning_source }}{% else %}{{ cool_contract_invalid_reason }}{% endif %}"
         service: input_text.set_value
       - target:
           entity_id: input_datetime.ac_dda_cool_cycle_contract_started_at
@@ -3836,6 +3842,8 @@
 {% else %}
   {{ [[(cool_on | float), 26.2] | min, ((cool_off_validated | float) + (cool_min_hysteresis | float(0.35)))] | max | round(2) }}
 {% endif %}"
+    cool_contract_values_valid: '{{ cool_on_validated is not none and cool_off_validated is not none and (cool_on_validated | float) > (cool_off_validated | float) and (cool_off_validated | float) >= 22 and (cool_off_validated | float) <= 25.7 and (cool_on_validated | float) <= 26.2 }}'
+    cool_contract_invalid_reason: "{% if cool_contract_values_valid %}{{ none }}{% elif cool_on_validated is none or cool_off_validated is none %}missing_contract_values{% else %}reject_invalid_contract_values{% endif %}"
     cool_sensor_off: "{% if cool_off_validated is none %}
   {{ 23.2 }}
 {% else %}
@@ -4248,7 +4256,9 @@
       fallback_used: '{{ ''yes'' if threshold_source == ''contextual_contract_recalc'' else ''no'' }}'
       cool_on_final: "{% if threshold_source == 'cycle_contract_helpers' %}{{ contract_cycle_on | round(2) }}{% elif threshold_source == 'contextual_contract_recalc' %}{{ contextual_on_candidate }}{% else %}{{ none }}{% endif %}"
       cool_off_final: "{% if threshold_source == 'cycle_contract_helpers' %}{{ contract_cycle_off | round(2) }}{% elif threshold_source == 'contextual_contract_recalc' %}{{ contextual_off_candidate }}{% else %}{{ none }}{% endif %}"
-      threshold_status: '{{ ''ok'' if cool_on_final is not none and cool_off_final is not none else ''no_disponible'' }}'
+      contract_values_valid: '{{ cool_on_final is not none and cool_off_final is not none and (cool_on_final | float) > (cool_off_final | float) and (cool_off_final | float) >= 22 and (cool_off_final | float) <= 25.7 and (cool_on_final | float) <= 26.2 }}'
+      contract_invalid_reason: "{% if cool_on_final is none or cool_off_final is none %}missing_contract_values{% else %}reject_invalid_contract_values{% endif %}"
+      threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
       ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif last_change_origin != 'manual_off' %}origin_not_manual_off{% else %}unknown_discard{% endif %}"
@@ -4300,7 +4310,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ cool_on_final is not none and cool_off_final is not none }}'
+        value_template: '{{ contract_values_valid }}'
       sequence:
       - target:
           entity_id: input_number.ac_dda_cool_cycle_contract_on
@@ -4327,7 +4337,12 @@
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
-    default: []
+    default:
+    - target:
+        entity_id: input_text.ac_dda_cool_cycle_contract_reason
+      data:
+        value: '{{ contract_invalid_reason }}'
+      service: input_text.set_value
   - choose:
     - conditions:
       - condition: template
@@ -4414,7 +4429,9 @@
       fallback_used: '{{ ''yes'' if threshold_source == ''contextual_contract_recalc'' else ''no'' }}'
       cool_on_final: "{% if threshold_source == 'cycle_contract_helpers' %}{{ contract_cycle_on | round(2) }}{% elif threshold_source == 'contextual_contract_recalc' %}{{ contextual_on_candidate }}{% else %}{{ none }}{% endif %}"
       cool_off_final: "{% if threshold_source == 'cycle_contract_helpers' %}{{ contract_cycle_off | round(2) }}{% elif threshold_source == 'contextual_contract_recalc' %}{{ contextual_off_candidate }}{% else %}{{ none }}{% endif %}"
-      threshold_status: '{{ ''ok'' if cool_on_final is not none and cool_off_final is not none else ''no_disponible'' }}'
+      contract_values_valid: '{{ cool_on_final is not none and cool_off_final is not none and (cool_on_final | float) > (cool_off_final | float) and (cool_off_final | float) >= 22 and (cool_off_final | float) <= 25.7 and (cool_on_final | float) <= 26.2 }}'
+      contract_invalid_reason: "{% if cool_on_final is none or cool_off_final is none %}missing_contract_values{% else %}reject_invalid_contract_values{% endif %}"
+      threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
       ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif last_change_origin != 'manual_on' %}origin_not_manual_on{% elif not cool_path_feedback %}final_mode_not_cool_path{% elif (minutes_since_last_auto | float(99999)) > (feedback_window_min | float(120)) %}feedback_window_expired{% else %}unknown_discard{% endif %}"
@@ -4466,7 +4483,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ cool_on_final is not none and cool_off_final is not none }}'
+        value_template: '{{ contract_values_valid }}'
       sequence:
       - target:
           entity_id: input_number.ac_dda_cool_cycle_contract_on
@@ -4493,7 +4510,12 @@
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
-    default: []
+    default:
+    - target:
+        entity_id: input_text.ac_dda_cool_cycle_contract_reason
+      data:
+        value: '{{ contract_invalid_reason }}'
+      service: input_text.set_value
   - choose:
     - conditions:
       - condition: template

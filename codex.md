@@ -218,6 +218,11 @@ Al terminar ciclo de `cool`, activar `fan_only` por **3 minutos** para secado po
 - Priorizar: acción + motivo + valor crítico.
 - Mover detalles extendidos al logbook.
 
+### Confiabilidad de umbrales contractuales On/Off
+- Cualquier valor `On/Off` fuera del rango contractual (`off` en `[22.0, 25.7]`, `on` en `<= 26.2` y `on > off`) se considera **dato no confiable**.
+- Si el dato es no confiable, no debe publicarse en notificaciones y se debe conservar el último contrato válido en helpers.
+- Registrar razón explícita de descarte para trazabilidad (`reject_invalid_contract_values`).
+
 ---
 
 ## 10. Observabilidad y mantenimiento
