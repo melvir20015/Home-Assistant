@@ -1602,7 +1602,8 @@
     stored_traces: 50
   description: 'Automatización principal diurna 07:01–20:59. Usa fórmula base + sesgos
     aprendidos. Respeta presencia jerárquica, pausa manual de 5 min, presencia temporal
-    por encendido manual y aprendizaje por feedback. En `input_select.ac_ultimo_modo_no_fan`,
+    por encendido manual y aprendizaje por feedback. Presencia telefónica limitada a
+    `device_tracker.samsung_s24` y `person.ivan`. En `input_select.ac_ultimo_modo_no_fan`,
     `off` representa reposo/sin modo recordado; no se usa `idle`.
 
     '
@@ -4194,6 +4195,7 @@
     stored_traces: 50
   description: 'Contrato v1: aprendizaje manual OFF unificado. Usa una sola definición
     de contexto y una sola semántica de aprendizaje (+0.25) sin ramas legacy.
+    Presencia telefónica limitada a `device_tracker.samsung_s24` y `person.ivan`.
 
     '
   triggers:
@@ -4317,6 +4319,7 @@
     stored_traces: 50
   description: 'Contrato v1: aprendizaje manual ON unificado. Espera 60s para consolidación,
     usa una sola definición de contexto y aplica semántica -0.25 sin ramas legacy.
+    Presencia telefónica limitada a `device_tracker.samsung_s24` y `person.ivan`.
 
     '
   triggers:
@@ -4560,7 +4563,8 @@
   trace:
     stored_traces: 50
   description: 'Contrato v1: guard de encendido manual con consolidación a 60s, flujo
-    off->fan_only->cool (30s) y presencia temporal cuando corresponde.
+    off->fan_only->cool (30s) y presencia temporal cuando corresponde. Presencia
+    telefónica limitada a `device_tracker.samsung_s24` y `person.ivan`.
 
     '
   triggers:
