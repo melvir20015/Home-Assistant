@@ -455,3 +455,38 @@ Evitar reclasificaciones ambiguas entre eventos **AUTO** y **manuales** durante 
    - revisar token/ts y `ac_dda_last_change_origin`.
    - validar cierre con `transition_closed=ok` o `transition_closed=timeout`.
 5. Si `timeout`: tratar evento como transición AUTO no confirmada aún (no manual), hasta que expire ventana de guard y desaparezcan evidencias.
+
+---
+
+## 15. Trazabilidad consolidada ON/OFF y clasificación manual (2026-04-07)
+
+### Cobertura aplicada
+- `AC - Día dinámico aprendido (principal)`:
+  - Rama `cool_normal_on` con hitos explícitos de push ON:
+    - `hito=notify_on_preparado`
+    - `hito=notify_on_intentado`
+    - `hito=notify_on_fallido`
+    - `hito=notify_on_enviado`
+  - Ramas AUTO OFF con protocolo estricto previo a `climate.set_hvac_mode: off`:
+    - `input_boolean.ac_dda_off_por_automatizacion=on`
+    - `input_text.ac_dda_last_change_origin=auto_off`
+    - `input_datetime.ac_last_auto_off_marker_ts=now()`
+    - `input_text.ac_last_auto_off_marker_nonce=<nonce nuevo por intento>`
+- `AC - Manual OFF guard + pausa 5 min`:
+  - Bloqueo fuerte ante evidencia AUTO (flag ON, nonce reciente, origen AUTO reciente).
+  - Revalidación corta adicional (2 s) antes de grabar `last_manual_off_ts`.
+- `AC - Learning - Manual OFF feedback`:
+  - Solo aplica aprendizaje si existe evidencia manual explícita y ausencia de señales AUTO recientes.
+  - En descarte, conserva `Resultado=ignorado` y razón explícita.
+
+### Claves de log estandarizadas
+- `off_classification=auto|manual`
+- `classification_reason=<causa>`
+- `off_nonce=<nonce o n/a>`
+- `manual_guard_discard_reason=<causa o none>`
+
+### Regla operativa de depuración
+1. Verificar primero clasificación (`off_classification`) y causa (`classification_reason`).
+2. Confirmar nonce (`off_nonce`) y edad del marcador en guard/learning.
+3. Si guard descarta, revisar `manual_guard_discard_reason`.
+4. Si Learning OFF ignora, revisar `ignored_reason_code` y validar que no haya escritura de aprendizaje.
