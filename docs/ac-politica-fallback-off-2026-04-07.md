@@ -18,8 +18,8 @@ Se introduce resolución robusta de `off_effective` en tiempo de ejecución:
    - Usar `cool_cycle_contract_off_validated` cuando exista valor válido.
 2. **Prioridad 2 (`runtime_recalc`)**
    - Si el helper de ciclo no es válido/no está disponible, usar `cool_off_validated` recalculado en runtime.
-3. **Abortar con trazabilidad explícita (`missing`)**
-   - Si no hay `off_effective` usable en ninguna fuente, la rama de apagado **no ejecuta OFF a ciegas** y registra logbook de aborto.
+3. **No ejecutar OFF a ciegas (`missing`)**
+   - Si no hay `off_effective` usable en ninguna fuente, la rama no apaga y registra el resumen de gates en `logbook`.
 
 ## Política de sensor OFF efectivo
 
@@ -39,6 +39,21 @@ La rama `cool_normal_off` ahora permite apagar cuando exista `off_effective` vá
 
 `cool_cycle_contract_active` se mantiene para **auditoría/trazabilidad**, pero ya no bloquea de forma dura la seguridad térmica del apagado.
 
+Además se agregan gates explícitos de depuración:
+- `off_gate_mode_ok`
+- `off_gate_not_emergency`
+- `off_gate_not_manual_override`
+- `off_gate_contract_active`
+- `off_gate_threshold_met` (`tin <= off_effective` o hard stop por sensor `t1/t2`).
+
+Si **no** apaga, la rama registra siempre un resumen único en `logbook.log` (`ac_dda_branch=cool_normal_off_skip`) con:
+- `Tin`, `Off`, `cur_mode`, `manual_override_active`, `emergency_latched`,
+- `cool_cycle_contract_active`, `last_auto_branch`,
+- estado de cada gate para diagnóstico inmediato.
+
+Si se usa fallback térmico con `cur_mode=cool` y `tin <= off_effective` aun con contrato inactivo, se permite OFF y se persiste trazabilidad en:
+- `input_text.ac_dda_cool_cycle_contract_reason = cool_off_validated:fallback_runtime_recalc:tin_leq_off_effective`.
+
 ## Observabilidad añadida (logbook)
 
 Se registran dos eventos clave:
@@ -46,9 +61,10 @@ Se registran dos eventos clave:
 1. **Fallback aplicado**
    - `cool_off_fallback_source=contract_helper|runtime_recalc`
    - Incluye `off_effective`, `sensor_off_effective` y `contract_active_audit`.
-2. **Aborto por falta de umbral**
-   - `ac_dda_branch=cool_normal_off_abort | reason=missing_off_effective`
-   - Incluye valores disponibles de `contract_off`, `runtime_off` y `contract_active_audit`.
+2. **No apagado (resumen único de gates)**
+   - `ac_dda_branch=cool_normal_off_skip`
+   - Incluye `Tin`, `Off`, `cur_mode`, `manual_override_active`, `emergency_latched`,
+     `cool_cycle_contract_active`, `last_auto_branch` y estado de gates.
 
 ## Ejemplos de helpers desactualizados
 
@@ -79,4 +95,10 @@ Resultado esperado:
 
 Resultado esperado:
 - No apagar automáticamente por `cool_normal_off`.
-- Registrar aborto explícito para diagnóstico y evitar decisiones térmicas ciegas.
+- Registrar `cool_normal_off_skip` con gates para diagnóstico y evitar decisiones térmicas ciegas.
+
+### Caso real documentado: “Tin=24.6 > no apagaba por gate de ciclo”
+
+- Escenario: `Tin=24.6`, `cool_cycle_contract_active=false`, sin helper de ciclo utilizable pero con `off_effective` disponible desde `runtime_recalc`.
+- Antes: el gate de ciclo impedía la salida por apagado térmico.
+- Ahora: si `tin <= off_effective` y `cur_mode=cool`, se permite OFF con fallback `cool_off_validated` y queda trazabilidad del origen (`contract_helper` vs `runtime_recalc`) en `logbook` y en `input_text.ac_dda_cool_cycle_contract_reason`.

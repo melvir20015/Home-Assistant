@@ -2594,28 +2594,27 @@
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ cur_mode == ''cool'' and (not emergency_latched) and (not
-          manual_override_active) and (not cool_cycle_off_effective_valid) }}'
+        value_template: '{{ off_gate_should_shutdown }}'
       sequence:
-      - service: logbook.log
-        data:
-          name: AC Auto Trace
-          message: 'ac_dda_branch=cool_normal_off_abort | reason=missing_off_effective
-            | contract_off={{ cool_cycle_contract_off_validated if cool_cycle_contract_off_validated
-            is not none else ''n/a'' }} | runtime_off={{ cool_off_validated if cool_off_validated
-            is not none else ''n/a'' }} | contract_active_audit={{ cool_cycle_contract_active
-            }}'
-          entity_id: climate.0200009211c7_climate
-    - conditions:
-      - condition: template
-        value_template: '{{ cur_mode == ''cool'' and (not emergency_latched) and (not
-          manual_override_active) and cool_cycle_off_effective_valid and ( (tin is
-          not none and (tin | float) <= (cool_cycle_off_effective | float)) or (t1
-          is not none and cool_cycle_sensor_off_effective is not none and (t1 | float)
-          <= (cool_cycle_sensor_off_effective | float)) or (t2 is not none and cool_cycle_sensor_off_effective
-          is not none and (t2 | float) <= (cool_cycle_sensor_off_effective | float))
-          ) }}'
-      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ off_gate_allow_contract_fallback }}'
+          sequence:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.ac_dda_cool_cycle_contract_reason
+            data:
+              value: 'cool_off_validated:fallback_runtime_recalc:tin_leq_off_effective'
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: 'cool_off_validated fallback aplicado | off_source={{ cool_cycle_off_effective_source
+                }} | off_effective={{ cool_cycle_off_effective if cool_cycle_off_effective
+                is not none else ''n/a'' }} | contract_active={{ off_gate_contract_active
+                }}'
+              entity_id: climate.0200009211c7_climate
+        default: []
       - service: logbook.log
         data:
           name: AC DDA Audit
@@ -2888,6 +2887,23 @@
             name: AC Auto Trace
             message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ off_gate_mode_ok and (not off_gate_should_shutdown) }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: 'ac_dda_branch=cool_normal_off_skip | Tin={{ tin if tin is not none
+            else ''n/a'' }} | Off={{ cool_cycle_off_effective if cool_cycle_off_effective
+            is not none else ''n/a'' }} | cur_mode={{ cur_mode }} | manual_override_active={{
+            manual_override_active }} | emergency_latched={{ emergency_latched }} |
+            cool_cycle_contract_active={{ cool_cycle_contract_active }} | last_auto_branch={{
+            states(''input_text.ac_last_auto_branch'') }} | mode_ok={{ off_gate_mode_ok
+            }} | not_emergency={{ off_gate_not_emergency }} | not_manual_override={{
+            off_gate_not_manual_override }} | contract_active_gate={{ off_gate_contract_active
+            }} | threshold_met={{ off_gate_threshold_met }}'
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ auto_on_enable_final\n   and auto_on_target_branch ==
@@ -4099,6 +4115,22 @@
       %}"
     cool_cycle_off_effective_valid: '{{ cool_cycle_off_effective is not none and cool_cycle_sensor_off_effective
       is not none }}'
+    off_gate_mode_ok: '{{ cur_mode == ''cool'' }}'
+    off_gate_not_emergency: '{{ not emergency_latched }}'
+    off_gate_not_manual_override: '{{ not manual_override_active }}'
+    off_gate_contract_active: '{{ cool_cycle_contract_active }}'
+    off_gate_threshold_met: '{{ (tin is not none and cool_cycle_off_effective is not none
+      and (tin | float) <= (cool_cycle_off_effective | float)) or (t1 is not none
+      and cool_cycle_sensor_off_effective is not none and (t1 | float) <= (cool_cycle_sensor_off_effective
+      | float)) or (t2 is not none and cool_cycle_sensor_off_effective is not none
+      and (t2 | float) <= (cool_cycle_sensor_off_effective | float)) }}'
+    off_gate_allow_contract_fallback: '{{ off_gate_mode_ok and off_gate_not_emergency
+      and off_gate_not_manual_override and cool_cycle_off_effective_valid and (tin
+      is not none and cool_cycle_off_effective is not none and (tin | float) <= (cool_cycle_off_effective
+      | float)) and (not off_gate_contract_active) }}'
+    off_gate_should_shutdown: '{{ off_gate_mode_ok and off_gate_not_emergency and
+      off_gate_not_manual_override and cool_cycle_off_effective_valid and off_gate_threshold_met
+      }}'
     cool_cycle_contract_started_at_raw: '{{ states(''input_datetime.ac_dda_cool_cycle_contract_started_at'')
       }}'
     cool_cycle_contract_active: "{{ states('input_text.ac_last_auto_branch') == 'cool_normal_on'\n
