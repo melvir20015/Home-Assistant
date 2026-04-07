@@ -1899,18 +1899,6 @@
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ auto_on_should_audit_denied }}'
-      sequence:
-      - service: logbook.log
-        data:
-          name: AC Auto Trace
-          message: auto_on_denied | reason={{ auto_on_block_reason }} | Tin={{ tin
-            if tin is not none else 'na' }} | On={{ cool_on_validated if cool_on_validated
-            is not none else 'na' }} | branch={{ auto_on_target_branch }} | trig={{
-            trig }}
-          entity_id: climate.0200009211c7_climate
-    - conditions:
-      - condition: template
         value_template: "{{ auto_on_enable_final\n   and auto_on_target_branch ==
           'emergency_on' }}"
       sequence:
@@ -2903,6 +2891,24 @@
             }} | not_emergency={{ off_gate_not_emergency }} | not_manual_override={{
             off_gate_not_manual_override }} | contract_active_gate={{ off_gate_contract_active
             }} | threshold_met={{ off_gate_threshold_met }}'
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: "{{ auto_on_should_audit_denied\n   and cur_mode != 'off' }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: auto_on_denied_discard_off_context | cur_mode={{ cur_mode }} | Tin={{ tin if tin is not none else 'na' }} | off_validated={{ cool_off_validated if cool_off_validated is not none else 'na' }} | cool_cycle_contract_active={{ cool_cycle_contract_active }} | manual_override_active={{ manual_override_active }} | emergency_latched={{ emergency_latched }} | reason={{ auto_on_block_reason }} | branch={{ auto_on_target_branch }} | trig={{ trig }}
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: "{{ auto_on_should_audit_denied\n   and cur_mode == 'off' }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: auto_on_denied | reason={{ auto_on_block_reason }} | Tin={{ tin if tin is not none else 'na' }} | On={{ cool_on_validated if cool_on_validated is not none else 'na' }} | branch={{ auto_on_target_branch }} | trig={{ trig }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
