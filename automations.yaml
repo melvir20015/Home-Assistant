@@ -1422,10 +1422,28 @@
       - target:
           entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
         service: input_boolean.turn_off
-      - delay: 00:00:10
-      - target:
-          entity_id: input_boolean.ac_dda_on_por_automatizacion
-        service: input_boolean.turn_off
+      - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_dda_on_por_automatizacion
+            service: input_boolean.turn_off
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: transition_closed=ok | hvac_confirmed=cool
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Auto Trace
+            message: transition_closed=timeout | hvac_expected=cool
+            entity_id: climate.0200009211c7_climate
     default: []
   mode: restart
   variables:
@@ -1711,6 +1729,16 @@
           - input_boolean.ac_dda_off_por_automatizacion
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
+      - target:
+          entity_id: input_text.ac_dda_transition_token
+        data:
+          value: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-auto-off'
+        service: input_text.set_value
+      - target:
+          entity_id: input_datetime.ac_dda_transition_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
       - choose:
         - conditions:
           - condition: template
@@ -1846,7 +1874,7 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: hito=mensaje_preparado | {{ cool_cycle_final_message }}
+          message: hito=notify_payload_ready | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
       - data:
           title: '{{ cool_cycle_final_title }}'
@@ -1858,7 +1886,7 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: hito=notify_ejecutado | {{ cool_cycle_final_message }}
+          message: hito=notify_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
@@ -1903,11 +1931,16 @@
           - target:
               entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
+          - target:
+              entity_id: input_text.ac_dda_cool_cycle_contract_reason
+            data:
+              value: transition_closed=ok
+            service: input_text.set_value
         default:
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
@@ -1928,6 +1961,16 @@
           - input_boolean.ac_dda_on_por_automatizacion
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
+      - target:
+          entity_id: input_text.ac_dda_transition_token
+        data:
+          value: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-auto-on'
+        service: input_text.set_value
+      - target:
+          entity_id: input_datetime.ac_dda_transition_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
@@ -2139,13 +2182,31 @@
               continue_on_error: true
               data:
                 name: AC Auto Trace
-                message: hito=notify_enviado_auto_on
+                message: hito=notify_enviado
                 entity_id: climate.0200009211c7_climate
         default: []
-      - delay: 00:00:10
-      - target:
-          entity_id: input_boolean.ac_dda_on_por_automatizacion
-        service: input_boolean.turn_off
+      - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_dda_on_por_automatizacion
+            service: input_boolean.turn_off
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: transition_closed=ok | hvac_confirmed=cool
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Auto Trace
+            message: transition_closed=timeout | hvac_expected=cool
+            entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_off
@@ -2192,6 +2253,16 @@
           - input_boolean.ac_dda_off_por_automatizacion
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
+      - target:
+          entity_id: input_text.ac_dda_transition_token
+        data:
+          value: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-auto-off'
+        service: input_text.set_value
+      - target:
+          entity_id: input_datetime.ac_dda_transition_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -2321,7 +2392,7 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: hito=mensaje_preparado | {{ cool_cycle_final_message }}
+          message: hito=notify_payload_ready | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
       - data:
           title: '{{ cool_cycle_final_title }}'
@@ -2333,7 +2404,7 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: hito=notify_ejecutado | {{ cool_cycle_final_message }}
+          message: hito=notify_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
@@ -2378,11 +2449,16 @@
           - target:
               entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
+          - target:
+              entity_id: input_text.ac_dda_cool_cycle_contract_reason
+            data:
+              value: transition_closed=ok
+            service: input_text.set_value
         default:
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
@@ -2543,11 +2619,16 @@
           - target:
               entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
+          - target:
+              entity_id: input_text.ac_dda_cool_cycle_contract_reason
+            data:
+              value: transition_closed=ok
+            service: input_text.set_value
         default:
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -2677,11 +2758,16 @@
           - target:
               entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
+          - target:
+              entity_id: input_text.ac_dda_cool_cycle_contract_reason
+            data:
+              value: transition_closed=ok
+            service: input_text.set_value
         default:
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -2925,7 +3011,7 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: hito=mensaje_preparado | {{ cool_cycle_final_message }}
+          message: hito=notify_payload_ready | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
       - data:
           title: '{{ cool_cycle_final_title }}'
@@ -2937,7 +3023,7 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: hito=notify_ejecutado | {{ cool_cycle_final_message }}
+          message: hito=notify_enviado | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
@@ -2982,11 +3068,16 @@
           - target:
               entity_id: input_boolean.ac_dda_off_por_automatizacion
             service: input_boolean.turn_off
+          - target:
+              entity_id: input_text.ac_dda_cool_cycle_contract_reason
+            data:
+              value: transition_closed=ok
+            service: input_text.set_value
         default:
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3148,10 +3239,28 @@
             ttl: 0
             priority: high
         service: notify.mobile_app_samsung_s24
-      - delay: 00:00:10
-      - target:
-          entity_id: input_boolean.ac_dda_on_por_automatizacion
-        service: input_boolean.turn_off
+      - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_dda_on_por_automatizacion
+            service: input_boolean.turn_off
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: transition_closed=ok | hvac_confirmed=cool
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Auto Trace
+            message: transition_closed=timeout | hvac_expected=cool
+            entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ auto_on_enable_final\n   and auto_on_target_branch ==
@@ -3646,13 +3755,31 @@
               continue_on_error: true
               data:
                 name: AC Auto Trace
-                message: hito=notify_enviado_auto_on
+                message: hito=notify_enviado
                 entity_id: climate.0200009211c7_climate
         default: []
-      - delay: 00:00:10
-      - target:
-          entity_id: input_boolean.ac_dda_on_por_automatizacion
-        service: input_boolean.turn_off
+      - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_dda_on_por_automatizacion
+            service: input_boolean.turn_off
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: transition_closed=ok | hvac_confirmed=cool
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Auto Trace
+            message: transition_closed=timeout | hvac_expected=cool
+            entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'cool'\n   and cool_cycle_contract_active\n
@@ -4528,7 +4655,16 @@
       auto_recent_window_s: 90
       auto_reciente: '{{ (minutes_since_last_auto | float(99999)) <= ((auto_recent_window_s | float(90)) / 60) }}'
       origin_auto_recent: '{{ auto_reciente and last_change_origin in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
-      valid_feedback: '{{ last_change_origin == ''manual_off'' and (not auto_off_recent) and (not cycle_lock_active) and (not auto_reciente) and (not origin_auto_recent) }}'
+      last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | trim }}'
+      manual_event_confirmed: '{{ last_manual_event_type_raw == ''manual_off_final_valid_contract_v1'' }}'
+      transition_guard_window_s: 180
+      transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
+      transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
+      transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
+      transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
+      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      auto_transition_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or auto_transition_recent }}'
+      valid_feedback: '{{ last_change_origin == ''manual_off'' and manual_event_confirmed and (not auto_off_recent) and (not cycle_lock_active) and (not auto_reciente) and (not origin_auto_recent) and (not auto_transition_active) }}'
       manual_off_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_off_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ last_auto_action ~ ''|'' ~ last_auto_mode }}'
       last_manual_off_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_off_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_off_event_signature == last_manual_off_event_signature }}'
@@ -4730,9 +4866,16 @@
       auto_reciente: '{{ (minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}'
       within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) and (minutes_since_last_auto | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
       last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | trim }}'
-      manual_event_confirmed: '{{ last_manual_event_type_raw in [''manual_on_detected_contract_v1'', ''manual_on_due_to_presence_gap_contract_v1''] }}'
+      manual_event_confirmed: '{{ last_manual_event_type_raw in [''manual_on_final_valid_contract_v1'', ''manual_on_final_valid_presence_gap_contract_v1''] }}'
       origin_is_manual_on: '{{ last_change_origin == ''manual_on'' }}'
-      valid_feedback: '{{ origin_is_manual_on and (not auto_origin_detected) and (not auto_reciente) and within_manual_feedback_window and manual_event_confirmed and cool_path_feedback and (not cycle_lock_active) }}'
+      transition_guard_window_s: 180
+      transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
+      transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
+      transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
+      transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
+      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      auto_transition_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or auto_transition_recent }}'
+      valid_feedback: '{{ origin_is_manual_on and (not auto_origin_detected) and (not auto_reciente) and within_manual_feedback_window and manual_event_confirmed and cool_path_feedback and (not cycle_lock_active) and (not auto_transition_active) }}'
       manual_on_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
@@ -4904,7 +5047,14 @@
       last_auto_age_s: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}"
       auto_reciente: '{{ (last_auto_age_s | float(99999)) >= 0 and (last_auto_age_s | float(99999)) <= (auto_recent_window_s | float(90)) }}'
       origin_auto_recent: '{{ auto_reciente and last_change_origin_raw in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
-      manual_guard_discard_reason: "{% if cycle_lock_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% elif is_state('input_boolean.ac_dda_off_por_automatizacion','on') %}auto_off_flag_on{% elif auto_off_recent %}auto_off_recent{% else %}none{% endif %}"
+      transition_guard_window_s: 180
+      transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
+      transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
+      transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
+      transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
+      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      auto_transition_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or auto_transition_recent }}'
+      manual_guard_discard_reason: "{% if auto_transition_active %}auto_transition_active{% elif cycle_lock_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% elif is_state('input_boolean.ac_dda_off_por_automatizacion','on') %}auto_off_flag_on{% elif auto_off_recent %}auto_off_recent{% else %}none{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -4913,7 +5063,12 @@
       - action: logbook.log
         data:
           name: AC Manual OFF
-          message: 'manual_guard_discard_reason={{ manual_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | marker_age_s={{ auto_off_marker_age_s }} | last_origin={{ last_change_origin_raw }}'
+          message: 'manual_guard_discard={{ manual_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | auto_transition_recent={{ auto_transition_recent }} | transition_age_s={{ transition_age_s }} | marker_age_s={{ auto_off_marker_age_s }} | last_origin={{ last_change_origin_raw }}'
+          entity_id: climate.0200009211c7_climate
+      - action: logbook.log
+        data:
+          name: AC Manual OFF
+          message: hito=notify_omitido_por_auto | reason={{ manual_guard_discard_reason }}
           entity_id: climate.0200009211c7_climate
       - stop: 'Ignorado: AUTO OFF reciente'
     default: []
@@ -4922,7 +5077,7 @@
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       prev_mode: '{{ trigger.from_state.state if trigger.from_state is not none else ''unknown'' }}'
       contract_context_key: "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
-      manual_event_type: manual_off_detected_contract_v1
+      manual_event_type: manual_off_final_valid_contract_v1
       t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none) }}'
       t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
       h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
@@ -5072,7 +5227,14 @@
       auto_origin_detected: '{{ last_change_origin_raw in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
       auto_on_action_recent: '{{ auto_reciente and last_auto_action_raw in [''auto_on'', ''cool_normal_on'', ''cool_emergency_on''] }}'
       auto_flags_active: '{{ is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') }}'
-      manual_on_guard_discard_reason: "{% if cycle_lock_active %}manual_on_guard_discard=lock_activo{% elif auto_flags_active %}manual_on_guard_discard=auto_flag_on{% elif auto_reciente or auto_on_action_recent %}manual_on_guard_discard=auto_reciente{% elif auto_origin_detected %}manual_on_guard_discard=origen_auto{% elif not within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
+      transition_guard_window_s: 180
+      transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
+      transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
+      transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
+      transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
+      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      auto_transition_active: '{{ auto_flags_active or auto_transition_recent }}'
+      manual_on_guard_discard_reason: "{% if auto_transition_active %}manual_guard_discard=auto_transition_active{% elif cycle_lock_active %}manual_on_guard_discard=lock_activo{% elif auto_flags_active %}manual_on_guard_discard=auto_flag_on{% elif auto_reciente or auto_on_action_recent %}manual_on_guard_discard=auto_reciente{% elif auto_origin_detected %}manual_on_guard_discard=origen_auto{% elif not within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -5082,6 +5244,11 @@
         data:
           name: AC Manual ON
           message: '{{ manual_on_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_flags_active={{ auto_flags_active }} | auto_reciente={{ auto_reciente }} | min_since_auto={{ minutes_since_last_auto }} | auto_action={{ last_auto_action_raw }} | auto_origin={{ auto_origin_detected }} | last_origin={{ last_change_origin_raw }}'
+          entity_id: climate.0200009211c7_climate
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: hito=notify_omitido_por_auto | reason={{ manual_on_guard_discard_reason }}
           entity_id: climate.0200009211c7_climate
       - stop: 'Ignorado: guard manual ON descartó evento.'
     default: []
@@ -5121,7 +5288,12 @@
       post60_auto_origin_detected: '{{ post60_last_origin_raw in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
       post60_auto_on_action_recent: '{{ post60_auto_reciente and post60_last_auto_action_raw in [''auto_on'', ''cool_normal_on'', ''cool_emergency_on''] }}'
       post60_auto_happened_during_consolidation: "{% set raw = post60_last_auto_ts_raw | default('', true) | trim %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ ts_auto is not none and (ts_auto | int(0)) >= (detected_ts_epoch | int(0)) }}"
-      post60_guard_discard_reason: "{% if is_state('input_boolean.ac_dda_off_por_automatizacion','on') or is_state('input_boolean.ac_dda_on_por_automatizacion','on') %}manual_on_guard_discard=auto_flag_on_post60{% elif post60_auto_happened_during_consolidation and (post60_auto_reciente or post60_auto_on_action_recent) %}manual_on_guard_discard=auto_reciente{% elif post60_auto_origin_detected %}manual_on_guard_discard=origen_auto{% elif not post60_within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
+      post60_transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
+      post60_transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
+      post60_transition_ts_epoch: "{% if post60_transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(post60_transition_ts_raw, default=none) }}{% endif %}"
+      post60_transition_age_s: "{% if post60_transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (post60_transition_ts_epoch | float)) | round(1) }}{% endif %}"
+      post60_auto_transition_recent: "{{ post60_transition_token_raw | length > 0 and post60_transition_age_s | float(99999) >= 0 and post60_transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      post60_guard_discard_reason: "{% if is_state('input_boolean.ac_dda_off_por_automatizacion','on') or is_state('input_boolean.ac_dda_on_por_automatizacion','on') or post60_auto_transition_recent %}manual_guard_discard=auto_transition_active{% elif post60_auto_happened_during_consolidation and (post60_auto_reciente or post60_auto_on_action_recent) %}manual_on_guard_discard=auto_reciente{% elif post60_auto_origin_detected %}manual_on_guard_discard=origen_auto{% elif not post60_within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -5131,6 +5303,11 @@
         data:
           name: AC Manual ON
           message: '{{ post60_guard_discard_reason }} | auto_reciente={{ post60_auto_reciente }} | auto_during_60s={{ post60_auto_happened_during_consolidation }} | min_since_auto={{ post60_minutes_since_last_auto }} | auto_action={{ post60_last_auto_action_raw }} | auto_origin={{ post60_auto_origin_detected }} | last_origin={{ post60_last_origin_raw }}'
+          entity_id: climate.0200009211c7_climate
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: hito=notify_omitido_por_auto | reason={{ post60_guard_discard_reason }}
           entity_id: climate.0200009211c7_climate
       - stop: 'Ignorado: guard manual ON post60 descartó evento.'
     default: []
@@ -5223,7 +5400,7 @@
       cool_off_final: '{% if contract_cycle_valid %}{{ contract_cycle_off | round(2)
         }}{% else %}{{ none }}{% endif %}'
       manual_presence_until: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
-      manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_due_to_presence_gap_contract_v1{% else %}manual_on_detected_contract_v1{% endif %}"
+      manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_final_valid_presence_gap_contract_v1{% else %}manual_on_final_valid_contract_v1{% endif %}"
   - target:
       entity_id: input_datetime.ac_dda_last_manual_final_ts
     data:
@@ -5232,7 +5409,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ manual_event_type_final == ''manual_on_due_to_presence_gap_contract_v1'' }}'
+        value_template: '{{ manual_event_type_final == ''manual_on_final_valid_presence_gap_contract_v1'' }}'
       sequence:
       - target:
           entity_id: input_datetime.ac_dda_manual_presence_until

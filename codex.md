@@ -405,3 +405,53 @@ En la automatización principal (rama de escritura contractual):
 - `input_number.ac_dda_cool_cycle_contract_on/off` **solo se actualizan cuando el contrato es válido**.
 - Si el contrato no valida, **no se escribe `0`** ni se pisa el último valor bueno.
 - La trazabilidad del descarte se guarda en `input_text.ac_dda_cool_cycle_contract_reason` con prefijo `contract_invalid:` y sufijo `|keep_last_valid`.
+
+---
+
+## 14. Protocolo de transición AUTO (`ac_dda_transition_*`) — trazabilidad (2026-04-07)
+
+### Objetivo
+Evitar reclasificaciones ambiguas entre eventos **AUTO** y **manuales** durante cambios de modo HVAC, incluyendo ramas diurnas, de emergencia y puentes (`fan_only -> off` / `fan_only -> cool`).
+
+### Helpers del protocolo
+- `input_boolean.ac_dda_on_por_automatizacion`
+- `input_boolean.ac_dda_off_por_automatizacion`
+- `input_text.ac_dda_transition_token`
+- `input_datetime.ac_dda_transition_ts`
+- `input_text.ac_dda_last_change_origin`
+
+### Estados operativos
+1. **idle (sin transición abierta)**
+   - banderas AUTO en `off`.
+   - sin token reciente utilizable para bloqueo de guard manual.
+2. **auto_transition_open:on**
+   - `ac_dda_on_por_automatizacion=on`.
+   - token/ts nuevo escrito justo antes de `climate.set_hvac_mode` automático ON.
+   - `ac_dda_last_change_origin=auto_on`.
+3. **auto_transition_open:off**
+   - `ac_dda_off_por_automatizacion=on`.
+   - token/ts nuevo escrito justo antes de `climate.set_hvac_mode` automático OFF.
+   - `ac_dda_last_change_origin=auto_off`.
+4. **auto_transition_closed:ok**
+   - `wait_template` confirma estado final esperado.
+   - se apaga bandera AUTO correspondiente.
+   - se registra `transition_closed=ok` en trazas/logbook.
+5. **auto_transition_closed:timeout**
+   - `wait_template` agota timeout sin confirmación.
+   - **no** se reclasifica como manual.
+   - se mantiene evidencia (flag o token reciente + traza `transition_closed=timeout`).
+
+### Ventanas recomendadas para guards/manual feedback
+- Ventana de guard por transición abierta/reciente: **180 s** (`token + timestamp`).
+- Si dentro de la ventana hay token reciente o bandera AUTO activa, los guards manuales deben descartar el evento con:
+  - `manual_guard_discard=auto_transition_active`
+  - `hito=notify_omitido_por_auto`
+
+### Lectura de logs para depuración
+1. Buscar `hito=notify_payload_ready` para validar payload generado.
+2. Confirmar envío con `hito=notify_enviado`.
+3. Si manual guard descarta: verificar `hito=notify_omitido_por_auto` + `manual_guard_discard=auto_transition_active`.
+4. Si hubo cambio AUTO:
+   - revisar token/ts y `ac_dda_last_change_origin`.
+   - validar cierre con `transition_closed=ok` o `transition_closed=timeout`.
+5. Si `timeout`: tratar evento como transición AUTO no confirmada aún (no manual), hasta que expire ventana de guard y desaparezcan evidencias.
