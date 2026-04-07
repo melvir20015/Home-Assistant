@@ -1826,6 +1826,16 @@
         data:
           hvac_mode: 'off'
         service: climate.set_hvac_mode
+      - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -2233,6 +2243,16 @@
         data:
           hvac_mode: 'off'
         service: climate.set_hvac_mode
+      - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -2423,6 +2443,16 @@
         data:
           hvac_mode: 'off'
         service: climate.set_hvac_mode
+      - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:15
         continue_on_timeout: true
@@ -2547,6 +2577,16 @@
         data:
           hvac_mode: 'off'
         service: climate.set_hvac_mode
+      - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:15
         continue_on_timeout: true
@@ -2788,6 +2828,16 @@
         data:
           hvac_mode: 'off'
         service: climate.set_hvac_mode
+      - target:
+          entity_id: input_datetime.ac_last_auto_off_marker_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_last_auto_off_marker_nonce
+        data:
+          value: '{{ auto_off_marker_nonce }}'
+        service: input_text.set_value
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -4380,6 +4430,12 @@
       last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') | trim }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       feedback_window_min: '{{ states(''input_number.ac_dda_feedback_window_minutes'') | float(120) }}'
+      auto_off_guard_window_s: 30
+      auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') | default('''', true) | trim }}'
+      auto_off_marker_nonce_raw: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
+      auto_off_marker_ts_epoch: "{% if auto_off_marker_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(auto_off_marker_ts_raw, default=none) }}{% endif %}"
+      auto_off_marker_age_s: "{% if auto_off_marker_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (auto_off_marker_ts_epoch | float)) | round(1) }}{% endif %}"
+      auto_off_recent: "{{ auto_off_marker_nonce_raw | length > 0 and auto_off_marker_age_s | float(99999) >= 0 and auto_off_marker_age_s | float(99999) <= (auto_off_guard_window_s | float(30)) }}"
       mov_raw: '{{ states(''binary_sensor.presencia_movimiento_estable'') | lower }}'
       s24_raw: '{{ states(''device_tracker.samsung_s24'') | lower }}'
       person_raw: '{{ states(''person.ivan'') | lower }}'
@@ -4395,7 +4451,7 @@
       context_prev_raw: '{{ states(contract_context_helper) }}'
       context_prev: "{% set v = context_prev_raw | float(none) %}{{ v if v is not none else (states('input_number.ac_dda_cool_off_learned') | float(24.0)) }}"
       minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else (((as_timestamp(now()) - ts_auto) / 60) | round(1)) }}{% endif %}"
-      valid_feedback: '{{ last_change_origin == ''manual_off'' }}'
+      valid_feedback: '{{ last_change_origin == ''manual_off'' and (not auto_off_recent) }}'
       manual_off_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_off_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ last_auto_action ~ ''|'' ~ last_auto_mode }}'
       last_manual_off_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_off_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_off_event_signature == last_manual_off_event_signature }}'
@@ -4428,11 +4484,12 @@
       threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
-      ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif last_change_origin != 'manual_off' %}origin_not_manual_off{% else %}unknown_discard{% endif %}"
-      reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'origin_not_manual_off' %}origen{% else %}descartado{% endif %}"
+      ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif auto_off_recent %}auto_off_recent{% elif last_change_origin != 'manual_off' %}origin_not_manual_off{% else %}unknown_discard{% endif %}"
+      learning_off_discard_reason: "{% if apply_learning %}none{% else %}ignored:{{ ignored_reason_code }}{% endif %}"
+      reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'auto_off_recent' %}auto_recent{% elif ignored_reason_code == 'origin_not_manual_off' %}origen{% else %}descartado{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
-      learning_type: "{% if apply_learning %}manual_off_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_off_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'origin_not_manual_off' %}manual_off_learning_ignored_not_manual_contract_v1{% else %}manual_off_learning_ignored_unknown_contract_v1{% endif %}"
+      learning_type: "{% if apply_learning %}manual_off_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_off_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'auto_off_recent' %}manual_off_learning_ignored_auto_off_recent_contract_v1{% elif ignored_reason_code == 'origin_not_manual_off' %}manual_off_learning_ignored_not_manual_contract_v1{% else %}manual_off_learning_ignored_unknown_contract_v1{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -4467,13 +4524,24 @@
   - action: logbook.log
     data:
       name: AC Learning Manual OFF
-      message: '{{ contract_version }} | manual_off_feedback | ctx={{ contract_context_key }} | apply={{ ''yes'' if apply_learning else ''no'' }} | step=+0.25 | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ ''applied'' if apply_learning else ignored_reason_code }}'
+      message: '{{ contract_version }} | manual_off_feedback | ctx={{ contract_context_key }} | apply={{ ''yes'' if apply_learning else ''no'' }} | step=+0.25 | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ ''applied'' if apply_learning else ignored_reason_code }} | learning_off_discard_reason={{ learning_off_discard_reason }}'
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     data:
       name: AC Learning Manual OFF
       message: '{{ contract_version }} | threshold_validation | threshold_source={{ threshold_source }} | on_final={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else ''no_disponible'' }} | off_final={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else ''no_disponible'' }} | fallback_used={{ fallback_used }}'
       entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ ignored_reason_code == ''auto_off_recent'' }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Learning Manual OFF
+          message: '{{ contract_version }} | learning_off_discard_reason=ignored:auto_off_recent | marker_age_s={{ auto_off_marker_age_s }} | marker_nonce_len={{ auto_off_marker_nonce_raw | length }}'
+          entity_id: climate.0200009211c7_climate
+    default: []
   - choose:
     - conditions:
       - condition: template
@@ -4715,13 +4783,27 @@
     after: 07:01:00
     before: '21:59:00'
   actions:
+  - variables:
+      auto_off_guard_window_s: 30
+      auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') | default('''', true) | trim }}'
+      auto_off_marker_nonce_raw: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
+      auto_off_marker_ts_epoch: "{% if auto_off_marker_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(auto_off_marker_ts_raw, default=none) }}{% endif %}"
+      auto_off_marker_age_s: "{% if auto_off_marker_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (auto_off_marker_ts_epoch | float)) | round(1) }}{% endif %}"
+      auto_off_recent: "{{ auto_off_marker_nonce_raw | length > 0 and auto_off_marker_age_s | float(99999) >= 0 and auto_off_marker_age_s | float(99999) <= (auto_off_guard_window_s | float(30)) }}"
+      last_change_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''', true) | trim }}'
+      origin_auto_recent: '{{ auto_off_recent and last_change_origin_raw in [''auto_off'', ''cool_normal_off''] }}'
+      manual_guard_discard_reason: "{% if is_state('input_boolean.ac_dda_off_por_automatizacion','on') %}auto_off_flag_on{% elif origin_auto_recent %}origin_auto_recent{% elif auto_off_recent %}auto_off_recent{% else %}none{% endif %}"
   - choose:
     - conditions:
-      - condition: state
-        entity_id: input_boolean.ac_dda_off_por_automatizacion
-        state: 'on'
+      - condition: template
+        value_template: '{{ manual_guard_discard_reason != ''none'' }}'
       sequence:
-      - stop: 'Ignorado: AUTO OFF en curso.'
+      - action: logbook.log
+        data:
+          name: AC Manual OFF
+          message: 'manual_guard_discard_reason={{ manual_guard_discard_reason }} | auto_off_recent={{ auto_off_recent }} | marker_age_s={{ auto_off_marker_age_s }} | last_origin={{ last_change_origin_raw }}'
+          entity_id: climate.0200009211c7_climate
+      - stop: 'Ignorado: AUTO OFF reciente'
     default: []
   - variables:
       contract_version: contract=v1
