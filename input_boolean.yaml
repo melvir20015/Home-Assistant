@@ -62,3 +62,7 @@ ac_dda_off_por_automatizacion:
 ac_dda_on_por_automatizacion:
   name: AC DDA ON por automatización (flag)
   icon: mdi:robot
+
+ac_dda_cycle_lock:
+  name: AC DDA candado transaccional de ciclo
+  icon: mdi:lock-clock
