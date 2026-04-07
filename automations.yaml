@@ -3513,10 +3513,34 @@
           hvac_mode: cool
         service: climate.set_hvac_mode
         continue_on_error: true
+      - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - variables:
+          hvac_cool_confirmed: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
       - choose:
         - conditions:
           - condition: template
-            value_template: '{{ manual_sp_protected_lock_active }}'
+            value_template: '{{ hvac_cool_confirmed }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_dda_on_por_automatizacion
+            service: input_boolean.turn_off
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: transition_closed=ok | hvac_confirmed=cool
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Auto Trace
+            message: transition_closed=timeout | hvac_expected=cool
+            entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ hvac_cool_confirmed and manual_sp_protected_lock_active }}'
           sequence:
           - variables:
               sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none)
@@ -3568,40 +3592,60 @@
                 }}
               entity_id: climate.0200009211c7_climate
         default:
-        - variables:
-            sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none)
-              }}'
-            sp_target: '{{ cool_setpoint_effective_soft_resume }}'
-            writer_id: auto_on
-            manual_lock_state: '{{ manual_sp_lock_active }}'
-            bucket: '{{ cool_context_bucket }}'
-        - target:
-            entity_id: input_text.ac_dda_last_change_origin
-          data:
-            value: auto_on
-          service: input_text.set_value
-          continue_on_error: true
-        - target:
-            entity_id: climate.0200009211c7_climate
-          data:
-            temperature: '{{ cool_setpoint_effective_soft_resume }}'
-          service: climate.set_temperature
-          continue_on_error: true
-        - variables:
-            sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
-            sp_write_status: "{% if sp_after is not none and sp_target is not none
-              and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}\n  applied\n{%
-              else %}\n  blocked\n{% endif %}"
-        - service: logbook.log
-          data:
-            name: AC Auto Trace
-            message: sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before
-              is not none else 'na' }} | target={{ sp_target if sp_target is not none
-              else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{
-              'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket
-              is not none else 'na' }} | after={{ sp_after if sp_after is not none
-              else 'na' }} | status={{ sp_write_status }}
-            entity_id: climate.0200009211c7_climate
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ hvac_cool_confirmed }}'
+            sequence:
+            - variables:
+                sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none)
+                  }}'
+                sp_target: '{{ cool_setpoint_effective_soft_resume }}'
+                writer_id: auto_on
+                manual_lock_state: '{{ manual_sp_lock_active }}'
+                bucket: '{{ cool_context_bucket }}'
+            - target:
+                entity_id: input_text.ac_dda_last_change_origin
+              data:
+                value: auto_on
+              service: input_text.set_value
+              continue_on_error: true
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: '{{ sp_target is not none and (sp_target | float(none))
+                    is not none }}'
+                sequence:
+                - target:
+                    entity_id: climate.0200009211c7_climate
+                  data:
+                    temperature: '{{ cool_setpoint_effective_soft_resume }}'
+                  service: climate.set_temperature
+                  continue_on_error: true
+              default:
+              - service: logbook.log
+                data:
+                  name: AC Auto Trace
+                  message: sp_write | writer={{ writer_id }} | target_invalid={{ sp_target
+                    if sp_target is not none else 'na' }} | status=omit_invalid_setpoint
+                  entity_id: climate.0200009211c7_climate
+            - variables:
+                sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none)
+                  }}'
+                sp_write_status: "{% if sp_after is not none and sp_target is not none
+                  and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}\n
+                  \ applied\n{% else %}\n  blocked\n{% endif %}"
+            - service: logbook.log
+              data:
+                name: AC Auto Trace
+                message: sp_write | writer={{ writer_id }} | before={{ sp_before if
+                  sp_before is not none else 'na' }} | target={{ sp_target if sp_target
+                  is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{
+                  'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket
+                  is not none else 'na' }} | after={{ sp_after if sp_after is not none
+                  else 'na' }} | status={{ sp_write_status }}
+                entity_id: climate.0200009211c7_climate
+          default: []
       - variables:
           cool_auto_reason: '{{ ''auto emergency'' if emergency_hot else ''auto_on_cool''
             }}'
@@ -3639,8 +3683,8 @@
       - choose:
         - conditions:
           - condition: template
-            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
-              \  and 'Low' in state_attr(climate_ent,'fan_modes') }}"
+            value_template: "{{ hvac_cool_confirmed and state_attr(climate_ent,'fan_modes')
+              is not none\n   and 'Low' in state_attr(climate_ent,'fan_modes') }}"
           sequence:
           - target:
               entity_id: climate.0200009211c7_climate
@@ -3650,8 +3694,8 @@
             continue_on_error: true
         - conditions:
           - condition: template
-            value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
-              \  and 'Auto' in state_attr(climate_ent,'fan_modes') }}"
+            value_template: "{{ hvac_cool_confirmed and state_attr(climate_ent,'fan_modes')
+              is not none\n   and 'Auto' in state_attr(climate_ent,'fan_modes') }}"
           sequence:
           - target:
               entity_id: climate.0200009211c7_climate
@@ -3659,7 +3703,19 @@
               fan_mode: Auto
             service: climate.set_fan_mode
             continue_on_error: true
-        default: []
+        default:
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ hvac_cool_confirmed }}'
+            sequence:
+            - service: logbook.log
+              data:
+                name: AC Auto Trace
+                message: fan_write | status=omit_invalid_fan_mode | fan_modes={{ state_attr(climate_ent,'fan_modes')
+                  if state_attr(climate_ent,'fan_modes') is not none else 'na' }}
+                entity_id: climate.0200009211c7_climate
+          default: []
       - variables:
           cool_push_kind: true
           cool_push_reason: Mot=auto umbral
@@ -3694,18 +3750,18 @@
             if cool_on_local is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_local
             | float) if cool_off_local is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_local
             | float) if sp_local is not none else ''n/a'' }} Fan=Low Src=AutoON'
-      - service: logbook.log
-        continue_on_error: true
-        data:
-          name: AC Auto Trace
-          message: hito=notify_on_preparado | title={{ cool_mobile_title_local }} |
-            src=auto_on
-          entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
           - condition: template
-            value_template: '{{ cool_push_kind }}'
+            value_template: '{{ hvac_cool_confirmed and cool_push_kind }}'
           sequence:
+          - service: logbook.log
+            continue_on_error: true
+            data:
+              name: AC Auto Trace
+              message: hito=notify_on_preparado | title={{ cool_mobile_title_local }}
+                | src=auto_on
+              entity_id: climate.0200009211c7_climate
           - service: logbook.log
             continue_on_error: true
             data:
@@ -3753,28 +3809,13 @@
                 name: AC Auto Trace
                 message: hito=notify_on_enviado
                 entity_id: climate.0200009211c7_climate
-        default: []
-      - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
-        timeout: 00:00:30
-        continue_on_timeout: true
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
-          sequence:
-          - target:
-              entity_id: input_boolean.ac_dda_on_por_automatizacion
-            service: input_boolean.turn_off
-          - service: logbook.log
-            data:
-              name: AC Auto Trace
-              message: transition_closed=ok | hvac_confirmed=cool
-              entity_id: climate.0200009211c7_climate
         default:
         - service: logbook.log
+          continue_on_error: true
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | hvac_expected=cool
+            message: hito=notify_on_omitido_por_error_previo | reason={{ 'hvac_not_confirmed_cool'
+              if not hvac_cool_confirmed else 'cool_push_kind_false' }}
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
