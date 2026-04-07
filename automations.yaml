@@ -2595,12 +2595,25 @@
     - conditions:
       - condition: template
         value_template: '{{ cur_mode == ''cool'' and (not emergency_latched) and (not
-          manual_override_active) and cool_cycle_contract_active and ( (tin is not
-          none and (tin | float) <= (cool_cycle_contract_off_validated | float)) or
-          (t1 is not
-          none and cool_cycle_contract_sensor_off is not none and (t1 | float) <=
-          (cool_cycle_contract_sensor_off | float)) or (t2 is not none and cool_cycle_contract_sensor_off
-          is not none and (t2 | float) <= (cool_cycle_contract_sensor_off | float))
+          manual_override_active) and (not cool_cycle_off_effective_valid) }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: 'ac_dda_branch=cool_normal_off_abort | reason=missing_off_effective
+            | contract_off={{ cool_cycle_contract_off_validated if cool_cycle_contract_off_validated
+            is not none else ''n/a'' }} | runtime_off={{ cool_off_validated if cool_off_validated
+            is not none else ''n/a'' }} | contract_active_audit={{ cool_cycle_contract_active
+            }}'
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ cur_mode == ''cool'' and (not emergency_latched) and (not
+          manual_override_active) and cool_cycle_off_effective_valid and ( (tin is
+          not none and (tin | float) <= (cool_cycle_off_effective | float)) or (t1
+          is not none and cool_cycle_sensor_off_effective is not none and (t1 | float)
+          <= (cool_cycle_sensor_off_effective | float)) or (t2 is not none and cool_cycle_sensor_off_effective
+          is not none and (t2 | float) <= (cool_cycle_sensor_off_effective | float))
           ) }}'
       sequence:
       - service: logbook.log
@@ -2608,29 +2621,39 @@
           name: AC DDA Audit
           message: ac_dda_branch=cool_normal_off | trigger={{ trig }} | mode={{ cur_mode }}
           entity_id: climate.0200009211c7_climate
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: 'cool_off_fallback_source={{ cool_cycle_off_effective_source }}
+            | off_effective={{ cool_cycle_off_effective if cool_cycle_off_effective
+            is not none else ''n/a'' }} | sensor_off_effective={{ cool_cycle_sensor_off_effective
+            if cool_cycle_sensor_off_effective is not none else ''n/a'' }} | contract_active_audit={{
+            cool_cycle_contract_active }}'
+          entity_id: climate.0200009211c7_climate
       - variables:
-          cool_cycle_off_cause: "{% if tin is not none and cool_cycle_contract_off_validated
-            is not none and (tin | float) <= (cool_cycle_contract_off_validated | float)
+          cool_cycle_off_cause: "{% if tin is not none and cool_cycle_off_effective
+            is not none and (tin | float) <= (cool_cycle_off_effective | float)
             %}\n
-            \ meta_alcanzada\n{% elif t1 is not none and cool_cycle_contract_sensor_off
-            is not none and (t1 | float) <= (cool_cycle_contract_sensor_off | float)
-            %}\n  corte_preventivo_t1\n{% elif t2 is not none and cool_cycle_contract_sensor_off
-            is not none and (t2 | float) <= (cool_cycle_contract_sensor_off | float)
+            \ meta_alcanzada\n{% elif t1 is not none and cool_cycle_sensor_off_effective
+            is not none and (t1 | float) <= (cool_cycle_sensor_off_effective | float)
+            %}\n  corte_preventivo_t1\n{% elif t2 is not none and cool_cycle_sensor_off_effective
+            is not none and (t2 | float) <= (cool_cycle_sensor_off_effective | float)
             %}\n  corte_preventivo_t2\n{% else %}\n  no_clasificado\n{% endif %}"
           cool_cycle_off_cause_detail: "{% if cool_cycle_off_cause == 'meta_alcanzada'
-            %}\n  Prom={{ tin }}<=OffProm={{ cool_cycle_contract_off_validated }}\n{%
+            %}\n  Prom={{ tin }}<=OffProm={{ cool_cycle_off_effective }}\n{%
             elif cool_cycle_off_cause
-            == 'corte_preventivo_t1' %}\n  t1={{ t1 }}<=SensorHardStop={{ cool_cycle_contract_sensor_off
+            == 'corte_preventivo_t1' %}\n  t1={{ t1 }}<=SensorHardStop={{ cool_cycle_sensor_off_effective
             }}\n{% elif cool_cycle_off_cause == 'corte_preventivo_t2' %}\n  t2={{
-            t2 }}<=SensorHardStop={{ cool_cycle_contract_sensor_off }}\n{% else %}\n  Prom={{
+            t2 }}<=SensorHardStop={{ cool_cycle_sensor_off_effective }}\n{% else %}\n  Prom={{
             tin if tin is not none else 'n/a' }} | t1={{ t1 if t1 is not none else
             'n/a' }} | t2={{ t2 if t2 is not none else 'n/a' }}\n{% endif %}"
           cool_cycle_contract_snapshot: >-
             Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }}
             Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }}
             On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else 'n/a' }}
-            Off={{ cool_cycle_contract_off_validated if cool_cycle_contract_off_validated is not none else 'n/a' }}
-            OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else 'n/a' }}
+            Off={{ cool_cycle_off_effective if cool_cycle_off_effective is not none else 'n/a' }}
+            OffSensor={{ cool_cycle_sensor_off_effective if cool_cycle_sensor_off_effective is not none else 'n/a' }}
+            OffSrc={{ cool_cycle_off_effective_source }}
             SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
           cool_cycle_branch: cool_normal_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
@@ -2641,10 +2664,11 @@
             Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }}
             H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
             On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
-            Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
+            Off={{ '%.1f' | format(cool_cycle_off_effective | float) if cool_cycle_off_effective is not none and (cool_cycle_off_effective | float) >= 17 else 'n/a' }}
             SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
             Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_off_cause }}
+            OffSrc={{ cool_cycle_off_effective_source }}
       - choose:
         - conditions:
           - condition: template
@@ -3970,6 +3994,21 @@
     cool_cycle_contract_validation_warning: "{% if cool_cycle_contract_limits_reordered
       %}\n  warn_reorden_umbral_cool:on_leq_off+histeresis\n{% else %}\n  none\n{%
       endif %}"
+    cool_cycle_off_effective_source: "{% if cool_cycle_contract_off_validated is
+      not none %}\n  contract_helper\n{% elif cool_off_validated is not none %}\n
+      \ runtime_recalc\n{% else %}\n  missing\n{% endif %}"
+    cool_cycle_off_effective: "{% if cool_cycle_off_effective_source == 'contract_helper'
+      %}\n  {{ cool_cycle_contract_off_validated }}\n{% elif cool_cycle_off_effective_source
+      == 'runtime_recalc' %}\n  {{ cool_off_validated }}\n{% else %}\n  {{ none }}\n{%
+      endif %}"
+    cool_cycle_sensor_off_effective: "{% if cool_cycle_off_effective is none %}\n
+      \ {{ none }}\n{% elif cool_cycle_off_effective_source == 'contract_helper' and
+      cool_cycle_contract_sensor_off is not none %}\n  {{ (cool_cycle_contract_sensor_off
+      | float) | round(2) }}\n{% else %}\n  {% set raw = (cool_cycle_off_effective
+      | float) - 0.3 %}\n  {{ [[raw, 24.0] | min, 22.8] | max | round(2) }}\n{% endif
+      %}"
+    cool_cycle_off_effective_valid: '{{ cool_cycle_off_effective is not none and cool_cycle_sensor_off_effective
+      is not none }}'
     cool_cycle_contract_started_at_raw: '{{ states(''input_datetime.ac_dda_cool_cycle_contract_started_at'')
       }}'
     cool_cycle_contract_active: "{{ states('input_text.ac_last_auto_branch') == 'cool_normal_on'\n
