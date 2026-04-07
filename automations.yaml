@@ -2026,6 +2026,7 @@
         data:
           hvac_mode: cool
         service: climate.set_hvac_mode
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_dda_last_change_origin
         data:
@@ -3350,6 +3351,7 @@
         data:
           hvac_mode: cool
         service: climate.set_hvac_mode
+        continue_on_error: true
       - choose:
         - conditions:
           - condition: template
@@ -3423,6 +3425,7 @@
           data:
             temperature: '{{ cool_setpoint_effective_soft_resume }}'
           service: climate.set_temperature
+          continue_on_error: true
         - variables:
             sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
             sp_write_status: "{% if sp_after is not none and sp_target is not none
@@ -3483,6 +3486,7 @@
             data:
               fan_mode: Low
             service: climate.set_fan_mode
+            continue_on_error: true
         - conditions:
           - condition: template
             value_template: "{{ state_attr(climate_ent,'fan_modes') is not none\n
@@ -3493,6 +3497,7 @@
             data:
               fan_mode: Auto
             service: climate.set_fan_mode
+            continue_on_error: true
         default: []
       - variables:
           cool_push_kind: true
@@ -3540,6 +3545,12 @@
               message: hito=notify_payload_ready | title={{ cool_mobile_title_local
                 }} | msg={{ cool_mobile_message_local }}
               entity_id: climate.0200009211c7_climate
+          - service: logbook.log
+            continue_on_error: true
+            data:
+              name: AC Auto Trace
+              message: hito=notify_attempt | channel=mobile_app_s24 | src=auto_on
+              entity_id: climate.0200009211c7_climate
           - service: notify.mobile_app_samsung_s24
             continue_on_error: true
             response_variable: cool_notify_response
@@ -3560,7 +3571,7 @@
                 continue_on_error: true
                 data:
                   name: AC Auto Trace
-                  message: hito=notify_fallido_auto_on | resp={{ cool_notify_response
+                  message: hito=notify_result | status=failed | resp={{ cool_notify_response
                     }}
                   entity_id: climate.0200009211c7_climate
               - service: persistent_notification.create
@@ -3573,7 +3584,7 @@
               continue_on_error: true
               data:
                 name: AC Auto Trace
-                message: hito=notify_enviado_auto_on
+                message: hito=notify_result | status=sent
                 entity_id: climate.0200009211c7_climate
         default: []
       - delay: 00:00:10
