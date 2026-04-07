@@ -3444,7 +3444,18 @@
             contract_setpoint is not none else ''n/a'' }} | Setpoint efectivo={{ contract_setpoint_effective
             if contract_setpoint_effective is not none else ''n/a'' }} | Fan=Low'
           cool_mobile_title_local: Cool↑
-          cool_mobile_message_local: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(cool_setpoint_effective | float) if cool_setpoint_effective is not none else ''n/a'' }} Fan=Low Src=AutoON'
+          cool_mobile_message_local: '{% set cool_on_local = cool_on_validated | default(none)
+            %} {% set cool_off_local = cool_off_validated | default(none) %} {% set tin_local
+            = tin | default(none) %} {% set tout_local = tout | default(none) %} {% set
+            hout_local = hout_owm | default(none) %} {% set sp_local = cool_setpoint_effective
+            | default(none) %} {{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''')
+            }} Tin={{ ''%.1f'' | format(tin_local | float) if tin_local is not none else
+            ''n/a'' }} Tout={{ ''%.1f'' | format(tout_local | float) if tout_local is
+            not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_local | float) if hout_local
+            is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_local | float)
+            if cool_on_local is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_local
+            | float) if cool_off_local is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_local
+            | float) if sp_local is not none else ''n/a'' }} Fan=Low Src=AutoON'
       - choose:
         - conditions:
           - condition: template
@@ -3454,7 +3465,7 @@
             continue_on_error: true
             data:
               name: AC Auto Trace
-              message: hito=notify_preparado_auto_on | title={{ cool_mobile_title_local
+              message: hito=notify_payload_ready | title={{ cool_mobile_title_local
                 }} | msg={{ cool_mobile_message_local }}
               entity_id: climate.0200009211c7_climate
           - service: notify.mobile_app_samsung_s24
