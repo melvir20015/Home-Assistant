@@ -2081,13 +2081,60 @@
             | float) if emergency_setpoint is not none else 'na' }} Fan={{ emergency_fan_mode
             if emergency_fan_mode not in ['', 'unknown', 'unavailable', 'none'] else
             'na' }} Src=AutoON Delta=na
-      - data:
-          title: '{{ cool_mobile_title_local }}'
-          message: '{{ cool_mobile_message_local }}'
-          data:
-            ttl: 0
-            priority: high
-        service: notify.mobile_app_samsung_s24
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_push_kind }}'
+          sequence:
+          - service: logbook.log
+            continue_on_error: true
+            data:
+              name: AC Auto Trace
+              message: hito=notify_payload_ready | title={{ cool_mobile_title_local
+                }} | msg={{ cool_mobile_message_local }}
+              entity_id: climate.0200009211c7_climate
+          - service: logbook.log
+            continue_on_error: true
+            data:
+              name: AC Auto Trace
+              message: hito=notify_attempt | channel=mobile_app_s24 | src=auto_on
+              entity_id: climate.0200009211c7_climate
+          - service: notify.mobile_app_samsung_s24
+            continue_on_error: true
+            response_variable: emergency_notify_response
+            data:
+              title: '{{ cool_mobile_title_local }}'
+              message: '{{ cool_mobile_message_local }}'
+              data:
+                ttl: 0
+                priority: high
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{{ emergency_notify_response is mapping and ('error'
+                  in emergency_notify_response or 'exception' in emergency_notify_response
+                  or 'failed' in emergency_notify_response) }}"
+              sequence:
+              - service: logbook.log
+                continue_on_error: true
+                data:
+                  name: AC Auto Trace
+                  message: hito=notify_fallido_auto_on | resp={{ emergency_notify_response
+                    }}
+                  entity_id: climate.0200009211c7_climate
+              - service: persistent_notification.create
+                continue_on_error: true
+                data:
+                  title: '{{ cool_mobile_title_local }}'
+                  message: '{{ cool_mobile_message_local }}'
+            default:
+            - service: logbook.log
+              continue_on_error: true
+              data:
+                name: AC Auto Trace
+                message: hito=notify_enviado_auto_on
+                entity_id: climate.0200009211c7_climate
+        default: []
       - delay: 00:00:10
       - target:
           entity_id: input_boolean.ac_dda_on_por_automatizacion
@@ -3571,7 +3618,7 @@
                 continue_on_error: true
                 data:
                   name: AC Auto Trace
-                  message: hito=notify_result | status=failed | resp={{ cool_notify_response
+                  message: hito=notify_fallido_auto_on | resp={{ cool_notify_response
                     }}
                   entity_id: climate.0200009211c7_climate
               - service: persistent_notification.create
@@ -3584,7 +3631,7 @@
               continue_on_error: true
               data:
                 name: AC Auto Trace
-                message: hito=notify_result | status=sent
+                message: hito=notify_enviado_auto_on
                 entity_id: climate.0200009211c7_climate
         default: []
       - delay: 00:00:10
