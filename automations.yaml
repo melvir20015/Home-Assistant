@@ -3031,11 +3031,13 @@
       - target:
           entity_id: input_boolean.ac_dda_on_por_automatizacion
         service: input_boolean.turn_on
+        continue_on_error: true
       - target:
           entity_id: input_select.ac_ultimo_modo_no_fan
         data:
           option: cool
         service: input_select.select_option
+        continue_on_error: true
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
@@ -3043,61 +3045,73 @@
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_last_auto_branch
         data:
           value: cool_normal_on
         service: input_text.set_value
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_dda_last_context_bucket
         data:
           value: '{{ cool_context_detail }}'
         service: input_text.set_value
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_last_auto_action
         data:
           value: auto_on
         service: input_text.set_value
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_dda_last_change_origin
         data:
           value: auto_on
         service: input_text.set_value
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_last_auto_mode
         data:
           value: cool
         service: input_text.set_value
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_last_auto_fan
         data:
           value: Low
         service: input_text.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_last_auto_setpoint
         data:
@@ -3105,11 +3119,13 @@
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
             if cool_setpoint_effective is not none else 0) }}"
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id:
           - input_datetime.ac_cool_cycle_started_at
@@ -3117,11 +3133,13 @@
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_cool_cycle_start_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_cool_cycle_last_applied_setpoint
         data:
@@ -3129,6 +3147,7 @@
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
             if cool_setpoint_effective is not none else 0) }}"
         service: input_number.set_value
+        continue_on_error: true
       - choose:
         - conditions:
           - condition: template
@@ -3139,23 +3158,27 @@
             data:
               value: '{{ cool_on_validated }}'
             service: input_number.set_value
+            continue_on_error: true
           - target:
               entity_id: input_number.ac_dda_cool_cycle_contract_off
             data:
               value: '{{ cool_off_validated }}'
             service: input_number.set_value
+            continue_on_error: true
         default: []
       - target:
           entity_id: input_number.ac_dda_cool_cycle_contract_sensor_off
         data:
           value: '{{ cool_sensor_off if cool_sensor_off is not none else 0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_dda_cool_cycle_contract_setpoint
         data:
           value: '{{ cool_setpoint_contract if cool_setpoint_contract is not none
             else 0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_dda_cool_cycle_contract_setpoint_effective
         data:
@@ -3163,32 +3186,38 @@
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
             if cool_setpoint_effective is not none else 0) }}"
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_dda_cool_cycle_contract_bucket
         data:
           value: '{{ cool_context_detail }}'
         service: input_text.set_value
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_dda_cool_cycle_contract_reason
         data:
           value: "{% if cool_contract_values_valid %}{{ cool_off_learning_source }}{% else %}contract_invalid:{{ cool_contract_invalid_reason }}|keep_last_valid{% endif %}"
         service: input_text.set_value
+        continue_on_error: true
       - target:
           entity_id: input_datetime.ac_dda_cool_cycle_contract_started_at
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
+        continue_on_error: true
       - target:
           entity_id: input_number.ac_cool_effective_sp_inconsistency_hits
         data:
           value: '{{ cool_effective_sp_reset_hits if cool_effective_sp_ignored else
             0 }}'
         service: input_number.set_value
+        continue_on_error: true
       - target:
           entity_id: input_text.ac_cool_effective_sp_last_inconsistent_bucket
         data:
           value: '{{ cool_context_bucket if cool_effective_sp_ignored else '''' }}'
         service: input_text.set_value
+        continue_on_error: true
       - choose:
         - conditions:
           - condition: template
@@ -3199,6 +3228,7 @@
             data:
               value: '{{ cool_setpoint | float(0) }}'
             service: input_number.set_value
+            continue_on_error: true
           - choose:
             - conditions:
               - condition: template
@@ -3209,6 +3239,7 @@
                 data:
                   value: '{{ cool_setpoint | float(0) }}'
                 service: input_number.set_value
+                continue_on_error: true
             default: []
           - target:
               entity_id: input_text.ac_dda_cool_effective_setpoint_map
@@ -3216,6 +3247,7 @@
               value: '{{ ((cool_context_bucket ~ ''='' ~ (''%.2f'' | format(cool_setpoint
                 | float(0))))[:255]) }}'
             service: input_text.set_value
+            continue_on_error: true
           - service: logbook.log
             data:
               name: AC Auto Trace
@@ -3230,14 +3262,17 @@
       - target:
           entity_id: input_boolean.ac_manual_setpoint_override_active
         service: input_boolean.turn_off
+        continue_on_error: true
       - target:
           entity_id: input_datetime.ac_manual_setpoint_override_until
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
+        continue_on_error: true
       - target:
           entity_id: input_boolean.ac_cool_adaptive_cycle_active
         service: input_boolean.turn_on
+        continue_on_error: true
       - target:
           entity_id: climate.0200009211c7_climate
         data:
@@ -3260,6 +3295,7 @@
             data:
               value: manual_override
             service: input_text.set_value
+            continue_on_error: true
           - variables:
               sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none)
                 }}'
@@ -3280,6 +3316,7 @@
               value: '{{ sp_before if sp_before is not none else (ac_set_effective_normalized
                 if ac_set_effective_normalized is not none else 0) }}'
             service: input_number.set_value
+            continue_on_error: true
           - service: logbook.log
             data:
               name: AC Auto Trace
@@ -3308,6 +3345,7 @@
           data:
             value: auto_on
           service: input_text.set_value
+          continue_on_error: true
         - target:
             entity_id: climate.0200009211c7_climate
           data:
@@ -3406,14 +3444,55 @@
             contract_setpoint is not none else ''n/a'' }} | Setpoint efectivo={{ contract_setpoint_effective
             if contract_setpoint_effective is not none else ''n/a'' }} | Fan=Low'
           cool_mobile_title_local: Cool↑
-          cool_mobile_message_local: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(cool_setpoint_effective | float) if cool_setpoint_effective is not none else ''n/a'' }} Fan=Low Src=AutoON Delta=n/a'
-      - data:
-          title: '{{ cool_mobile_title_local }}'
-          message: '{{ cool_mobile_message_local }}'
-          data:
-            ttl: 0
-            priority: high
-        service: notify.mobile_app_samsung_s24
+          cool_mobile_message_local: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(cool_setpoint_effective | float) if cool_setpoint_effective is not none else ''n/a'' }} Fan=Low Src=AutoON'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ cool_push_kind }}'
+          sequence:
+          - service: logbook.log
+            continue_on_error: true
+            data:
+              name: AC Auto Trace
+              message: hito=notify_preparado_auto_on | title={{ cool_mobile_title_local
+                }} | msg={{ cool_mobile_message_local }}
+              entity_id: climate.0200009211c7_climate
+          - service: notify.mobile_app_samsung_s24
+            continue_on_error: true
+            response_variable: cool_notify_response
+            data:
+              title: '{{ cool_mobile_title_local }}'
+              message: '{{ cool_mobile_message_local }}'
+              data:
+                ttl: 0
+                priority: high
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{{ cool_notify_response is mapping and ('error' in
+                  cool_notify_response or 'exception' in cool_notify_response or 'failed'
+                  in cool_notify_response) }}"
+              sequence:
+              - service: logbook.log
+                continue_on_error: true
+                data:
+                  name: AC Auto Trace
+                  message: hito=notify_fallido_auto_on | resp={{ cool_notify_response
+                    }}
+                  entity_id: climate.0200009211c7_climate
+              - service: persistent_notification.create
+                continue_on_error: true
+                data:
+                  title: '{{ cool_mobile_title_local }}'
+                  message: '{{ cool_mobile_message_local }}'
+            default:
+            - service: logbook.log
+              continue_on_error: true
+              data:
+                name: AC Auto Trace
+                message: hito=notify_enviado_auto_on
+                entity_id: climate.0200009211c7_climate
+        default: []
       - delay: 00:00:10
       - target:
           entity_id: input_boolean.ac_dda_on_por_automatizacion
