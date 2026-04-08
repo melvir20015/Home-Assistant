@@ -1,0 +1,77 @@
+ac_dda_notify_on_transaccional:
+  alias: AC DDA - Notificación ON transaccional
+  description: >-
+    Envía notificación ON con payload contractual ya validado, conserva hitos de
+    traza y aplica fallback consistente a persistent_notification.
+  mode: parallel
+  fields:
+    trace_id:
+      description: Identificador de traza extremo a extremo.
+      example: notify-on-20260408-001
+    title:
+      description: Título de la notificación.
+      example: Cool↑
+    message:
+      description: Mensaje contractual validado.
+    entity_id:
+      description: Entidad asociada para logbook.
+      example: climate.0200009211c7_climate
+    src:
+      description: Fuente del evento ON.
+      example: AutoON
+  sequence:
+  - variables:
+      trace_local: '{{ trace_id | default(''trace_missing'', true) }}'
+      title_local: '{{ title | default(''Cool↑'', true) }}'
+      message_local: '{{ message | default(''n/a'', true) }}'
+      entity_local: '{{ entity_id | default(''climate.0200009211c7_climate'', true) }}'
+      src_local: '{{ src | default(''AutoON'', true) }}'
+  - service: logbook.log
+    continue_on_error: true
+    data:
+      name: AC Auto Trace
+      message: hito=notify_on_preparado | trace_id={{ trace_local }} | src={{ src_local
+        }} | title={{ title_local }}
+      entity_id: '{{ entity_local }}'
+  - service: logbook.log
+    continue_on_error: true
+    data:
+      name: AC Auto Trace
+      message: hito=notify_on_intentado | trace_id={{ trace_local }} | channel=mobile_app_s24
+        | src={{ src_local }}
+      entity_id: '{{ entity_local }}'
+  - service: notify.mobile_app_samsung_s24
+    continue_on_error: true
+    response_variable: notify_response
+    data:
+      title: '{{ title_local }}'
+      message: '{{ message_local }}'
+      data:
+        ttl: 0
+        priority: high
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ notify_response is mapping and ('error' in notify_response
+          or 'exception' in notify_response or 'failed' in notify_response) }}"
+      sequence:
+      - service: logbook.log
+        continue_on_error: true
+        data:
+          name: AC Auto Trace
+          message: hito=notify_on_fallido | trace_id={{ trace_local }} | src={{ src_local
+            }} | resp={{ notify_response }}
+          entity_id: '{{ entity_local }}'
+      - service: persistent_notification.create
+        continue_on_error: true
+        data:
+          title: '{{ title_local }}'
+          message: '{{ message_local }}'
+    default:
+    - service: logbook.log
+      continue_on_error: true
+      data:
+        name: AC Auto Trace
+        message: hito=notify_on_enviado | trace_id={{ trace_local }} | src={{ src_local
+          }}
+        entity_id: '{{ entity_local }}'

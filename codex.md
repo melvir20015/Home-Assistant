@@ -591,3 +591,57 @@ Se consolidan hitos con mensajes cortos y consistentes:
      - `Resultado=ignorado`
      - `Razón=<ignored_reason_code>`
    - La razón debe coincidir con los hitos de logbook (`learning_on_ignored` + código).
+
+## 19. Hardening transaccional ON + alcance de aprendizaje diurno (2026-04-08)
+
+### Ajustes aplicados
+1. **Sub-flujo transaccional de notificación ON (`Cool↑`)**
+   - Se introdujo el script `ac_dda_notify_on_transaccional` para centralizar envío móvil ON.
+   - El script exige payload previamente validado y conserva hitos obligatorios:
+     - `hito=notify_on_preparado`
+     - `hito=notify_on_intentado`
+     - `hito=notify_on_fallido`
+     - `hito=notify_on_enviado`
+   - Se mantiene fallback consistente a `persistent_notification.create`.
+   - El flujo se reutiliza en:
+     - `cool_normal_on`
+     - `cool_emergency_on`
+     - transición manual asistida `off -> fan_only -> cool` (cuando aplica).
+
+2. **Formato contractual ON unificado**
+   - Todas las ramas ON anteriores usan contrato compacto consistente:
+     - `Tin/Tout/H/On/Off/SP/Fan/Src`
+   - Si un dato no está disponible, se publica `n/a` sin abortar trazabilidad.
+
+3. **Clasificación `Manual ON` basada en evidencia AUTO reciente**
+   - Guard y Learning ON usan ahora criterio temporal compuesto común:
+     - flags AUTO activos, o
+     - token de transición dentro de ventana, o
+     - timestamp AUTO reciente.
+   - Se evita bloqueo por `input_text.ac_dda_last_change_origin` histórico sin evidencia temporal vigente.
+   - Se preserva `trace_id` y motivo explícito en descarte.
+
+4. **Alcance del aprendizaje restringido a diurno principal**
+   - El `Manual ON feedback` sólo aplica aprendizaje cuando:
+     - rama principal `cool_normal_on`,
+     - franja contractual diurna (`07:01–21:59`),
+     - contexto bucket válido del flujo principal.
+   - Fuera de ámbito se descarta con:
+     - `ignored_reason_code=out_of_scope_daytime_main`
+   - En ese caso no se escriben sesgos/buckets de aprendizaje diurno.
+
+5. **Consistencia Learning ON**
+   - Se mantiene `learning_step=-0.25`.
+   - Cuando aplica, además del bucket contextual `off`, se actualiza helper de histéresis contextual:
+     - `input_number.ac_dda_cool_delta_on_bucket_*`
+   - Se conserva anti-duplicado por firma de evento.
+
+6. **Fix de robustez en Learning OFF**
+   - Se define explícitamente `auto_origin_detected` antes de usarlo en `transition_origin_recent`.
+   - Se evita referencia implícita a variable indefinida en plantillas.
+
+### Casos mínimos de regresión requeridos
+- **(a)** `cool_normal_on` emite ON (`Cool↑`) aun con confirmación HVAC tardía.
+- **(b)** Manual ON real tras largo tiempo desde último AUTO se clasifica manual y aprende.
+- **(c)** Eventos nocturnos no escriben aprendizaje diurno principal.
+- **(d)** Descartes exponen razón + `trace_id` de extremo a extremo.
