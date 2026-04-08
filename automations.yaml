@@ -3753,7 +3753,7 @@
       - choose:
         - conditions:
           - condition: template
-            value_template: '{{ hvac_cool_confirmed and cool_push_kind }}'
+            value_template: '{{ cool_push_kind }}'
           sequence:
           - service: logbook.log
             continue_on_error: true
@@ -3814,8 +3814,7 @@
           continue_on_error: true
           data:
             name: AC Auto Trace
-            message: hito=notify_on_omitido_por_error_previo | reason={{ 'hvac_not_confirmed_cool'
-              if not hvac_cool_confirmed else 'cool_push_kind_false' }}
+            message: hito=notify_on_omitido_por_error_previo | reason=cool_push_kind_false
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -4903,7 +4902,7 @@
       cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
       auto_origin_detected: '{{ last_change_origin in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
       auto_reciente: '{{ (minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}'
-      within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) and (minutes_since_last_auto | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
+      within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}'
       last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | trim }}'
       manual_event_confirmed: '{{ last_manual_event_type_raw in [''manual_on_final_valid_contract_v1'', ''manual_on_final_valid_presence_gap_contract_v1''] }}'
       origin_is_manual_on: '{{ last_change_origin == ''manual_on'' }}'
@@ -5284,7 +5283,7 @@
       last_auto_age_s: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}"
       minutes_since_last_auto: '{{ ((last_auto_age_s | float(99999)) / 60) | round(3) }}'
       auto_reciente: '{{ (minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}'
-      within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) and (minutes_since_last_auto | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
+      within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}'
       auto_origin_detected: '{{ last_change_origin_raw in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
       auto_on_action_recent: '{{ auto_reciente and last_auto_action_raw in [''auto_on'', ''cool_normal_on'', ''cool_emergency_on''] }}'
       auto_flags_active: '{{ is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') }}'
@@ -5345,7 +5344,7 @@
       post60_last_auto_age_s: "{% set raw = post60_last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}"
       post60_minutes_since_last_auto: '{{ ((post60_last_auto_age_s | float(99999)) / 60) | round(3) }}'
       post60_auto_reciente: '{{ (post60_minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}'
-      post60_within_manual_feedback_window: '{{ (post60_minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) and (post60_minutes_since_last_auto | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
+      post60_within_manual_feedback_window: '{{ (post60_minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}'
       post60_auto_origin_detected: '{{ post60_last_origin_raw in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
       post60_auto_on_action_recent: '{{ post60_auto_reciente and post60_last_auto_action_raw in [''auto_on'', ''cool_normal_on'', ''cool_emergency_on''] }}'
       post60_auto_happened_during_consolidation: "{% set raw = post60_last_auto_ts_raw | default('', true) | trim %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ ts_auto is not none and (ts_auto | int(0)) >= (detected_ts_epoch | int(0)) }}"

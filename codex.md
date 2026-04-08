@@ -490,3 +490,28 @@ Evitar reclasificaciones ambiguas entre eventos **AUTO** y **manuales** durante 
 2. Confirmar nonce (`off_nonce`) y edad del marcador en guard/learning.
 3. Si guard descarta, revisar `manual_guard_discard_reason`.
 4. Si Learning OFF ignora, revisar `ignored_reason_code` y validar que no haya escritura de aprendizaje.
+
+---
+
+## 16. Robustez de notificación ON + detección manual ON (2026-04-08)
+
+### Problema observado
+- En ciertos ciclos `cool_normal_on`, la notificación ON no se emitía cuando la confirmación HVAC (`wait_template`) expiraba antes de reflejar `cool`, aunque el encendido sí era intentado por la rama AUTO.
+- Encendidos manuales reales (botón físico/control remoto) quedaban descartados como `evidencia_manual_insuficiente` cuando el último evento AUTO superaba la ventana máxima previa (120 min), impidiendo aprendizaje `Manual ON (-0.25)`.
+
+### Ajuste aplicado en automatizaciones
+1. **Notificación ON en rama `cool_normal_on`**
+   - Se desacopló la condición de envío del push ON respecto a `hvac_cool_confirmed`.
+   - Ahora el envío depende de `cool_push_kind`, preservando trazas de fallo (`notify_on_fallido`) y fallback local (`persistent_notification`) si el canal móvil falla.
+
+2. **Guard y learning de `Manual ON`**
+   - Se eliminó el límite superior de la ventana (`<= 120 min`) en:
+     - `AC - Manual ON guard + presencia temporal`
+     - `AC - Learning - Manual ON feedback`
+   - La validación temporal queda en:
+     - bloquear sólo AUTO reciente (`< 3 min`),
+     - permitir manual válido para cualquier antigüedad `>= 3 min`.
+
+### Efecto esperado
+- La notificación ON se vuelve consistente ante transiciones relevantes de encendido AUTO, incluso con confirmación tardía del `climate`.
+- Encendidos manuales legítimos vuelven a trazarse como manuales y alimentan aprendizaje contextual `-0.25` como exige el contrato.
