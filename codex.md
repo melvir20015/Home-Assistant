@@ -515,3 +515,36 @@ Evitar reclasificaciones ambiguas entre eventos **AUTO** y **manuales** durante 
 ### Efecto esperado
 - La notificación ON se vuelve consistente ante transiciones relevantes de encendido AUTO, incluso con confirmación tardía del `climate`.
 - Encendidos manuales legítimos vuelven a trazarse como manuales y alimentan aprendizaje contextual `-0.25` como exige el contrato.
+
+## 17. Corrección de trazabilidad `Manual ON` y guard anti-falsos positivos (2026-04-08)
+
+### Causa raíz confirmada
+- Se detectó descarte de encendidos manuales legítimos por una condición `auto_transition_active` demasiado permisiva: bastaba token de transición reciente, incluso con rastro residual sin evidencia AUTO actual.
+- Esto provocaba dos efectos:
+  1. `AC - Manual ON guard + presencia temporal` descartaba eventos manuales como `auto_transition_active`.
+  2. `AC - Learning - Manual ON feedback` no aplicaba aprendizaje por la misma clasificación, quedando sin correlación explícita extremo a extremo.
+
+### Reglas nuevas de clasificación manual vs auto
+1. `auto_transition_active` ahora exige evidencia fuerte:
+   - **verdadero** si hay `auto_flags_active`, o
+   - **verdadero** si hay token reciente **y además** evidencia de origen AUTO reciente (`last_change_origin` AUTO y/o auto reciente por tiempo).
+2. Se instrumenta `trace_id` único por evento manual ON detectado y se propaga al feedback de learning mediante `input_text.ac_dda_last_manual_event_type`.
+3. Si el guard descarta (pre-guard o post-60s), siempre se emite salida observable:
+   - logbook con razón + variables de diagnóstico,
+   - notificación móvil compacta S24 con `Src=ManualON Resultado=ignorado Razón=<...> Trace=<trace_id>`.
+4. Se retiró el bloqueo horario estricto `07:01-21:59` en:
+   - `AC - Manual ON guard + presencia temporal`
+   - `AC - Learning - Manual ON feedback`
+   para no perder pruebas/manual ON nocturnas.
+
+### Variables de diagnóstico obligatorias registradas
+- **Pre-guard:** `auto_transition_recent`, `transition_age_s`, `last_change_origin_raw`, `auto_flags_active`, `minutes_since_last_auto`, `manual_on_guard_discard_reason`.
+- **Post-60s:** `auto_transition_recent`, `transition_age_s`, `last_change_origin_raw`, `auto_flags_active`, `minutes_since_last_auto`, `post60_guard_discard_reason`.
+
+### Tabla corta de resultados esperados
+| Evento manual ON | Estado final | Notificación esperada |
+|---|---|---|
+| Manual ON válido (sin evidencia AUTO reciente) | `manual_on_final_valid_*` + learning ON aplicado | `Src=ManualON Resultado=aplicado` (guard/pendiente + learning) con `Trace` |
+| Manual ON descartado en pre-guard | `stop` por `manual_on_guard_discard_reason` | `Src=ManualON Resultado=ignorado Razón=<reason> Trace=<trace_id>` |
+| Manual ON descartado en post-60s | `stop` por `post60_guard_discard_reason` | `Src=ManualON Resultado=ignorado Razón=<reason> Trace=<trace_id>` |
+| Cambio AUTO dentro de ventana de seguridad | clasificado como AUTO (no manual) | No debe convertirse a aprendizaje manual ON |

@@ -4699,7 +4699,9 @@
       transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
       auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
-      auto_transition_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or auto_transition_recent }}'
+      auto_flags_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') }}'
+      transition_origin_recent: '{{ auto_origin_detected or auto_reciente }}'
+      auto_transition_active: '{{ auto_flags_active or (auto_transition_recent and transition_origin_recent) }}'
       off_classification: '{{ ''manual'' if last_change_origin == ''manual_off'' and manual_event_confirmed and (not auto_off_recent) and (not auto_transition_active) else ''auto'' }}'
       classification_reason: "{% if last_change_origin != 'manual_off' %}origin_not_manual_off{% elif not manual_event_confirmed %}manual_event_not_validated{% elif auto_transition_active %}auto_transition_active{% elif auto_off_recent %}auto_off_recent{% else %}manual_off_guard_validated{% endif %}"
       valid_feedback: '{{ last_change_origin == ''manual_off'' and manual_event_confirmed and (not auto_off_recent) and (not cycle_lock_active) and (not auto_reciente) and (not origin_auto_recent) and (not auto_transition_active) }}'
@@ -4867,10 +4869,6 @@
   triggers:
   - trigger: state
     entity_id: input_datetime.ac_dda_last_manual_on_ts
-  conditions:
-  - condition: time
-    after: 07:01:00
-    before: '21:59:00'
   actions:
   - delay: 00:01:00
   - variables:
@@ -4883,6 +4881,8 @@
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       manual_feedback_min_window_min: 3
       manual_feedback_max_window_min: 120
+      trace_id_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | default('''', true) | trim }}'
+      trace_id: "{% set parsed = trace_id_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
       mov_raw: '{{ states(''binary_sensor.presencia_movimiento_estable'') | lower }}'
       s24_raw: '{{ states(''device_tracker.samsung_s24'') | lower }}'
       person_raw: '{{ states(''person.ivan'') | lower }}'
@@ -4904,7 +4904,7 @@
       auto_reciente: '{{ (minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}'
       within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}'
       last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | trim }}'
-      manual_event_confirmed: '{{ last_manual_event_type_raw in [''manual_on_final_valid_contract_v1'', ''manual_on_final_valid_presence_gap_contract_v1''] }}'
+      manual_event_confirmed: '{{ last_manual_event_type_raw.startswith(''manual_on_final_valid_contract_v1'') or last_manual_event_type_raw.startswith(''manual_on_final_valid_presence_gap_contract_v1'') }}'
       origin_is_manual_on: '{{ last_change_origin == ''manual_on'' }}'
       transition_guard_window_s: 180
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
@@ -4912,7 +4912,9 @@
       transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
       auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
-      auto_transition_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or auto_transition_recent }}'
+      auto_flags_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') }}'
+      transition_origin_recent: '{{ auto_origin_detected or auto_reciente }}'
+      auto_transition_active: '{{ auto_flags_active or (auto_transition_recent and transition_origin_recent) }}'
       valid_feedback: '{{ origin_is_manual_on and (not auto_origin_detected) and (not auto_reciente) and within_manual_feedback_window and manual_event_confirmed and cool_path_feedback and (not cycle_lock_active) and (not auto_transition_active) }}'
       manual_on_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
@@ -4985,7 +4987,7 @@
   - action: logbook.log
     data:
       name: AC Learning Manual ON
-      message: '{{ contract_version }} | manual_on_feedback | ctx={{ contract_context_key }} | apply={{ ''yes'' if apply_learning else ''no'' }} | step=-0.25 | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ ''applied'' if apply_learning else ignored_reason_code }}'
+      message: '{{ contract_version }} | manual_on_feedback | trace_id={{ trace_id }} | ctx={{ contract_context_key }} | apply={{ ''yes'' if apply_learning else ''no'' }} | step=-0.25 | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ ''applied'' if apply_learning else ignored_reason_code }}'
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     data:
@@ -5047,12 +5049,12 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Learning ON
-          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_on type={{ learning_type }} reason_code=applied'
+          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_on Trace={{ trace_id }} type={{ learning_type }} reason_code=applied'
     default:
     - service: notify.mobile_app_samsung_s24
       data:
         title: AC Learning ON
-        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
+        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} Trace={{ trace_id }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
@@ -5268,12 +5270,9 @@
     - heat
     - fan_only
     for: 00:00:02
-  conditions:
-  - condition: time
-    after: 07:01:00
-    before: '21:59:00'
   actions:
   - variables:
+      trace_id: '{{ now().strftime(''%Y%m%d%H%M%S'') ~ ''-'' ~ (range(100, 1000) | random) }}'
       cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
       last_change_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''', true) | trim }}'
       last_auto_action_raw: '{{ states(''input_text.ac_last_auto_action'') | default('''', true) | trim | lower }}'
@@ -5293,8 +5292,15 @@
       transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
       auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
-      auto_transition_active: '{{ auto_flags_active or auto_transition_recent }}'
+      transition_origin_recent: '{{ auto_origin_detected or auto_reciente or auto_on_action_recent }}'
+      auto_transition_active: '{{ auto_flags_active or (auto_transition_recent and transition_origin_recent) }}'
       manual_on_guard_discard_reason: "{% if auto_transition_active %}manual_guard_discard=auto_transition_active{% elif cycle_lock_active %}manual_on_guard_discard=lock_activo{% elif auto_flags_active %}manual_on_guard_discard=auto_flag_on{% elif auto_reciente or auto_on_action_recent %}manual_on_guard_discard=auto_reciente{% elif auto_origin_detected %}manual_on_guard_discard=origen_auto{% elif not within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
+      hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
+  - action: logbook.log
+    data:
+      name: AC Manual ON
+      message: '{{ trace_id }} | pre_guard | auto_transition_recent={{ auto_transition_recent }} | transition_age_s={{ transition_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | auto_flags_active={{ auto_flags_active }} | minutes_since_last_auto={{ minutes_since_last_auto }} | manual_on_guard_discard_reason={{ manual_on_guard_discard_reason }}'
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -5303,13 +5309,17 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ manual_on_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_flags_active={{ auto_flags_active }} | auto_reciente={{ auto_reciente }} | min_since_auto={{ minutes_since_last_auto }} | auto_action={{ last_auto_action_raw }} | auto_origin={{ auto_origin_detected }} | last_origin={{ last_change_origin_raw }}'
+          message: '{{ trace_id }} | {{ manual_on_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_flags_active={{ auto_flags_active }} | auto_reciente={{ auto_reciente }} | min_since_auto={{ minutes_since_last_auto }} | auto_action={{ last_auto_action_raw }} | auto_origin={{ auto_origin_detected }} | last_origin={{ last_change_origin_raw }}'
           entity_id: climate.0200009211c7_climate
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: hito=notify_omitido_por_auto | reason={{ manual_on_guard_discard_reason }}
+          message: '{{ trace_id }} | hito=notify_omitido_por_auto | reason={{ manual_on_guard_discard_reason }}'
           entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_on_guard_discard_reason }} Trace={{ trace_id }}'
       - stop: 'Ignorado: guard manual ON descartó evento.'
     default: []
   - variables:
@@ -5333,7 +5343,7 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | manual_on_detected | mode={{ detected_mode }} | consolidate=60s | ctx={{ contract_context_key }} | presence_source={{ presence_source }}'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | manual_on_detected | mode={{ detected_mode }} | consolidate=60s | ctx={{ contract_context_key }} | presence_source={{ presence_source }}'
       entity_id: climate.0200009211c7_climate
   - delay: 00:01:00
   - variables:
@@ -5353,7 +5363,15 @@
       post60_transition_ts_epoch: "{% if post60_transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(post60_transition_ts_raw, default=none) }}{% endif %}"
       post60_transition_age_s: "{% if post60_transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (post60_transition_ts_epoch | float)) | round(1) }}{% endif %}"
       post60_auto_transition_recent: "{{ post60_transition_token_raw | length > 0 and post60_transition_age_s | float(99999) >= 0 and post60_transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
-      post60_guard_discard_reason: "{% if is_state('input_boolean.ac_dda_off_por_automatizacion','on') or is_state('input_boolean.ac_dda_on_por_automatizacion','on') or post60_auto_transition_recent %}manual_guard_discard=auto_transition_active{% elif post60_auto_happened_during_consolidation and (post60_auto_reciente or post60_auto_on_action_recent) %}manual_on_guard_discard=auto_reciente{% elif post60_auto_origin_detected %}manual_on_guard_discard=origen_auto{% elif not post60_within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
+      post60_auto_flags_active: '{{ is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') }}'
+      post60_transition_origin_recent: '{{ post60_auto_origin_detected or post60_auto_reciente or post60_auto_on_action_recent }}'
+      post60_auto_transition_active: '{{ post60_auto_flags_active or (post60_auto_transition_recent and post60_transition_origin_recent) }}'
+      post60_guard_discard_reason: "{% if post60_auto_transition_active %}manual_guard_discard=auto_transition_active{% elif post60_auto_happened_during_consolidation and (post60_auto_reciente or post60_auto_on_action_recent) %}manual_on_guard_discard=auto_reciente{% elif post60_auto_origin_detected %}manual_on_guard_discard=origen_auto{% elif not post60_within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
+  - action: logbook.log
+    data:
+      name: AC Manual ON
+      message: '{{ trace_id }} | post60_guard | auto_transition_recent={{ post60_auto_transition_recent }} | transition_age_s={{ post60_transition_age_s }} | last_change_origin_raw={{ post60_last_origin_raw }} | auto_flags_active={{ post60_auto_flags_active }} | minutes_since_last_auto={{ post60_minutes_since_last_auto }} | post60_guard_discard_reason={{ post60_guard_discard_reason }}'
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -5362,13 +5380,17 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ post60_guard_discard_reason }} | auto_reciente={{ post60_auto_reciente }} | auto_during_60s={{ post60_auto_happened_during_consolidation }} | min_since_auto={{ post60_minutes_since_last_auto }} | auto_action={{ post60_last_auto_action_raw }} | auto_origin={{ post60_auto_origin_detected }} | last_origin={{ post60_last_origin_raw }}'
+          message: '{{ trace_id }} | {{ post60_guard_discard_reason }} | auto_reciente={{ post60_auto_reciente }} | auto_during_60s={{ post60_auto_happened_during_consolidation }} | min_since_auto={{ post60_minutes_since_last_auto }} | auto_action={{ post60_last_auto_action_raw }} | auto_origin={{ post60_auto_origin_detected }} | last_origin={{ post60_last_origin_raw }}'
           entity_id: climate.0200009211c7_climate
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: hito=notify_omitido_por_auto | reason={{ post60_guard_discard_reason }}
+          message: '{{ trace_id }} | hito=notify_omitido_por_auto | reason={{ post60_guard_discard_reason }}'
           entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=ignorado Razón={{ post60_guard_discard_reason }} Trace={{ trace_id }}'
       - stop: 'Ignorado: guard manual ON post60 descartó evento.'
     default: []
   - target:
@@ -5384,7 +5406,7 @@
   - target:
       entity_id: input_text.ac_dda_last_manual_event_type
     data:
-      value: manual_on_detected_contract_v1
+      value: '{{ ''manual_on_detected_contract_v1|trace_id='' ~ trace_id }}'
     service: input_text.set_value
   - choose:
     - conditions:
@@ -5485,7 +5507,7 @@
   - target:
       entity_id: input_text.ac_dda_last_manual_event_type
     data:
-      value: '{{ manual_event_type_final }}'
+      value: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id }}'
     service: input_text.set_value
   - choose:
     - conditions:
@@ -5516,7 +5538,7 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else ''n/a'' }} | presence_source={{ presence_source }} | learn_step=-0.25'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else ''n/a'' }} | presence_source={{ presence_source }} | learn_step=-0.25'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
