@@ -548,3 +548,46 @@ Evitar reclasificaciones ambiguas entre eventos **AUTO** y **manuales** durante 
 | Manual ON descartado en pre-guard | `stop` por `manual_on_guard_discard_reason` | `Src=ManualON Resultado=ignorado Razón=<reason> Trace=<trace_id>` |
 | Manual ON descartado en post-60s | `stop` por `post60_guard_discard_reason` | `Src=ManualON Resultado=ignorado Razón=<reason> Trace=<trace_id>` |
 | Cambio AUTO dentro de ventana de seguridad | clasificado como AUTO (no manual) | No debe convertirse a aprendizaje manual ON |
+
+## 18. Latencia objetivo y garantías de robustez en `Manual ON` (2026-04-08)
+
+### Objetivo operativo de latencia percibida
+- Reducir el tiempo percibido del flujo de aprendizaje por encendido manual desde ~2–2.5 min a una ventana típica de **45–75 s**.
+- Mantener separación robusta entre eventos manuales y automáticos (sin degradar guardas de transición AUTO).
+
+### Tiempos nuevos aplicados
+1. **`AC - Manual ON guard + presencia temporal`**
+   - Consolidación principal de encendido manual: **30 s** (antes 60 s).
+   - Puente `off -> fan_only -> cool`: **12 s** (antes 30 s).
+2. **`AC - Learning - Manual ON feedback`**
+   - Delay inicial de feedback/aprendizaje: **25 s** (antes 60 s).
+
+### Garantías de robustez que se mantienen
+- Se conservan los bloqueos por:
+  - transición automática activa o reciente (`auto_transition_active`),
+  - evidencia de origen AUTO (`last_change_origin` AUTO),
+  - autoacción reciente por ventana mínima (3 min),
+  - lock de ciclo (`ac_dda_cycle_lock`).
+- Se conserva la protección anti-duplicado en learning ON por firma de evento (`duplicate_event`).
+- El descarte por evidencia AUTO reciente sigue devolviendo salida observable con razón explícita.
+
+### Observabilidad reforzada (hitos de logbook)
+Se consolidan hitos con mensajes cortos y consistentes:
+- `hito=manual_on_detected`
+- `hito=manual_on_validating`
+- `hito=manual_on_final`
+- `hito=learning_on_applied` / `hito=learning_on_ignored`
+
+### Secuencias esperadas
+1. **Caso aplicado**
+   - Se detecta ON manual válido.
+   - Se emite push temprano: `Src=ManualON Resultado=pendiente Razón=validando`.
+   - Tras consolidación + feedback se emite `AC Learning ON` con:
+     - `Resultado=aplicado`
+     - `Razón=manual_on`
+2. **Caso ignorado**
+   - Se detecta evidencia de autoacción/lock/origen no manual.
+   - Se emite `AC Learning ON` con:
+     - `Resultado=ignorado`
+     - `Razón=<ignored_reason_code>`
+   - La razón debe coincidir con los hitos de logbook (`learning_on_ignored` + código).

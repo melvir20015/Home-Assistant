@@ -4861,7 +4861,7 @@
   alias: AC - Learning - Manual ON feedback
   trace:
     stored_traces: 50
-  description: 'Contrato v1: aprendizaje manual ON unificado. Espera 60s para consolidación,
+  description: 'Contrato v1: aprendizaje manual ON unificado. Espera 25s para consolidación,
     usa una sola definición de contexto y aplica semántica -0.25 sin ramas legacy.
     Presencia telefónica limitada a `device_tracker.samsung_s24` y `person.ivan`.
 
@@ -4870,7 +4870,7 @@
   - trigger: state
     entity_id: input_datetime.ac_dda_last_manual_on_ts
   actions:
-  - delay: 00:01:00
+  - delay: 00:00:25
   - variables:
       contract_version: contract=v1
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
@@ -4988,6 +4988,11 @@
     data:
       name: AC Learning Manual ON
       message: '{{ contract_version }} | manual_on_feedback | trace_id={{ trace_id }} | ctx={{ contract_context_key }} | apply={{ ''yes'' if apply_learning else ''no'' }} | step=-0.25 | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ ''applied'' if apply_learning else ignored_reason_code }}'
+      entity_id: climate.0200009211c7_climate
+  - action: logbook.log
+    data:
+      name: AC Learning Manual ON
+      message: '{{ contract_version }} | hito={{ ''learning_on_applied'' if apply_learning else ''learning_on_ignored'' }} | trace_id={{ trace_id }} | reason={{ ''applied'' if apply_learning else ignored_reason_code }}'
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     data:
@@ -5256,8 +5261,8 @@
   alias: AC - Manual ON guard + presencia temporal
   trace:
     stored_traces: 50
-  description: 'Contrato v1: guard de encendido manual con consolidación a 60s, flujo
-    off->fan_only->cool (30s) y presencia temporal cuando corresponde. Presencia
+  description: 'Contrato v1: guard de encendido manual con consolidación a 30s, flujo
+    off->fan_only->cool (12s) y presencia temporal cuando corresponde. Presencia
     telefónica limitada a `device_tracker.samsung_s24` y `person.ivan`.
 
     '
@@ -5343,9 +5348,18 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | manual_on_detected | mode={{ detected_mode }} | consolidate=60s | ctx={{ contract_context_key }} | presence_source={{ presence_source }}'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_detected | mode={{ detected_mode }} | consolidate=30s | ctx={{ contract_context_key }} | presence_source={{ presence_source }}'
       entity_id: climate.0200009211c7_climate
-  - delay: 00:01:00
+  - service: notify.mobile_app_samsung_s24
+    data:
+      title: AC Manual ON
+      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id }}'
+  - action: logbook.log
+    data:
+      name: AC Manual ON
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_validating | reason=consolidacion_30s'
+      entity_id: climate.0200009211c7_climate
+  - delay: 00:00:30
   - variables:
       final_mode_after_60s: '{{ states(climate_ent) }}'
       post60_last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
@@ -5416,9 +5430,9 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ contract_version }} | fan_only_bridge | step=off->fan_only->cool | wait=30s'
+          message: '{{ contract_version }} | fan_only_bridge | step=off->fan_only->cool | wait=12s'
           entity_id: climate.0200009211c7_climate
-      - delay: 00:00:30
+      - delay: 00:00:12
       - condition: template
         value_template: '{{ states(climate_ent) == ''fan_only'' }}'
       - target:
@@ -5446,7 +5460,7 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ contract_version }} | fan_only_bridge_applied | mode=cool | wait=30s'
+          message: '{{ contract_version }} | fan_only_bridge_applied | mode=cool | wait=12s'
           entity_id: climate.0200009211c7_climate
     default: []
   - variables:
@@ -5538,7 +5552,7 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else ''n/a'' }} | presence_source={{ presence_source }} | learn_step=-0.25'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else ''n/a'' }} | presence_source={{ presence_source }} | learn_step=-0.25'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
