@@ -4934,16 +4934,19 @@
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
-      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) and (auto_origin_detected or auto_reciente) }}"
+      auto_transition_token_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
       auto_flags_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') }}'
+      auto_transition_origin_evidence_active: '{{ auto_flags_active or auto_origin_detected }}'
+      auto_transition_recent: '{{ auto_transition_token_recent and auto_transition_origin_evidence_active }}'
       auto_timestamp_recent: '{{ auto_reciente }}'
-      manual_on_auto_recent_compound: '{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}'
-      auto_transition_active: '{{ manual_on_auto_recent_compound }}'
+      auto_transition_active_strict: '{{ auto_flags_active or auto_transition_recent }}'
+      auto_recent_observed: '{{ auto_transition_active_strict or auto_timestamp_recent }}'
+      auto_transition_active: '{{ auto_transition_active_strict }}'
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
       branch_scope_ok: '{{ states(''input_text.ac_last_auto_branch'') | trim == ''cool_normal_on'' }}'
       context_scope_ok: '{{ contract_context_key not in ['''', ''unknown'', ''unavailable'', ''none''] }}'
       learning_day_scope_ok: '{{ daytime_scope_ok }}'
-      valid_feedback: '{{ (not manual_on_auto_recent_compound) and (not cycle_lock_active) and learning_day_scope_ok and final_mode_cool_required }}'
+      valid_feedback: '{{ (not auto_transition_active_strict) and (not cycle_lock_active) and learning_day_scope_ok and final_mode_cool_required }}'
       manual_on_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
@@ -4977,7 +4980,7 @@
       threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
-      ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif cycle_lock_active %}lock_activo{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif manual_on_auto_recent_compound %}auto_transition_active{% elif not final_mode_cool_required %}final_mode_not_cool{% else %}unknown_discard{% endif %}"
+      ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif cycle_lock_active %}lock_activo{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif auto_transition_active_strict %}auto_transition_active{% elif not final_mode_cool_required %}final_mode_not_cool{% else %}unknown_discard{% endif %}"
       reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'auto_reciente' %}auto{% elif ignored_reason_code == 'origen_auto' %}origen{% elif ignored_reason_code == 'evidencia_manual_insuficiente' %}evidencia{% else %}descartado{% endif %}"
       ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}fuera_horario_diurno{% elif ignored_reason_code == 'auto_transition_active' %}auto_reciente_activo{% elif ignored_reason_code == 'lock_activo' %}lock_critico_activo{% elif ignored_reason_code == 'final_mode_not_cool' %}modo_final_no_cool{% elif ignored_reason_code == 'duplicate_event' %}evento_duplicado{% else %}descartado_desconocido{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
@@ -5047,7 +5050,7 @@
       - action: logbook.log
         data:
           name: AC Learning Manual ON
-          message: '{{ contract_version }} | learning_on_discard_reason=ignored:{{ ignored_reason_code }} | lock={{ cycle_lock_active }} | auto_recent_compound={{ manual_on_auto_recent_compound }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }} | min_since_auto={{ minutes_since_last_auto }}'
+          message: '{{ contract_version }} | learning_on_discard_reason=ignored:{{ ignored_reason_code }} | lock={{ cycle_lock_active }} | auto_transition_active_strict={{ auto_transition_active_strict }} | auto_recent_observed={{ auto_recent_observed }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }} | min_since_auto={{ minutes_since_last_auto }}'
           entity_id: climate.0200009211c7_climate
     default: []
   - choose:
