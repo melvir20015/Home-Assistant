@@ -645,3 +645,42 @@ Se consolidan hitos con mensajes cortos y consistentes:
 - **(b)** Manual ON real tras largo tiempo desde último AUTO se clasifica manual y aprende.
 - **(c)** Eventos nocturnos no escriben aprendizaje diurno principal.
 - **(d)** Descartes exponen razón + `trace_id` de extremo a extremo.
+
+## 20. Contrato final Manual ON diurno (2026-04-09)
+
+### Precondición y alcance
+- El evento candidato inicia cuando el `climate` parte en **`off`** y el usuario enciende manualmente.
+- El alcance funcional de `Manual ON guard` y `Learning ON feedback` queda restringido al horario diurno principal: **`07:01:00–21:59:00`**.
+- Fuera de horario diurno:
+  - no se escribe aprendizaje diurno,
+  - se registra descarte explícito con `reason_code=out_of_scope_daytime_main`.
+
+### Ventana de consolidación manual
+- La consolidación de encendido manual se mantiene en **30 segundos**.
+- Tras esa espera, el aprendizaje ON sólo puede aplicar si el modo final es **`cool`**.
+
+### Modo final requerido para aprendizaje ON
+- Condición única de modo final válido: `final_mode == cool`.
+- Si el flujo termina en otro modo (`fan_only`, `heat`, etc.), se ignora con:
+  - `Resultado=ignorado`
+  - `reason_code=final_mode_not_cool`.
+
+### Aprendizaje aplicado cuando el evento es válido
+- Ajuste contextual ON: **`learning_step=-0.25`** sobre bucket contextual `cool`.
+- En el mismo evento válido se aplica además ajuste de histéresis ON en:
+  - `input_number.ac_dda_cool_delta_on_bucket_*`
+  - respetando saturación operativa vigente.
+- Si no hay contexto previo usable, se usa contexto base (`ctx_default:presencia`) y se escribe aprendizaje en helpers `ac_dda_*` (sin bloquear por falta de branch/contexto histórico).
+
+### Causas válidas de ignorado (mínimas)
+- `auto_transition_active`: evidencia de transición AUTO realmente reciente/activa (flags/timestamp/token con respaldo temporal).
+- `lock_activo`: lock crítico del ciclo.
+- `out_of_scope_daytime_main`: evento fuera de horario diurno.
+- `final_mode_not_cool`: consolidación final distinta de `cool`.
+- `duplicate_event`: anti-duplicado por firma de evento ya registrada.
+
+### Trazabilidad corta sugerida (`reason_code`)
+- Caso aplicado: `reason_code=applied`, `Resultado=aplicado`, incluye valores finales aprendidos (`CtxOff`, `HysOn`).
+- Caso fuera de horario: `reason_code=out_of_scope_daytime_main`, `Resultado=ignorado`.
+- Caso colisión AUTO: `reason_code=auto_transition_active`, `Resultado=ignorado`.
+- Caso modo final inválido: `reason_code=final_mode_not_cool`, `Resultado=ignorado`.

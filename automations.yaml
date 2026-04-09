@@ -4891,7 +4891,7 @@
       context_prev_raw: '{{ states(contract_context_helper) }}'
       context_prev: "{% set v = context_prev_raw | float(none) %}{{ v if v is not none else (states('input_number.ac_dda_cool_off_learned') | float(24.0)) }}"
       minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else (((as_timestamp(now()) - ts_auto) / 60) | round(1)) }}{% endif %}"
-      cool_path_feedback: "{{ final_mode in ['cool','fan_only'] }}"
+      final_mode_cool_required: '{{ final_mode == ''cool'' }}'
       cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
       auto_origin_detected: '{{ last_change_origin in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
       auto_reciente: '{{ (minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}'
@@ -4904,16 +4904,16 @@
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
-      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) and (auto_origin_detected or auto_reciente) }}"
       auto_flags_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') }}'
       auto_timestamp_recent: '{{ auto_reciente }}'
       manual_on_auto_recent_compound: '{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}'
       auto_transition_active: '{{ manual_on_auto_recent_compound }}'
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
       branch_scope_ok: '{{ states(''input_text.ac_last_auto_branch'') | trim == ''cool_normal_on'' }}'
-      context_scope_ok: '{{ contract_context_key not in [''ctx_default:presencia'', '''', ''unknown'', ''unavailable'', ''none''] }}'
-      learning_day_scope_ok: '{{ branch_scope_ok and daytime_scope_ok and context_scope_ok }}'
-      valid_feedback: '{{ origin_is_manual_on and (not manual_on_auto_recent_compound) and within_manual_feedback_window and manual_event_confirmed and cool_path_feedback and (not cycle_lock_active) and learning_day_scope_ok }}'
+      context_scope_ok: '{{ contract_context_key not in ['''', ''unknown'', ''unavailable'', ''none''] }}'
+      learning_day_scope_ok: '{{ daytime_scope_ok }}'
+      valid_feedback: '{{ (not manual_on_auto_recent_compound) and (not cycle_lock_active) and learning_day_scope_ok and final_mode_cool_required }}'
       manual_on_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
@@ -4947,11 +4947,12 @@
       threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
-      ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif cycle_lock_active %}lock_activo{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif manual_on_auto_recent_compound %}auto_transition_active{% elif not origin_is_manual_on or not manual_event_confirmed or not cool_path_feedback or not within_manual_feedback_window %}evidencia_manual_insuficiente{% else %}unknown_discard{% endif %}"
+      ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif cycle_lock_active %}lock_activo{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif manual_on_auto_recent_compound %}auto_transition_active{% elif not final_mode_cool_required %}final_mode_not_cool{% else %}unknown_discard{% endif %}"
       reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'auto_reciente' %}auto{% elif ignored_reason_code == 'origen_auto' %}origen{% elif ignored_reason_code == 'evidencia_manual_insuficiente' %}evidencia{% else %}descartado{% endif %}"
+      ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}fuera_horario_diurno{% elif ignored_reason_code == 'auto_transition_active' %}auto_reciente_activo{% elif ignored_reason_code == 'lock_activo' %}lock_critico_activo{% elif ignored_reason_code == 'final_mode_not_cool' %}modo_final_no_cool{% elif ignored_reason_code == 'duplicate_event' %}evento_duplicado{% else %}descartado_desconocido{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
-      learning_type: "{% if apply_learning %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'auto_transition_active' %}manual_on_learning_ignored_auto_transition_active_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% elif ignored_reason_code == 'evidencia_manual_insuficiente' %}manual_on_learning_ignored_evidencia_manual_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
+      learning_type: "{% if apply_learning %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'auto_transition_active' %}manual_on_learning_ignored_auto_transition_active_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% elif ignored_reason_code == 'final_mode_not_cool' %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -4966,6 +4967,11 @@
           entity_id: input_text.ac_dda_cool_contextual_learning_map
         data:
           value: '{{ contract_context_key ~ ''='' ~ (''%.2f'' | format(context_after | float)) }}'
+        service: input_text.set_value
+      - target:
+          entity_id: input_text.ac_dda_last_context_bucket
+        data:
+          value: '{{ contract_context_key }}'
         service: input_text.set_value
       - target:
           entity_id: '{{ contract_context_delta_on_helper }}'
@@ -5006,7 +5012,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ ignored_reason_code in [''lock_activo'', ''auto_transition_active'', ''evidencia_manual_insuficiente'', ''out_of_scope_daytime_main''] }}'
+        value_template: '{{ ignored_reason_code in [''lock_activo'', ''auto_transition_active'', ''out_of_scope_daytime_main'', ''final_mode_not_cool''] }}'
       sequence:
       - action: logbook.log
         data:
@@ -5058,12 +5064,12 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Learning ON
-          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_on Trace={{ trace_id }} type={{ learning_type }} reason_code=applied'
+          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_on CtxOff={{ ''%.2f'' | format(context_after | float) }} HysOn={{ ''%.2f'' | format(contract_context_delta_on_after | float) }} Trace={{ trace_id }} type={{ learning_type }} reason_code=applied'
     default:
     - service: notify.mobile_app_samsung_s24
       data:
         title: AC Learning ON
-        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} Trace={{ trace_id }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
+        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_label }} Trace={{ trace_id }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
@@ -5301,10 +5307,11 @@
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
-      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) and (auto_origin_detected or auto_timestamp_recent) }}"
       manual_on_auto_recent_compound: '{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}'
       auto_transition_active: '{{ manual_on_auto_recent_compound }}'
-      manual_on_guard_discard_reason: "{% if manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif cycle_lock_active %}manual_on_guard_discard=lock_activo{% elif not within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
+      daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
+      manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif cycle_lock_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
   - action: logbook.log
     data:
@@ -5382,11 +5389,12 @@
       post60_transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       post60_transition_ts_epoch: "{% if post60_transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(post60_transition_ts_raw, default=none) }}{% endif %}"
       post60_transition_age_s: "{% if post60_transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (post60_transition_ts_epoch | float)) | round(1) }}{% endif %}"
-      post60_auto_transition_recent: "{{ post60_transition_token_raw | length > 0 and post60_transition_age_s | float(99999) >= 0 and post60_transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      post60_auto_transition_recent: "{{ post60_transition_token_raw | length > 0 and post60_transition_age_s | float(99999) >= 0 and post60_transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) and (post60_auto_origin_detected or post60_auto_timestamp_recent) }}"
       post60_auto_flags_active: '{{ is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') }}'
       post60_manual_on_auto_recent_compound: '{{ post60_auto_flags_active or post60_auto_transition_recent or post60_auto_timestamp_recent }}'
       post60_auto_transition_active: '{{ post60_manual_on_auto_recent_compound }}'
-      post60_guard_discard_reason: "{% if post60_manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif not post60_within_manual_feedback_window %}manual_on_guard_discard=evidencia_manual_insuficiente{% else %}none{% endif %}"
+      post60_daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
+      post60_guard_discard_reason: "{% if not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif post60_manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% else %}none{% endif %}"
   - action: logbook.log
     data:
       name: AC Manual ON
