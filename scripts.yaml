@@ -23,9 +23,12 @@ ac_dda_notify_on_transaccional:
     branch:
       description: Rama lógica origen del AUTO ON.
       example: cool_normal_on
+    notify_role:
+      description: Prioridad del llamador para anti-duplicado (primary o confirm).
+      example: primary
     cycle_signature:
       description: Firma anti-duplicado por ciclo de encendido.
-      example: 2026-04-09 14:35:00|cool_normal_on|25.4|24.8|auto_on
+      example: 2026-04-09 14:35:00|token:20260409143500999123|cool_normal_on|25.4|24.8|auto_on
   sequence:
     - variables:
         trace_local: "{{ trace_id | default('trace_missing', true) }}"
@@ -34,13 +37,32 @@ ac_dda_notify_on_transaccional:
         entity_local: "{{ entity_id | default('climate.0200009211c7_climate', true) }}"
         src_local: "{{ src | default('AutoON', true) }}"
         branch_local: "{{ branch | default('n/a', true) }}"
+        role_local:
+          "{{ notify_role if notify_role is defined and (notify_role | string | trim | lower) in ['primary', 'confirm']
+          else 'primary' }}"
         cycle_signature_local: "{{ cycle_signature | default('', true) | trim }}"
-        last_signature:
+        last_signature_record:
           "{{ states('input_text.ac_dda_last_notify_on_cycle_signature')
           | default('', true) | trim }}"
+        last_signature:
+          "{% if '||' in last_signature_record %}{{ last_signature_record.split('||', 1)[0]
+          | trim }}{% else %}{{ last_signature_record }}{% endif %}"
+        last_role:
+          "{% if '||' in last_signature_record %}{{ last_signature_record.split('||', 1)[1]
+          | trim | lower }}{% else %}unknown{% endif %}"
+        incoming_priority: "{{ 2 if role_local == 'primary' else 1 }}"
+        last_priority:
+          "{% if last_role == 'primary' %}2{% elif last_role == 'confirm' %}1{% else
+          %}0{% endif %}"
+        same_cycle_signature:
+          "{{ cycle_signature_local != '' and cycle_signature_local == last_signature }}"
         duplicate_cycle_signature:
-          "{{ cycle_signature_local != '' and cycle_signature_local
-          == last_signature }}"
+          "{{ same_cycle_signature and (incoming_priority | int(0)) <= (last_priority
+          | int(0)) }}"
+        should_store_signature:
+          "{{ cycle_signature_local != '' and ((not same_cycle_signature) or (incoming_priority
+          | int(0)) > (last_priority | int(0))) }}"
+        signature_record_to_store: "{{ cycle_signature_local ~ '||' ~ role_local }}"
     - choose:
         - conditions:
             - condition: template
@@ -52,20 +74,21 @@ ac_dda_notify_on_transaccional:
                 name: AC Auto Trace
                 message:
                   hito=notify_on_omitido_duplicado | trace_id={{ trace_local }} | branch={{ branch_local
-                  }} | firma={{ cycle_signature_local }}
+                  }} | src={{ src_local }} | role_actual={{ role_local }} | role_prev={{ last_role
+                  }} | firma_actual={{ cycle_signature_local }} | firma_prev={{ last_signature }}
                 entity_id: "{{ entity_local }}"
       default:
         - choose:
             - conditions:
                 - condition: template
-                  value_template: "{{ cycle_signature_local != '' }}"
+                  value_template: "{{ should_store_signature }}"
               sequence:
                 - service: input_text.set_value
                   continue_on_error: true
                   target:
                     entity_id: input_text.ac_dda_last_notify_on_cycle_signature
                   data:
-                    value: "{{ cycle_signature_local[:255] }}"
+                    value: "{{ signature_record_to_store[:255] }}"
           default: []
         - service: logbook.log
           continue_on_error: true
