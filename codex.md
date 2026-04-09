@@ -775,3 +775,32 @@ Se consolidan hitos con mensajes cortos y consistentes:
   - Debe consolidar 30s; si termina en `cool`, válido.
 - **Caso D — Ruido no válido:** `heat -> cool` sin evidencia reciente de `off`  
   - Debe descartar con razón explícita (`sin_off_efectivo_previo`) y notificación.
+
+## 23. Regla final de no contaminación Manual ON cuando el origen fue AUTO (2026-04-09)
+
+### Regla de negocio obligatoria
+- **Si el encendido proviene de automatización, nunca debe producir `AC Manual ON pendiente/aplicado` ni aprendizaje ON manual.**
+- El descarte debe resolverse en guard/feedback con:
+  - `manual_guard_discard=auto_transition_active` (guard),
+  - `ignored_reason_code=auto_transition_active` (learning ON),
+  - sin push de flujo manual para ese evento (solo trazas técnicas).
+
+### Evidencia AUTO fuerte (criterio único para guard + learning ON)
+Se considera `auto_transition_active` cuando exista cualquiera de estas señales dentro de ventana activa:
+1. `input_boolean.ac_dda_on_por_automatizacion=on` o `input_boolean.ac_dda_off_por_automatizacion=on`.
+2. `input_text.ac_dda_transition_token` utilizable con `input_datetime.ac_dda_transition_ts` reciente.
+3. `input_datetime.ac_last_auto_ts` reciente para colisión transaccional.
+
+### Campos de diagnóstico obligatorios para auditoría futura
+En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
+- `auto_flags_active`
+- `auto_transition_token_recent`
+- `transition_age_s`
+- `auto_ts_age_s` (o `minutes_since_last_auto`)
+- `auto_evidence_strong`
+- `last_change_origin_raw`
+- `manual_guard_discard_reason` o `ignored_reason_code`
+
+### Reglas de integridad de trazabilidad
+- No actualizar firma de evento manual válido (`input_text.ac_dda_learning_last_manual_on_signature`) cuando el descarte sea por `auto_transition_active`.
+- Mantener la notificación ON válida únicamente en el flujo transaccional `Src=AutoON`.
