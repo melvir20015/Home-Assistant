@@ -684,3 +684,31 @@ Se consolidan hitos con mensajes cortos y consistentes:
 - Caso fuera de horario: `reason_code=out_of_scope_daytime_main`, `Resultado=ignorado`.
 - Caso colisión AUTO: `reason_code=auto_transition_active`, `Resultado=ignorado`.
 - Caso modo final inválido: `reason_code=final_mode_not_cool`, `Resultado=ignorado`.
+
+## 21. Contrato de `ac_dda_cycle_lock` con vencimiento y recuperación (2026-04-09)
+
+### Qué activa el lock
+- El lock transaccional `input_boolean.ac_dda_cycle_lock` se activa en los flujos que abren transición HVAC sensible:
+  - ramas AUTO ON/OFF de `AC - Día dinámico aprendido (principal)`,
+  - secado post-cool en `AC - Manual OFF guard + pausa 5 min`,
+  - puente `off -> fan_only -> cool` en `AC - Manual ON guard + presencia temporal`.
+- Cada activación escribe marca temporal en `input_datetime.ac_dda_cycle_lock_since`.
+
+### Duración máxima esperada
+- TTL operativo del lock: **180 s**.
+- Si un guard manual detecta lock activo, sólo se considera bloqueante cuando:
+  - lock activo, y
+  - edad del lock `<= 180 s`.
+
+### Recuperación automática de lock rancio
+- Si la edad del lock supera TTL, se clasifica como **lock rancio**:
+  - se libera lock,
+  - se registra `lock_rancio_recuperado` (o `lock_rancio_recuperado_post60`),
+  - el flujo manual ON continúa validación en vez de descartarse.
+- Además existe watchdog cada minuto:
+  - condición: `ac_dda_cycle_lock=on` sin flags AUTO activas (`ac_dda_on/off_por_automatizacion`) y sin transición reciente,
+  - acción: apagar lock y registrar `lock_recovered_stale`.
+
+### Regla de negocio explícita
+- **Un Manual ON diurno válido no debe perderse por lock rancio.**
+- Sólo se descarta por lock cuando el lock sigue vigente dentro de TTL (`reason=lock_activo`).

@@ -1730,6 +1730,11 @@
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
       - target:
+          entity_id: input_datetime.ac_dda_cycle_lock_since
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
+      - target:
           entity_id: input_text.ac_dda_transition_token
         data:
           value: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-auto-off'
@@ -1943,6 +1948,11 @@
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_off
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: "{{ 'transition_closed=ok' if (is_state('climate.0200009211c7_climate','off') or is_state('climate.0200009211c7_climate','cool')) else 'transition_closed=timeout' }} | lock_final={{ states('input_boolean.ac_dda_cycle_lock') }}"
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ auto_on_enable_final\n   and auto_on_target_branch ==
@@ -1959,6 +1969,11 @@
           - input_boolean.ac_dda_on_por_automatizacion
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
+      - target:
+          entity_id: input_datetime.ac_dda_cycle_lock_since
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_dda_transition_token
         data:
@@ -2183,6 +2198,11 @@
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_off
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: "{{ 'transition_closed=ok' if (is_state('climate.0200009211c7_climate','off') or is_state('climate.0200009211c7_climate','cool')) else 'transition_closed=timeout' }} | lock_final={{ states('input_boolean.ac_dda_cycle_lock') }}"
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: '{{ emergency_latched and emergency_off_ready and cur_mode
@@ -2226,6 +2246,11 @@
           - input_boolean.ac_dda_off_por_automatizacion
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
+      - target:
+          entity_id: input_datetime.ac_dda_cycle_lock_since
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
       - target:
           entity_id: input_text.ac_dda_transition_token
         data:
@@ -2434,6 +2459,11 @@
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_off
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: "{{ 'transition_closed=ok' if (is_state('climate.0200009211c7_climate','off') or is_state('climate.0200009211c7_climate','cool')) else 'transition_closed=timeout' }} | lock_final={{ states('input_boolean.ac_dda_cycle_lock') }}"
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: "{{ cur_mode == 'heat'\n   and tout is not none\n   and tout
@@ -5097,6 +5127,12 @@
       auto_off_recent: "{{ auto_off_marker_nonce_raw | length > 0 and auto_off_marker_age_s | float(99999) >= 0 and auto_off_marker_age_s | float(99999) <= (auto_off_guard_window_s | float(30)) }}"
       last_change_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''', true) | trim }}'
       cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
+      cycle_lock_ttl_s: 180
+      cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
+      cycle_lock_since_epoch: "{% if cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(cycle_lock_since_raw, default=none) }}{% endif %}"
+      cycle_lock_age_s: "{% if cycle_lock_since_epoch is none %}99999{% elif not cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
+      cycle_lock_is_stale: '{{ cycle_lock_active and (cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
+      cycle_lock_effective_active: '{{ cycle_lock_active and not cycle_lock_is_stale }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
       auto_recent_window_s: 90
       last_auto_age_s: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}"
@@ -5109,8 +5145,20 @@
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
       auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
       auto_transition_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or auto_transition_recent }}'
-      manual_guard_discard_reason: "{% if is_state('input_boolean.ac_dda_off_por_automatizacion','on') %}auto_off_flag_on{% elif auto_off_recent %}auto_off_recent{% elif auto_transition_active %}auto_transition_active{% elif cycle_lock_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% else %}none{% endif %}"
+      manual_guard_discard_reason: "{% if is_state('input_boolean.ac_dda_off_por_automatizacion','on') %}auto_off_flag_on{% elif auto_off_recent %}auto_off_recent{% elif auto_transition_active %}auto_transition_active{% elif cycle_lock_effective_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% else %}none{% endif %}"
   - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ cycle_lock_is_stale }}'
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_dda_cycle_lock
+        service: input_boolean.turn_off
+      - action: logbook.log
+        data:
+          name: AC Manual OFF
+          message: 'lock_rancio_recuperado | lock_age_s={{ cycle_lock_age_s }} | ttl_s={{ cycle_lock_ttl_s }}'
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: '{{ manual_guard_discard_reason != ''none'' }}'
@@ -5228,6 +5276,11 @@
           - input_boolean.ac_dda_cycle_lock
         action: input_boolean.turn_on
       - target:
+          entity_id: input_datetime.ac_dda_cycle_lock_since
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: fan_only
@@ -5239,6 +5292,11 @@
             entity_id: timer.hvac_post_cool_dry
         timeout: 00:03:30
         continue_on_timeout: true
+      - action: logbook.log
+        data:
+          name: AC Manual OFF
+          message: "{{ 'transition_closed=ok' if wait.trigger is not none else 'transition_closed=timeout' }} | phase=post_cool_dry | lock={{ states('input_boolean.ac_dda_cycle_lock') }}"
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_on_por_automatizacion
         action: input_boolean.turn_off
@@ -5289,6 +5347,12 @@
   - variables:
       trace_id: '{{ now().strftime(''%Y%m%d%H%M%S'') ~ ''-'' ~ (range(100, 1000) | random) }}'
       cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
+      cycle_lock_ttl_s: 180
+      cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
+      cycle_lock_since_epoch: "{% if cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(cycle_lock_since_raw, default=none) }}{% endif %}"
+      cycle_lock_age_s: "{% if cycle_lock_since_epoch is none %}99999{% elif not cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
+      cycle_lock_is_stale: '{{ cycle_lock_active and (cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
+      cycle_lock_effective_active: '{{ cycle_lock_active and not cycle_lock_is_stale }}'
       last_change_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''', true) | trim }}'
       last_auto_action_raw: '{{ states(''input_text.ac_last_auto_action'') | default('''', true) | trim | lower }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
@@ -5311,13 +5375,31 @@
       manual_on_auto_recent_compound: '{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}'
       auto_transition_active: '{{ manual_on_auto_recent_compound }}'
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
-      manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif cycle_lock_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
+      manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
   - action: logbook.log
     data:
       name: AC Manual ON
       message: '{{ trace_id }} | pre_guard | auto_transition_recent={{ auto_transition_recent }} | transition_age_s={{ transition_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | auto_flags_active={{ auto_flags_active }} | auto_timestamp_recent={{ auto_timestamp_recent }} | minutes_since_last_auto={{ minutes_since_last_auto }} | manual_on_guard_discard_reason={{ manual_on_guard_discard_reason }}'
       entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ cycle_lock_is_stale }}'
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_dda_cycle_lock
+        service: input_boolean.turn_off
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ trace_id }} | lock_rancio_recuperado | lock_age_s={{ cycle_lock_age_s }} | ttl_s={{ cycle_lock_ttl_s }}'
+          entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ hhmm }} Src=ManualON Resultado=pendiente Razón=lock_rancio_recuperado Trace={{ trace_id }}'
+    default: []
   - choose:
     - conditions:
       - condition: template
@@ -5336,7 +5418,7 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Manual ON
-          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_on_guard_discard_reason }} Trace={{ trace_id }}'
+          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ ''manual_guard_discard=lock_rancio_recuperado'' if cycle_lock_is_stale else manual_on_guard_discard_reason }} Trace={{ trace_id }}'
       - stop: 'Ignorado: guard manual ON descartó evento.'
     default: []
   - variables:
@@ -5394,12 +5476,36 @@
       post60_manual_on_auto_recent_compound: '{{ post60_auto_flags_active or post60_auto_transition_recent or post60_auto_timestamp_recent }}'
       post60_auto_transition_active: '{{ post60_manual_on_auto_recent_compound }}'
       post60_daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
-      post60_guard_discard_reason: "{% if not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif post60_manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% else %}none{% endif %}"
+      post60_cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
+      post60_cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
+      post60_cycle_lock_since_epoch: "{% if post60_cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(post60_cycle_lock_since_raw, default=none) }}{% endif %}"
+      post60_cycle_lock_age_s: "{% if post60_cycle_lock_since_epoch is none %}99999{% elif not post60_cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (post60_cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
+      post60_cycle_lock_is_stale: '{{ post60_cycle_lock_active and (post60_cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
+      post60_cycle_lock_effective_active: '{{ post60_cycle_lock_active and not post60_cycle_lock_is_stale }}'
+      post60_guard_discard_reason: "{% if not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif post60_manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif post60_cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
   - action: logbook.log
     data:
       name: AC Manual ON
       message: '{{ trace_id }} | post60_guard | auto_transition_recent={{ post60_auto_transition_recent }} | transition_age_s={{ post60_transition_age_s }} | last_change_origin_raw={{ post60_last_origin_raw }} | auto_flags_active={{ post60_auto_flags_active }} | auto_timestamp_recent={{ post60_auto_timestamp_recent }} | minutes_since_last_auto={{ post60_minutes_since_last_auto }} | post60_guard_discard_reason={{ post60_guard_discard_reason }}'
       entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ post60_cycle_lock_is_stale }}'
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_dda_cycle_lock
+        service: input_boolean.turn_off
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ trace_id }} | lock_rancio_recuperado_post60 | lock_age_s={{ post60_cycle_lock_age_s }} | ttl_s={{ cycle_lock_ttl_s }}'
+          entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=lock_rancio_recuperado Trace={{ trace_id }}'
+    default: []
   - choose:
     - conditions:
       - condition: template
@@ -5455,11 +5561,23 @@
           - input_boolean.ac_dda_cycle_lock
         action: input_boolean.turn_on
       - target:
+          entity_id: input_datetime.ac_dda_cycle_lock_since
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        service: input_datetime.set_datetime
+      - target:
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: cool
         action: climate.set_hvac_mode
-      - delay: 00:00:02
+      - wait_template: '{{ is_state(climate_ent, ''cool'') }}'
+        timeout: 00:00:15
+        continue_on_timeout: true
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: "{{ 'transition_closed=ok' if is_state(climate_ent, 'cool') else 'transition_closed=timeout' }} | phase=fan_only_bridge | lock={{ states('input_boolean.ac_dda_cycle_lock') }}"
+          entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_on_por_automatizacion
         action: input_boolean.turn_off
@@ -6463,6 +6581,57 @@
             }} | now={{ tin }} | prog={{ progress_temp }} | remain={{ remaining_delta
             }} | run={{ runtime_min }} | sp_min={{ min_setpoint }}
           entity_id: '{{ climate_ent }}'
+    default: []
+  mode: single
+- id: '1775000000001'
+  alias: AC - Watchdog recuperación de lock rancio
+  description: 'Recupera ac_dda_cycle_lock cuando queda prendido sin transición AUTO activa
+    o reciente.
+
+    '
+  triggers:
+  - trigger: time_pattern
+    minutes: /1
+  conditions: []
+  actions:
+  - variables:
+      lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
+      auto_flags_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'')
+        or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') }}'
+      transition_guard_window_s: 180
+      transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true)
+        | trim }}'
+      transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none','']
+        %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif
+        %}"
+      transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now())
+        - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
+      recent_transition: '{{ (transition_age_s | float(99999)) >= 0 and (transition_age_s
+        | float(99999)) <= (transition_guard_window_s | float(180)) }}'
+      lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''',
+        true) | trim }}'
+      lock_since_epoch: "{% if lock_since_raw | lower in ['unknown','unavailable','none','']
+        %}{{ none }}{% else %}{{ as_timestamp(lock_since_raw, default=none) }}{% endif %}"
+      lock_age_s: "{% if lock_since_epoch is none %}99999{% elif not lock_active %}0{% else
+        %}{{ (as_timestamp(now()) - (lock_since_epoch | float)) | round(1) }}{% endif
+        %}"
+      recover_stale_lock: '{{ lock_active and (not auto_flags_active) and (not recent_transition)
+        }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ recover_stale_lock }}'
+      sequence:
+      - target:
+          entity_id: input_boolean.ac_dda_cycle_lock
+        action: input_boolean.turn_off
+      - action: logbook.log
+        data:
+          name: AC Auto Trace
+          message: lock_recovered_stale | age_s={{ lock_age_s }} | auto_flags_active={{ auto_flags_active
+            }} | recent_transition={{ recent_transition }} | transition_age_s={{ transition_age_s
+            }}
+          entity_id: climate.0200009211c7_climate
     default: []
   mode: single
 - id: '1774567690253'
