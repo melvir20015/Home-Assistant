@@ -26,9 +26,9 @@ ac_dda_notify_on_transaccional:
     notify_role:
       description: Prioridad del llamador para anti-duplicado (primary o confirm).
       example: primary
-    cycle_signature:
-      description: Firma anti-duplicado por ciclo de encendido.
-      example: 2026-04-09 14:35:00|token:20260409143500999123|cool_normal_on|25.4|24.8|auto_on
+    cycle_signature_v2:
+      description: Firma anti-duplicado v2 con identificador único real de ciclo.
+      example: token:20260409143500999123|auto_ts:2026-04-09T14:35:00.999123+00:00|cool_normal_on|25.4|24.8|auto_on
   sequence:
     - variables:
         trace_local: "{{ trace_id | default('trace_missing', true) }}"
@@ -40,29 +40,43 @@ ac_dda_notify_on_transaccional:
         role_local:
           "{{ notify_role if notify_role is defined and (notify_role | string | trim | lower) in ['primary', 'confirm']
           else 'primary' }}"
-        cycle_signature_local: "{{ cycle_signature | default('', true) | trim }}"
+        duplicate_window_s: 15
+        cycle_signature_local: "{{ cycle_signature_v2 | default('', true) | trim }}"
         last_signature_record:
           "{{ states('input_text.ac_dda_last_notify_on_cycle_signature')
           | default('', true) | trim }}"
+        last_record_parts: "{{ last_signature_record.split('||') if last_signature_record != '' else [] }}"
         last_signature:
-          "{% if '||' in last_signature_record %}{{ last_signature_record.split('||', 1)[0]
-          | trim }}{% else %}{{ last_signature_record }}{% endif %}"
+          "{{ last_record_parts[0] | trim if (last_record_parts | count) >= 1 else '' }}"
         last_role:
-          "{% if '||' in last_signature_record %}{{ last_signature_record.split('||', 1)[1]
-          | trim | lower }}{% else %}unknown{% endif %}"
+          "{{ (last_record_parts[1] | trim | lower) if (last_record_parts | count) >= 2 else 'unknown' }}"
+        last_sent_epoch: "{{ (last_record_parts[2] | float(0)) if (last_record_parts | count) >= 3 else 0 }}"
+        last_skip_epoch: "{{ (last_record_parts[3] | float(0)) if (last_record_parts | count) >= 4 else 0 }}"
+        now_epoch: "{{ as_timestamp(now()) | float(0) }}"
+        age_since_last_send_s: "{{ (now_epoch | float(0)) - (last_sent_epoch | float(0)) }}"
+        age_since_last_skip_s: "{{ (now_epoch | float(0)) - (last_skip_epoch | float(0)) }}"
         incoming_priority: "{{ 2 if role_local == 'primary' else 1 }}"
         last_priority:
           "{% if last_role == 'primary' %}2{% elif last_role == 'confirm' %}1{% else
           %}0{% endif %}"
         same_cycle_signature:
           "{{ cycle_signature_local != '' and cycle_signature_local == last_signature }}"
+        duplicate_candidate:
+          "{{ same_cycle_signature and (incoming_priority | int(0)) <= (last_priority | int(0)) }}"
+        duplicate_short_window:
+          "{{ duplicate_candidate and (age_since_last_send_s | float(99999)) >= 0 and (age_since_last_send_s | float(99999)) <= (duplicate_window_s | float(15)) }}"
+        skip_already_done_in_window:
+          "{{ (age_since_last_skip_s | float(99999)) >= 0 and (age_since_last_skip_s | float(99999)) <= (duplicate_window_s | float(15)) }}"
+        allow_controlled_skip:
+          "{{ duplicate_short_window and (not skip_already_done_in_window) }}"
         duplicate_cycle_signature:
-          "{{ same_cycle_signature and (incoming_priority | int(0)) <= (last_priority
-          | int(0)) }}"
+          "{{ duplicate_candidate and allow_controlled_skip }}"
+        duplicate_but_resend:
+          "{{ duplicate_candidate and (not allow_controlled_skip) }}"
         should_store_signature:
-          "{{ cycle_signature_local != '' and ((not same_cycle_signature) or (incoming_priority
-          | int(0)) > (last_priority | int(0))) }}"
-        signature_record_to_store: "{{ cycle_signature_local ~ '||' ~ role_local }}"
+          "{{ cycle_signature_local != '' and ((not same_cycle_signature) or (incoming_priority | int(0)) > (last_priority | int(0)) or duplicate_but_resend) }}"
+        signature_record_to_store: "{{ cycle_signature_local ~ '||' ~ role_local ~ '||' ~ (now_epoch | string) ~ '||0' }}"
+        signature_record_skip_to_store: "{{ cycle_signature_local ~ '||' ~ last_role ~ '||' ~ (last_sent_epoch | string) ~ '||' ~ (now_epoch | string) }}"
     - choose:
         - conditions:
             - condition: template
@@ -75,8 +89,22 @@ ac_dda_notify_on_transaccional:
                 message:
                   hito=notify_on_omitido_duplicado | trace_id={{ trace_local }} | branch={{ branch_local
                   }} | src={{ src_local }} | role_actual={{ role_local }} | role_prev={{ last_role
-                  }} | firma_actual={{ cycle_signature_local }} | firma_prev={{ last_signature }}
+                  }} | cycle_signature_v2={{ cycle_signature_local }} | last_signature={{ last_signature
+                  }} | duplicate=true | short_window_s={{ duplicate_window_s }} | age_since_last_send_s={{ age_since_last_send_s
+                  | round(2) }}
                 entity_id: "{{ entity_local }}"
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ cycle_signature_local != '' }}"
+                  sequence:
+                    - service: input_text.set_value
+                      continue_on_error: true
+                      target:
+                        entity_id: input_text.ac_dda_last_notify_on_cycle_signature
+                      data:
+                        value: "{{ signature_record_skip_to_store[:255] }}"
+              default: []
       default:
         - choose:
             - conditions:
@@ -96,7 +124,9 @@ ac_dda_notify_on_transaccional:
             name: AC Auto Trace
             message:
               hito=notify_on_preparado | trace_id={{ trace_local }} | src={{ src_local
-              }} | branch={{ branch_local }} | title={{ title_local }}
+              }} | branch={{ branch_local }} | title={{ title_local }} | cycle_signature_v2={{ cycle_signature_local
+              }} | last_signature={{ last_signature }} | duplicate={{ 'true' if duplicate_candidate else 'false'
+              }}
             entity_id: "{{ entity_local }}"
         - service: logbook.log
           continue_on_error: true

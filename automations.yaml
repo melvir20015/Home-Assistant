@@ -2135,7 +2135,7 @@
           cool_push_reason: Mot=auto emergencia
           cool_notify_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-cool-emergency-on'
           cool_notify_branch: cool_emergency_on
-          cool_notify_cycle_signature: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_ts = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set cycle_id = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_ts if cycle_ts not in ['', 'unknown', 'unavailable', 'none'] else ts)) %}{{ cycle_id }}|cool_emergency_on|{{ '%.2f' | format(cool_on_validated | float) if cool_on_validated is not none else 'n/a' }}|{{ '%.2f' | format(cool_off_validated | float) if cool_off_validated is not none else 'n/a' }}|auto_on"
+          cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_ts = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set cycle_id = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else (auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_ts if cycle_ts not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat()))) %}{{ cycle_id }}|auto_ts:{{ auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat() }}|cool_emergency_on|{{ '%.2f' | format(cool_on_validated | float) if cool_on_validated is not none else 'n/a' }}|{{ '%.2f' | format(cool_off_validated | float) if cool_off_validated is not none else 'n/a' }}|auto_on"
           cool_push_summary: SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode
             }} | Vent={{ emergency_window }}
           cool_mobile_title_local: Cool↑
@@ -2173,7 +2173,7 @@
               src: AutoON
               branch: '{{ cool_notify_branch }}'
               notify_role: primary
-              cycle_signature: '{{ cool_notify_cycle_signature }}'
+              cycle_signature_v2: '{{ cool_notify_cycle_signature_v2 }}'
         default: []
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
         timeout: 00:00:30
@@ -3741,7 +3741,7 @@
           cool_push_reason: Mot=auto umbral
           cool_notify_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-cool-normal-on'
           cool_notify_branch: cool_normal_on
-          cool_notify_cycle_signature: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_ts = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set cycle_id = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_ts if cycle_ts not in ['', 'unknown', 'unavailable', 'none'] else ts)) %}{{ cycle_id }}|cool_normal_on|{{ '%.2f' | format(cool_on_validated | float) if cool_on_validated is not none else 'n/a' }}|{{ '%.2f' | format(cool_off_validated | float) if cool_off_validated is not none else 'n/a' }}|auto_on"
+          cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_ts = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set cycle_id = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else (auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_ts if cycle_ts not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat()))) %}{{ cycle_id }}|auto_ts:{{ auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat() }}|cool_normal_on|{{ '%.2f' | format(cool_on_validated | float) if cool_on_validated is not none else 'n/a' }}|{{ '%.2f' | format(cool_off_validated | float) if cool_off_validated is not none else 'n/a' }}|auto_on"
           cool_push_summary: '{% set contract_bucket = states(''input_text.ac_dda_cool_cycle_contract_bucket'')
             | default('''', true) | trim %} {% set contract_calc = states(''input_text.ac_dda_cool_cycle_contract_reason'')
             | default('''', true) | trim %} {% set contract_on = states(''input_number.ac_dda_cool_cycle_contract_on'')
@@ -3796,7 +3796,7 @@
               src: AutoON
               branch: '{{ cool_notify_branch }}'
               notify_role: primary
-              cycle_signature: '{{ cool_notify_cycle_signature }}'
+              cycle_signature_v2: '{{ cool_notify_cycle_signature_v2 }}'
         default:
         - service: logbook.log
           continue_on_error: true
@@ -4643,8 +4643,9 @@
       fan_on: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else 'n/a' }}"
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
-      cycle_id_on: "{% if transition_token_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ transition_token_raw }}{% elif transition_ts_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ transition_ts_raw }}{% elif cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ cycle_started_raw }}{% else %}{{ now().strftime('%Y-%m-%d %H:%M:%S') }}{% endif %}"
-      cycle_signature: "{{ cycle_id_on }}|{{ branch_on }}|{{ contract_on_show }}|{{ contract_off_show }}|auto_on"
+      auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') | default('''', true) | trim }}'
+      cycle_id_on: "{% if transition_token_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ transition_token_raw }}{% elif auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ auto_ts_raw }}{% elif transition_ts_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ transition_ts_raw }}{% elif cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ cycle_started_raw }}{% else %}{{ now().isoformat() }}{% endif %}"
+      cycle_signature_v2: "{{ cycle_id_on }}|auto_ts:{{ auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat() }}|{{ branch_on }}|{{ contract_on_show }}|{{ contract_off_show }}|auto_on"
       trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-notify-auto-on-confirm'
       message_on: "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin_on | float) if tin_on is not none else 'n/a' }} Tout={{ '%.1f' | format(tout_on | float) if tout_on is not none else 'n/a' }} H={{ '%.0f' | format(hout_on | float) if hout_on is not none else 'n/a' }} On={{ contract_on_show }} Off={{ contract_off_show }} SP={{ '%.1f' | format(sp_on | float) if sp_on is not none else 'n/a' }} Fan={{ fan_on if fan_on not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }} Src=AutoON"
   - service: logbook.log
@@ -4663,7 +4664,7 @@
       src: AutoON
       branch: '{{ branch_on }}'
       notify_role: confirm
-      cycle_signature: '{{ cycle_signature }}'
+      cycle_signature_v2: '{{ cycle_signature_v2 }}'
   mode: single
 - id: '1769981375283'
   alias: AC - Iniciar bloqueo 2h al apagarse
@@ -5714,6 +5715,10 @@
           manual_assist_tout: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
           manual_assist_hout: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
           manual_assist_title: Cool↑
+          manual_assist_transition_token: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
+          manual_assist_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') | default('''', true) | trim }}'
+          manual_assist_cycle_id: "{% if manual_assist_transition_token not in ['', 'unknown', 'unavailable', 'none'] %}{{ manual_assist_transition_token }}{% elif manual_assist_auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ manual_assist_auto_ts_raw }}{% else %}{{ now().isoformat() }}{% endif %}"
+          manual_assist_cycle_signature_v2: "{{ manual_assist_cycle_id }}|auto_ts:{{ manual_assist_auto_ts_raw if manual_assist_auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat() }}|manual_assist_on|{{ '%.2f' | format(manual_assist_on_validated | float) if manual_assist_on_validated is not none else 'n/a' }}|{{ '%.2f' | format(manual_assist_off_validated | float) if manual_assist_off_validated is not none else 'n/a' }}|manual_assist_on"
           manual_assist_message: "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(manual_assist_tin | float) if manual_assist_tin is not none else 'n/a' }} Tout={{ '%.1f' | format(manual_assist_tout | float) if manual_assist_tout is not none else 'n/a' }} H={{ '%.0f' | format(manual_assist_hout | float) if manual_assist_hout is not none else 'n/a' }} On={{ '%.1f' | format(manual_assist_on_validated | float) if manual_assist_on_validated is not none else 'n/a' }} Off={{ '%.1f' | format(manual_assist_off_validated | float) if manual_assist_off_validated is not none else 'n/a' }} SP={{ '%.1f' | format(manual_assist_sp_validated | float) if manual_assist_sp_validated is not none else 'n/a' }} Fan={{ manual_assist_fan }} Src=ManualAssistON"
       - service: script.ac_dda_notify_on_transaccional
         continue_on_error: true
@@ -5723,6 +5728,8 @@
           message: '{{ manual_assist_message }}'
           entity_id: climate.0200009211c7_climate
           src: ManualAssistON
+          branch: manual_assist_on
+          cycle_signature_v2: '{{ manual_assist_cycle_signature_v2 }}'
     default: []
   - variables:
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'

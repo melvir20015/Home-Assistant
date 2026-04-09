@@ -804,3 +804,23 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
 ### Reglas de integridad de trazabilidad
 - No actualizar firma de evento manual válido (`input_text.ac_dda_learning_last_manual_on_signature`) cuando el descarte sea por `auto_transition_active`.
 - Mantener la notificación ON válida únicamente en el flujo transaccional `Src=AutoON`.
+
+## 24. Política final de notificación AUTO ON por ciclo real (2026-04-09)
+
+### Política obligatoria
+- **Cada ciclo AUTO ON real debe producir una notificación móvil, aunque los umbrales sean iguales al ciclo anterior.**
+
+### Implementación consolidada
+- El script transaccional `ac_dda_notify_on_transaccional` usa firma `cycle_signature_v2` con identificador único real de ciclo (token de transición y/o `ac_last_auto_ts` de alta precisión).
+- El anti-duplicado sólo permite una omisión controlada dentro de ventana corta (15 s); fuera de esa ventana se reintenta envío para conservar la garantía por ciclo real.
+- Antes del envío se registra telemetría mínima obligatoria en logbook:
+  - `trace_id`
+  - `cycle_signature_v2`
+  - `last_signature`
+  - `duplicate=true/false`
+  - `branch`
+- Hitos requeridos de trazabilidad en encendido AUTO válido:
+  - `hito=notify_payload_ready`
+  - `hito=notify_on_preparado`
+  - `hito=notify_on_intentado`
+  - `hito=notify_on_enviado`
