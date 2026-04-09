@@ -1,1 +1,13 @@
 *.diff
+home-assistant_v2.db
+home-assistant.log
+*.log
+*.db
+*.db-shm
+*.db-wal
+deps/
+tts/
+__pycache__/
+.storage/
+cloud/
+backups/
