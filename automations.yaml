@@ -5388,11 +5388,15 @@
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
-      auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) and (auto_origin_detected or auto_timestamp_recent) }}"
-      manual_on_auto_recent_compound: '{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}'
-      auto_transition_active: '{{ manual_on_auto_recent_compound }}'
+      auto_transition_token_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      auto_transition_origin_evidence_active: '{{ auto_flags_active or auto_origin_detected }}'
+      auto_transition_recent: '{{ auto_transition_token_recent and auto_transition_origin_evidence_active }}'
+      auto_transition_active_strict: '{{ auto_flags_active or auto_transition_recent }}'
+      auto_recent_observed: '{{ auto_timestamp_recent }}'
+      manual_on_auto_recent_compound: '{{ auto_transition_active_strict or auto_recent_observed }}'
+      auto_transition_active: '{{ auto_transition_active_strict }}'
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
-      manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
+      manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif auto_transition_active_strict %}manual_guard_discard=auto_transition_active{% elif cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
       contract_version: contract=v1
       climate_ent: climate.0200009211c7_climate
@@ -5415,7 +5419,7 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ trace_id }} | pre_guard | auto_transition_recent={{ auto_transition_recent }} | transition_age_s={{ transition_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | auto_flags_active={{ auto_flags_active }} | auto_timestamp_recent={{ auto_timestamp_recent }} | minutes_since_last_auto={{ minutes_since_last_auto }} | manual_on_guard_discard_reason={{ manual_on_guard_discard_reason }} | startup_window_ok={{ manual_startup_window_ok }}'
+      message: '{{ trace_id }} | pre_guard | auto_transition_recent={{ auto_transition_recent }} | transition_age_s={{ transition_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | auto_flags_active={{ auto_flags_active }} | auto_timestamp_recent={{ auto_timestamp_recent }} | auto_transition_active_strict={{ auto_transition_active_strict }} | auto_recent_observed={{ auto_recent_observed }} | minutes_since_last_auto={{ minutes_since_last_auto }} | manual_on_guard_discard_reason={{ manual_on_guard_discard_reason }} | startup_window_ok={{ manual_startup_window_ok }}'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -5443,7 +5447,7 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ trace_id }} | {{ manual_on_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_flags_active={{ auto_flags_active }} | auto_reciente={{ auto_reciente }} | min_since_auto={{ minutes_since_last_auto }} | auto_action={{ last_auto_action_raw }} | auto_origin={{ auto_origin_detected }} | last_origin={{ last_change_origin_raw }}'
+          message: '{{ trace_id }} | {{ manual_on_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_flags_active={{ auto_flags_active }} | auto_reciente={{ auto_reciente }} | auto_transition_active_strict={{ auto_transition_active_strict }} | auto_recent_observed={{ auto_recent_observed }} | min_since_auto={{ minutes_since_last_auto }} | auto_action={{ last_auto_action_raw }} | auto_origin={{ auto_origin_detected }} | last_origin={{ last_change_origin_raw }}'
           entity_id: climate.0200009211c7_climate
       - action: logbook.log
         data:
@@ -5519,10 +5523,14 @@
       post60_transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       post60_transition_ts_epoch: "{% if post60_transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(post60_transition_ts_raw, default=none) }}{% endif %}"
       post60_transition_age_s: "{% if post60_transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (post60_transition_ts_epoch | float)) | round(1) }}{% endif %}"
-      post60_auto_transition_recent: "{{ post60_transition_token_raw | length > 0 and post60_transition_age_s | float(99999) >= 0 and post60_transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) and (post60_auto_origin_detected or post60_auto_timestamp_recent) }}"
       post60_auto_flags_active: '{{ is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') }}'
-      post60_manual_on_auto_recent_compound: '{{ post60_auto_flags_active or post60_auto_transition_recent or post60_auto_timestamp_recent }}'
-      post60_auto_transition_active: '{{ post60_manual_on_auto_recent_compound }}'
+      post60_auto_transition_token_recent: "{{ post60_transition_token_raw | length > 0 and post60_transition_age_s | float(99999) >= 0 and post60_transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
+      post60_auto_transition_origin_evidence_active: '{{ post60_auto_flags_active or post60_auto_origin_detected }}'
+      post60_auto_transition_recent: '{{ post60_auto_transition_token_recent and post60_auto_transition_origin_evidence_active }}'
+      post60_auto_transition_active_strict: '{{ post60_auto_flags_active or post60_auto_transition_recent }}'
+      post60_auto_recent_observed: '{{ post60_auto_timestamp_recent }}'
+      post60_manual_on_auto_recent_compound: '{{ post60_auto_transition_active_strict or post60_auto_recent_observed }}'
+      post60_auto_transition_active: '{{ post60_auto_transition_active_strict }}'
       post60_daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
       post60_cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
       post60_cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
@@ -5530,11 +5538,11 @@
       post60_cycle_lock_age_s: "{% if post60_cycle_lock_since_epoch is none %}99999{% elif not post60_cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (post60_cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
       post60_cycle_lock_is_stale: '{{ post60_cycle_lock_active and (post60_cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
       post60_cycle_lock_effective_active: '{{ post60_cycle_lock_active and not post60_cycle_lock_is_stale }}'
-      post60_guard_discard_reason: "{% if not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif post60_manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif post60_cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
+      post60_guard_discard_reason: "{% if not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif post60_auto_transition_active_strict %}manual_guard_discard=auto_transition_active{% elif post60_cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ trace_id }} | post60_guard | auto_transition_recent={{ post60_auto_transition_recent }} | transition_age_s={{ post60_transition_age_s }} | last_change_origin_raw={{ post60_last_origin_raw }} | auto_flags_active={{ post60_auto_flags_active }} | auto_timestamp_recent={{ post60_auto_timestamp_recent }} | minutes_since_last_auto={{ post60_minutes_since_last_auto }} | post60_guard_discard_reason={{ post60_guard_discard_reason }}'
+      message: '{{ trace_id }} | post60_guard | auto_transition_recent={{ post60_auto_transition_recent }} | transition_age_s={{ post60_transition_age_s }} | last_change_origin_raw={{ post60_last_origin_raw }} | auto_flags_active={{ post60_auto_flags_active }} | auto_timestamp_recent={{ post60_auto_timestamp_recent }} | post60_auto_transition_active_strict={{ post60_auto_transition_active_strict }} | post60_auto_recent_observed={{ post60_auto_recent_observed }} | minutes_since_last_auto={{ post60_minutes_since_last_auto }} | post60_guard_discard_reason={{ post60_guard_discard_reason }}'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -5562,7 +5570,7 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ trace_id }} | {{ post60_guard_discard_reason }} | auto_reciente={{ post60_auto_reciente }} | auto_during_60s={{ post60_auto_happened_during_consolidation }} | min_since_auto={{ post60_minutes_since_last_auto }} | auto_action={{ post60_last_auto_action_raw }} | auto_origin={{ post60_auto_origin_detected }} | last_origin={{ post60_last_origin_raw }}'
+          message: '{{ trace_id }} | {{ post60_guard_discard_reason }} | auto_reciente={{ post60_auto_reciente }} | post60_auto_transition_active_strict={{ post60_auto_transition_active_strict }} | post60_auto_recent_observed={{ post60_auto_recent_observed }} | auto_during_60s={{ post60_auto_happened_during_consolidation }} | min_since_auto={{ post60_minutes_since_last_auto }} | auto_action={{ post60_last_auto_action_raw }} | auto_origin={{ post60_auto_origin_detected }} | last_origin={{ post60_last_origin_raw }}'
           entity_id: climate.0200009211c7_climate
       - action: logbook.log
         data:
