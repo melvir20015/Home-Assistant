@@ -712,3 +712,66 @@ Se consolidan hitos con mensajes cortos y consistentes:
 ### Regla de negocio explícita
 - **Un Manual ON diurno válido no debe perderse por lock rancio.**
 - Sólo se descarta por lock cuando el lock sigue vigente dentro de TTL (`reason=lock_activo`).
+
+## 22. Matriz de detección Manual ON con estados puente (2026-04-09)
+
+### Objetivo de la matriz
+- Evitar pérdida de eventos reales cuando el `climate` transita por estados intermedios (`unknown`, `unavailable`, `fan_only`) antes de llegar a `cool`.
+- Mantener trazabilidad completa: **todo evento candidato** debe terminar en una salida observable (logbook + notificación de estado).
+
+### Triggers permitidos para abrir guard
+1. **`off_direct`**  
+   - `from: off`  
+   - `to: [cool, heat, fan_only]`  
+   - `for: 2s`
+2. **`cool_any`**  
+   - `to: cool` (sin `from` rígido)  
+   - `for: 2s`
+3. **`bridge_unknown_unavailable`**  
+   - `from: [unknown, unavailable]`  
+   - `to: [cool, heat, fan_only]`  
+   - `for: 2s`
+
+### Ventana de arranque manual (validación obligatoria)
+- Se evalúa `from_state` inmediato con normalización:
+  - `unknown/unavailable` se tratan como **`off` efectivo** para debounce de puente.
+- Criterio de aceptación de arranque (`manual_startup_window_ok`):
+  - `from_effective == off`, **o**
+  - transición a `cool` desde `fan_only` dentro de una ventana corta (`startup_window_s=45`) para capturar carrera `off -> fan_only -> cool`.
+- Si no cumple, se descarta con razón explícita:
+  - `manual_guard_discard=sin_off_efectivo_previo`,
+  - `manual_guard_discard=fan_only_bridge_fuera_ventana`,
+  - o razón de trigger fuera de matriz.
+
+### Consolidación y carrera `off -> fan_only -> cool`
+- Si el evento inicia en `fan_only`, se mantiene consolidación de **30s**.
+- Si permanece en `fan_only`, se ejecuta puente asistido (espera adicional de 12s + intento a `cool`).
+- Si al cierre de consolidación/puente termina en `cool` dentro de horario diurno principal, se trata como Manual ON válido.
+
+### Reglas de aprendizaje preservadas
+- Aprendizaje ON sólo en horario **07:01–21:59**.
+- Aprendizaje ON sólo si **modo final = `cool`**.
+- Requisito base: encendido con evidencia de origen en `off` efectivo (directo o puente válido).
+- Si no hay contexto previo usable, se usa bucket base (`ctx_default:presencia`) y se aprende.
+
+### Matriz de observabilidad obligatoria (no perder trazabilidad)
+1. **Inicio de guard**  
+   - Logbook: `hito=manual_on_detected` (siempre).
+2. **Descartes tempranos (guard/startup)**  
+   - Logbook con razón específica.
+   - Notificación móvil `Resultado=ignorado` + `Razón=<reason_code>`.
+3. **Evento válido en evaluación**  
+   - Notificación móvil `Resultado=pendiente` (validando/consolidación).
+4. **Cierre del flujo**  
+   - Si aplica aprendizaje/flujo válido: notificación final de continuidad (`pendiente` hacia learning/aplicación).
+   - Si no aplica: notificación `ignorado` con motivo contractual.
+
+### Casos de referencia (directos + puente)
+- **Caso A — Directo válido:** `off -> cool`  
+  - Debe emitir: `manual_on_detected` + `pendiente` + cierre final trazable.
+- **Caso B — Puente por disponibilidad:** `off -> unavailable -> cool` o `off -> unknown -> cool`  
+  - Debe tratarse como `off` efectivo si entra en ventana.
+- **Caso C — Carrera mecánica:** `off -> fan_only -> cool`  
+  - Debe consolidar 30s; si termina en `cool`, válido.
+- **Caso D — Ruido no válido:** `heat -> cool` sin evidencia reciente de `off`  
+  - Debe descartar con razón explícita (`sin_off_efectivo_previo`) y notificación.

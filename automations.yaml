@@ -5336,8 +5336,25 @@
     '
   triggers:
   - trigger: state
+    id: off_direct
     entity_id: climate.0200009211c7_climate
     from: 'off'
+    to:
+    - cool
+    - heat
+    - fan_only
+    for: 00:00:02
+  - trigger: state
+    id: cool_any
+    entity_id: climate.0200009211c7_climate
+    to: cool
+    for: 00:00:02
+  - trigger: state
+    id: bridge_unknown_unavailable
+    entity_id: climate.0200009211c7_climate
+    from:
+    - unknown
+    - unavailable
     to:
     - cool
     - heat
@@ -5377,10 +5394,28 @@
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
       manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif manual_on_auto_recent_compound %}manual_guard_discard=auto_transition_active{% elif cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
+      contract_version: contract=v1
+      climate_ent: climate.0200009211c7_climate
+      trigger_id: '{{ trigger.id if trigger is defined and trigger.id is defined else ''unknown'' }}'
+      detected_mode: '{{ trigger.to_state.state if trigger.to_state is not none else states(climate_ent) }}'
+      prev_mode_raw: '{{ trigger.from_state.state if trigger.from_state is not none else ''unknown'' }}'
+      prev_mode_effective: '{{ ''off'' if prev_mode_raw in [''off'',''unknown'',''unavailable''] else prev_mode_raw }}'
+      prev_state_age_s: "{% if trigger.from_state is not none and trigger.from_state.last_changed is not none %}{{ (as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed)) | round(1) }}{% else %}99999{% endif %}"
+      startup_window_s: 45
+      startup_from_off_recent: "{{ prev_mode_effective == 'off' }}"
+      startup_from_fan_only_bridge: "{{ detected_mode == 'cool' and prev_mode_raw == 'fan_only' and (prev_state_age_s | float(99999)) <= (startup_window_s | float(45)) }}"
+      startup_trigger_bridge_ok: '{{ trigger_id in [''off_direct'', ''bridge_unknown_unavailable'', ''cool_any''] }}'
+      manual_startup_window_ok: '{{ startup_trigger_bridge_ok and (startup_from_off_recent or startup_from_fan_only_bridge) }}'
+      manual_startup_discard_reason: "{% if manual_startup_window_ok %}none{% elif not startup_trigger_bridge_ok %}manual_guard_discard=trigger_fuera_matriz{% elif detected_mode != 'cool' and prev_mode_effective != 'off' %}manual_guard_discard=sin_off_efectivo_previo{% elif detected_mode == 'cool' and prev_mode_raw == 'fan_only' %}manual_guard_discard=fan_only_bridge_fuera_ventana{% else %}manual_guard_discard=sin_off_efectivo_previo{% endif %}"
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ trace_id }} | pre_guard | auto_transition_recent={{ auto_transition_recent }} | transition_age_s={{ transition_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | auto_flags_active={{ auto_flags_active }} | auto_timestamp_recent={{ auto_timestamp_recent }} | minutes_since_last_auto={{ minutes_since_last_auto }} | manual_on_guard_discard_reason={{ manual_on_guard_discard_reason }}'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_detected | mode={{ detected_mode }} | trigger_id={{ trigger_id }} | from={{ prev_mode_raw }} | from_effective={{ prev_mode_effective }} | prev_age_s={{ prev_state_age_s }} | startup_window_ok={{ manual_startup_window_ok }} | startup_reason={{ manual_startup_discard_reason }}'
+      entity_id: climate.0200009211c7_climate
+  - action: logbook.log
+    data:
+      name: AC Manual ON
+      message: '{{ trace_id }} | pre_guard | auto_transition_recent={{ auto_transition_recent }} | transition_age_s={{ transition_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | auto_flags_active={{ auto_flags_active }} | auto_timestamp_recent={{ auto_timestamp_recent }} | minutes_since_last_auto={{ minutes_since_last_auto }} | manual_on_guard_discard_reason={{ manual_on_guard_discard_reason }} | startup_window_ok={{ manual_startup_window_ok }}'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -5421,10 +5456,23 @@
           message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ ''manual_guard_discard=lock_rancio_recuperado'' if cycle_lock_is_stale else manual_on_guard_discard_reason }} Trace={{ trace_id }}'
       - stop: 'Ignorado: guard manual ON descartó evento.'
     default: []
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ manual_startup_discard_reason != ''none'' }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ trace_id }} | {{ manual_startup_discard_reason }} | trigger_id={{ trigger_id }} | from={{ prev_mode_raw }} | from_effective={{ prev_mode_effective }} | prev_age_s={{ prev_state_age_s }}'
+          entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}'
+      - stop: 'Ignorado: no cumple ventana de arranque manual desde OFF.'
+    default: []
   - variables:
-      contract_version: contract=v1
-      climate_ent: climate.0200009211c7_climate
-      detected_mode: '{{ trigger.to_state.state if trigger.to_state is not none else ''unknown'' }}'
       detected_ts_epoch: '{{ as_timestamp(now()) | int(0) }}'
       detected_ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       mov_raw: '{{ states(''binary_sensor.presencia_movimiento_estable'') | lower }}'
@@ -5442,7 +5490,7 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_detected | mode={{ detected_mode }} | consolidate=30s | ctx={{ contract_context_key }} | presence_source={{ presence_source }}'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_detected_context | mode={{ detected_mode }} | consolidate=30s | ctx={{ contract_context_key }} | presence_source={{ presence_source }}'
       entity_id: climate.0200009211c7_climate
   - service: notify.mobile_app_samsung_s24
     data:
