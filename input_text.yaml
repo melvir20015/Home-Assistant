@@ -156,3 +156,7 @@ ac_dda_cool_cycle_contract_bucket:
 ac_dda_cool_cycle_contract_reason:
   name: "AC DDA Cool Cycle Contract Reason"
   max: 80
+
+ac_dda_last_notify_on_cycle_signature:
+  name: "AC DDA Last Notify ON Cycle Signature"
+  max: 255

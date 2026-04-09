@@ -2118,6 +2118,8 @@
           cool_push_kind: true
           cool_push_reason: Mot=auto emergencia
           cool_notify_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-cool-emergency-on'
+          cool_notify_branch: cool_emergency_on
+          cool_notify_cycle_signature: "{% set cycle_ts = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{{ cycle_ts if cycle_ts not in ['', 'unknown', 'unavailable', 'none'] else ts }}|cool_emergency_on|{{ '%.2f' | format(cool_on_validated | float) if cool_on_validated is not none else 'n/a' }}|{{ '%.2f' | format(cool_off_validated | float) if cool_off_validated is not none else 'n/a' }}|auto_on"
           cool_push_summary: SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode
             }} | Vent={{ emergency_window }}
           cool_mobile_title_local: Cool↑
@@ -2153,6 +2155,8 @@
               message: '{{ cool_mobile_message_local }}'
               entity_id: climate.0200009211c7_climate
               src: AutoON
+              branch: '{{ cool_notify_branch }}'
+              cycle_signature: '{{ cool_notify_cycle_signature }}'
         default: []
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
         timeout: 00:00:30
@@ -3691,6 +3695,8 @@
           cool_push_kind: true
           cool_push_reason: Mot=auto umbral
           cool_notify_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-cool-normal-on'
+          cool_notify_branch: cool_normal_on
+          cool_notify_cycle_signature: "{% set cycle_ts = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{{ cycle_ts if cycle_ts not in ['', 'unknown', 'unavailable', 'none'] else ts }}|cool_normal_on|{{ '%.2f' | format(cool_on_validated | float) if cool_on_validated is not none else 'n/a' }}|{{ '%.2f' | format(cool_off_validated | float) if cool_off_validated is not none else 'n/a' }}|auto_on"
           cool_push_summary: '{% set contract_bucket = states(''input_text.ac_dda_cool_cycle_contract_bucket'')
             | default('''', true) | trim %} {% set contract_calc = states(''input_text.ac_dda_cool_cycle_contract_reason'')
             | default('''', true) | trim %} {% set contract_on = states(''input_number.ac_dda_cool_cycle_contract_on'')
@@ -3743,6 +3749,8 @@
               message: '{{ cool_mobile_message_local }}'
               entity_id: climate.0200009211c7_climate
               src: AutoON
+              branch: '{{ cool_notify_branch }}'
+              cycle_signature: '{{ cool_notify_cycle_signature }}'
         default:
         - service: logbook.log
           continue_on_error: true
@@ -4556,6 +4564,56 @@
       %}\n    /5min\n  {% elif trigger.platform == 'state' %}\n    {{ trigger.entity_id
       }}={{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
+  mode: single
+- id: '1769981375282'
+  alias: AC - Día dinámico aprendido (confirmación notify AUTO ON)
+  trace:
+    stored_traces: 50
+  description: Confirmación desacoplada de notificación para AUTO ON efectivo en modo cool (solo franja diurna principal).
+  trigger:
+  - platform: state
+    entity_id: climate.0200009211c7_climate
+    to: cool
+  condition:
+  - condition: time
+    after: 07:01:00
+    before: '21:59:00'
+  - condition: template
+    value_template: '{{ states(''input_text.ac_dda_last_change_origin'') | trim in [''auto_on'',''cool_normal_on'',''cool_emergency_on''] }}'
+  action:
+  - variables:
+      cycle_started_raw: '{{ states(''input_datetime.ac_dda_cool_cycle_contract_started_at'') | default('''', true) | trim }}'
+      branch_raw: '{{ states(''input_text.ac_last_auto_branch'') | default('''', true) | trim }}'
+      branch_on: "{% if branch_raw in ['cool_normal_on','cool_emergency_on'] %}{{ branch_raw }}{% else %}cool_normal_on{% endif %}"
+      contract_on_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none) }}'
+      contract_off_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none) }}'
+      contract_valid: '{{ contract_on_raw is not none and contract_off_raw is not none and (contract_on_raw | float) > (contract_off_raw | float) and (contract_off_raw | float) >= 22 and (contract_off_raw | float) <= 25.7 and (contract_on_raw | float) <= 26.2 }}'
+      contract_on_show: "{% if contract_valid %}{{ '%.1f' | format(contract_on_raw | float) }}{% else %}n/a{% endif %}"
+      contract_off_show: "{% if contract_valid %}{{ '%.1f' | format(contract_off_raw | float) }}{% else %}n/a{% endif %}"
+      tin_on: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else (t1 | round(1) if t1 is not none else (t2 | round(1) if t2 is not none else none)) }}"
+      tout_on: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+      hout_on: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+      sp_on: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
+      fan_on: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else 'n/a' }}"
+      cycle_signature: "{{ cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().strftime('%Y-%m-%d %H:%M:%S') }}|{{ branch_on }}|{{ contract_on_show }}|{{ contract_off_show }}|auto_on"
+      trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-notify-auto-on-confirm'
+      message_on: "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin_on | float) if tin_on is not none else 'n/a' }} Tout={{ '%.1f' | format(tout_on | float) if tout_on is not none else 'n/a' }} H={{ '%.0f' | format(hout_on | float) if hout_on is not none else 'n/a' }} On={{ contract_on_show }} Off={{ contract_off_show }} SP={{ '%.1f' | format(sp_on | float) if sp_on is not none else 'n/a' }} Fan={{ fan_on if fan_on not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }} Src=AutoON"
+  - service: logbook.log
+    continue_on_error: true
+    data:
+      name: AC Auto Trace
+      message: hito=notify_on_preparado | trace_id={{ trace_id }} | branch={{ branch_on }} | source=confirmacion_desacoplada
+      entity_id: climate.0200009211c7_climate
+  - service: script.ac_dda_notify_on_transaccional
+    continue_on_error: true
+    data:
+      trace_id: '{{ trace_id }}'
+      title: Cool↑
+      message: '{{ message_on }}'
+      entity_id: climate.0200009211c7_climate
+      src: AutoON
+      branch: '{{ branch_on }}'
+      cycle_signature: '{{ cycle_signature }}'
   mode: single
 - id: '1769981375283'
   alias: AC - Iniciar bloqueo 2h al apagarse
