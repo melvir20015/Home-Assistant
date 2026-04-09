@@ -1,0 +1,107 @@
+# Templates de pronóstico y mínima nocturna (OpenWeather)
+
+- trigger:
+    # Actualiza cada 30 minutos y al arrancar HA
+    - platform: time_pattern
+      minutes: "/30"
+    - platform: homeassistant
+      event: start
+
+  action:
+    - service: weather.get_forecasts
+      target:
+        entity_id: weather.openweathermap
+      data:
+        type: hourly
+      response_variable: hourly
+
+  sensor:
+    # 1) Sensor que guarda el pronóstico horario como atributo
+    - name: "Pronostico horario casa"
+      unique_id: pronostico_horario_casa
+      state: "{{ now().isoformat() }}"
+      attributes:
+        forecast: "{{ hourly['weather.openweathermap'].forecast }}"
+
+    # 2) Sensor mínima entre 23:00 y 07:00
+    - name: "Minima 23 a 07"
+      unique_id: forecast_min_23_07
+      unit_of_measurement: "°C"
+      state: >
+        {% set fc = state_attr('sensor.pronostico_horario_casa', 'forecast') or [] %}
+        {% if not fc %}
+          unknown
+        {% else %}
+          {% set temps = [] %}
+          {% for h in fc %}
+            {% set dt = as_datetime(h.datetime) %}
+            {% if dt is not none and (dt.hour >= 23 or dt.hour < 7) %}
+              {% set t = (
+                  h.temperature
+                  if h.temperature is defined
+                  else h.native_temperature
+                  if h.native_temperature is defined
+                  else none
+              ) %}
+              {% if t is not none %}
+                {% set temps = temps + [ t | float ] %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% if temps | length == 0 %}
+            unknown
+          {% else %}
+            {{ temps | min }}
+          {% endif %}
+        {% endif %}
+
+# Presencia estable (anti-flapping)
+- binary_sensor:
+    - name: "Presencia S24 estable"
+      unique_id: presencia_s24_estable
+      state: "{{ is_state('device_tracker.samsung_s24', 'home') }}"
+      delay_on: "00:10:00"
+      delay_off: "00:30:00"
+
+    - name: "Presencia movimiento estable"
+      unique_id: presencia_mov_estable
+      state: "{{ is_state('binary_sensor.tze204_gkfbdvyx_ts0601', 'on') }}"
+      delay_on: "00:05:00"
+      delay_off: "00:30:00"
+
+    - name: "Presencia OK estable"
+      unique_id: presencia_ok_estable
+      state: >
+        {{ is_state('binary_sensor.presencia_movimiento_estable', 'on')
+           or is_state('binary_sensor.presencia_s24_estable', 'on') }}
+
+# Costos del AC (USD) y proyección mensual (tarifa plana)
+- sensor:
+    - name: "Costo AC diario"
+      unique_id: costo_ac_diario_usd
+      unit_of_measurement: "$"
+      state: >
+        {% set rate = states('input_number.tarifa_kwh_usd')|float(0.24045) %}
+        {{ (states('sensor.energia_ac_diaria')|float(0) * rate) | round(2) }}
+
+    - name: "Costo AC mensual"
+      unique_id: costo_ac_mensual_usd
+      unit_of_measurement: "$"
+      state: >
+        {% set rate = states('input_number.tarifa_kwh_usd')|float(0.24045) %}
+        {{ (states('sensor.energia_ac_mensual')|float(0) * rate) | round(2) }}
+
+    - name: "Proyeccion costo AC este mes"
+      unique_id: proyeccion_costo_ac_mes_usd
+      unit_of_measurement: "$"
+      state: >
+        {% set rate = states('input_number.tarifa_kwh_usd')|float(0.24045) %}
+        {% set kwh = states('sensor.energia_ac_mensual')|float(0) %}
+        {% set costo = kwh * rate %}
+        {% set day = now().day %}
+        {% set dim = ((now().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)).day %}
+        {% if day > 0 %}
+          {{ (costo / day * dim) | round(2) }}
+        {% else %}
+          0
+        {% endif %}

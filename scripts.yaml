@@ -27,107 +27,118 @@ ac_dda_notify_on_transaccional:
       description: Firma anti-duplicado por ciclo de encendido.
       example: 2026-04-09 14:35:00|cool_normal_on|25.4|24.8|auto_on
   sequence:
-  - variables:
-      trace_local: '{{ trace_id | default(''trace_missing'', true) }}'
-      title_local: '{{ title | default(''Cool↑'', true) }}'
-      message_local: '{{ message | default(''n/a'', true) }}'
-      entity_local: '{{ entity_id | default(''climate.0200009211c7_climate'', true) }}'
-      src_local: '{{ src | default(''AutoON'', true) }}'
-      branch_local: '{{ branch | default(''n/a'', true) }}'
-      cycle_signature_local: '{{ cycle_signature | default('''', true) | trim }}'
-      last_signature: '{{ states(''input_text.ac_dda_last_notify_on_cycle_signature'')
-        | default('''', true) | trim }}'
-      duplicate_cycle_signature: '{{ cycle_signature_local != '''' and cycle_signature_local
-        == last_signature }}'
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ duplicate_cycle_signature }}'
-      sequence:
-      - service: logbook.log
-        continue_on_error: true
-        data:
-          name: AC Auto Trace
-          message: hito=notify_on_omitido_duplicado | trace_id={{ trace_local }} | branch={{ branch_local
-            }} | firma={{ cycle_signature_local }}
-          entity_id: '{{ entity_local }}'
-    default:
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ cycle_signature_local != '''' }}'
-        sequence:
-        - service: input_text.set_value
-          continue_on_error: true
-          target:
-            entity_id: input_text.ac_dda_last_notify_on_cycle_signature
-          data:
-            value: '{{ cycle_signature_local[:255] }}'
-      default: []
-    - service: logbook.log
-      continue_on_error: true
-      data:
-        name: AC Auto Trace
-        message: hito=notify_on_preparado | trace_id={{ trace_local }} | src={{ src_local
-          }} | branch={{ branch_local }} | title={{ title_local }}
-        entity_id: '{{ entity_local }}'
-    - service: logbook.log
-      continue_on_error: true
-      data:
-        name: AC Auto Trace
-        message: hito=notify_on_intentado | trace_id={{ trace_local }} | channel=mobile_app_s24
-          | src={{ src_local }} | branch={{ branch_local }}
-        entity_id: '{{ entity_local }}'
-    - service: notify.mobile_app_samsung_s24
-      continue_on_error: true
-      response_variable: notify_response
-      data:
-        title: '{{ title_local }}'
-        message: '{{ message_local }}'
-        data:
-          ttl: 0
-          priority: high
     - variables:
-        notify_response_status: "{{ notify_response if notify_response is mapping else
-          {} }}"
-        notify_explicit_success: "{{ notify_response is mapping and (\n  notify_response_status.get('success')
-          == true\n  or notify_response_status.get('ok') == true\n  or (notify_response_status.get('status')
-          | default('') | string | lower) in ['ok', 'success', 'sent']\n) }}"
-        notify_explicit_error: "{{ notify_response is mapping and (\n  'error' in notify_response_status\n
-          \ or 'exception' in notify_response_status\n  or 'failed' in notify_response_status\n
-          \ or (notify_response_status.get('status') | default('') | string | lower)
-          in ['error', 'failed', 'timeout']\n) }}"
+        trace_local: "{{ trace_id | default('trace_missing', true) }}"
+        title_local: "{{ title | default('Cool↑', true) }}"
+        message_local: "{{ message | default('n/a', true) }}"
+        entity_local: "{{ entity_id | default('climate.0200009211c7_climate', true) }}"
+        src_local: "{{ src | default('AutoON', true) }}"
+        branch_local: "{{ branch | default('n/a', true) }}"
+        cycle_signature_local: "{{ cycle_signature | default('', true) | trim }}"
+        last_signature:
+          "{{ states('input_text.ac_dda_last_notify_on_cycle_signature')
+          | default('', true) | trim }}"
+        duplicate_cycle_signature:
+          "{{ cycle_signature_local != '' and cycle_signature_local
+          == last_signature }}"
     - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ notify_explicit_success }}'
-        sequence:
+        - conditions:
+            - condition: template
+              value_template: "{{ duplicate_cycle_signature }}"
+          sequence:
+            - service: logbook.log
+              continue_on_error: true
+              data:
+                name: AC Auto Trace
+                message:
+                  hito=notify_on_omitido_duplicado | trace_id={{ trace_local }} | branch={{ branch_local
+                  }} | firma={{ cycle_signature_local }}
+                entity_id: "{{ entity_local }}"
+      default:
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ cycle_signature_local != '' }}"
+              sequence:
+                - service: input_text.set_value
+                  continue_on_error: true
+                  target:
+                    entity_id: input_text.ac_dda_last_notify_on_cycle_signature
+                  data:
+                    value: "{{ cycle_signature_local[:255] }}"
+          default: []
         - service: logbook.log
           continue_on_error: true
           data:
             name: AC Auto Trace
-            message: hito=notify_on_enviado | trace_id={{ trace_local }} | src={{ src_local
-              }} | branch={{ branch_local }}
-            entity_id: '{{ entity_local }}'
-      default:
-      - service: logbook.log
-        continue_on_error: true
-        data:
-          name: AC Auto Trace
-          message: hito=notify_on_fallido | trace_id={{ trace_local }} | src={{ src_local
-            }} | branch={{ branch_local }} | explicit_error={{ 'yes' if notify_explicit_error
-            else 'no' }} | resp={{ notify_response if notify_response is defined else
-            'no_response' }}
-          entity_id: '{{ entity_local }}'
-      - service: persistent_notification.create
-        continue_on_error: true
-        data:
-          title: '{{ title_local }}'
-          message: '{{ message_local }}'
-      - service: logbook.log
-        continue_on_error: true
-        data:
-          name: AC Auto Trace
-          message: hito=notify_on_fallido | trace_id={{ trace_local }} | branch={{ branch_local
-            }} | fallback=persistent_notification
-          entity_id: '{{ entity_local }}'
+            message:
+              hito=notify_on_preparado | trace_id={{ trace_local }} | src={{ src_local
+              }} | branch={{ branch_local }} | title={{ title_local }}
+            entity_id: "{{ entity_local }}"
+        - service: logbook.log
+          continue_on_error: true
+          data:
+            name: AC Auto Trace
+            message:
+              hito=notify_on_intentado | trace_id={{ trace_local }} | channel=mobile_app_s24
+              | src={{ src_local }} | branch={{ branch_local }}
+            entity_id: "{{ entity_local }}"
+        - service: notify.mobile_app_samsung_s24
+          continue_on_error: true
+          response_variable: notify_response
+          data:
+            title: "{{ title_local }}"
+            message: "{{ message_local }}"
+            data:
+              ttl: 0
+              priority: high
+        - variables:
+            notify_response_status:
+              "{{ notify_response if notify_response is mapping else
+              {} }}"
+            notify_explicit_success:
+              "{{ notify_response is mapping and (\n  notify_response_status.get('success')
+              == true\n  or notify_response_status.get('ok') == true\n  or (notify_response_status.get('status')
+              | default('') | string | lower) in ['ok', 'success', 'sent']\n) }}"
+            notify_explicit_error:
+              "{{ notify_response is mapping and (\n  'error' in notify_response_status\n
+              \ or 'exception' in notify_response_status\n  or 'failed' in notify_response_status\n
+              \ or (notify_response_status.get('status') | default('') | string | lower)
+              in ['error', 'failed', 'timeout']\n) }}"
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ notify_explicit_success }}"
+              sequence:
+                - service: logbook.log
+                  continue_on_error: true
+                  data:
+                    name: AC Auto Trace
+                    message:
+                      hito=notify_on_enviado | trace_id={{ trace_local }} | src={{ src_local
+                      }} | branch={{ branch_local }}
+                    entity_id: "{{ entity_local }}"
+          default:
+            - service: logbook.log
+              continue_on_error: true
+              data:
+                name: AC Auto Trace
+                message:
+                  hito=notify_on_fallido | trace_id={{ trace_local }} | src={{ src_local
+                  }} | branch={{ branch_local }} | explicit_error={{ 'yes' if notify_explicit_error
+                  else 'no' }} | resp={{ notify_response if notify_response is defined else
+                  'no_response' }}
+                entity_id: "{{ entity_local }}"
+            - service: persistent_notification.create
+              continue_on_error: true
+              data:
+                title: "{{ title_local }}"
+                message: "{{ message_local }}"
+            - service: logbook.log
+              continue_on_error: true
+              data:
+                name: AC Auto Trace
+                message:
+                  hito=notify_on_fallido | trace_id={{ trace_local }} | branch={{ branch_local
+                  }} | fallback=persistent_notification
+                entity_id: "{{ entity_local }}"

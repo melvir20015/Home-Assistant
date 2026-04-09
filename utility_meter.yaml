@@ -1,0 +1,7 @@
+energia_ac_diaria:
+  source: sensor.energia_ac_kwh
+  cycle: daily
+
+energia_ac_mensual:
+  source: sensor.energia_ac_kwh
+  cycle: monthly

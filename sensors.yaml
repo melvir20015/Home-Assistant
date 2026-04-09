@@ -1,0 +1,5 @@
+- platform: integration
+  source: sensor.0200009211c7_wac_demand_response_power
+  name: Energia AC kWh
+  round: 3
+  method: trapezoidal
