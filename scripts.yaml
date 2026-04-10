@@ -40,7 +40,7 @@ ac_dda_notify_on_transaccional:
         role_local:
           "{{ notify_role if notify_role is defined and (notify_role | string | trim | lower) in ['primary', 'confirm']
           else 'primary' }}"
-        duplicate_window_s: 15
+        duplicate_window_s: 10
         cycle_signature_local: "{{ cycle_signature_v2 | default('', true) | trim }}"
         last_signature_record:
           "{{ states('input_text.ac_dda_last_notify_on_cycle_signature')
@@ -70,7 +70,7 @@ ac_dda_notify_on_transaccional:
         allow_controlled_skip:
           "{{ duplicate_short_window and (not skip_already_done_in_window) }}"
         duplicate_cycle_signature:
-          "{{ duplicate_candidate and allow_controlled_skip }}"
+          "{{ (not src_is_auto_on) and duplicate_candidate and allow_controlled_skip }}"
         duplicate_but_resend:
           "{{ duplicate_candidate and (not allow_controlled_skip) }}"
         should_store_signature:
@@ -201,8 +201,33 @@ ac_dda_notify_on_transaccional:
                   data:
                     name: AC Auto Trace
                     message:
-                      hito=notify_on_enviado | notify_stage=send_result | send_result=mobile_sent | trace_id={{ trace_local }} | src={{ src_local
+                      hito=notify_on_enviado | notify_stage=send_result | send_result=mobile_sent | reason=explicit_ack | trace_id={{ trace_local }} | src={{ src_local
                       }} | branch={{ branch_local }}
+                    entity_id: "{{ entity_local }}"
+            - conditions:
+                - condition: template
+                  value_template: "{{ notify_explicit_error }}"
+              sequence:
+                - service: logbook.log
+                  continue_on_error: true
+                  data:
+                    name: AC Auto Trace
+                    message:
+                      hito=notify_on_fallido | notify_stage=send_result | send_result=mobile_failed | reason=explicit_error | trace_id={{ trace_local }} | src={{ src_local
+                      }} | branch={{ branch_local }} | resp={{ notify_response if notify_response is defined else 'no_response' }}
+                    entity_id: "{{ entity_local }}"
+                - service: persistent_notification.create
+                  continue_on_error: true
+                  data:
+                    title: "{{ title_local }}"
+                    message: "{{ message_local }}"
+                - service: logbook.log
+                  continue_on_error: true
+                  data:
+                    name: AC Auto Trace
+                    message:
+                      hito=notify_on_fallido | notify_stage=send_result | send_result=fallback | reason=mobile_failed_fallback | trace_id={{ trace_local }} | branch={{ branch_local
+                      }} | fallback=persistent_notification
                     entity_id: "{{ entity_local }}"
           default:
             - service: logbook.log
@@ -210,21 +235,6 @@ ac_dda_notify_on_transaccional:
               data:
                 name: AC Auto Trace
                 message:
-                  hito=notify_on_fallido | notify_stage=send_result | send_result=mobile_failed | trace_id={{ trace_local }} | src={{ src_local
-                  }} | branch={{ branch_local }} | explicit_error={{ 'yes' if notify_explicit_error
-                  else 'no' }} | resp={{ notify_response if notify_response is defined else
-                  'no_response' }}
-                entity_id: "{{ entity_local }}"
-            - service: persistent_notification.create
-              continue_on_error: true
-              data:
-                title: "{{ title_local }}"
-                message: "{{ message_local }}"
-            - service: logbook.log
-              continue_on_error: true
-              data:
-                name: AC Auto Trace
-                message:
-                  hito=notify_on_fallido | notify_stage=send_result | send_result=fallback | trace_id={{ trace_local }} | branch={{ branch_local
-                  }} | fallback=persistent_notification
+                  hito=notify_on_enviado | notify_stage=send_result | send_result=unknown_but_attempted | reason=no_explicit_ack_response | trace_id={{ trace_local }} | src={{ src_local
+                  }} | branch={{ branch_local }} | resp={{ notify_response if notify_response is defined else 'no_response' }}
                 entity_id: "{{ entity_local }}"

@@ -839,3 +839,38 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
    - `fallback`: se emitió `persistent_notification` + logbook observable.
    - `duplicate_omitted`: reintento inmediato del mismo ciclo dentro de 15 s.
 4. Si `Src=AutoON` y el `climate` quedó en `cool`, debe existir al menos salida observable en logbook para el `trace_id` (sin salida silenciosa).
+
+## 25. Hotfix + refuerzo de ciclo AUTO ON (2026-04-10)
+
+### Causa raíz
+- Se confirmaron omisiones silenciosas de push `Src=AutoON` por anti-duplicado en ventana corta, incluso cuando había un nuevo intento válido de ON automático con trazabilidad parcial.
+- Además, cuando el canal móvil no devolvía acuse explícito (`success/error`), el flujo lo trataba como fallo definitivo, generando falsos negativos operativos.
+
+### Cambio aplicado (Fase 1 + Fase 2 consolidadas)
+1. **Hotfix inmediato en `ac_dda_notify_on_transaccional`**
+   - Se desactiva la omisión por duplicado para `Src=AutoON` (la rama AUTO ON siempre ejecuta intento real de envío).
+   - Se mantiene ventana de dedupe de 10 s para orígenes no AUTO ON.
+   - Cada llamada `Src=AutoON` ejecuta `hito=notify_on_intentado` + `notify.mobile_app_samsung_s24`.
+   - Si no hay acuse explícito de éxito/error, se registra `send_result=unknown_but_attempted` (no fallo definitivo).
+
+2. **Arreglo robusto de firma por ciclo real (`cycle_signature_v2`)**
+   - Firma normalizada: `token:<nonce>|auto_on_ts:<timestamp>|branch:<rama>|src:auto_on_v2`.
+   - Token toma `input_text.ac_dda_transition_token` y, si falta, usa `no_token`.
+   - `auto_on_ts` toma prioridad: `ac_last_auto_ts` → `ac_dda_transition_ts` → `ac_dda_cool_cycle_contract_started_at` → `now()`.
+   - Misma estructura aplicada en:
+     - `cool_normal_on`,
+     - `cool_emergency_on`,
+     - `AC - Día dinámico aprendido (confirmación notify AUTO ON)`.
+
+### Observabilidad y depuración por `trace_id`
+1. Buscar `trace_id=<valor>` en logbook.
+2. Confirmar secuencia mínima:
+   - `notify_stage=payload_ready`
+   - `notify_stage=dedupe_check`
+   - `notify_stage=send_attempt`
+   - `notify_stage=send_result`
+3. Interpretar `send_result`:
+   - `mobile_sent`: acuse explícito del canal móvil.
+   - `unknown_but_attempted`: intento ejecutado sin acuse explícito (considerar entregado intentado, no fallo definitivo).
+   - `mobile_failed`: error explícito del canal, debe existir fallback (`persistent_notification`) + `notify_on_fallido`.
+4. Si el AC queda en `cool` con `Src=AutoON`, debe existir trazabilidad de intento y resultado para ese `trace_id` (sin salida silenciosa).
