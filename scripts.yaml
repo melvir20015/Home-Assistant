@@ -77,6 +77,31 @@ ac_dda_notify_on_transaccional:
           "{{ cycle_signature_local != '' and ((not same_cycle_signature) or (incoming_priority | int(0)) > (last_priority | int(0)) or duplicate_but_resend) }}"
         signature_record_to_store: "{{ cycle_signature_local ~ '||' ~ role_local ~ '||' ~ (now_epoch | string) ~ '||0' }}"
         signature_record_skip_to_store: "{{ cycle_signature_local ~ '||' ~ last_role ~ '||' ~ (last_sent_epoch | string) ~ '||' ~ (now_epoch | string) }}"
+        src_is_auto_on: "{{ src_local | lower == 'autoon' }}"
+        entity_mode_now: "{{ states(entity_local) | default('unknown', true) | lower }}"
+        entity_is_cool: "{{ entity_mode_now == 'cool' }}"
+        force_observable_exit: "{{ src_is_auto_on and entity_is_cool }}"
+    - service: logbook.log
+      continue_on_error: true
+      data:
+        name: AC Auto Trace
+        message:
+          hito=notify_payload_ready | notify_stage=payload_ready | trace_id={{ trace_local
+          }} | src={{ src_local }} | branch={{ branch_local }} | cycle_signature_v2={{ cycle_signature_local
+          }} | mode_now={{ entity_mode_now }}
+        entity_id: "{{ entity_local }}"
+    - service: logbook.log
+      continue_on_error: true
+      data:
+        name: AC Auto Trace
+        message:
+          hito=notify_dedupe_check | notify_stage=dedupe_check | trace_id={{ trace_local
+          }} | duplicate_candidate={{ 'true' if duplicate_candidate else 'false' }} |
+          duplicate_cycle_signature={{ 'true' if duplicate_cycle_signature else 'false'
+          }} | short_window_s={{ duplicate_window_s }} | age_since_last_send_s={{ age_since_last_send_s
+          | round(2) }} | cycle_signature_v2={{ cycle_signature_local }} | last_signature={{ last_signature
+          }}
+        entity_id: "{{ entity_local }}"
     - choose:
         - conditions:
             - condition: template
@@ -87,11 +112,19 @@ ac_dda_notify_on_transaccional:
               data:
                 name: AC Auto Trace
                 message:
-                  hito=notify_on_omitido_duplicado | trace_id={{ trace_local }} | branch={{ branch_local
+                  hito=notify_on_omitido_duplicado | notify_stage=dedupe_check | trace_id={{ trace_local }} | branch={{ branch_local
                   }} | src={{ src_local }} | role_actual={{ role_local }} | role_prev={{ last_role
                   }} | cycle_signature_v2={{ cycle_signature_local }} | last_signature={{ last_signature
                   }} | duplicate=true | short_window_s={{ duplicate_window_s }} | age_since_last_send_s={{ age_since_last_send_s
-                  | round(2) }}
+                  | round(2) }} | force_observable_exit={{ 'true' if force_observable_exit else 'false' }}
+                entity_id: "{{ entity_local }}"
+            - service: logbook.log
+              continue_on_error: true
+              data:
+                name: AC Auto Trace
+                message:
+                  hito=notify_on_resultado | notify_stage=send_result | send_result=duplicate_omitted | trace_id={{ trace_local
+                  }} | src={{ src_local }} | branch={{ branch_local }} | mode_now={{ entity_mode_now }}
                 entity_id: "{{ entity_local }}"
             - choose:
                 - conditions:
@@ -123,7 +156,7 @@ ac_dda_notify_on_transaccional:
           data:
             name: AC Auto Trace
             message:
-              hito=notify_on_preparado | trace_id={{ trace_local }} | src={{ src_local
+              hito=notify_on_preparado | notify_stage=payload_ready | trace_id={{ trace_local }} | src={{ src_local
               }} | branch={{ branch_local }} | title={{ title_local }} | cycle_signature_v2={{ cycle_signature_local
               }} | last_signature={{ last_signature }} | duplicate={{ 'true' if duplicate_candidate else 'false'
               }}
@@ -133,7 +166,7 @@ ac_dda_notify_on_transaccional:
           data:
             name: AC Auto Trace
             message:
-              hito=notify_on_intentado | trace_id={{ trace_local }} | channel=mobile_app_s24
+              hito=notify_on_intentado | notify_stage=send_attempt | trace_id={{ trace_local }} | channel=mobile_app_s24
               | src={{ src_local }} | branch={{ branch_local }}
             entity_id: "{{ entity_local }}"
         - service: notify.mobile_app_samsung_s24
@@ -168,7 +201,7 @@ ac_dda_notify_on_transaccional:
                   data:
                     name: AC Auto Trace
                     message:
-                      hito=notify_on_enviado | trace_id={{ trace_local }} | src={{ src_local
+                      hito=notify_on_enviado | notify_stage=send_result | send_result=mobile_sent | trace_id={{ trace_local }} | src={{ src_local
                       }} | branch={{ branch_local }}
                     entity_id: "{{ entity_local }}"
           default:
@@ -177,7 +210,7 @@ ac_dda_notify_on_transaccional:
               data:
                 name: AC Auto Trace
                 message:
-                  hito=notify_on_fallido | trace_id={{ trace_local }} | src={{ src_local
+                  hito=notify_on_fallido | notify_stage=send_result | send_result=mobile_failed | trace_id={{ trace_local }} | src={{ src_local
                   }} | branch={{ branch_local }} | explicit_error={{ 'yes' if notify_explicit_error
                   else 'no' }} | resp={{ notify_response if notify_response is defined else
                   'no_response' }}
@@ -192,6 +225,6 @@ ac_dda_notify_on_transaccional:
               data:
                 name: AC Auto Trace
                 message:
-                  hito=notify_on_fallido | trace_id={{ trace_local }} | branch={{ branch_local
+                  hito=notify_on_fallido | notify_stage=send_result | send_result=fallback | trace_id={{ trace_local }} | branch={{ branch_local
                   }} | fallback=persistent_notification
                 entity_id: "{{ entity_local }}"

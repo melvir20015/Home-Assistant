@@ -809,6 +809,7 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
 
 ### Política obligatoria
 - **Cada ciclo AUTO ON real debe producir una notificación móvil, aunque los umbrales sean iguales al ciclo anterior.**
+- Política final consolidada: **cada ciclo AUTO ON real notifica una vez al móvil**.
 
 ### Implementación consolidada
 - El script transaccional `ac_dda_notify_on_transaccional` usa firma `cycle_signature_v2` con identificador único real de ciclo (token de transición y/o `ac_last_auto_ts` de alta precisión).
@@ -824,3 +825,17 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
   - `hito=notify_on_preparado`
   - `hito=notify_on_intentado`
   - `hito=notify_on_enviado`
+
+### Guía rápida de diagnóstico (`trace_id` + `notify_stage`)
+1. Buscar por `trace_id=<valor>` para seguir extremo a extremo un intento de AUTO ON (principal, emergencia o confirmación).
+2. Validar secuencia por `notify_stage`:
+   - `payload_ready`
+   - `dedupe_check`
+   - `send_attempt`
+   - `send_result`
+3. Interpretación de `send_result`:
+   - `mobile_sent`: push móvil confirmado.
+   - `mobile_failed`: canal móvil con error explícito.
+   - `fallback`: se emitió `persistent_notification` + logbook observable.
+   - `duplicate_omitted`: reintento inmediato del mismo ciclo dentro de 15 s.
+4. Si `Src=AutoON` y el `climate` quedó en `cool`, debe existir al menos salida observable en logbook para el `trace_id` (sin salida silenciosa).
