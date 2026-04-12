@@ -5050,7 +5050,7 @@
       branch_scope_ok: '{{ states(''input_text.ac_last_auto_branch'') | trim == ''cool_normal_on'' }}'
       context_scope_ok: '{{ contract_context_key not in ['''', ''unknown'', ''unavailable'', ''none''] }}'
       learning_day_scope_ok: '{{ daytime_scope_ok }}'
-      valid_feedback: '{{ manual_event_confirmed and (not auto_evidence_strong) and (not cycle_lock_active) and learning_day_scope_ok and final_mode_cool_required }}'
+      valid_feedback: '{{ manual_event_confirmed and learning_day_scope_ok }}'
       manual_on_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
@@ -5084,12 +5084,12 @@
       threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
-      ignored_reason_code: "{% if auto_evidence_strong %}auto_transition_active{% elif duplicate_event %}duplicate_event{% elif cycle_lock_active %}lock_activo{% elif not manual_event_confirmed %}manual_event_not_confirmed{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% else %}unknown_discard{% endif %}"
+      ignored_reason_code: "{% if not learning_day_scope_ok %}out_of_scope_daytime_main{% elif duplicate_event %}duplicate_event{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}unknown_discard{% endif %}"
       reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'auto_reciente' %}auto{% elif ignored_reason_code == 'origen_auto' %}origen{% elif ignored_reason_code == 'evidencia_manual_insuficiente' %}evidencia{% else %}descartado{% endif %}"
-      ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}fuera_horario_diurno{% elif ignored_reason_code == 'auto_transition_active' %}auto_reciente_activo{% elif ignored_reason_code == 'lock_activo' %}lock_critico_activo{% elif ignored_reason_code == 'manual_event_not_confirmed' %}evento_manual_no_confirmado{% elif ignored_reason_code == 'final_mode_not_cool' %}modo_final_no_cool{% elif ignored_reason_code == 'duplicate_event' %}evento_duplicado{% else %}descartado_desconocido{% endif %}"
+      ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_event_not_confirmed{% elif ignored_reason_code == 'duplicate_event' %}duplicate_event{% else %}unknown_discard{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
-      learning_type: "{% if apply_learning %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'auto_transition_active' %}manual_on_learning_ignored_auto_transition_active_contract_v1{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% elif ignored_reason_code == 'final_mode_not_cool' %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
+      learning_type: "{% if apply_learning %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -5126,22 +5126,11 @@
     data:
       value: '{{ learning_type }}'
     service: input_text.set_value
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ ignored_reason_code != ''auto_transition_active'' }}'
-      sequence:
-      - target:
-          entity_id: input_text.ac_dda_learning_last_manual_on_signature
-        data:
-          value: '{{ manual_on_event_signature }}'
-        service: input_text.set_value
-    default:
-    - action: logbook.log
-      data:
-        name: AC Learning Manual ON
-        message: '{{ contract_version }} | signature_update_omitida | reason=auto_transition_active | trace_id={{ trace_id }}'
-        entity_id: climate.0200009211c7_climate
+  - target:
+      entity_id: input_text.ac_dda_learning_last_manual_on_signature
+    data:
+      value: '{{ manual_on_event_signature }}'
+    service: input_text.set_value
   - action: logbook.log
     data:
       name: AC Learning Manual ON
@@ -5160,12 +5149,12 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ ignored_reason_code in [''lock_activo'', ''auto_transition_active'', ''out_of_scope_daytime_main'', ''final_mode_not_cool''] }}'
+        value_template: '{{ ignored_reason_code in [''out_of_scope_daytime_main'', ''manual_event_not_confirmed''] }}'
       sequence:
       - action: logbook.log
         data:
           name: AC Learning Manual ON
-          message: '{{ contract_version }} | learning_on_discard_reason=ignored:{{ ignored_reason_code }} | lock={{ cycle_lock_active }} | auto_flags_active={{ auto_flags_active }} | auto_transition_token_recent={{ auto_transition_token_recent }} | transition_age_s={{ transition_age_s }} | auto_evidence_strong={{ auto_evidence_strong }} | auto_transition_active_strict={{ auto_transition_active_strict }} | auto_recent_observed={{ auto_recent_observed }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }} | min_since_auto={{ minutes_since_last_auto }}'
+          message: '{{ contract_version }} | learning_on_discard_reason=ignored:{{ ignored_reason_code }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }}'
           entity_id: climate.0200009211c7_climate
     default: []
   - choose:
@@ -5217,7 +5206,7 @@
     - service: notify.mobile_app_samsung_s24
       data:
         title: AC Learning ON
-        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_label }} Trace={{ trace_id }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
+        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualON Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ''out_of_scope_daytime_main'' if ignored_reason_code == ''out_of_scope_daytime_main'' else ignored_reason_label }} Trace={{ trace_id }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
@@ -5515,7 +5504,7 @@
       manual_on_auto_recent_compound: '{{ auto_transition_active_strict or auto_recent_observed }}'
       auto_transition_active: '{{ auto_transition_active_strict }}'
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
-      manual_on_guard_discard_reason: "{% if auto_evidence_strong %}manual_guard_discard=auto_transition_active{% elif not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
+      manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}"
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
       contract_version: contract=v1
       climate_ent: climate.0200009211c7_climate
@@ -5571,8 +5560,12 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ trace_id }} | hito=notify_omitido_por_auto | reason={{ manual_on_guard_discard_reason }}'
+          message: '{{ trace_id }} | hito=notify_descartado_fuera_alcance | reason={{ manual_on_guard_discard_reason }}'
           entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
       - stop: 'Ignorado: guard manual ON descartó evento.'
     default: []
   - choose:
@@ -5654,7 +5647,7 @@
       post60_cycle_lock_age_s: "{% if post60_cycle_lock_since_epoch is none %}99999{% elif not post60_cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (post60_cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
       post60_cycle_lock_is_stale: '{{ post60_cycle_lock_active and (post60_cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
       post60_cycle_lock_effective_active: '{{ post60_cycle_lock_active and not post60_cycle_lock_is_stale }}'
-      post60_guard_discard_reason: "{% if post60_auto_evidence_strong %}manual_guard_discard=auto_transition_active{% elif not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% elif post60_cycle_lock_effective_active %}manual_guard_discard=lock_activo{% else %}none{% endif %}"
+      post60_guard_discard_reason: "{% if not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}"
   - action: logbook.log
     data:
       name: AC Manual ON
@@ -5691,15 +5684,14 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ trace_id }} | hito=notify_omitido_por_auto | reason={{ post60_guard_discard_reason }}'
+          message: '{{ trace_id }} | hito=notify_descartado_fuera_alcance | reason={{ post60_guard_discard_reason }}'
           entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
       - stop: 'Ignorado: guard manual ON post60 descartó evento.'
     default: []
-  - target:
-      entity_id: input_datetime.ac_dda_last_manual_on_ts
-    data:
-      datetime: '{{ detected_ts }}'
-    action: input_datetime.set_datetime
   - target:
       entity_id: input_text.ac_dda_last_change_origin
     data:
@@ -5710,109 +5702,6 @@
     data:
       value: '{{ ''manual_on_detected_contract_v1|trace_id='' ~ trace_id }}'
     service: input_text.set_value
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ detected_mode == ''fan_only'' and final_mode_after_60s == ''fan_only'' }}'
-      sequence:
-      - action: logbook.log
-        data:
-          name: AC Manual ON
-          message: '{{ contract_version }} | fan_only_bridge | step=off->fan_only->cool | wait=12s'
-          entity_id: climate.0200009211c7_climate
-      - delay: 00:00:12
-      - condition: template
-        value_template: '{{ states(climate_ent) == ''fan_only'' }}'
-      - target:
-          entity_id:
-          - input_boolean.ac_dda_on_por_automatizacion
-          - input_boolean.ac_dda_cycle_lock
-        action: input_boolean.turn_on
-      - target:
-          entity_id: input_datetime.ac_last_auto_ts
-        data:
-          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        service: input_datetime.set_datetime
-      - target:
-          entity_id: input_text.ac_last_auto_action
-        data:
-          value: manual_bridge_auto_on
-        service: input_text.set_value
-      - target:
-          entity_id: input_text.ac_dda_last_change_origin
-        data:
-          value: manual_bridge_auto_on
-        service: input_text.set_value
-      - target:
-          entity_id: input_text.ac_dda_transition_token
-        data:
-          value: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-manual-bridge-auto-on'
-        service: input_text.set_value
-      - target:
-          entity_id: input_datetime.ac_dda_transition_ts
-        data:
-          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        service: input_datetime.set_datetime
-      - target:
-          entity_id: input_datetime.ac_dda_cycle_lock_since
-        data:
-          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-        service: input_datetime.set_datetime
-      - target:
-          entity_id: climate.0200009211c7_climate
-        data:
-          hvac_mode: cool
-        action: climate.set_hvac_mode
-      - wait_template: '{{ is_state(climate_ent, ''cool'') }}'
-        timeout: 00:00:15
-        continue_on_timeout: true
-      - delay: 00:00:10
-      - action: logbook.log
-        data:
-          name: AC Manual ON
-          message: "{{ 'transition_closed=ok' if is_state(climate_ent, 'cool') else 'transition_closed=timeout' }} | phase=fan_only_bridge | lock={{ states('input_boolean.ac_dda_cycle_lock') }}"
-          entity_id: climate.0200009211c7_climate
-      - target:
-          entity_id: input_boolean.ac_dda_on_por_automatizacion
-        action: input_boolean.turn_off
-      - target:
-          entity_id: input_boolean.ac_dda_cycle_lock
-        action: input_boolean.turn_off
-      - target:
-          entity_id: input_text.ac_dda_last_change_origin
-        data:
-          value: manual_on_fan_only_auto_cool_contract_v1
-        service: input_text.set_value
-      - action: logbook.log
-        data:
-          name: AC Manual ON
-          message: '{{ contract_version }} | fan_only_bridge_applied | mode=cool | wait=12s'
-          entity_id: climate.0200009211c7_climate
-      - variables:
-          manual_assist_on_validated: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none) }}'
-          manual_assist_off_validated: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none) }}'
-          manual_assist_sp_validated: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
-          manual_assist_fan: "{{ state_attr(climate_ent,'fan_mode') if state_attr(climate_ent,'fan_mode') is not none else 'n/a' }}"
-          manual_assist_tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
-          manual_assist_tout: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-          manual_assist_hout: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
-          manual_assist_title: Cool↑
-          manual_assist_transition_token: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
-          manual_assist_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') | default('''', true) | trim }}'
-          manual_assist_cycle_id: "{% if manual_assist_transition_token not in ['', 'unknown', 'unavailable', 'none'] %}{{ manual_assist_transition_token }}{% elif manual_assist_auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ manual_assist_auto_ts_raw }}{% else %}{{ now().isoformat() }}{% endif %}"
-          manual_assist_cycle_signature_v2: "{{ manual_assist_cycle_id }}|auto_ts:{{ manual_assist_auto_ts_raw if manual_assist_auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat() }}|manual_assist_on|{{ '%.2f' | format(manual_assist_on_validated | float) if manual_assist_on_validated is not none else 'n/a' }}|{{ '%.2f' | format(manual_assist_off_validated | float) if manual_assist_off_validated is not none else 'n/a' }}|manual_assist_on"
-          manual_assist_message: "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(manual_assist_tin | float) if manual_assist_tin is not none else 'n/a' }} Tout={{ '%.1f' | format(manual_assist_tout | float) if manual_assist_tout is not none else 'n/a' }} H={{ '%.0f' | format(manual_assist_hout | float) if manual_assist_hout is not none else 'n/a' }} On={{ '%.1f' | format(manual_assist_on_validated | float) if manual_assist_on_validated is not none else 'n/a' }} Off={{ '%.1f' | format(manual_assist_off_validated | float) if manual_assist_off_validated is not none else 'n/a' }} SP={{ '%.1f' | format(manual_assist_sp_validated | float) if manual_assist_sp_validated is not none else 'n/a' }} Fan={{ manual_assist_fan }} Src=ManualAssistON"
-      - service: script.ac_dda_notify_on_transaccional
-        continue_on_error: true
-        data:
-          trace_id: '{{ trace_id }}-manual-assist'
-          title: '{{ manual_assist_title }}'
-          message: '{{ manual_assist_message }}'
-          entity_id: climate.0200009211c7_climate
-          src: ManualAssistON
-          branch: manual_assist_on
-          cycle_signature_v2: '{{ manual_assist_cycle_signature_v2 }}'
-    default: []
   - variables:
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: '{{ states(climate_ent) }}'
@@ -5873,6 +5762,11 @@
     data:
       value: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id }}'
     service: input_text.set_value
+  - target:
+      entity_id: input_datetime.ac_dda_last_manual_on_ts
+    data:
+      datetime: '{{ detected_ts }}'
+    action: input_datetime.set_datetime
   - choose:
     - conditions:
       - condition: template

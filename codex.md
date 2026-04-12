@@ -893,3 +893,39 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
 ### Resultado esperado
 - `automations.yaml` queda consistente para validación YAML/`check_config`.
 - Se evita recurrencia de errores de parseo por `choose/default` mal anidado en reinicios futuros.
+
+## 27. Política final Manual ON diurno sin bloqueos por AUTO/lock (2026-04-12)
+
+### Política operativa consolidada
+- **Manual ON aprende siempre en horario diurno** (`07:01:00–21:59:00`) cuando existe evento manual consolidado válido.
+- **Única espera funcional del flujo Manual ON:** consolidación/setpoint de **30 s** antes de cerrar el evento.
+- Dentro del horario diurno se retiraron descartes funcionales por:
+  - `auto_transition_active`
+  - `lock_activo`
+  - validaciones intermedias de bloqueo distintas a consolidación.
+- Fuera de horario se mantiene descarte explícito con:
+  - `Resultado=ignorado`
+  - `Razón=out_of_scope_daytime_main`.
+
+### Orden transaccional obligatorio para evitar carreras
+1. Guard Manual ON consolida 30 s.
+2. Se escribe primero `input_text.ac_dda_last_manual_event_type` en variante final válida (`manual_on_final_valid_*|trace_id=...`).
+3. Luego se escribe `input_datetime.ac_dda_last_manual_on_ts` para disparar `AC - Learning - Manual ON feedback`.
+4. Learning ON lee el evento ya consolidado y evalúa aplicación en alcance diurno.
+
+### Simplificación de Learning ON
+- `valid_feedback` queda reducido al contrato funcional:
+  - evento manual consolidado válido,
+  - horario diurno en alcance.
+- Anti-duplicado técnico se conserva vía firma (`duplicate_event`) para evitar doble aplicación accidental.
+- Notificación final normalizada:
+  - aplicado: `Resultado=aplicado`, `Razón=manual_on`.
+  - fuera de alcance: `Resultado=ignorado`, `Razón=out_of_scope_daytime_main`.
+
+### Ejemplos de trazabilidad para diagnóstico
+- **Caso aplicado diurno**
+  - Guard: `hito=manual_on_detected` → `hito=manual_on_validating` → `hito=manual_on_final`.
+  - Learning: `hito=learning_on_applied` con `reason=applied` y `Src=ManualON Resultado=aplicado Razón=manual_on`.
+- **Caso fuera de horario**
+  - Guard: descarte `manual_guard_discard=out_of_scope_daytime_main` + push `Resultado=ignorado Razón=out_of_scope_daytime_main`.
+  - Learning: `hito=learning_on_ignored` con `reason=out_of_scope_daytime_main`.
