@@ -1426,24 +1426,24 @@
         timeout: 00:00:30
         continue_on_timeout: true
       - choose:
-          - conditions:
-              - condition: template
-                value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
-            sequence:
-              - target:
-                  entity_id: input_boolean.ac_dda_on_por_automatizacion
-                service: input_boolean.turn_off
-              - service: logbook.log
-                data:
-                  name: AC Auto Trace
-                  message: transition_closed=ok | hvac_confirmed=cool
-                  entity_id: climate.0200009211c7_climate
-          default:
-            - service: logbook.log
-              data:
-                name: AC Auto Trace
-                message: transition_closed=timeout | hvac_expected=cool
-                entity_id: climate.0200009211c7_climate
+        - conditions:
+          - condition: template
+            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_dda_on_por_automatizacion
+            service: input_boolean.turn_off
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: transition_closed=ok | hvac_confirmed=cool
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Auto Trace
+            message: transition_closed=timeout | hvac_expected=cool
+            entity_id: climate.0200009211c7_climate
     default: []
   mode: restart
   variables:
@@ -2179,51 +2179,51 @@
               notify_on_script_status: "{{ notify_on_script_response if notify_on_script_response is mapping else {} }}"
               notify_on_script_error: "{{ notify_on_script_response is mapping and (\n  'error' in notify_on_script_status\n  or 'exception' in notify_on_script_status\n  or 'failed' in notify_on_script_status\n  or (notify_on_script_status.get('status') | default('') | string | lower) in ['error', 'failed', 'timeout']\n) }}"
           - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ notify_on_script_error }}"
-                sequence:
-                  - service: logbook.log
-                    continue_on_error: true
-                    data:
-                      name: AC Auto Trace
-                      message: "hito=script_error | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
-                      entity_id: climate.0200009211c7_climate
-                  - service: persistent_notification.create
-                    continue_on_error: true
-                    data:
-                      title: "AC Auto ON script_error"
-                      message: "trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | script=ac_dda_notify_on_transaccional | error_detected=true"
-              default:
-                - service: logbook.log
-                  continue_on_error: true
-                  data:
-                    name: AC Auto Trace
-                    message: "hito=script_invocado_ok | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional"
-                    entity_id: climate.0200009211c7_climate
+            - conditions:
+              - condition: template
+                value_template: "{{ notify_on_script_error }}"
+              sequence:
+              - service: logbook.log
+                continue_on_error: true
+                data:
+                  name: AC Auto Trace
+                  message: "hito=script_error | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
+                  entity_id: climate.0200009211c7_climate
+              - service: persistent_notification.create
+                continue_on_error: true
+                data:
+                  title: "AC Auto ON script_error"
+                  message: "trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | script=ac_dda_notify_on_transaccional | error_detected=true"
+            default:
+            - service: logbook.log
+              continue_on_error: true
+              data:
+                name: AC Auto Trace
+                message: "hito=script_invocado_ok | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional"
+                entity_id: climate.0200009211c7_climate
         default: []
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
       - choose:
-          - conditions:
-              - condition: template
-                value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
-            sequence:
-              - target:
-                  entity_id: input_boolean.ac_dda_on_por_automatizacion
-                service: input_boolean.turn_off
-              - service: logbook.log
-                data:
-                  name: AC Auto Trace
-                  message: transition_closed=ok | hvac_confirmed=cool
-                  entity_id: climate.0200009211c7_climate
-          default:
-            - service: logbook.log
-              data:
-                name: AC Auto Trace
-                message: transition_closed=timeout | hvac_expected=cool
-                entity_id: climate.0200009211c7_climate
+        - conditions:
+          - condition: template
+            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.ac_dda_on_por_automatizacion
+            service: input_boolean.turn_off
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: transition_closed=ok | hvac_confirmed=cool
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Auto Trace
+            message: transition_closed=timeout | hvac_expected=cool
+            entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_off
@@ -3829,28 +3829,28 @@
               notify_on_script_status: "{{ notify_on_script_response if notify_on_script_response is mapping else {} }}"
               notify_on_script_error: "{{ notify_on_script_response is mapping and (\n  'error' in notify_on_script_status\n  or 'exception' in notify_on_script_status\n  or 'failed' in notify_on_script_status\n  or (notify_on_script_status.get('status') | default('') | string | lower) in ['error', 'failed', 'timeout']\n) }}"
           - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ notify_on_script_error }}"
-                sequence:
-                  - service: logbook.log
-                    continue_on_error: true
-                    data:
-                      name: AC Auto Trace
-                      message: "hito=script_error | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
-                      entity_id: climate.0200009211c7_climate
-                  - service: persistent_notification.create
-                    continue_on_error: true
-                    data:
-                      title: "AC Auto ON script_error"
-                      message: "trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | script=ac_dda_notify_on_transaccional | error_detected=true"
-              default:
-                - service: logbook.log
-                  continue_on_error: true
-                  data:
-                    name: AC Auto Trace
-                    message: "hito=script_invocado_ok | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional"
-                    entity_id: climate.0200009211c7_climate
+            - conditions:
+              - condition: template
+                value_template: "{{ notify_on_script_error }}"
+              sequence:
+              - service: logbook.log
+                continue_on_error: true
+                data:
+                  name: AC Auto Trace
+                  message: "hito=script_error | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
+                  entity_id: climate.0200009211c7_climate
+              - service: persistent_notification.create
+                continue_on_error: true
+                data:
+                  title: "AC Auto ON script_error"
+                  message: "trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | script=ac_dda_notify_on_transaccional | error_detected=true"
+            default:
+            - service: logbook.log
+              continue_on_error: true
+              data:
+                name: AC Auto Trace
+                message: "hito=script_invocado_ok | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional"
+                entity_id: climate.0200009211c7_climate
         default:
         - service: logbook.log
           continue_on_error: true

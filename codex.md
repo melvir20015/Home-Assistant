@@ -874,3 +874,22 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
    - `unknown_but_attempted`: intento ejecutado sin acuse explícito (considerar entregado intentado, no fallo definitivo).
    - `mobile_failed`: error explícito del canal, debe existir fallback (`persistent_notification`) + `notify_on_fallido`.
 4. Si el AC queda en `cool` con `Src=AutoON`, debe existir trazabilidad de intento y resultado para ese `trace_id` (sin salida silenciosa).
+
+## 26. Normalización YAML `choose/default` para reinicio limpio (2026-04-12)
+
+### Objetivo
+- Eliminar fallos de parseo por indentación inconsistente en ramas AC de `automations.yaml` durante reinicios.
+
+### Ajuste aplicado
+- Se normalizó la estructura de bloques `- choose:` para que:
+  - cada opción `- conditions:` quede al nivel correcto dentro de `choose`,
+  - cada `default:` quede al mismo nivel que la lista de opciones de `choose`,
+  - cada lista bajo `default:` (por ejemplo `- service:`) quede anidada exactamente 2 espacios por debajo de `default:`.
+
+### Alcance de la normalización
+- Se corrigieron los bloques señalados en trazas de error (zona de líneas ~1428–1446 y ~2181–2199).
+- Se aplicó la misma corrección a bloques equivalentes detectados en otras ramas AC para prevenir regresiones por desplazamientos de ±2 espacios.
+
+### Resultado esperado
+- `automations.yaml` queda consistente para validación YAML/`check_config`.
+- Se evita recurrencia de errores de parseo por `choose/default` mal anidado en reinicios futuros.
