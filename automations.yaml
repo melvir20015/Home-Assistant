@@ -2165,6 +2165,7 @@
               entity_id: climate.0200009211c7_climate
           - service: script.ac_dda_notify_on_transaccional
             continue_on_error: true
+            response_variable: notify_on_script_response
             data:
               trace_id: '{{ cool_notify_trace_id }}'
               title: '{{ cool_mobile_title_local }}'
@@ -2174,6 +2175,32 @@
               branch: '{{ cool_notify_branch }}'
               notify_role: primary
               cycle_signature_v2: '{{ cool_notify_cycle_signature_v2 }}'
+          - variables:
+              notify_on_script_status: "{{ notify_on_script_response if notify_on_script_response is mapping else {} }}"
+              notify_on_script_error: "{{ notify_on_script_response is mapping and (\n  'error' in notify_on_script_status\n  or 'exception' in notify_on_script_status\n  or 'failed' in notify_on_script_status\n  or (notify_on_script_status.get('status') | default('') | string | lower) in ['error', 'failed', 'timeout']\n) }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ notify_on_script_error }}"
+                sequence:
+                  - service: logbook.log
+                    continue_on_error: true
+                    data:
+                      name: AC Auto Trace
+                      message: "hito=script_error | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
+                      entity_id: climate.0200009211c7_climate
+                  - service: persistent_notification.create
+                    continue_on_error: true
+                    data:
+                      title: "AC Auto ON script_error"
+                      message: "trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | script=ac_dda_notify_on_transaccional | error_detected=true"
+              default:
+                - service: logbook.log
+                  continue_on_error: true
+                  data:
+                    name: AC Auto Trace
+                    message: "hito=script_invocado_ok | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional"
+                    entity_id: climate.0200009211c7_climate
         default: []
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
         timeout: 00:00:30
@@ -3788,6 +3815,7 @@
               entity_id: climate.0200009211c7_climate
           - service: script.ac_dda_notify_on_transaccional
             continue_on_error: true
+            response_variable: notify_on_script_response
             data:
               trace_id: '{{ cool_notify_trace_id }}'
               title: '{{ cool_mobile_title_local }}'
@@ -3797,6 +3825,32 @@
               branch: '{{ cool_notify_branch }}'
               notify_role: primary
               cycle_signature_v2: '{{ cool_notify_cycle_signature_v2 }}'
+          - variables:
+              notify_on_script_status: "{{ notify_on_script_response if notify_on_script_response is mapping else {} }}"
+              notify_on_script_error: "{{ notify_on_script_response is mapping and (\n  'error' in notify_on_script_status\n  or 'exception' in notify_on_script_status\n  or 'failed' in notify_on_script_status\n  or (notify_on_script_status.get('status') | default('') | string | lower) in ['error', 'failed', 'timeout']\n) }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ notify_on_script_error }}"
+                sequence:
+                  - service: logbook.log
+                    continue_on_error: true
+                    data:
+                      name: AC Auto Trace
+                      message: "hito=script_error | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
+                      entity_id: climate.0200009211c7_climate
+                  - service: persistent_notification.create
+                    continue_on_error: true
+                    data:
+                      title: "AC Auto ON script_error"
+                      message: "trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | script=ac_dda_notify_on_transaccional | error_detected=true"
+              default:
+                - service: logbook.log
+                  continue_on_error: true
+                  data:
+                    name: AC Auto Trace
+                    message: "hito=script_invocado_ok | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional"
+                    entity_id: climate.0200009211c7_climate
         default:
         - service: logbook.log
           continue_on_error: true
@@ -4657,6 +4711,7 @@
       entity_id: climate.0200009211c7_climate
   - service: script.ac_dda_notify_on_transaccional
     continue_on_error: true
+    response_variable: notify_on_script_response
     data:
       trace_id: '{{ trace_id }}'
       title: Cool↑
@@ -4666,6 +4721,32 @@
       branch: '{{ branch_on }}'
       notify_role: confirm
       cycle_signature_v2: '{{ cycle_signature_v2 }}'
+  - variables:
+      notify_on_script_status: "{{ notify_on_script_response if notify_on_script_response is mapping else {} }}"
+      notify_on_script_error: "{{ notify_on_script_response is mapping and (\n  'error' in notify_on_script_status\n  or 'exception' in notify_on_script_status\n  or 'failed' in notify_on_script_status\n  or (notify_on_script_status.get('status') | default('') | string | lower) in ['error', 'failed', 'timeout']\n) }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ notify_on_script_error }}"
+      sequence:
+      - service: logbook.log
+        continue_on_error: true
+        data:
+          name: AC Auto Trace
+          message: "hito=script_error | trace_id={{ trace_id }} | branch={{ branch_on }} | service=script.ac_dda_notify_on_transaccional | source=confirmacion_desacoplada | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
+          entity_id: climate.0200009211c7_climate
+      - service: persistent_notification.create
+        continue_on_error: true
+        data:
+          title: "AC Auto ON script_error"
+          message: "trace_id={{ trace_id }} | branch={{ branch_on }} | source=confirmacion_desacoplada | script=ac_dda_notify_on_transaccional | error_detected=true"
+    default:
+    - service: logbook.log
+      continue_on_error: true
+      data:
+        name: AC Auto Trace
+        message: "hito=script_invocado_ok | trace_id={{ trace_id }} | branch={{ branch_on }} | service=script.ac_dda_notify_on_transaccional | source=confirmacion_desacoplada"
+        entity_id: climate.0200009211c7_climate
   mode: single
 - id: '1769981375283'
   alias: AC - Iniciar bloqueo 2h al apagarse
@@ -4961,7 +5042,7 @@
       auto_transition_origin_evidence_active: '{{ auto_flags_active or auto_origin_detected }}'
       auto_transition_recent: '{{ auto_transition_token_recent and auto_transition_origin_evidence_active }}'
       auto_timestamp_recent: '{{ auto_reciente }}'
-      auto_evidence_strong: '{{ auto_flags_active or auto_transition_token_recent or auto_timestamp_recent }}'
+      auto_evidence_strong: '{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}'
       auto_transition_active_strict: '{{ auto_evidence_strong }}'
       auto_recent_observed: '{{ auto_transition_active_strict or auto_timestamp_recent }}'
       auto_transition_active: '{{ auto_transition_active_strict }}'
@@ -5430,7 +5511,7 @@
       auto_transition_recent: '{{ auto_transition_token_recent and auto_transition_origin_evidence_active }}'
       auto_transition_active_strict: '{{ auto_flags_active or auto_transition_recent }}'
       auto_recent_observed: '{{ auto_timestamp_recent }}'
-      auto_evidence_strong: '{{ auto_flags_active or auto_transition_token_recent or auto_timestamp_recent }}'
+      auto_evidence_strong: '{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}'
       manual_on_auto_recent_compound: '{{ auto_transition_active_strict or auto_recent_observed }}'
       auto_transition_active: '{{ auto_transition_active_strict }}'
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
@@ -5563,7 +5644,7 @@
       post60_auto_transition_recent: '{{ post60_auto_transition_token_recent and post60_auto_transition_origin_evidence_active }}'
       post60_auto_transition_active_strict: '{{ post60_auto_flags_active or post60_auto_transition_recent }}'
       post60_auto_recent_observed: '{{ post60_auto_timestamp_recent }}'
-      post60_auto_evidence_strong: '{{ post60_auto_flags_active or post60_auto_transition_token_recent or post60_auto_timestamp_recent }}'
+      post60_auto_evidence_strong: '{{ post60_auto_flags_active or post60_auto_transition_recent or post60_auto_timestamp_recent }}'
       post60_manual_on_auto_recent_compound: '{{ post60_auto_transition_active_strict or post60_auto_recent_observed }}'
       post60_auto_transition_active: '{{ post60_auto_transition_active_strict }}'
       post60_daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"

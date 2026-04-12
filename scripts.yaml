@@ -40,6 +40,7 @@ ac_dda_notify_on_transaccional:
         role_local:
           "{{ notify_role if notify_role is defined and (notify_role | string | trim | lower) in ['primary', 'confirm']
           else 'primary' }}"
+        src_is_auto_on: "{{ src_local | lower == 'autoon' }}"
         duplicate_window_s: 10
         cycle_signature_local: "{{ cycle_signature_v2 | default('', true) | trim }}"
         last_signature_record:
@@ -77,7 +78,6 @@ ac_dda_notify_on_transaccional:
           "{{ cycle_signature_local != '' and ((not same_cycle_signature) or (incoming_priority | int(0)) > (last_priority | int(0)) or duplicate_but_resend) }}"
         signature_record_to_store: "{{ cycle_signature_local ~ '||' ~ role_local ~ '||' ~ (now_epoch | string) ~ '||0' }}"
         signature_record_skip_to_store: "{{ cycle_signature_local ~ '||' ~ last_role ~ '||' ~ (last_sent_epoch | string) ~ '||' ~ (now_epoch | string) }}"
-        src_is_auto_on: "{{ src_local | lower == 'autoon' }}"
         entity_mode_now: "{{ states(entity_local) | default('unknown', true) | lower }}"
         entity_is_cool: "{{ entity_mode_now == 'cool' }}"
         force_observable_exit: "{{ src_is_auto_on and entity_is_cool }}"
