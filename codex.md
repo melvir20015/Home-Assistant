@@ -163,6 +163,38 @@ Interpretación: reflejar preferencia del usuario en la dirección esperada para
 - El setpoint aprendido por contexto no debe retroceder por ruido o eventos ambiguos.
 - Si el usuario define un nuevo valor manual válido, este **reemplaza de inmediato** al valor contextual previo.
 
+### Correlación por trace_id en Manual ON
+
+Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación del evento final debe quedar **atada al mismo `trace_id`** que dispara el aprendizaje.
+
+#### Helpers de correlación
+- `input_text.ac_dda_last_manual_on_trace_confirmed`: guarda `trace_id=<id>` del último `Manual ON` **final validado**.
+- `input_text.ac_dda_last_manual_on_pending_signature`: firma corta de deduplicación temprana (`timestamp_evento|modo|origen`), usada antes de emitir notificación pendiente.
+
+#### Orden transaccional obligatorio (Manual ON)
+1. Detectar evento y aplicar deduplicación temprana por firma corta.
+2. Emitir **un solo** `Resultado=pendiente` por traza válida.
+3. Tras consolidación, escribir primero `manual_on_final_valid_*|trace_id=...` en `input_text.ac_dda_last_manual_event_type`.
+4. Escribir luego `input_text.ac_dda_last_manual_on_trace_confirmed` con el mismo `trace_id`.
+5. Finalmente escribir `input_datetime.ac_dda_last_manual_on_ts` para disparar el learning.
+
+#### Regla de validación en Learning ON
+- `manual_event_confirmed` solo es verdadero si:
+  - el tipo final es `manual_on_final_valid_*`, y
+  - el `trace_id` del tipo final coincide exactamente con `input_text.ac_dda_last_manual_on_trace_confirmed`.
+
+#### Reglas anti-colisión
+- Si una segunda corrida detecta la misma firma corta, se descarta como duplicado antes de `Resultado=pendiente`.
+- El aprendizaje ignora eventos con `trace_id` ausente o desalineado (`manual_trace_not_confirmed` / `manual_trace_mismatch`).
+- Política diurna vigente: dentro de `07:01–21:59` aprende; fuera de ese rango clasifica `out_of_scope_daytime_main`.
+
+#### Secuencia esperada (ejemplo)
+- `AC - Manual ON guard`: detecta `trace_id=20260412101530-321`, valida guardas diurnas, emite pendiente único.
+- Consolidación final: escribe `manual_on_final_valid_contract_v1|trace_id=20260412101530-321`.
+- Confirma correlación: escribe `input_text.ac_dda_last_manual_on_trace_confirmed = trace_id=20260412101530-321`.
+- Dispara learning: actualiza `input_datetime.ac_dda_last_manual_on_ts`.
+- `AC - Learning - Manual ON feedback`: aplica `Resultado=aplicado` o `Resultado=ignorado` con razón justificada, sin usar estados globales no correlacionados.
+
 ---
 
 ## 7. Flujo manual power (`off -> fan_only`)

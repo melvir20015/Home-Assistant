@@ -129,6 +129,14 @@ ac_dda_learning_last_manual_on_signature:
   name: "AC DDA Learning Last Manual ON Signature"
   max: 140
 
+ac_dda_last_manual_on_pending_signature:
+  name: "AC DDA Last Manual ON Pending Signature"
+  max: 120
+
+ac_dda_last_manual_on_trace_confirmed:
+  name: "AC DDA Last Manual ON Trace Confirmed"
+  max: 80
+
 ac_dda_legacy_helper_map:
   name: "AC DDA Legacy Compatibility Map"
   max: 255
