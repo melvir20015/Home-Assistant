@@ -1426,24 +1426,24 @@
         timeout: 00:00:30
         continue_on_timeout: true
       - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
-          sequence:
-          - target:
-              entity_id: input_boolean.ac_dda_on_por_automatizacion
-            service: input_boolean.turn_off
-          - service: logbook.log
-            data:
-              name: AC Auto Trace
-              message: transition_closed=ok | hvac_confirmed=cool
-              entity_id: climate.0200009211c7_climate
-        default:
-        - service: logbook.log
-          data:
-            name: AC Auto Trace
-            message: transition_closed=timeout | hvac_expected=cool
-            entity_id: climate.0200009211c7_climate
+          - conditions:
+              - condition: template
+                value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+            sequence:
+              - target:
+                  entity_id: input_boolean.ac_dda_on_por_automatizacion
+                service: input_boolean.turn_off
+              - service: logbook.log
+                data:
+                  name: AC Auto Trace
+                  message: transition_closed=ok | hvac_confirmed=cool
+                  entity_id: climate.0200009211c7_climate
+          default:
+            - service: logbook.log
+              data:
+                name: AC Auto Trace
+                message: transition_closed=timeout | hvac_expected=cool
+                entity_id: climate.0200009211c7_climate
     default: []
   mode: restart
   variables:
@@ -2206,24 +2206,24 @@
         timeout: 00:00:30
         continue_on_timeout: true
       - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
-          sequence:
-          - target:
-              entity_id: input_boolean.ac_dda_on_por_automatizacion
-            service: input_boolean.turn_off
-          - service: logbook.log
-            data:
-              name: AC Auto Trace
-              message: transition_closed=ok | hvac_confirmed=cool
-              entity_id: climate.0200009211c7_climate
-        default:
-        - service: logbook.log
-          data:
-            name: AC Auto Trace
-            message: transition_closed=timeout | hvac_expected=cool
-            entity_id: climate.0200009211c7_climate
+          - conditions:
+              - condition: template
+                value_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
+            sequence:
+              - target:
+                  entity_id: input_boolean.ac_dda_on_por_automatizacion
+                service: input_boolean.turn_off
+              - service: logbook.log
+                data:
+                  name: AC Auto Trace
+                  message: transition_closed=ok | hvac_confirmed=cool
+                  entity_id: climate.0200009211c7_climate
+          default:
+            - service: logbook.log
+              data:
+                name: AC Auto Trace
+                message: transition_closed=timeout | hvac_expected=cool
+                entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_off
