@@ -5031,8 +5031,8 @@
       within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}'
       last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | trim }}'
       manual_event_trace_id: "{% set parsed = last_manual_event_type_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
-      trace_id_matches_confirmed: '{{ trace_id != ''trace_missing'' and manual_event_trace_id == trace_id }}'
-      manual_event_confirmed: '{{ (last_manual_event_type_raw.startswith(''manual_on_final_valid_contract_v1'') or last_manual_event_type_raw.startswith(''manual_on_final_valid_presence_gap_contract_v1'')) and trace_id_matches_confirmed }}'
+      trace_id_matches_confirmed: '{% if trace_id == ''trace_missing'' %}{{ manual_event_trace_id != ''trace_missing'' }}{% else %}{{ manual_event_trace_id == trace_id }}{% endif %}'
+      manual_event_confirmed: '{{ last_manual_event_type_raw.startswith(''manual_on_final_valid_contract_v1'') or last_manual_event_type_raw.startswith(''manual_on_final_valid_presence_gap_contract_v1'') }}'
       origin_is_manual_on: '{{ last_change_origin == ''manual_on'' }}'
       transition_guard_window_s: 180
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
@@ -5052,7 +5052,7 @@
       branch_scope_ok: '{{ states(''input_text.ac_last_auto_branch'') | trim == ''cool_normal_on'' }}'
       context_scope_ok: '{{ contract_context_key not in ['''', ''unknown'', ''unavailable'', ''none''] }}'
       learning_day_scope_ok: '{{ daytime_scope_ok }}'
-      valid_feedback: '{{ manual_event_confirmed and learning_day_scope_ok }}'
+      valid_feedback: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required and trace_id_matches_confirmed }}'
       manual_on_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
@@ -5086,12 +5086,12 @@
       threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
-      ignored_reason_code: "{% if not learning_day_scope_ok %}out_of_scope_daytime_main{% elif duplicate_event %}duplicate_event{% elif trace_id == 'trace_missing' %}manual_trace_not_confirmed{% elif not trace_id_matches_confirmed %}manual_trace_mismatch{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}unknown_discard{% endif %}"
+      ignored_reason_code: "{% if not learning_day_scope_ok %}out_of_scope_daytime_main{% elif duplicate_event %}duplicate_event{% elif not final_mode_cool_required %}final_mode_not_cool{% elif not trace_id_matches_confirmed %}manual_trace_mismatch{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}unknown_discard{% endif %}"
       reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'auto_reciente' %}auto{% elif ignored_reason_code == 'origen_auto' %}origen{% elif ignored_reason_code == 'evidencia_manual_insuficiente' %}evidencia{% else %}descartado{% endif %}"
-      ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_event_not_confirmed{% elif ignored_reason_code == 'manual_trace_not_confirmed' %}manual_trace_not_confirmed{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_trace_mismatch{% elif ignored_reason_code == 'duplicate_event' %}duplicate_event{% else %}unknown_discard{% endif %}"
+      ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% elif ignored_reason_code == 'final_mode_not_cool' %}final_mode_not_cool{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_event_not_confirmed{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_trace_mismatch{% elif ignored_reason_code == 'duplicate_event' %}duplicate_event{% else %}unknown_discard{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning else 0.0 }}'
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
-      learning_type: "{% if apply_learning %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code == 'manual_trace_not_confirmed' %}manual_on_ignored_trace_missing_v1{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_on_ignored_trace_mismatch_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
+      learning_type: "{% if apply_learning %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_on_ignored_trace_mismatch_v1{% elif ignored_reason_code == 'final_mode_not_cool' %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -5151,7 +5151,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ ignored_reason_code in [''out_of_scope_daytime_main'', ''manual_event_not_confirmed'', ''manual_trace_not_confirmed'', ''manual_trace_mismatch''] }}'
+        value_template: '{{ ignored_reason_code in [''out_of_scope_daytime_main'', ''final_mode_not_cool'', ''manual_event_not_confirmed'', ''manual_trace_mismatch''] }}'
       sequence:
       - action: logbook.log
         data:
