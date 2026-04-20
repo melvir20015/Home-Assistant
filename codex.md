@@ -989,3 +989,13 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
   - `Resultado=ignorado`
   - `Razón=<reason_code>`
   - `Trace=<trace_id>`
+
+## 30. Regla operativa de tercera notificación obligatoria en Learning ON (2026-04-20)
+
+### Regla obligatoria
+- **La tercera notificación es obligatoria y no depende del éxito de escrituras auxiliares.**
+
+### Alcance mínimo
+- Aplica a `AC - Learning - Manual ON feedback`.
+- La notificación final `AC Learning ON` debe ejecutarse tanto en resultado `aplicado` como `ignorado`.
+- Fallas no críticas en escrituras de helpers/contexto/contrato deben quedar en trazabilidad controlada (`continue_on_error` + logbook) y no bloquear la tercera notificación.
