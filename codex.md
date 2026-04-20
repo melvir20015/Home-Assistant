@@ -757,16 +757,16 @@ Se consolidan hitos con mensajes cortos y consistentes:
 - Mantener trazabilidad completa: **todo evento candidato** debe terminar en una salida observable (logbook + notificación de estado).
 
 ### Triggers permitidos para abrir guard
-1. **`off_direct`**  
-   - `from: off`  
-   - `to: [cool, heat, fan_only]`  
+1. **`off_direct`**
+   - `from: off`
+   - `to: [cool, heat, fan_only]`
    - `for: 2s`
-2. **`cool_any`**  
-   - `to: cool` (sin `from` rígido)  
+2. **`cool_any`**
+   - `to: cool` (sin `from` rígido)
    - `for: 2s`
-3. **`bridge_unknown_unavailable`**  
-   - `from: [unknown, unavailable]`  
-   - `to: [cool, heat, fan_only]`  
+3. **`bridge_unknown_unavailable`**
+   - `from: [unknown, unavailable]`
+   - `to: [cool, heat, fan_only]`
    - `for: 2s`
 
 ### Ventana de arranque manual (validación obligatoria)
@@ -792,25 +792,25 @@ Se consolidan hitos con mensajes cortos y consistentes:
 - Si no hay contexto previo usable, se usa bucket base (`ctx_default:presencia`) y se aprende.
 
 ### Matriz de observabilidad obligatoria (no perder trazabilidad)
-1. **Inicio de guard**  
+1. **Inicio de guard**
    - Logbook: `hito=manual_on_detected` (siempre).
-2. **Descartes tempranos (guard/startup)**  
+2. **Descartes tempranos (guard/startup)**
    - Logbook con razón específica.
    - Notificación móvil `Resultado=ignorado` + `Razón=<reason_code>`.
-3. **Evento válido en evaluación**  
+3. **Evento válido en evaluación**
    - Notificación móvil `Resultado=pendiente` (validando/consolidación).
-4. **Cierre del flujo**  
+4. **Cierre del flujo**
    - Si aplica aprendizaje/flujo válido: notificación final de continuidad (`pendiente` hacia learning/aplicación).
    - Si no aplica: notificación `ignorado` con motivo contractual.
 
 ### Casos de referencia (directos + puente)
-- **Caso A — Directo válido:** `off -> cool`  
+- **Caso A — Directo válido:** `off -> cool`
   - Debe emitir: `manual_on_detected` + `pendiente` + cierre final trazable.
-- **Caso B — Puente por disponibilidad:** `off -> unavailable -> cool` o `off -> unknown -> cool`  
+- **Caso B — Puente por disponibilidad:** `off -> unavailable -> cool` o `off -> unknown -> cool`
   - Debe tratarse como `off` efectivo si entra en ventana.
-- **Caso C — Carrera mecánica:** `off -> fan_only -> cool`  
+- **Caso C — Carrera mecánica:** `off -> fan_only -> cool`
   - Debe consolidar 30s; si termina en `cool`, válido.
-- **Caso D — Ruido no válido:** `heat -> cool` sin evidencia reciente de `off`  
+- **Caso D — Ruido no válido:** `heat -> cool` sin evidencia reciente de `off`
   - Debe descartar con razón explícita (`sin_off_efectivo_previo`) y notificación.
 
 ## 23. Regla final de no contaminación Manual ON cuando el origen fue AUTO (2026-04-09)
@@ -1023,3 +1023,56 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
 - Puede habilitarse una automatización temporal de diagnóstico sobre `input_datetime.ac_dda_last_manual_on_ts` para confirmar disparo inmediato con:
   - `AC Learning ON Triggered Trace=<trace_helper_actual>`
 - Tras validar en producción/lab, debe permanecer desactivada para evitar ruido operativo.
+
+## 32. Hard learning por anclaje en Manual ON cool (2026-04-20)
+
+### Regla formal
+Se activa **hard learning** únicamente cuando en `AC - Learning - Manual ON feedback` se cumple todo:
+1. Evento Manual ON confirmado transaccionalmente por snapshot + `trace_id`.
+2. Horario diurno en alcance.
+3. Modo final consolidado `cool`.
+4. `Tin_promedio_actual` está fuera del rango contractual vigente `[Off, On]`.
+5. `Tin_promedio_actual` también queda fuera del rango esperado tras ajuste normal incremental `(-0.25)`.
+
+Si no se cumple la condición dura, se aplica regla normal incremental (`learning_step=-0.25`).
+
+### Fórmulas hard anchor
+- `new_on = Tin_promedio_actual`
+- `new_off = Tin_promedio_actual - 0.5`
+
+Aplicar clamps de seguridad:
+- `off_final = clamp(new_off, 22.0, 25.7)`
+- `on_final = min(new_on, 26.2)`
+- garantizar `on_final > off_final` (ajuste mínimo técnico de separación cuando aplique).
+
+Se persiste en:
+- `input_number.ac_dda_cool_cycle_contract_on`
+- `input_number.ac_dda_cool_cycle_contract_off`
+- `input_text.ac_dda_cool_cycle_contract_reason` con `reason_code=manual_on_hard_anchor_applied`.
+
+### Precedencia obligatoria
+1. Validación transaccional/snapshot (`trace_id`, `event_type`, consistencia).
+2. Descarte por horario o modo final distinto de `cool`.
+3. Evaluación de hard learning.
+4. Si hard no aplica, aprendizaje normal incremental.
+
+### Códigos de razón y tipo (salida final)
+- `manual_on_normal_applied` (aplicado normal).
+- `manual_on_hard_anchor_applied` (aplicado hard).
+- `out_of_scope_daytime_main`, `final_mode_not_cool`, `manual_trace_mismatch`, etc. (ignorado).
+- `learning_on_internal_error` (error_controlado con finalización forzada).
+
+### Ejemplos numéricos
+- **Caso normal:** contrato `Off/On=24.2/24.8`, `Tin=24.5`
+  - Está dentro del contrato → no hard.
+  - Se evalúa regla normal `-0.25` en bucket/contexto.
+- **Caso hard (anclaje):** `Tin=24.5` fuera de contrato y también fuera del rango normal ajustado
+  - `new_on=24.5`, `new_off=24.0`
+  - Resultado: `Off/On=24.0/24.5` (si no requiere clamp adicional).
+
+### Matriz mínima de regresión operativa
+1. **Caso A**: Manual ON válido dentro de rango → `Resultado=aplicado`, `hard=no`.
+2. **Caso B**: Manual ON cool fuera de rango actual y normal → `Resultado=aplicado`, `hard=yes`, `On=Tin_actual`.
+3. **Caso C**: fallo controlado en helper dinámico → `Resultado=error_controlado` o `aplicado` con fallback, siempre con notificación final.
+4. **Caso D**: nunca truncar en dos notificaciones; secuencia observable mínima:
+   - `pendiente` → `capturado` → `learning_on_started` → `notificación final`.
