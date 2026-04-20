@@ -5148,11 +5148,11 @@
       ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% elif ignored_reason_code == 'final_mode_not_cool' %}final_mode_not_cool{% elif ignored_reason_code == 'manual_snapshot_missing' %}manual_snapshot_missing{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_event_not_confirmed{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_trace_mismatch{% elif ignored_reason_code == 'duplicate_event' %}duplicate_event{% else %}unknown_discard{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning_normal else 0.0 }}'
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
-      learning_reason_code: "{% if apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% else %}{{ ignored_reason_code }}{% endif %}"
       learning_type: "{% if apply_learning_hard %}manual_on_learning_hard_anchor_contract_v1{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'manual_snapshot_missing' %}manual_on_learning_ignored_manual_snapshot_missing_contract_v1{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_on_ignored_trace_mismatch_v1{% elif ignored_reason_code == 'final_mode_not_cool' %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
       apply_learning_pre: '{{ ''true'' if apply_learning else ''false'' }}'
       learning_internal_error: '{{ apply_learning and (context_after is none or cool_on_final is none or cool_off_final is none) }}'
       controlled_error_detected: '{{ learning_internal_error or (apply_learning_normal and (not dynamic_delta_helper_exists) and (not fallback_delta_helper_exists)) }}'
+      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% else %}{{ ignored_reason_code }}{% endif %}"
       final_result_label: "{% if controlled_error_detected %}error_controlado{% elif apply_learning %}aplicado{% else %}ignorado{% endif %}"
       final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal %}manual_on_normal_applied{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% else %}{{ ignored_reason_label }}{% endif %}"
       hard_flag: '{{ ''yes'' if apply_learning_hard else ''no'' }}'
@@ -5169,18 +5169,42 @@
             value_template: '{{ dynamic_context_helper_exists }}'
           sequence:
           - continue_on_error: true
+            action: logbook.log
+            data:
+              name: AC Learning Manual ON
+              message: '{{ contract_version }} | hito=learning_on_helper_write_before | helper={{ contract_context_helper }} | prev={{ context_prev_raw }} | after={{ ''%.2f'' | format(context_after | float) if context_after is not none else ''none'' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
+              entity_id: climate.0200009211c7_climate
+          - continue_on_error: true
             target:
               entity_id: '{{ contract_context_helper }}'
             data:
               value: '{{ context_after }}'
             service: input_number.set_value
+          - continue_on_error: true
+            action: logbook.log
+            data:
+              name: AC Learning Manual ON
+              message: '{{ contract_version }} | hito=learning_on_helper_write_after | helper={{ contract_context_helper }} | prev={{ context_prev_raw }} | after={{ states(contract_context_helper) }} | expected_after={{ ''%.2f'' | format(context_after | float) if context_after is not none else ''none'' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
+              entity_id: climate.0200009211c7_climate
         default:
+        - continue_on_error: true
+          action: logbook.log
+          data:
+            name: AC Learning Manual ON
+            message: '{{ contract_version }} | hito=learning_on_helper_write_before | helper={{ fallback_learning_helper }} | prev={{ states(fallback_learning_helper) }} | after={{ ''%.2f'' | format(context_after | float) if context_after is not none else ''none'' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
+            entity_id: climate.0200009211c7_climate
         - continue_on_error: true
           target:
             entity_id: '{{ fallback_learning_helper }}'
           data:
             value: '{{ context_after }}'
           service: input_number.set_value
+        - continue_on_error: true
+          action: logbook.log
+          data:
+            name: AC Learning Manual ON
+            message: '{{ contract_version }} | hito=learning_on_helper_write_after | helper={{ fallback_learning_helper }} | prev={{ context_prev_raw }} | after={{ states(fallback_learning_helper) }} | expected_after={{ ''%.2f'' | format(context_after | float) if context_after is not none else ''none'' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
+            entity_id: climate.0200009211c7_climate
         - continue_on_error: true
           action: logbook.log
           data:
@@ -5193,21 +5217,45 @@
             value_template: '{{ dynamic_delta_helper_exists }}'
           sequence:
           - continue_on_error: true
+            action: logbook.log
+            data:
+              name: AC Learning Manual ON
+              message: '{{ contract_version }} | hito=learning_on_helper_write_before | helper={{ contract_context_delta_on_helper }} | prev={{ ''%.2f'' | format(contract_context_delta_on | float) }} | after={{ ''%.2f'' | format(contract_context_delta_on_after | float) if contract_context_delta_on_after is not none else ''none'' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
+              entity_id: climate.0200009211c7_climate
+          - continue_on_error: true
             target:
               entity_id: '{{ contract_context_delta_on_helper }}'
             data:
               value: '{{ contract_context_delta_on_after }}'
             service: input_number.set_value
+          - continue_on_error: true
+            action: logbook.log
+            data:
+              name: AC Learning Manual ON
+              message: '{{ contract_version }} | hito=learning_on_helper_write_after | helper={{ contract_context_delta_on_helper }} | prev={{ ''%.2f'' | format(contract_context_delta_on | float) }} | after={{ states(contract_context_delta_on_helper) }} | expected_after={{ ''%.2f'' | format(contract_context_delta_on_after | float) if contract_context_delta_on_after is not none else ''none'' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
+              entity_id: climate.0200009211c7_climate
         - conditions:
           - condition: template
             value_template: '{{ fallback_delta_helper_exists }}'
           sequence:
+          - continue_on_error: true
+            action: logbook.log
+            data:
+              name: AC Learning Manual ON
+              message: '{{ contract_version }} | hito=learning_on_helper_write_before | helper={{ fallback_delta_helper }} | prev={{ states(fallback_delta_helper) }} | after={{ ''%.2f'' | format(contract_context_delta_on_after | float) if contract_context_delta_on_after is not none else ''none'' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
+              entity_id: climate.0200009211c7_climate
           - continue_on_error: true
             target:
               entity_id: '{{ fallback_delta_helper }}'
             data:
               value: '{{ contract_context_delta_on_after }}'
             service: input_number.set_value
+          - continue_on_error: true
+            action: logbook.log
+            data:
+              name: AC Learning Manual ON
+              message: '{{ contract_version }} | hito=learning_on_helper_write_after | helper={{ fallback_delta_helper }} | prev={{ states(fallback_delta_helper) }} | after={{ states(fallback_delta_helper) }} | expected_after={{ ''%.2f'' | format(contract_context_delta_on_after | float) if contract_context_delta_on_after is not none else ''none'' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
+              entity_id: climate.0200009211c7_climate
           - continue_on_error: true
             action: logbook.log
             data:
@@ -5356,7 +5404,7 @@
         action: logbook.log
         data:
           name: AC Learning Manual ON
-          message: '{{ contract_version }} | hito=learning_on_internal_error | reason_code=learning_internal_error | Trace={{ trace_id }}'
+          message: '{{ contract_version }} | hito=learning_on_internal_error | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}'
           entity_id: climate.0200009211c7_climate
       - continue_on_error: true
         action: logbook.log
