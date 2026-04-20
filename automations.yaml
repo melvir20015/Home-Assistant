@@ -5044,6 +5044,9 @@
       snapshot_event_type: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('event_type=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'event_missing' }}"
       snapshot_final_mode: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('final_mode=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'mode_missing' }}"
       snapshot_ts: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('ts=(.+)$', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'ts_missing' }}"
+      snapshot_ts_epoch: "{% if snapshot_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(snapshot_ts, default=none) }}{% endif %}"
+      snapshot_age_min: "{% if snapshot_ts_epoch is none %}99999{% else %}{{ ((as_timestamp(now()) - (snapshot_ts_epoch | float)) / 60) | round(1) }}{% endif %}"
+      snapshot_recent: '{{ snapshot_ts_epoch is not none and (snapshot_age_min | float(99999)) >= 0 and (snapshot_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
       snapshot_structure_ok: '{{ manual_on_snapshot_raw | length > 0 and snapshot_trace_id != ''trace_missing'' and snapshot_event_type != ''event_missing'' and snapshot_final_mode != ''mode_missing'' and snapshot_ts != ''ts_missing'' }}'
       snapshot_trace_matches_confirmed: '{{ snapshot_structure_ok and trace_id != ''trace_missing'' and snapshot_trace_id == trace_id }}'
       snapshot_event_type_ok: '{{ snapshot_event_type in [''manual_on_final_valid_contract_v1'', ''manual_on_final_valid_presence_gap_contract_v1''] }}'
@@ -5091,7 +5094,14 @@
       branch_scope_ok: '{{ states(''input_text.ac_last_auto_branch'') | trim == ''cool_normal_on'' }}'
       context_scope_ok: '{{ contract_context_key not in ['''', ''unknown'', ''unavailable'', ''none''] }}'
       learning_day_scope_ok: '{{ daytime_scope_ok }}'
-      valid_feedback: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
+      last_manual_on_ts_raw: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') | default('''', true) | trim }}'
+      last_manual_on_ts_epoch: "{% if last_manual_on_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(last_manual_on_ts_raw, default=none) }}{% endif %}"
+      last_manual_on_age_min: "{% if last_manual_on_ts_epoch is none %}99999{% else %}{{ ((as_timestamp(now()) - (last_manual_on_ts_epoch | float)) / 60) | round(1) }}{% endif %}"
+      manual_on_ts_recent: '{{ last_manual_on_ts_epoch is not none and (last_manual_on_age_min | float(99999)) >= 0 and (last_manual_on_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
+      manual_recent_evidence: '{{ snapshot_recent or manual_on_ts_recent }}'
+      manual_on_force_learn: '{{ manual_recent_evidence and learning_day_scope_ok and final_mode_cool_required }}'
+      valid_feedback_strict: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
+      valid_feedback: '{{ manual_on_force_learn or valid_feedback_strict }}'
       manual_on_event_signature: '{{ snapshot_ts ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ trace_id }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
@@ -5102,7 +5112,7 @@
       fallback_learning_helper: input_number.ac_dda_cool_off_learned
       fallback_delta_helper: input_number.ac_dda_cool_delta_on_bucket_ctx_default_presencia
       fallback_delta_helper_exists: '{{ (states.input_number | selectattr(''entity_id'', ''eq'', fallback_delta_helper) | list | count) > 0 }}'
-      learning_apply_with_fallback: '{{ valid_feedback and (not duplicate_event) }}'
+      learning_apply_with_fallback: '{{ valid_feedback and (manual_on_force_learn or (not duplicate_event)) }}'
       learning_step: -0.25
       context_after_normal: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
       tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
@@ -5122,7 +5132,7 @@
       normal_on_after: "{% if context_after_normal is none %}{{ none }}{% else %}{{ [[((context_after_normal | float) + (normal_hysteresis_after | float)), 26.2] | min, ((context_after_normal | float) + 0.35)] | max | round(2) }}{% endif %}"
       tin_outside_current_contract: '{{ tin is not none and contract_cycle_valid and ((tin | float) < (contract_cycle_off | float) or (tin | float) > (contract_cycle_on | float)) }}'
       tin_outside_normal_adjusted: '{{ tin is not none and normal_on_after is not none and context_after_normal is not none and ((tin | float) < (context_after_normal | float) or (tin | float) > (normal_on_after | float)) }}'
-      apply_learning_base: '{{ valid_feedback and (not duplicate_event) }}'
+      apply_learning_base: '{{ valid_feedback and (manual_on_force_learn or (not duplicate_event)) }}'
       hard_learning_applicable: '{{ apply_learning_base and final_mode_cool_required and tin_outside_current_contract and tin_outside_normal_adjusted }}'
       hard_new_on_raw: '{{ tin | round(2) if tin is not none else none }}'
       hard_new_off_raw: '{{ ((tin | float) - 0.5) | round(2) if tin is not none else none }}'
@@ -5148,18 +5158,19 @@
       threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
-      ignored_reason_code: "{% if not learning_day_scope_ok %}out_of_scope_daytime_main{% elif duplicate_event %}duplicate_event{% elif not final_mode_cool_required %}final_mode_not_cool{% elif not snapshot_structure_ok %}manual_snapshot_missing{% elif not snapshot_trace_matches_confirmed %}manual_trace_mismatch{% elif not snapshot_event_type_ok %}manual_event_not_confirmed{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}unknown_discard{% endif %}"
-      reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'auto_reciente' %}auto{% elif ignored_reason_code == 'origen_auto' %}origen{% elif ignored_reason_code == 'evidencia_manual_insuficiente' %}evidencia{% else %}descartado{% endif %}"
-      ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% elif ignored_reason_code == 'final_mode_not_cool' %}final_mode_not_cool{% elif ignored_reason_code == 'manual_snapshot_missing' %}manual_snapshot_missing{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_event_not_confirmed{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_trace_mismatch{% elif ignored_reason_code == 'duplicate_event' %}duplicate_event{% else %}unknown_discard{% endif %}"
+      ignored_reason_code: "{% if not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif manual_on_force_learn and duplicate_event %}warning_duplicate_event{% elif manual_on_force_learn and not snapshot_structure_ok %}warning_manual_snapshot_missing{% elif manual_on_force_learn and not snapshot_trace_matches_confirmed %}warning_manual_trace_mismatch{% elif manual_on_force_learn and not snapshot_event_type_ok %}warning_manual_event_not_confirmed{% elif manual_on_force_learn and not manual_event_confirmed %}warning_manual_event_not_confirmed{% elif duplicate_event %}duplicate_event{% elif not snapshot_structure_ok %}manual_snapshot_missing{% elif not snapshot_trace_matches_confirmed %}manual_trace_mismatch{% elif not snapshot_event_type_ok %}manual_event_not_confirmed{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}unknown_discard{% endif %}"
+      reason_short: "{% if ignored_reason_code in ['duplicate_event', 'warning_duplicate_event'] %}dup{% elif ignored_reason_code == 'auto_reciente' %}auto{% elif ignored_reason_code == 'origen_auto' %}origen{% elif ignored_reason_code in ['manual_trace_mismatch','warning_manual_trace_mismatch'] %}trace{% elif ignored_reason_code in ['manual_event_not_confirmed','warning_manual_event_not_confirmed'] %}event{% elif ignored_reason_code in ['manual_snapshot_missing','warning_manual_snapshot_missing'] %}snap{% elif ignored_reason_code == 'evidencia_manual_insuficiente' %}evidencia{% else %}descartado{% endif %}"
+      ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% elif ignored_reason_code == 'final_mode_not_cool' %}final_mode_not_cool{% elif ignored_reason_code == 'manual_snapshot_missing' %}manual_snapshot_missing{% elif ignored_reason_code == 'warning_manual_snapshot_missing' %}warning_manual_snapshot_missing{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_event_not_confirmed{% elif ignored_reason_code == 'warning_manual_event_not_confirmed' %}warning_manual_event_not_confirmed{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_trace_mismatch{% elif ignored_reason_code == 'warning_manual_trace_mismatch' %}warning_manual_trace_mismatch{% elif ignored_reason_code == 'duplicate_event' %}duplicate_event{% elif ignored_reason_code == 'warning_duplicate_event' %}warning_duplicate_event{% else %}unknown_discard{% endif %}"
       delta_learning: '{{ (learning_step | float) if apply_learning_normal else 0.0 }}'
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
-      learning_type: "{% if apply_learning_hard %}manual_on_learning_hard_anchor_contract_v1{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'manual_snapshot_missing' %}manual_on_learning_ignored_manual_snapshot_missing_contract_v1{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_on_ignored_trace_mismatch_v1{% elif ignored_reason_code == 'final_mode_not_cool' %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
+      learning_type: "{% if apply_learning_hard and manual_on_force_learn %}manual_on_learning_hard_anchor_force_learn_contract_v1{% elif apply_learning_hard %}manual_on_learning_hard_anchor_contract_v1{% elif apply_learning_normal and manual_on_force_learn and not dynamic_helpers_ready %}manual_on_learning_applied_force_learn_fallback_bucket_missing_v1{% elif apply_learning_normal and manual_on_force_learn %}manual_on_learning_applied_force_learn_contract_v1{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code in ['duplicate_event','warning_duplicate_event'] %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code in ['manual_snapshot_missing','warning_manual_snapshot_missing'] %}manual_on_learning_ignored_manual_snapshot_missing_contract_v1{% elif ignored_reason_code in ['manual_event_not_confirmed','warning_manual_event_not_confirmed'] %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code in ['manual_trace_mismatch','warning_manual_trace_mismatch'] %}manual_on_ignored_trace_mismatch_v1{% elif ignored_reason_code == 'final_mode_not_cool' %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
       apply_learning_pre: '{{ ''true'' if apply_learning else ''false'' }}'
       learning_internal_error: '{{ apply_learning and (context_after is none or cool_on_final is none or cool_off_final is none) }}'
       controlled_error_detected: '{{ learning_internal_error or (apply_learning_normal and (not dynamic_delta_helper_exists) and (not fallback_delta_helper_exists)) }}'
       learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% else %}{{ ignored_reason_code }}{% endif %}"
       final_result_label: "{% if controlled_error_detected %}error_controlado{% elif apply_learning %}aplicado{% else %}ignorado{% endif %}"
-      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal %}manual_on_normal_applied{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% else %}{{ ignored_reason_label }}{% endif %}"
+      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and manual_on_force_learn %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and manual_on_force_learn %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% else %}{{ ignored_reason_label }}{% endif %}"
+      policy_mode: '{{ ''force_learn'' if manual_on_force_learn else ''strict'' }}'
       hard_flag: '{{ ''yes'' if apply_learning_hard else ''no'' }}'
       ctxoff_notify: '{{ ''%.2f'' | format(context_after | float) if apply_learning else ''n/a'' }}'
       hyson_notify: '{{ ''%.2f'' | format(contract_context_delta_on_after | float) if apply_learning_normal else ''n/a'' }}'
@@ -5326,7 +5337,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ ignored_reason_code in [''out_of_scope_daytime_main'', ''final_mode_not_cool'', ''manual_snapshot_missing'', ''manual_event_not_confirmed'', ''manual_trace_mismatch''] }}'
+        value_template: '{{ ignored_reason_code in [''out_of_scope_daytime_main'', ''final_mode_not_cool'', ''manual_snapshot_missing'', ''manual_event_not_confirmed'', ''manual_trace_mismatch'', ''warning_manual_snapshot_missing'', ''warning_manual_event_not_confirmed'', ''warning_manual_trace_mismatch'', ''warning_duplicate_event''] }}'
       sequence:
       - action: logbook.log
         continue_on_error: true
@@ -5383,23 +5394,17 @@
       name: AC Learning Manual ON
       message: '{{ contract_version }} | hito=learning_on_pre_notify_ok | Trace={{ trace_id }} | Resultado={{ final_result_label }} | Razón={{ final_reason_label }}'
       entity_id: climate.0200009211c7_climate
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ true }}'
-      sequence:
-      - continue_on_error: true
-        service: notify.mobile_app_samsung_s24
-        data:
-          title: AC Learning ON
-          message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label }} Razón={{ final_reason_label }} Trace={{ trace_id }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag }}'
-      - continue_on_error: true
-        action: logbook.log
-        data:
-          name: AC Learning Manual ON
-          message: '{{ contract_version }} | hito=learning_on_notify_sent | Trace={{ trace_id }} | Resultado={{ final_result_label }} | Razón={{ final_reason_label }}'
-          entity_id: climate.0200009211c7_climate
-    default: []
+  - continue_on_error: true
+    service: notify.mobile_app_samsung_s24
+    data:
+      title: AC Learning ON
+      message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label }} Razón={{ final_reason_label }} policy={{ policy_mode }} Trace={{ trace_id }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag }}'
+  - continue_on_error: true
+    action: logbook.log
+    data:
+      name: AC Learning Manual ON
+      message: '{{ contract_version }} | hito=learning_on_notify_sent | Trace={{ trace_id }} | Resultado={{ final_result_label }} | Razón={{ final_reason_label }} | policy={{ policy_mode }}'
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -5940,7 +5945,7 @@
   - target:
       entity_id: input_text.ac_dda_last_manual_event_type
     data:
-      value: '{{ ''manual_on_detected_contract_v1|trace_id='' ~ trace_id }}'
+      value: '{{ ''manual_on_learning_candidate_contract_v1|trace_id='' ~ trace_id ~ ''|guard=manual_on'' }}'
     service: input_text.set_value
   - variables:
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'

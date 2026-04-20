@@ -187,6 +187,16 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
 - `input_text.ac_dda_last_manual_event_type` se conserva únicamente como telemetría auxiliar y no define confirmación transaccional.
 - **La notificación de aprendizaje es obligatoria y no depende de éxito de escrituras de aprendizaje** (incluyendo fallos controlados en helpers dinámicos).
 
+#### Política fuerte: aprendizaje forzado diurno con guardas suaves
+- Se agrega bandera `manual_on_force_learn` para priorizar aprendizaje cuando exista evidencia manual reciente.
+- `manual_on_force_learn = true` si:
+  - hay evidencia reciente por snapshot o por timestamp de `Manual ON`,
+  - la corrida está dentro de `07:01–21:59`,
+  - el modo final termina en `cool`.
+- Bajo `manual_on_force_learn=true`, señales de traza/snapshot (`manual_trace_mismatch`, `manual_event_not_confirmed`, `duplicate_event`) se tratan como **warning diagnóstico** (no descarte duro).
+- El aprendizaje forzado mantiene clamps de contrato térmico: `off` en `[22.0, 25.7]`, `on <= 26.2` y siempre `on > off`.
+- Si `manual_on_force_learn=false`, se mantiene la política estricta transaccional.
+
 #### Reglas anti-colisión
 - Si una segunda corrida detecta la misma firma corta, se descarta como duplicado antes de `Resultado=pendiente`.
 - El aprendizaje ignora eventos con `trace_id` ausente o desalineado (`manual_trace_not_confirmed` / `manual_trace_mismatch`).
@@ -199,6 +209,29 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
 - Persiste snapshot inmutable: `input_text.ac_dda_last_manual_on_snapshot = trace_id=20260412101530-321|event_type=manual_on_final_valid_contract_v1|final_mode=cool|ts=2026-04-12 10:16:01`.
 - Dispara learning: actualiza `input_datetime.ac_dda_last_manual_on_ts`.
 - `AC - Learning - Manual ON feedback`: aplica `Resultado=aplicado` o `Resultado=ignorado` con razón justificada, sin usar estados globales no correlacionados.
+
+#### Matriz mínima de decisión (Manual ON Learning)
+
+| Política | Resultado | Condición mínima | Comportamiento |
+|---|---|---|---|
+| `force_learn` | `aplicado` | evidencia manual reciente + diurno + `final_mode=cool` | aplica `-0.25` o hard-anchor con clamps |
+| `strict` | `aplicado` | snapshot confirmado por `trace_id` y guardas estrictas válidas | aplica aprendizaje normal/anchor |
+| `strict` | `ignorado` | no cumple guardas de alcance/modo/confirmación | emite razón explícita de descarte |
+| `force_learn` o `strict` | `error_controlado` | fallo interno controlado en pipeline | notificación final obligatoria |
+
+#### Ejemplos de trazabilidad esperada
+- Flujo aplicado:
+  1. `Resultado=pendiente`
+  2. `Resultado=capturado`
+  3. `AC Learning ON` con `Resultado=aplicado` y `policy=force_learn|strict`.
+- Flujo ignorado:
+  1. `Resultado=pendiente`
+  2. `Resultado=capturado`
+  3. `AC Learning ON` con `Resultado=ignorado`, razón y `policy=strict`.
+- Flujo con error controlado:
+  1. `Resultado=pendiente`
+  2. `Resultado=capturado`
+  3. `AC Learning ON` con `Resultado=error_controlado` y `policy=force_learn|strict`.
 
 ---
 
