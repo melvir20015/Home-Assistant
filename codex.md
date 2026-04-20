@@ -177,7 +177,7 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
 3. Tras consolidación, escribir primero `manual_on_final_valid_*|trace_id=...` en `input_text.ac_dda_last_manual_event_type`.
 4. Escribir luego `input_text.ac_dda_last_manual_on_trace_confirmed` con el mismo `trace_id`.
 5. Persistir snapshot inmutable en `input_text.ac_dda_last_manual_on_snapshot` con formato `trace_id=...|event_type=...|final_mode=...|ts=...`.
-6. Finalmente escribir `input_datetime.ac_dda_last_manual_on_ts` para disparar el learning.
+6. Finalmente escribir `input_datetime.ac_dda_last_manual_on_ts` para disparar el learning, usando el `ts` final consolidado (cierre validado del evento, no `detected_ts`).
 
 #### Regla transaccional de validación en Learning ON
 - **Learning ON confirma por snapshot correlacionado por `trace_id`, no por estado global mutable**.
@@ -946,7 +946,7 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
 ### Orden transaccional obligatorio para evitar carreras
 1. Guard Manual ON consolida 30 s.
 2. Se escribe primero `input_text.ac_dda_last_manual_event_type` en variante final válida (`manual_on_final_valid_*|trace_id=...`).
-3. Luego se escribe `input_datetime.ac_dda_last_manual_on_ts` para disparar `AC - Learning - Manual ON feedback`.
+3. Luego se escribe `input_datetime.ac_dda_last_manual_on_ts` para disparar `AC - Learning - Manual ON feedback`, con semántica estricta: **`last_manual_on_ts = instante de cierre validado`**.
 4. Learning ON lee el evento ya consolidado y evalúa aplicación en alcance diurno.
 
 ### Simplificación de Learning ON
@@ -965,3 +965,14 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
 - **Caso fuera de horario**
   - Guard: descarte `manual_guard_discard=out_of_scope_daytime_main` + push `Resultado=ignorado Razón=out_of_scope_daytime_main`.
   - Learning: `hito=learning_on_ignored` con `reason=out_of_scope_daytime_main`.
+
+
+## 28. Semántica de cierre para `last_manual_on_ts` (2026-04-20)
+
+### Definición exacta
+- `input_datetime.ac_dda_last_manual_on_ts` representa **exclusivamente** el instante de cierre validado del evento Manual ON (timestamp `ts` posterior a consolidación).
+- No debe usar el timestamp de detección inicial (`detected_ts`) porque ese valor ocurre antes del cierre transaccional.
+
+### Impacto operativo
+- Las firmas de deduplicación que consumen `input_datetime.ac_dda_last_manual_on_ts` deben reflejar cierre real del evento para evitar colisiones por detección temprana.
+- El orden observable esperado permanece: `pendiente` → `capturado` → `aplicado|ignorado` en notificaciones y logbook.

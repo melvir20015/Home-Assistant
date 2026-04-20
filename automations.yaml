@@ -5062,7 +5062,7 @@
       context_scope_ok: '{{ contract_context_key not in ['''', ''unknown'', ''unavailable'', ''none''] }}'
       learning_day_scope_ok: '{{ daytime_scope_ok }}'
       valid_feedback: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
-      manual_on_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ last_auto_action }}'
+      manual_on_event_signature: '{{ snapshot_ts ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ trace_id }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
       apply_learning: '{{ valid_feedback and (not duplicate_event) }}'
@@ -5632,6 +5632,11 @@
     data:
       value: '{{ manual_on_pending_signature }}'
     service: input_text.set_value
+  - action: logbook.log
+    data:
+      name: AC Manual ON
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_pending_notified | phase=pre_consolidation | detected_mode={{ detected_mode }}'
+      entity_id: climate.0200009211c7_climate
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Manual ON
@@ -5799,8 +5804,13 @@
   - target:
       entity_id: input_datetime.ac_dda_last_manual_on_ts
     data:
-      datetime: '{{ detected_ts }}'
+      datetime: '{{ ts }}'
     action: input_datetime.set_datetime
+  - action: logbook.log
+    data:
+      name: AC Manual ON
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_captured | ts={{ ts }} | event_type={{ manual_event_type_final }} | snapshot_ts={{ ts }}'
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
