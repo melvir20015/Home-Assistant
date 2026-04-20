@@ -176,12 +176,15 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
 2. Emitir **un solo** `Resultado=pendiente` por traza válida.
 3. Tras consolidación, escribir primero `manual_on_final_valid_*|trace_id=...` en `input_text.ac_dda_last_manual_event_type`.
 4. Escribir luego `input_text.ac_dda_last_manual_on_trace_confirmed` con el mismo `trace_id`.
-5. Finalmente escribir `input_datetime.ac_dda_last_manual_on_ts` para disparar el learning.
+5. Persistir snapshot inmutable en `input_text.ac_dda_last_manual_on_snapshot` con formato `trace_id=...|event_type=...|final_mode=...|ts=...`.
+6. Finalmente escribir `input_datetime.ac_dda_last_manual_on_ts` para disparar el learning.
 
-#### Regla de validación en Learning ON
-- `manual_event_confirmed` solo es verdadero si:
-  - el tipo final es `manual_on_final_valid_*`, y
-  - el `trace_id` del tipo final coincide exactamente con `input_text.ac_dda_last_manual_on_trace_confirmed`.
+#### Regla transaccional de validación en Learning ON
+- **Learning ON confirma por snapshot correlacionado por `trace_id`, no por estado global mutable**.
+- `manual_event_confirmed` solo es verdadero si el snapshot dedicado `input_text.ac_dda_last_manual_on_snapshot`:
+  - trae `trace_id` y coincide exactamente con `input_text.ac_dda_last_manual_on_trace_confirmed`,
+  - trae `event_type` permitido (`manual_on_final_valid_contract_v1` o `manual_on_final_valid_presence_gap_contract_v1`).
+- `input_text.ac_dda_last_manual_event_type` se conserva únicamente como telemetría auxiliar y no define confirmación transaccional.
 
 #### Reglas anti-colisión
 - Si una segunda corrida detecta la misma firma corta, se descarta como duplicado antes de `Resultado=pendiente`.
@@ -192,6 +195,7 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
 - `AC - Manual ON guard`: detecta `trace_id=20260412101530-321`, valida guardas diurnas, emite pendiente único.
 - Consolidación final: escribe `manual_on_final_valid_contract_v1|trace_id=20260412101530-321`.
 - Confirma correlación: escribe `input_text.ac_dda_last_manual_on_trace_confirmed = trace_id=20260412101530-321`.
+- Persiste snapshot inmutable: `input_text.ac_dda_last_manual_on_snapshot = trace_id=20260412101530-321|event_type=manual_on_final_valid_contract_v1|final_mode=cool|ts=2026-04-12 10:16:01`.
 - Dispara learning: actualiza `input_datetime.ac_dda_last_manual_on_ts`.
 - `AC - Learning - Manual ON feedback`: aplica `Resultado=aplicado` o `Resultado=ignorado` con razón justificada, sin usar estados globales no correlacionados.
 
