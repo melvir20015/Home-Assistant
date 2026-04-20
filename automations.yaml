@@ -5009,17 +5009,22 @@
     '
   triggers:
   - trigger: state
+    id: manual_on_ts
     entity_id: input_datetime.ac_dda_last_manual_on_ts
+  - trigger: state
+    id: manual_on_snapshot
+    entity_id: input_text.ac_dda_last_manual_on_snapshot
   actions:
   - variables:
       contract_version: contract=v1
+      trigger_id: '{{ trigger.id if trigger is defined and trigger.id is defined else ''unknown'' }}'
       trace_helper_actual_raw: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
       trace_helper_actual: "{% set parsed = trace_helper_actual_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
   - continue_on_error: true
     action: logbook.log
     data:
       name: AC Learning Manual ON
-      message: '{{ contract_version }} | hito=learning_on_started | Trace={{ trace_helper_actual }}'
+      message: '{{ contract_version }} | hito=learning_on_started | trigger_id={{ trigger_id }} | Trace={{ trace_helper_actual }}'
       entity_id: climate.0200009211c7_climate
   - delay: 00:00:25
   - variables:
