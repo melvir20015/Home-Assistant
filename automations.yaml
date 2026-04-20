@@ -4984,6 +4984,22 @@
         message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
   mode: restart
 - id: '1773895045305'
+  alias: TEMP - AC Learning ON trigger diagnóstico (desactivada)
+  description: 'Temporal de diagnóstico para trazar disparo de Learning ON. Activar
+    sólo durante validación y volver a desactivar.
+
+    '
+  initial_state: false
+  triggers:
+  - trigger: state
+    entity_id: input_datetime.ac_dda_last_manual_on_ts
+  actions:
+  - service: notify.mobile_app_samsung_s24
+    data:
+      title: AC Learning ON Trigger
+      message: "{% set raw = states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim %}{% set parsed = raw | regex_findall_index('trace_id=([^|]+)', 0) %}AC Learning ON Triggered Trace={{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+  mode: restart
+- id: '1773895045306'
   alias: AC - Learning - Manual ON feedback
   trace:
     stored_traces: 50
@@ -4996,6 +5012,21 @@
   - trigger: state
     entity_id: input_datetime.ac_dda_last_manual_on_ts
   actions:
+  - variables:
+      contract_version: contract=v1
+      trace_helper_actual_raw: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
+      trace_helper_actual: "{% set parsed = trace_helper_actual_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+  - continue_on_error: true
+    action: logbook.log
+    data:
+      name: AC Learning Manual ON
+      message: '{{ contract_version }} | hito=learning_on_started | Trace={{ trace_helper_actual }}'
+      entity_id: climate.0200009211c7_climate
+  - continue_on_error: true
+    service: notify.mobile_app_samsung_s24
+    data:
+      title: AC Learning ON
+      message: 'learning_on_started Trace={{ trace_helper_actual }}'
   - delay: 00:00:25
   - variables:
       contract_version: contract=v1
@@ -5110,22 +5141,12 @@
       learning_reason_code: "{% if apply_learning and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning %}applied{% else %}{{ ignored_reason_code }}{% endif %}"
       learning_type: "{% if apply_learning and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'manual_snapshot_missing' %}manual_on_learning_ignored_manual_snapshot_missing_contract_v1{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_on_ignored_trace_mismatch_v1{% elif ignored_reason_code == 'final_mode_not_cool' %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
       apply_learning_pre: '{{ ''true'' if apply_learning else ''false'' }}'
-      final_result_label: '{{ ''aplicado'' if apply_learning else ''ignorado'' }}'
-      final_reason_label: '{{ ''manual_on'' if apply_learning else (''out_of_scope_daytime_main'' if ignored_reason_code == ''out_of_scope_daytime_main'' else ignored_reason_label) }}'
+      controlled_error_detected: '{{ learning_internal_error or (apply_learning and (not dynamic_delta_helper_exists) and (not fallback_delta_helper_exists)) }}'
+      final_result_label: "{% if controlled_error_detected %}error_controlado{% elif apply_learning %}aplicado{% else %}ignorado{% endif %}"
+      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning %}manual_on{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% else %}{{ ignored_reason_label }}{% endif %}"
       ctxoff_notify: '{{ ''%.2f'' | format(context_after | float) if apply_learning else ''n/a'' }}'
       hyson_notify: '{{ ''%.2f'' | format(contract_context_delta_on_after | float) if apply_learning else ''n/a'' }}'
       learning_internal_error: '{{ apply_learning and (context_after is none) }}'
-  - continue_on_error: true
-    service: notify.mobile_app_samsung_s24
-    data:
-      title: AC Learning ON Start
-      message: '{{ contract_version }} | Trace={{ trace_id }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | apply_learning_pre={{ apply_learning_pre }}'
-  - continue_on_error: true
-    action: logbook.log
-    data:
-      name: AC Learning Manual ON
-      message: '{{ contract_version }} | hito=learning_on_started | Trace={{ trace_id }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | apply_learning_pre={{ apply_learning_pre }}'
-      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -5323,13 +5344,8 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ learning_internal_error }}'
+        value_template: '{{ controlled_error_detected }}'
       sequence:
-      - continue_on_error: true
-        service: notify.mobile_app_samsung_s24
-        data:
-          title: AC Learning ON Error
-          message: '{{ contract_version }} | reason_code=learning_internal_error | Trace={{ trace_id }}'
       - continue_on_error: true
         action: logbook.log
         data:

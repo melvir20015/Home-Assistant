@@ -999,3 +999,27 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
 - Aplica a `AC - Learning - Manual ON feedback`.
 - La notificación final `AC Learning ON` debe ejecutarse tanto en resultado `aplicado` como `ignorado`.
 - Fallas no críticas en escrituras de helpers/contexto/contrato deben quedar en trazabilidad controlada (`continue_on_error` + logbook) y no bloquear la tercera notificación.
+
+## 31. Protocolo mínimo de observabilidad para Manual ON (2026-04-20)
+
+### Secuencia obligatoria de hitos
+- El flujo Manual ON debe dejar trazabilidad en este orden mínimo:
+  1. `pendiente`
+  2. `capturado`
+  3. `learning_on_started`
+  4. notificación final con resultado contractual.
+
+### Resultados finales permitidos
+- La salida final de `AC - Learning - Manual ON feedback` debe ser exactamente uno de:
+  - `Resultado=aplicado`
+  - `Resultado=ignorado`
+  - `Resultado=error_controlado`
+
+### Política de resiliencia mínima
+- Los cálculos/escrituras previas a la notificación final deben ejecutarse con tolerancia a fallas (fallback + `continue_on_error`) para evitar abortos silenciosos.
+- Si se detecta falla controlada interna, se debe registrar `hito=learning_on_internal_error` y continuar hasta emitir notificación final con `Resultado=error_controlado`.
+
+### Diagnóstico temporal de disparo (uso puntual)
+- Puede habilitarse una automatización temporal de diagnóstico sobre `input_datetime.ac_dda_last_manual_on_ts` para confirmar disparo inmediato con:
+  - `AC Learning ON Triggered Trace=<trace_helper_actual>`
+- Tras validar en producción/lab, debe permanecer desactivada para evitar ruido operativo.
