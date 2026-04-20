@@ -185,6 +185,7 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
   - trae `trace_id` y coincide exactamente con `input_text.ac_dda_last_manual_on_trace_confirmed`,
   - trae `event_type` permitido (`manual_on_final_valid_contract_v1` o `manual_on_final_valid_presence_gap_contract_v1`).
 - `input_text.ac_dda_last_manual_event_type` se conserva únicamente como telemetría auxiliar y no define confirmación transaccional.
+- **La notificación de aprendizaje es obligatoria y no depende de éxito de escrituras de aprendizaje** (incluyendo fallos controlados en helpers dinámicos).
 
 #### Reglas anti-colisión
 - Si una segunda corrida detecta la misma firma corta, se descarta como duplicado antes de `Resultado=pendiente`.
