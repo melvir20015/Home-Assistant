@@ -977,3 +977,15 @@ En cada descarte por AUTO deben quedar, como mínimo, estos campos en logbook:
 ### Impacto operativo
 - Las firmas de deduplicación que consumen `input_datetime.ac_dda_last_manual_on_ts` deben reflejar cierre real del evento para evitar colisiones por detección temprana.
 - El orden observable esperado permanece: `pendiente` → `capturado` → `aplicado|ignorado` en notificaciones y logbook.
+
+## 29. Política de descartes visibles en Guard Manual ON (2026-04-20)
+
+### Regla obligatoria
+- **Ningún descarte en guard Manual ON puede ser silencioso; siempre debe dejar notificación o razón visible.**
+
+### Aplicación mínima requerida
+- Todo descarte en `AC - Manual ON guard + presencia temporal` debe registrar `logbook.log` con razón explícita.
+- Cuando el descarte ocurra antes de la fase de consolidación/pending, debe emitirse además notificación móvil compacta con:
+  - `Resultado=ignorado`
+  - `Razón=<reason_code>`
+  - `Trace=<trace_id>`

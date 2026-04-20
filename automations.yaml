@@ -5573,10 +5573,17 @@
       startup_trigger_bridge_ok: '{{ trigger_id in [''off_direct'', ''bridge_unknown_unavailable'', ''cool_any''] }}'
       manual_startup_window_ok: '{{ startup_trigger_bridge_ok and (startup_from_off_recent or startup_from_fan_only_bridge) }}'
       manual_startup_discard_reason: "{% if manual_startup_window_ok %}none{% elif not startup_trigger_bridge_ok %}manual_guard_discard=trigger_fuera_matriz{% elif detected_mode != 'cool' and prev_mode_effective != 'off' %}manual_guard_discard=sin_off_efectivo_previo{% elif detected_mode == 'cool' and prev_mode_raw == 'fan_only' %}manual_guard_discard=fan_only_bridge_fuera_ventana{% else %}manual_guard_discard=sin_off_efectivo_previo{% endif %}"
-      trigger_change_ts_epoch: "{% if trigger.to_state is not none and trigger.to_state.last_changed is not none %}{{ as_timestamp(trigger.to_state.last_changed) | int(0) }}{% else %}{{ as_timestamp(now()) | int(0) }}{% endif %}"
-      manual_on_pending_signature: '{{ trigger_change_ts_epoch ~ ''|'' ~ detected_mode ~ ''|'' ~ (last_change_origin_raw if last_change_origin_raw | length > 0 else ''unknown'') }}'
+      dedupe_pending_ttl_s: 8
+      trigger_to_context_id: "{% if trigger is defined and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.context is defined and trigger.to_state.context is not none and trigger.to_state.context.id is defined and (trigger.to_state.context.id | string | trim | length > 0) %}{{ trigger.to_state.context.id | string | trim }}{% else %}unknown{% endif %}"
+      manual_on_pending_signature_core: '{{ trigger_to_context_id ~ ''|'' ~ trigger_id ~ ''|'' ~ detected_mode ~ ''|'' ~ (last_change_origin_raw if last_change_origin_raw | length > 0 else ''unknown'') }}'
+      manual_on_pending_signature_ts_epoch: '{{ as_timestamp(now()) | int(0) }}'
+      manual_on_pending_signature: '{{ ''sig='' ~ manual_on_pending_signature_core ~ ''|saved_ts='' ~ manual_on_pending_signature_ts_epoch ~ ''|trace_id='' ~ trace_id ~ ''|trigger_id='' ~ trigger_id }}'
       last_manual_on_pending_signature: '{{ states(''input_text.ac_dda_last_manual_on_pending_signature'') | default('''', true) | trim }}'
-      duplicate_pending_signature: '{{ manual_on_pending_signature == last_manual_on_pending_signature }}'
+      last_manual_on_pending_signature_core: "{% set raw = last_manual_on_pending_signature %}{% if raw | length == 0 %}unknown{% elif 'sig=' in raw %}{{ raw.split('|saved_ts=')[0] | replace('sig=','') }}{% else %}{{ raw }}{% endif %}"
+      last_manual_on_pending_signature_saved_ts_epoch: "{% set raw = last_manual_on_pending_signature %}{% if '|saved_ts=' in raw %}{% set after = raw.split('|saved_ts=')[1] %}{% set ts = after.split('|')[0] %}{{ ts | int(0) }}{% else %}0{% endif %}"
+      manual_on_pending_signature_age_s: "{% set ts = last_manual_on_pending_signature_saved_ts_epoch | int(0) %}{% if ts <= 0 %}99999{% else %}{{ (as_timestamp(now()) - ts) | round(1) }}{% endif %}"
+      pending_signature_is_fresh: '{{ (manual_on_pending_signature_age_s | float(99999)) <= (dedupe_pending_ttl_s | float(8)) }}'
+      duplicate_pending_signature: '{{ (manual_on_pending_signature_core == last_manual_on_pending_signature_core) and pending_signature_is_fresh }}'
   - action: logbook.log
     data:
       name: AC Manual ON
@@ -5646,8 +5653,12 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ trace_id }} | manual_guard_discard=duplicate_pending_signature | signature={{ manual_on_pending_signature }}'
+          message: '{{ trace_id }} | manual_guard_discard=duplicate_pending_signature | signature={{ manual_on_pending_signature_core }} | last_signature={{ last_manual_on_pending_signature_core }} | signature_age_s={{ manual_on_pending_signature_age_s }} | trigger_id={{ trigger_id }} | trace_id={{ trace_id }}'
           entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=duplicate_pending_signature Trace={{ trace_id }}'
       - stop: 'Ignorado: evento Manual ON duplicado antes de notificación pendiente.'
     default: []
   - variables:
