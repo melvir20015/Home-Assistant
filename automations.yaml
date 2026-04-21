@@ -5463,7 +5463,7 @@
       message: '{{ contract_version }} | hito=learning_on_closed | resultado={{ final_result_label }} | razon={{ final_reason_label }} | policy={{ policy_mode }} | trace_id={{ trace_id }}'
       entity_id: climate.0200009211c7_climate
   mode: queued
-  max: 1
+  max: 2
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
   trace:
@@ -6238,7 +6238,7 @@
       title: AC Manual ON
       message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
   mode: queued
-  max: 1
+  max: 2
 - id: ac_cool_manual_setpoint_feedback
   alias: AC - Feedback manual de setpoint en cool activo
   trace:

@@ -18,7 +18,7 @@ Consolidar el flujo de `AC - Manual ON guard + presencia temporal` y `AC - Learn
    - se registra `duplicate_pending_suppressed`.
 4. El gate funcional para disparar `input_datetime.ac_dda_last_manual_on_ts` queda en `stage2 && stage3` (snapshot + trace).
    - `stage1` se mantiene sólo como diagnóstico (`Stage1Diag`).
-5. Concurrencia en cola unitaria (`mode: queued`, `max: 1`) para evitar reinicios/aborto de sesión.
+5. Concurrencia en cola controlada (`mode: queued`, `max: 2`) para cumplir esquema de Home Assistant (`queued.max >= 2`) y evitar reinicios/aborto de sesión.
 6. `fan_only_bridge_fuera_ventana` sólo se evalúa para la misma sesión activa; corridas secundarias quedan bloqueadas por sesión activa ajena.
 7. Learning ON exige correlación estricta con sesión activa (`active_session_trace_id == snapshot_trace_id == trace_confirmed`).
    - Si no coincide: `trace_mismatch_cross_run`.
