@@ -6054,11 +6054,13 @@
       persistence_stage_1_ok: '{{ event_type_readback == event_type_expected }}'
       persistence_stage_2_ok: '{{ trace_readback == trace_expected }}'
       persistence_stage_3_ok: '{{ snapshot_readback == snapshot_expected }}'
-      persistence_ready_for_trigger: '{{ persistence_stage_1_ok and persistence_stage_2_ok and persistence_stage_3_ok }}'
+      persistence_ready_for_trigger: '{{ persistence_stage_2_ok and persistence_stage_3_ok }}'
+      persistence_gate_reason: '{{ ''capturado_por_snapshot_trace'' if persistence_ready_for_trigger else ''persistencia_pre_learning_incompleta'' }}'
+      persistence_stage_1_diag: '{{ ''ok'' if persistence_stage_1_ok else ''telemetria_event_type_desalineada'' }}'
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_verified | verified={{ ''true'' if snapshot_verified else ''false'' }} | repair_attempted={{ ''true'' if not snapshot_verified_pre else ''false'' }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_verified | verified={{ ''true'' if snapshot_verified else ''false'' }} | repair_attempted={{ ''true'' if not snapshot_verified_pre else ''false'' }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage1_diag={{ persistence_stage_1_diag }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }} | gate={{ ''ok'' if persistence_ready_for_trigger else ''fail'' }} | gate_reason={{ persistence_gate_reason }}'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -6075,14 +6077,14 @@
         continue_on_error: true
         data:
           name: AC Manual ON
-          message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_captured | ts={{ ts }} | event_type={{ manual_event_type_final }} | snapshot_ts={{ ts }}'
+          message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_captured | ts={{ ts }} | event_type={{ manual_event_type_final }} | snapshot_ts={{ ts }} | gate_reason={{ persistence_gate_reason }} | stage1_diag={{ persistence_stage_1_diag }}'
           entity_id: climate.0200009211c7_climate
     default:
     - action: logbook.log
       continue_on_error: true
       data:
         name: AC Manual ON
-        message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_capture_error_controlado | razon=persistencia_pre_learning_incompleta | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
+        message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_capture_error_controlado | razon={{ persistence_gate_reason }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage1_diag={{ persistence_stage_1_diag }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
         entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -6130,7 +6132,7 @@
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Manual ON
-      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ ''esperando_learning_on'' if persistence_ready_for_trigger else ''persistencia_pre_learning_incompleta'' }} Trace={{ trace_id }}'
+      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
   mode: restart
 - id: ac_cool_manual_setpoint_feedback
   alias: AC - Feedback manual de setpoint en cool activo
