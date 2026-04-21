@@ -5084,6 +5084,7 @@
       manual_feedback_max_window_min: 120
       manual_on_trace_confirmed_raw: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
       trace_id: "{% set parsed = manual_on_trace_confirmed_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+      mobile_channel_ok: "{{ states('device_tracker.samsung_s24') | lower not in ['unknown','unavailable'] }}"
       active_session_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
       active_session_trace_id: "{% set parsed = active_session_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
       active_session_status: "{% set parsed = active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
@@ -5393,7 +5394,7 @@
     continue_on_error: true
     data:
       name: AC Learning Manual ON
-      message: '{{ contract_version }} | hito={{ ''learning_on_applied'' if apply_learning else ''learning_on_ignored'' }} | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | reason={{ ''applied'' if apply_learning else final_reason_label }} | diag={{ diagnostic_snapshot_trace }}'
+      message: '{{ contract_version }} | hito={{ ''learning_on_applied'' if apply_learning else ''learning_on_ignored'' }} | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | reason={{ ''applied'' if apply_learning else final_reason_label }} | off={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} | on={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} | helper={{ contract_context_helper }} | diag={{ diagnostic_snapshot_trace }}'
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     continue_on_error: true
@@ -5456,10 +5457,57 @@
       message: '{{ contract_version }} | hito=learning_on_pre_notify_ok | Trace={{ trace_id }} | Resultado={{ final_result_label }} | Razón={{ final_reason_label }}'
       entity_id: climate.0200009211c7_climate
   - continue_on_error: true
-    service: notify.mobile_app_samsung_s24
+    service: input_text.set_value
+    target:
+      entity_id: input_text.ac_dda_last_notify_status
     data:
-      title: AC Learning ON
-      message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label }} Razón={{ final_reason_label }} policy={{ policy_mode }} Trace={{ trace_id }} RunTrace={{ snapshot_trace_id }} PendingTrace={{ trace_id if trace_id != ''trace_missing'' else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag }}'
+      value: '{{ trace_id ~ '|stage=learning_final|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
+  - continue_on_error: true
+    action: logbook.log
+    data:
+      name: AC Learning Manual ON
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_attempt | notify_channel=mobile | flow=learning_manual_on | stage=learning_final | result=pendiente'
+      entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ mobile_channel_ok }}'
+      sequence:
+      - continue_on_error: true
+        service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Learning ON
+          message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label }} Razón={{ final_reason_label }} policy={{ policy_mode }} Trace={{ trace_id }} RunTrace={{ snapshot_trace_id }} PendingTrace={{ trace_id if trace_id != ''trace_missing'' else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag }}'
+      - continue_on_error: true
+        action: logbook.log
+        data:
+          name: AC Learning Manual ON
+          message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=learning_manual_on | stage=learning_final'
+          entity_id: climate.0200009211c7_climate
+    default:
+    - continue_on_error: true
+      action: persistent_notification.create
+      data:
+        title: 'AC Learning ON (fallback)'
+        message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label }} Razón={{ final_reason_label }} policy={{ policy_mode }} Trace={{ trace_id }} RunTrace={{ snapshot_trace_id }} PendingTrace={{ trace_id if trace_id != ''trace_missing'' else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag }}'
+    - continue_on_error: true
+      action: logbook.log
+      data:
+        name: AC Learning Manual ON
+        message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=learning_manual_on | stage=learning_final'
+        entity_id: climate.0200009211c7_climate
+    - continue_on_error: true
+      action: logbook.log
+      data:
+        name: AC Learning Manual ON
+        message: '{{ contract_version }} | hito=learning_on_applied | trace_id={{ trace_id }} | fallback_evidence=mobile_failed_fallback_persistent | off={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} | on={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} | helper={{ contract_context_helper }}'
+        entity_id: climate.0200009211c7_climate
+  - continue_on_error: true
+    service: input_text.set_value
+    target:
+      entity_id: input_text.ac_dda_last_notify_status
+    data:
+      value: '{{ trace_id ~ '|stage=learning_final|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=' ~ final_result_label ~ '|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
   - continue_on_error: true
     action: logbook.log
     data:
@@ -5817,6 +5865,7 @@
       manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}"
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
       contract_version: contract=v1
+      mobile_channel_ok: "{{ states('device_tracker.samsung_s24') | lower not in ['unknown','unavailable'] }}"
       climate_ent: climate.0200009211c7_climate
       trigger_id: '{{ trigger.id if trigger is defined and trigger.id is defined else ''unknown'' }}'
       detected_mode: '{{ trigger.to_state.state if trigger.to_state is not none else states(climate_ent) }}'
@@ -5894,10 +5943,46 @@
           name: AC Manual ON
           message: '{{ trace_id }} | hito=notify_descartado_fuera_alcance | reason={{ manual_on_guard_discard_reason }}'
           entity_id: climate.0200009211c7_climate
-      - service: notify.mobile_app_samsung_s24
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_dda_last_notify_status
         data:
-          title: AC Manual ON
-          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}'
+          value: '{{ trace_id_effective ~ '|stage=cierre|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=cierre | result=pendiente_ignorado_fuera_alcance'
+          entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ mobile_channel_ok }}'
+          sequence:
+          - continue_on_error: true
+            service: notify.mobile_app_samsung_s24
+            data:
+              title: AC Manual ON
+              message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}'
+          - action: logbook.log
+            data:
+              name: AC Manual ON
+              message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard'
+              entity_id: climate.0200009211c7_climate
+        default:
+        - action: persistent_notification.create
+          data:
+            title: 'AC Manual ON (fallback)'
+            message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}'
+        - action: logbook.log
+          data:
+            name: AC Manual ON
+            message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard'
+            entity_id: climate.0200009211c7_climate
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_dda_last_notify_status
+        data:
+          value: '{{ trace_id_effective ~ '|stage=cierre|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=ignorado|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
       - stop: 'Ignorado: guard manual ON descartó evento.'
     default: []
   - choose:
@@ -5910,10 +5995,46 @@
           name: AC Manual ON
           message: '{{ trace_id }} | {{ manual_startup_discard_reason }} | trigger_id={{ trigger_id }} | from={{ prev_mode_raw }} | from_effective={{ prev_mode_effective }} | prev_age_s={{ prev_state_age_s }}'
           entity_id: climate.0200009211c7_climate
-      - service: notify.mobile_app_samsung_s24
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_dda_last_notify_status
         data:
-          title: AC Manual ON
-          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}'
+          value: '{{ trace_id ~ '|stage=cierre|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=cierre | result=pendiente_startup_discard'
+          entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ mobile_channel_ok }}'
+          sequence:
+          - continue_on_error: true
+            service: notify.mobile_app_samsung_s24
+            data:
+              title: AC Manual ON
+              message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}'
+          - action: logbook.log
+            data:
+              name: AC Manual ON
+              message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard'
+              entity_id: climate.0200009211c7_climate
+        default:
+        - action: persistent_notification.create
+          data:
+            title: 'AC Manual ON (fallback)'
+            message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}'
+        - action: logbook.log
+          data:
+            name: AC Manual ON
+            message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard'
+            entity_id: climate.0200009211c7_climate
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_dda_last_notify_status
+        data:
+          value: '{{ trace_id ~ '|stage=cierre|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=ignorado|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
       - stop: 'Ignorado: no cumple ventana de arranque manual desde OFF.'
     default: []
   - choose:
@@ -5980,10 +6101,41 @@
       name: AC Manual ON
       message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_pending_notified | phase=pre_consolidation | detected_mode={{ detected_mode }}'
       entity_id: climate.0200009211c7_climate
-  - service: notify.mobile_app_samsung_s24
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_dda_last_notify_status
     data:
-      title: AC Manual ON
-      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}'
+      value: '{{ trace_id_effective ~ '|stage=pendiente|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
+  - action: logbook.log
+    data:
+      name: AC Manual ON
+      message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=pendiente'
+      entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ mobile_channel_ok }}'
+      sequence:
+      - continue_on_error: true
+        service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}'
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard | stage=pendiente'
+          entity_id: climate.0200009211c7_climate
+    default:
+    - action: persistent_notification.create
+      data:
+        title: 'AC Manual ON (fallback)'
+        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}'
+    - action: logbook.log
+      data:
+        name: AC Manual ON
+        message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard | stage=pendiente'
+        entity_id: climate.0200009211c7_climate
   - action: logbook.log
     data:
       name: AC Manual ON
@@ -6082,10 +6234,46 @@
           name: AC Manual ON
           message: '{{ trace_id }} | hito=notify_descartado_fuera_alcance | reason={{ post60_guard_discard_reason }}'
           entity_id: climate.0200009211c7_climate
-      - service: notify.mobile_app_samsung_s24
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_dda_last_notify_status
         data:
-          title: AC Manual ON
-          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
+          value: '{{ trace_id ~ '|stage=cierre|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=cierre | result=pendiente_post60_discard'
+          entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ mobile_channel_ok }}'
+          sequence:
+          - continue_on_error: true
+            service: notify.mobile_app_samsung_s24
+            data:
+              title: AC Manual ON
+              message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
+          - action: logbook.log
+            data:
+              name: AC Manual ON
+              message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard'
+              entity_id: climate.0200009211c7_climate
+        default:
+        - action: persistent_notification.create
+          data:
+            title: 'AC Manual ON (fallback)'
+            message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
+        - action: logbook.log
+          data:
+            name: AC Manual ON
+            message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard'
+            entity_id: climate.0200009211c7_climate
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_dda_last_notify_status
+        data:
+          value: '{{ trace_id ~ '|stage=cierre|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=ignorado|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
       - target:
           entity_id: input_text.ac_dda_manual_on_active_session
         data:
@@ -6313,10 +6501,46 @@
             }} | off_raw={{ contract_cycle_off_raw }}'
           entity_id: climate.0200009211c7_climate
     default: []
-  - service: notify.mobile_app_samsung_s24
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_dda_last_notify_status
     data:
-      title: AC Manual ON
-      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
+      value: '{{ trace_id ~ '|stage=capturado|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
+  - action: logbook.log
+    data:
+      name: AC Manual ON
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=capturado'
+      entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ mobile_channel_ok }}'
+      sequence:
+      - continue_on_error: true
+        service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Manual ON
+          message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard | stage=capturado'
+          entity_id: climate.0200009211c7_climate
+    default:
+    - action: persistent_notification.create
+      data:
+        title: 'AC Manual ON (fallback)'
+        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
+    - action: logbook.log
+      data:
+        name: AC Manual ON
+        message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard | stage=capturado'
+        entity_id: climate.0200009211c7_climate
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_dda_last_notify_status
+    data:
+      value: '{{ trace_id ~ '|stage=capturado|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=' ~ ('capturado' if persistence_ready_for_trigger else 'error_controlado') ~ '|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}'
   mode: queued
   max: 2
 - id: ac_cool_manual_setpoint_feedback
