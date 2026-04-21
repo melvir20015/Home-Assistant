@@ -137,6 +137,10 @@ ac_dda_last_manual_on_trace_confirmed:
   name: "AC DDA Last Manual ON Trace Confirmed"
   max: 80
 
+ac_dda_manual_on_active_session:
+  name: "AC DDA Manual ON Active Session"
+  max: 255
+
 ac_dda_legacy_helper_map:
   name: "AC DDA Legacy Compatibility Map"
   max: 255
