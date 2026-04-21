@@ -5073,8 +5073,9 @@
       within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}'
       last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | trim }}'
       manual_event_trace_id: "{% set parsed = last_manual_event_type_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
-      trace_id_matches_confirmed: '{% if trace_id == ''trace_missing'' %}{{ manual_event_trace_id != ''trace_missing'' }}{% else %}{{ manual_event_trace_id == trace_id }}{% endif %}'
-      manual_event_confirmed: '{{ snapshot_ok }}'
+      trace_id_matches_confirmed: '{{ trace_id != ''trace_missing'' and manual_event_trace_id == trace_id }}'
+      trace_mismatch_cross_run: '{{ snapshot_structure_ok and (trace_id == ''trace_missing'' or snapshot_trace_id != trace_id or not trace_id_matches_confirmed) }}'
+      manual_event_confirmed: '{{ snapshot_ok and not trace_mismatch_cross_run and trace_id_matches_confirmed }}'
       origin_is_manual_on: '{{ last_change_origin == ''manual_on'' }}'
       transition_guard_window_s: 180
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
@@ -5112,7 +5113,7 @@
       fallback_learning_helper: input_number.ac_dda_cool_off_learned
       fallback_delta_helper: input_number.ac_dda_cool_delta_on_bucket_ctx_default_presencia
       fallback_delta_helper_exists: '{{ (states.input_number | selectattr(''entity_id'', ''eq'', fallback_delta_helper) | list | count) > 0 }}'
-      learning_apply_with_fallback: '{{ learning_gate_ok and not event_already_processed }}'
+      learning_apply_with_fallback: '{{ learning_gate_ok and not event_already_processed and not trace_mismatch_cross_run }}'
       learning_step: -0.25
       context_after_normal: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
       tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
@@ -5164,9 +5165,9 @@
       apply_learning_pre: '{{ ''true'' if apply_learning else ''false'' }}'
       learning_internal_error: '{{ apply_learning and (context_after is none or cool_on_final is none or cool_off_final is none) }}'
       controlled_error_detected: '{{ learning_internal_error or (apply_learning_normal and (not dynamic_delta_helper_exists) and (not fallback_delta_helper_exists)) }}'
-      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
+      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
       final_result_label: "{% if controlled_error_detected %}error_controlado{% elif apply_learning %}aplicado{% else %}ignorado{% endif %}"
-      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and force_policy_active %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and force_policy_active %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
+      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and force_policy_active %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and force_policy_active %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
       policy_mode: '{{ ''force'' if force_policy_active else ''strict'' }}'
       hard_flag: '{{ ''yes'' if apply_learning_hard else ''no'' }}'
       ctxoff_notify: '{{ ''%.2f'' | format(context_after | float) if apply_learning else ''n/a'' }}'
@@ -5307,12 +5308,24 @@
       value: '{{ learning_type }}'
     continue_on_error: true
     service: input_text.set_value
-  - target:
-      entity_id: input_text.ac_dda_learning_last_manual_on_signature
-    data:
-      value: '{{ manual_on_event_signature }}'
-    continue_on_error: true
-    service: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ not trace_mismatch_cross_run }}'
+      sequence:
+      - target:
+          entity_id: input_text.ac_dda_learning_last_manual_on_signature
+        data:
+          value: '{{ manual_on_event_signature }}'
+        continue_on_error: true
+        service: input_text.set_value
+    default:
+    - continue_on_error: true
+      action: logbook.log
+      data:
+        name: AC Learning Manual ON
+        message: '{{ contract_version }} | hito=learning_on_trace_mismatch_cross_run | RunTrace={{ snapshot_trace_id }} | PendingTrace={{ trace_id }} | trigger_id={{ trigger_id }}'
+        entity_id: climate.0200009211c7_climate
   - action: logbook.log
     continue_on_error: true
     data:
@@ -5389,7 +5402,7 @@
     service: notify.mobile_app_samsung_s24
     data:
       title: AC Learning ON
-      message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label }} Razón={{ final_reason_label }} policy={{ policy_mode }} Trace={{ trace_id }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag }}'
+      message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label }} Razón={{ final_reason_label }} policy={{ policy_mode }} Trace={{ trace_id }} RunTrace={{ snapshot_trace_id }} PendingTrace={{ trace_id if trace_id != ''trace_missing'' else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag }}'
   - continue_on_error: true
     action: logbook.log
     data:
@@ -5420,7 +5433,8 @@
       name: AC Learning Manual ON
       message: '{{ contract_version }} | hito=learning_on_closed | resultado={{ final_result_label }} | razon={{ final_reason_label }} | policy={{ policy_mode }} | trace_id={{ trace_id }}'
       entity_id: climate.0200009211c7_climate
-  mode: restart
+  mode: queued
+  max: 10
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
   trace:
@@ -5682,7 +5696,9 @@
     for: 00:00:02
   actions:
   - variables:
-      trace_id: '{{ now().strftime(''%Y%m%d%H%M%S'') ~ ''-'' ~ (range(100, 1000) | random) }}'
+      generated_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S'') ~ ''-'' ~ (range(100, 1000) | random) }}'
+      trigger_to_context_id: "{% if trigger is defined and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.context is defined and trigger.to_state.context is not none and trigger.to_state.context.id is defined and (trigger.to_state.context.id | string | trim | length > 0) %}{{ trigger.to_state.context.id | string | trim }}{% else %}unknown{% endif %}"
+      trace_id: '{{ trigger_to_context_id if trigger_to_context_id != ''unknown'' else generated_trace_id }}'
       cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
       cycle_lock_ttl_s: 180
       cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
@@ -5733,13 +5749,13 @@
       manual_startup_window_ok: '{{ startup_trigger_bridge_ok and (startup_from_off_recent or startup_from_fan_only_bridge) }}'
       manual_startup_discard_reason: "{% if manual_startup_window_ok %}none{% elif not startup_trigger_bridge_ok %}manual_guard_discard=trigger_fuera_matriz{% elif detected_mode != 'cool' and prev_mode_effective != 'off' %}manual_guard_discard=sin_off_efectivo_previo{% elif detected_mode == 'cool' and prev_mode_raw == 'fan_only' %}manual_guard_discard=fan_only_bridge_fuera_ventana{% else %}manual_guard_discard=sin_off_efectivo_previo{% endif %}"
       dedupe_pending_ttl_s: 8
-      trigger_to_context_id: "{% if trigger is defined and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.context is defined and trigger.to_state.context is not none and trigger.to_state.context.id is defined and (trigger.to_state.context.id | string | trim | length > 0) %}{{ trigger.to_state.context.id | string | trim }}{% else %}unknown{% endif %}"
-      manual_on_pending_signature_core: '{{ trigger_to_context_id ~ ''|'' ~ trigger_id ~ ''|'' ~ detected_mode ~ ''|'' ~ (last_change_origin_raw if last_change_origin_raw | length > 0 else ''unknown'') }}'
+      manual_on_pending_signature_core: '{{ ''ctx='' ~ trigger_to_context_id }}'
       manual_on_pending_signature_ts_epoch: '{{ as_timestamp(now()) | int(0) }}'
       manual_on_pending_signature: '{{ ''sig='' ~ manual_on_pending_signature_core ~ ''|saved_ts='' ~ manual_on_pending_signature_ts_epoch ~ ''|trace_id='' ~ trace_id ~ ''|trigger_id='' ~ trigger_id }}'
       last_manual_on_pending_signature: '{{ states(''input_text.ac_dda_last_manual_on_pending_signature'') | default('''', true) | trim }}'
       last_manual_on_pending_signature_core: "{% set raw = last_manual_on_pending_signature %}{% if raw | length == 0 %}unknown{% elif 'sig=' in raw %}{{ raw.split('|saved_ts=')[0] | replace('sig=','') }}{% else %}{{ raw }}{% endif %}"
       last_manual_on_pending_signature_saved_ts_epoch: "{% set raw = last_manual_on_pending_signature %}{% if '|saved_ts=' in raw %}{% set after = raw.split('|saved_ts=')[1] %}{% set ts = after.split('|')[0] %}{{ ts | int(0) }}{% else %}0{% endif %}"
+      last_manual_on_pending_trace_id: "{% set raw = last_manual_on_pending_signature %}{% if '|trace_id=' in raw %}{% set after = raw.split('|trace_id=')[1] %}{{ after.split('|')[0] }}{% else %}trace_missing{% endif %}"
       manual_on_pending_signature_age_s: "{% set ts = last_manual_on_pending_signature_saved_ts_epoch | int(0) %}{% if ts <= 0 %}99999{% else %}{{ (as_timestamp(now()) - ts) | round(1) }}{% endif %}"
       pending_signature_is_fresh: '{{ (manual_on_pending_signature_age_s | float(99999)) <= (dedupe_pending_ttl_s | float(8)) }}'
       duplicate_pending_signature: '{{ (manual_on_pending_signature_core == last_manual_on_pending_signature_core) and pending_signature_is_fresh }}'
@@ -5812,13 +5828,9 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ trace_id }} | manual_guard_discard=duplicate_pending_signature | signature={{ manual_on_pending_signature_core }} | last_signature={{ last_manual_on_pending_signature_core }} | signature_age_s={{ manual_on_pending_signature_age_s }} | trigger_id={{ trigger_id }} | trace_id={{ trace_id }}'
+          message: '{{ last_manual_on_pending_trace_id if last_manual_on_pending_trace_id != ''trace_missing'' else trace_id }} | manual_guard_discard=duplicate_pending_signature | signature={{ manual_on_pending_signature_core }} | last_signature={{ last_manual_on_pending_signature_core }} | signature_age_s={{ manual_on_pending_signature_age_s }} | trigger_id={{ trigger_id }} | reuse_trace={{ last_manual_on_pending_trace_id }}'
           entity_id: climate.0200009211c7_climate
-      - service: notify.mobile_app_samsung_s24
-        data:
-          title: AC Manual ON
-          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=duplicate_pending_signature Trace={{ trace_id }}'
-      - stop: 'Ignorado: evento Manual ON duplicado antes de notificación pendiente.'
+      - stop: 'Ignorado: evento Manual ON duplicado; se conserva el trace pendiente activo.'
     default: []
   - variables:
       detected_ts_epoch: '{{ as_timestamp(now()) | int(0) }}'
@@ -6133,7 +6145,8 @@
     data:
       title: AC Manual ON
       message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
-  mode: restart
+  mode: queued
+  max: 10
 - id: ac_cool_manual_setpoint_feedback
   alias: AC - Feedback manual de setpoint en cool activo
   trace:
