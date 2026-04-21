@@ -1659,6 +1659,23 @@
     after: 07:01:00
     before: '21:59:00'
   action:
+  - variables:
+      manual_on_session_ttl_s: 110
+      manual_on_active_session_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
+      manual_on_session_trace_id: "{% set parsed = manual_on_active_session_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+      manual_on_session_status: "{% set parsed = manual_on_active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
+      manual_on_session_started_ts_raw: "{% set parsed = manual_on_active_session_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else '' }}"
+      manual_on_session_started_epoch: "{% if manual_on_session_started_ts_raw | trim | length == 0 %}{{ none }}{% else %}{{ as_timestamp(manual_on_session_started_ts_raw, default=none) }}{% endif %}"
+      manual_on_session_age_s: "{% set started_epoch = manual_on_session_started_epoch | default(none) %}{% if started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (started_epoch | float)) | round(1) }}{% endif %}"
+      manual_on_session_ttl_valid: '{{ (manual_on_session_age_s | default(99999) | float(99999)) >= 0 and (manual_on_session_age_s | default(99999) | float(99999)) <= (manual_on_session_ttl_s | float(110)) }}'
+      manual_on_session_active: '{{ manual_on_session_status in [''detected'', ''pending'', ''captured''] and manual_on_session_trace_id != ''trace_missing'' }}'
+      manual_on_session_protected: '{{ (manual_on_session_active | default(false)) and (manual_on_session_ttl_valid | default(false)) }}'
+      manual_override_active: '{{ manual_on_session_protected | default(false) }}'
+  - service: logbook.log
+    data:
+      name: AC DDA Audit
+      message: hito=manual_session_scope_ok | trace_id={{ manual_on_session_trace_id }} | session_status={{ manual_on_session_status }} | session_age_s={{ manual_on_session_age_s | default(99999) | float(99999) }} | manual_override_active={{ manual_override_active | default(false) }}
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -2304,17 +2321,17 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: hito=pre_off_transition_audit | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session={{ 'true' if manual_on_session_protected else 'false' }} | minutes_since_manual_on={{ (manual_on_session_age_s | float(99999) / 60) | round(2) }}
+          message: hito=pre_off_transition_audit | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session={{ 'true' if (manual_on_session_protected | default(false)) else 'false' }} | minutes_since_manual_on={{ (manual_on_session_age_s | default(99999) | float(99999) / 60) | round(2) }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
           - condition: template
-            value_template: '{{ manual_on_session_protected }}'
+            value_template: '{{ manual_on_session_protected | default(false) }}'
           sequence:
           - service: logbook.log
             data:
               name: AC Auto Trace
-              message: hito=blocked_by_manual_on_session | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session=true | minutes_since_manual_on={{ (manual_on_session_age_s | float(99999) / 60) | round(2) }}
+              message: hito=blocked_by_manual_on_session | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session=true | minutes_since_manual_on={{ (manual_on_session_age_s | default(99999) | float(99999) / 60) | round(2) }}
               entity_id: climate.0200009211c7_climate
           - stop: 'Transición AutoOFF bloqueada por sesión Manual ON activa.'
         default: []
@@ -2918,17 +2935,17 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: hito=pre_off_transition_audit | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session={{ 'true' if manual_on_session_protected else 'false' }} | minutes_since_manual_on={{ (manual_on_session_age_s | float(99999) / 60) | round(2) }}
+          message: hito=pre_off_transition_audit | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session={{ 'true' if (manual_on_session_protected | default(false)) else 'false' }} | minutes_since_manual_on={{ (manual_on_session_age_s | default(99999) | float(99999) / 60) | round(2) }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
           - condition: template
-            value_template: '{{ manual_on_session_protected }}'
+            value_template: '{{ manual_on_session_protected | default(false) }}'
           sequence:
           - service: logbook.log
             data:
               name: AC Auto Trace
-              message: hito=blocked_by_manual_on_session | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session=true | minutes_since_manual_on={{ (manual_on_session_age_s | float(99999) / 60) | round(2) }}
+              message: hito=blocked_by_manual_on_session | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session=true | minutes_since_manual_on={{ (manual_on_session_age_s | default(99999) | float(99999) / 60) | round(2) }}
               entity_id: climate.0200009211c7_climate
           - stop: 'Transición AutoOFF bloqueada por sesión Manual ON activa.'
         default: []
