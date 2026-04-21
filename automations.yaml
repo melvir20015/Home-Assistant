@@ -1609,15 +1609,15 @@
     auto_off_marker_nonce: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}'
     manual_on_session_ttl_s: 110
     manual_on_active_session_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
-    manual_on_session_trace_id: "{% set parsed = manual_on_active_session_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
-    manual_on_session_status: "{% set parsed = manual_on_active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
-    manual_on_session_branch: "{% set parsed = manual_on_active_session_raw | regex_findall_index('branch=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'unknown' }}"
-    manual_on_session_started_ts_raw: "{% set parsed = manual_on_active_session_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else '' }}"
-    manual_on_session_started_epoch: "{% if manual_on_session_started_ts_raw | trim | length == 0 %}{{ none }}{% else %}{{ as_timestamp(manual_on_session_started_ts_raw, default=none) }}{% endif %}"
-    manual_on_session_age_s: "{% set started_epoch = manual_on_session_started_epoch | default(none) %}{% if started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (started_epoch | float)) | round(1) }}{% endif %}"
-    manual_on_session_ttl_valid: '{{ manual_on_session_age_s | float(99999) >= 0 and manual_on_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
-    manual_on_session_active: '{{ manual_on_session_status in [''detected'', ''pending'', ''captured''] and manual_on_session_trace_id != ''trace_missing'' }}'
-    manual_on_session_protected: '{{ manual_on_session_active and manual_on_session_ttl_valid }}'
+    manual_on_session_trace_id: "{% set matches = manual_on_active_session_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
+    manual_on_session_status: "{% set matches = manual_on_active_session_raw | regex_findall('status=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'closed' }}"
+    manual_on_session_branch: "{% set matches = manual_on_active_session_raw | regex_findall('branch=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'unknown' }}"
+    manual_on_session_started_ts_raw: "{% set matches = manual_on_active_session_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else '' }}"
+    manual_on_session_started_epoch: "{% set started_ts = manual_on_session_started_ts_raw | default('', true) | trim %}{% if started_ts | length == 0 %}{{ none }}{% else %}{{ as_timestamp(started_ts, default=none) }}{% endif %}"
+    manual_on_session_age_s: "{% set started_epoch = manual_on_session_started_epoch | default(none) %}{% if started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (started_epoch | float(0))) | round(1) }}{% endif %}"
+    manual_on_session_ttl_valid: '{{ (manual_on_session_age_s | default(99999) | float(99999)) >= 0 and (manual_on_session_age_s | default(99999) | float(99999)) <= (manual_on_session_ttl_s | default(110) | float(110)) }}'
+    manual_on_session_active: '{{ (manual_on_session_status | default(''closed'')) in [''detected'', ''pending'', ''captured''] and (manual_on_session_trace_id | default(''trace_missing'')) != ''trace_missing'' }}'
+    manual_on_session_protected: '{{ (manual_on_session_active | default(false)) and (manual_on_session_ttl_valid | default(false)) }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    t(/5)\n  {% elif trigger.platform == 'state' %}\n    s:{{ trigger.entity_id.split('.')[-1]
       }}=>{{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
@@ -1662,19 +1662,24 @@
   - variables:
       manual_on_session_ttl_s: 110
       manual_on_active_session_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
-      manual_on_session_trace_id: "{% set parsed = manual_on_active_session_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
-      manual_on_session_status: "{% set parsed = manual_on_active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
-      manual_on_session_started_ts_raw: "{% set parsed = manual_on_active_session_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else '' }}"
-      manual_on_session_started_epoch: "{% if manual_on_session_started_ts_raw | trim | length == 0 %}{{ none }}{% else %}{{ as_timestamp(manual_on_session_started_ts_raw, default=none) }}{% endif %}"
-      manual_on_session_age_s: "{% set started_epoch = manual_on_session_started_epoch | default(none) %}{% if started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (started_epoch | float)) | round(1) }}{% endif %}"
-      manual_on_session_ttl_valid: '{{ (manual_on_session_age_s | default(99999) | float(99999)) >= 0 and (manual_on_session_age_s | default(99999) | float(99999)) <= (manual_on_session_ttl_s | float(110)) }}'
-      manual_on_session_active: '{{ manual_on_session_status in [''detected'', ''pending'', ''captured''] and manual_on_session_trace_id != ''trace_missing'' }}'
+      manual_on_session_trace_id: "{% set matches = manual_on_active_session_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
+      manual_on_session_status: "{% set matches = manual_on_active_session_raw | regex_findall('status=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'closed' }}"
+      manual_on_session_started_ts_raw: "{% set matches = manual_on_active_session_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else '' }}"
+      manual_on_session_started_epoch: "{% set started_ts = manual_on_session_started_ts_raw | default('', true) | trim %}{% if started_ts | length == 0 %}{{ none }}{% else %}{{ as_timestamp(started_ts, default=none) }}{% endif %}"
+      manual_on_session_age_s: "{% set started_epoch = manual_on_session_started_epoch | default(none) %}{% if started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (started_epoch | float(0))) | round(1) }}{% endif %}"
+      manual_on_session_ttl_valid: '{{ (manual_on_session_age_s | default(99999) | float(99999)) >= 0 and (manual_on_session_age_s | default(99999) | float(99999)) <= (manual_on_session_ttl_s | default(110) | float(110)) }}'
+      manual_on_session_active: '{{ (manual_on_session_status | default(''closed'')) in [''detected'', ''pending'', ''captured''] and (manual_on_session_trace_id | default(''trace_missing'')) != ''trace_missing'' }}'
       manual_on_session_protected: '{{ (manual_on_session_active | default(false)) and (manual_on_session_ttl_valid | default(false)) }}'
       manual_override_active: '{{ manual_on_session_protected | default(false) }}'
   - service: logbook.log
     data:
       name: AC DDA Audit
-      message: hito=manual_session_scope_ok | trace_id={{ manual_on_session_trace_id }} | session_status={{ manual_on_session_status }} | session_age_s={{ manual_on_session_age_s | default(99999) | float(99999) }} | manual_override_active={{ manual_override_active | default(false) }}
+      message: hito=manual_session_parse | raw={{ manual_on_active_session_raw | default('', true) }} | trace_id={{ manual_on_session_trace_id | default('trace_missing') }} | status={{ manual_on_session_status | default('closed') }} | started_ts_raw={{ manual_on_session_started_ts_raw | default('', true) }} | age_s={{ manual_on_session_age_s | default(99999) | float(99999) }}
+      entity_id: climate.0200009211c7_climate
+  - service: logbook.log
+    data:
+      name: AC DDA Audit
+      message: hito=manual_session_scope_ok | trace_id={{ manual_on_session_trace_id | default('trace_missing') }} | session_status={{ manual_on_session_status | default('closed') }} | session_age_s={{ manual_on_session_age_s | default(99999) | float(99999) }} | manual_override_active={{ manual_override_active | default(false) }}
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -5058,7 +5063,7 @@
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Learning ON Trigger
-      message: "{% set raw = states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim %}{% set parsed = raw | regex_findall_index('trace_id=([^|]+)', 0) %}AC Learning ON Triggered Trace={{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+      message: "{% set raw = states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim %}{% set matches = raw | regex_findall('trace_id=([^|]+)') %}AC Learning ON Triggered Trace={{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
   mode: restart
 - id: '1773895045306'
   alias: AC - Learning - Manual ON feedback
@@ -5081,7 +5086,7 @@
       contract_version: contract=v1
       trigger_id: '{{ trigger.id if trigger is defined and trigger.id is defined else ''unknown'' }}'
       trace_helper_actual_raw: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
-      trace_helper_actual: "{% set parsed = trace_helper_actual_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+      trace_helper_actual: "{% set matches = trace_helper_actual_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
   - continue_on_error: true
     action: logbook.log
     data:
@@ -5100,22 +5105,22 @@
       manual_feedback_min_window_min: 3
       manual_feedback_max_window_min: 120
       manual_on_trace_confirmed_raw: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
-      trace_id: "{% set parsed = manual_on_trace_confirmed_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+      trace_id: "{% set matches = manual_on_trace_confirmed_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
       mobile_channel_ok: "{{ states('device_tracker.samsung_s24') | lower not in ['unknown','unavailable'] }}"
       active_session_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
-      active_session_trace_id: "{% set parsed = active_session_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
-      active_session_status: "{% set parsed = active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
-      active_session_signature: "{% set parsed = active_session_raw | regex_findall_index('signature=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'sig_missing' }}"
-      active_session_started_ts: "{% set parsed = active_session_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'ts_missing' }}"
+      active_session_trace_id: "{% set matches = active_session_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
+      active_session_status: "{% set matches = active_session_raw | regex_findall('status=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'closed' }}"
+      active_session_signature: "{% set matches = active_session_raw | regex_findall('signature=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'sig_missing' }}"
+      active_session_started_ts: "{% set matches = active_session_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}"
       active_session_started_epoch: "{% if active_session_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_started_ts, default=none) }}{% endif %}"
       manual_on_session_ttl_s: 110
       active_session_age_s: "{% if active_session_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_started_epoch | float)) | round(1) }}{% endif %}"
       active_session_ttl_valid: '{{ active_session_age_s | float(99999) >= 0 and active_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
       manual_on_snapshot_raw: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
-      snapshot_trace_id: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
-      snapshot_event_type: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('event_type=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'event_missing' }}"
-      snapshot_final_mode: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('final_mode=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'mode_missing' }}"
-      snapshot_ts: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('ts=(.+)$', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'ts_missing' }}"
+      snapshot_trace_id: "{% set matches = manual_on_snapshot_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
+      snapshot_event_type: "{% set matches = manual_on_snapshot_raw | regex_findall('event_type=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'event_missing' }}"
+      snapshot_final_mode: "{% set matches = manual_on_snapshot_raw | regex_findall('final_mode=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'mode_missing' }}"
+      snapshot_ts: "{% set matches = manual_on_snapshot_raw | regex_findall('ts=(.+)$') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}"
       snapshot_ts_epoch: "{% if snapshot_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(snapshot_ts, default=none) }}{% endif %}"
       snapshot_age_min: "{% if snapshot_ts_epoch is none %}99999{% else %}{{ ((as_timestamp(now()) - (snapshot_ts_epoch | float)) / 60) | round(1) }}{% endif %}"
       snapshot_recent: '{{ snapshot_ts_epoch is not none and (snapshot_age_min | float(99999)) >= 0 and (snapshot_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
@@ -5144,7 +5149,7 @@
       auto_reciente: '{{ (minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}'
       within_manual_feedback_window: '{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}'
       last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | trim }}'
-      manual_event_trace_id: "{% set parsed = last_manual_event_type_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+      manual_event_trace_id: "{% set matches = last_manual_event_type_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
       trace_id_matches_confirmed: '{{ trace_id != ''trace_missing'' and manual_event_trace_id == trace_id }}'
       strict_session_trace_match: '{{ active_session_trace_id != ''trace_missing'' and snapshot_trace_id == active_session_trace_id and trace_id == active_session_trace_id and trace_id_matches_confirmed }}'
       session_status_allows_learning: '{{ active_session_status in [''pending'', ''captured''] }}'
@@ -5915,10 +5920,10 @@
       pending_signature_is_fresh: '{{ (manual_on_pending_signature_age_s | float(99999)) <= (dedupe_pending_ttl_s | float(8)) }}'
       duplicate_pending_signature: '{{ (manual_on_pending_signature_core == last_manual_on_pending_signature_core) and pending_signature_is_fresh }}'
       active_session_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
-      active_session_trace_id: "{% set parsed = active_session_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
-      active_session_signature: "{% set parsed = active_session_raw | regex_findall_index('signature=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'sig_missing' }}"
-      active_session_status: "{% set parsed = active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
-      active_session_started_ts: "{% set parsed = active_session_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'ts_missing' }}"
+      active_session_trace_id: "{% set matches = active_session_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
+      active_session_signature: "{% set matches = active_session_raw | regex_findall('signature=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'sig_missing' }}"
+      active_session_status: "{% set matches = active_session_raw | regex_findall('status=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'closed' }}"
+      active_session_started_ts: "{% set matches = active_session_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}"
       active_session_started_epoch: "{% if active_session_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_started_ts, default=none) }}{% endif %}"
       active_session_age_s: "{% if active_session_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_started_epoch | float)) | round(1) }}{% endif %}"
       active_session_ttl_valid: '{{ active_session_age_s | float(99999) >= 0 and active_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
@@ -6222,8 +6227,8 @@
     default: []
   - variables:
       active_session_post60_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
-      active_session_post60_trace_id: "{% set parsed = active_session_post60_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
-      active_session_post60_started_ts: "{% set parsed = active_session_post60_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'ts_missing' }}"
+      active_session_post60_trace_id: "{% set matches = active_session_post60_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
+      active_session_post60_started_ts: "{% set matches = active_session_post60_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}"
       active_session_post60_started_epoch: "{% if active_session_post60_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_post60_started_ts, default=none) }}{% endif %}"
       active_session_post60_age_s: "{% if active_session_post60_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_post60_started_epoch | float)) | round(1) }}{% endif %}"
       active_session_post60_ttl_valid: '{{ active_session_post60_age_s | float(99999) >= 0 and active_session_post60_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
