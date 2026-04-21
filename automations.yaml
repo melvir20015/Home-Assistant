@@ -1607,6 +1607,17 @@
       + min(wind*0.05,0.8)) | round(2) }}\n{% endif %}"
     heat_off: '{{ (heat_on + 2) if heat_on is not none else none }}'
     auto_off_marker_nonce: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}'
+    manual_on_session_ttl_s: 110
+    manual_on_active_session_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
+    manual_on_session_trace_id: "{% set parsed = manual_on_active_session_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+    manual_on_session_status: "{% set parsed = manual_on_active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
+    manual_on_session_branch: "{% set parsed = manual_on_active_session_raw | regex_findall_index('branch=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'unknown' }}"
+    manual_on_session_started_ts_raw: "{% set parsed = manual_on_active_session_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else '' }}"
+    manual_on_session_started_epoch: "{% if manual_on_session_started_ts_raw | trim | length == 0 %}{{ none }}{% else %}{{ as_timestamp(manual_on_session_started_ts_raw, default=none) }}{% endif %}"
+    manual_on_session_age_s: "{% if manual_on_session_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (manual_on_session_started_epoch | float)) | round(1) }}{% endif %}"
+    manual_on_session_ttl_valid: '{{ manual_on_session_age_s | float(99999) >= 0 and manual_on_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
+    manual_on_session_active: '{{ manual_on_session_status in [''detected'', ''pending'', ''captured''] and manual_on_session_trace_id != ''trace_missing'' }}'
+    manual_on_session_protected: '{{ manual_on_session_active and manual_on_session_ttl_valid }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    t(/5)\n  {% elif trigger.platform == 'state' %}\n    s:{{ trigger.entity_id.split('.')[-1]
       }}=>{{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
@@ -2293,6 +2304,23 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
+          message: hito=pre_off_transition_audit | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session={{ 'true' if manual_on_session_protected else 'false' }} | minutes_since_manual_on={{ (manual_on_session_age_s | float(99999) / 60) | round(2) }}
+          entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ manual_on_session_protected }}'
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: hito=blocked_by_manual_on_session | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session=true | minutes_since_manual_on={{ (manual_on_session_age_s | float(99999) / 60) | round(2) }}
+              entity_id: climate.0200009211c7_climate
+          - stop: 'Transición AutoOFF bloqueada por sesión Manual ON activa.'
+        default: []
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
           message: hito=entrada_fan_only | {{ cool_cycle_final_message }}
           entity_id: climate.0200009211c7_climate
       - target:
@@ -2887,6 +2915,23 @@
       - target:
           entity_id: input_boolean.ac_dda_off_por_automatizacion
         service: input_boolean.turn_on
+      - service: logbook.log
+        data:
+          name: AC Auto Trace
+          message: hito=pre_off_transition_audit | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session={{ 'true' if manual_on_session_protected else 'false' }} | minutes_since_manual_on={{ (manual_on_session_age_s | float(99999) / 60) | round(2) }}
+          entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ manual_on_session_protected }}'
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: hito=blocked_by_manual_on_session | trace_id={{ manual_on_session_trace_id }} | origin={{ states('input_text.ac_dda_last_change_origin') | trim }} | branch={{ cool_cycle_branch }} | blocked_by_manual_on_session=true | minutes_since_manual_on={{ (manual_on_session_age_s | float(99999) / 60) | round(2) }}
+              entity_id: climate.0200009211c7_climate
+          - stop: 'Transición AutoOFF bloqueada por sesión Manual ON activa.'
+        default: []
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -5043,6 +5088,11 @@
       active_session_trace_id: "{% set parsed = active_session_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
       active_session_status: "{% set parsed = active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
       active_session_signature: "{% set parsed = active_session_raw | regex_findall_index('signature=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'sig_missing' }}"
+      active_session_started_ts: "{% set parsed = active_session_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'ts_missing' }}"
+      active_session_started_epoch: "{% if active_session_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_started_ts, default=none) }}{% endif %}"
+      manual_on_session_ttl_s: 110
+      active_session_age_s: "{% if active_session_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_started_epoch | float)) | round(1) }}{% endif %}"
+      active_session_ttl_valid: '{{ active_session_age_s | float(99999) >= 0 and active_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
       manual_on_snapshot_raw: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
       snapshot_trace_id: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
       snapshot_event_type: "{% set parsed = manual_on_snapshot_raw | regex_findall_index('event_type=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'event_missing' }}"
@@ -5079,8 +5129,10 @@
       manual_event_trace_id: "{% set parsed = last_manual_event_type_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
       trace_id_matches_confirmed: '{{ trace_id != ''trace_missing'' and manual_event_trace_id == trace_id }}'
       strict_session_trace_match: '{{ active_session_trace_id != ''trace_missing'' and snapshot_trace_id == active_session_trace_id and trace_id == active_session_trace_id and trace_id_matches_confirmed }}'
+      session_status_allows_learning: '{{ active_session_status in [''pending'', ''captured''] }}'
+      session_trace_and_ttl_ok: '{{ strict_session_trace_match and session_status_allows_learning and active_session_ttl_valid }}'
       trace_mismatch_cross_run: '{{ snapshot_structure_ok and (trace_id == ''trace_missing'' or snapshot_trace_id != trace_id or not trace_id_matches_confirmed or not strict_session_trace_match) }}'
-      manual_event_confirmed: '{{ snapshot_ok and not trace_mismatch_cross_run and strict_session_trace_match }}'
+      manual_event_confirmed: '{{ snapshot_ok and not trace_mismatch_cross_run and session_trace_and_ttl_ok }}'
       origin_is_manual_on: '{{ last_change_origin == ''manual_on'' }}'
       transition_guard_window_s: 180
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
@@ -5107,7 +5159,7 @@
       manual_recent_evidence: '{{ snapshot_recent or manual_on_ts_recent }}'
       force_policy_active: '{{ origin_is_manual_on and learning_day_scope_ok and final_mode_cool_required and strict_session_trace_match }}'
       strict_policy_ready: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
-      learning_gate_ok: '{{ force_policy_active or strict_policy_ready }}'
+      learning_gate_ok: '{{ (force_policy_active or strict_policy_ready) and session_trace_and_ttl_ok }}'
       manual_on_event_signature: '{{ snapshot_ts ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ trace_id }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       event_already_processed: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
@@ -5170,9 +5222,9 @@
       apply_learning_pre: '{{ ''true'' if apply_learning else ''false'' }}'
       learning_internal_error: '{{ apply_learning and (context_after is none or cool_on_final is none or cool_off_final is none) }}'
       controlled_error_detected: '{{ learning_internal_error or (apply_learning_normal and (not dynamic_delta_helper_exists) and (not fallback_delta_helper_exists)) }}'
-      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
+      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% elif not active_session_ttl_valid and not final_mode_cool_required %}manual_on_session_expired_without_cool{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
       final_result_label: "{% if controlled_error_detected %}error_controlado{% elif apply_learning %}aplicado{% else %}ignorado{% endif %}"
-      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and force_policy_active %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and force_policy_active %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
+      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and force_policy_active %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and force_policy_active %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif not active_session_ttl_valid and not final_mode_cool_required %}manual_on_session_expired_without_cool{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
       policy_mode: '{{ ''force'' if force_policy_active else ''strict'' }}'
       hard_flag: '{{ ''yes'' if apply_learning_hard else ''no'' }}'
       ctxoff_notify: '{{ ''%.2f'' | format(context_after | float) if apply_learning else ''n/a'' }}'
@@ -5441,7 +5493,7 @@
         target:
           entity_id: input_text.ac_dda_manual_on_active_session
         data:
-          value: '{{ ''trace_id='' ~ trace_id ~ ''|signature='' ~ active_session_signature ~ ''|status='' ~ final_result_label ~ ''|started_ts='' ~ ts }}'
+          value: '{{ ''trace_id='' ~ trace_id ~ ''|signature='' ~ active_session_signature ~ ''|status='' ~ final_result_label ~ ''|branch=learning_on|started_ts='' ~ ts }}'
         service: input_text.set_value
       - continue_on_error: true
         target:
@@ -5776,8 +5828,8 @@
       startup_from_fan_only_bridge: "{{ detected_mode == 'cool' and prev_mode_raw == 'fan_only' and (prev_state_age_s | float(99999)) <= (startup_window_s | float(45)) }}"
       startup_trigger_bridge_ok: '{{ trigger_id in [''off_direct'', ''bridge_unknown_unavailable'', ''cool_any''] }}'
       manual_startup_window_ok: '{{ startup_trigger_bridge_ok and (startup_from_off_recent or startup_from_fan_only_bridge) }}'
-      manual_startup_discard_reason: "{% if manual_startup_window_ok %}none{% elif not startup_trigger_bridge_ok %}manual_guard_discard=trigger_fuera_matriz{% elif detected_mode != 'cool' and prev_mode_effective != 'off' %}manual_guard_discard=sin_off_efectivo_previo{% elif detected_mode == 'cool' and prev_mode_raw == 'fan_only' and (not active_session_open or active_session_trace_id == trace_id) %}manual_guard_discard=fan_only_bridge_fuera_ventana{% else %}manual_guard_discard=sin_off_efectivo_previo{% endif %}"
       dedupe_pending_ttl_s: 8
+      manual_on_session_ttl_s: 110
       manual_on_pending_signature_core: '{{ ''ctx='' ~ trigger_to_context_id }}'
       manual_on_pending_signature_ts_epoch: '{{ as_timestamp(now()) | int(0) }}'
       manual_on_pending_signature: '{{ ''sig='' ~ manual_on_pending_signature_core ~ ''|saved_ts='' ~ manual_on_pending_signature_ts_epoch ~ ''|trace_id='' ~ trace_id ~ ''|trigger_id='' ~ trigger_id }}'
@@ -5793,7 +5845,11 @@
       active_session_signature: "{% set parsed = active_session_raw | regex_findall_index('signature=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'sig_missing' }}"
       active_session_status: "{% set parsed = active_session_raw | regex_findall_index('status=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'closed' }}"
       active_session_started_ts: "{% set parsed = active_session_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'ts_missing' }}"
+      active_session_started_epoch: "{% if active_session_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_started_ts, default=none) }}{% endif %}"
+      active_session_age_s: "{% if active_session_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_started_epoch | float)) | round(1) }}{% endif %}"
+      active_session_ttl_valid: '{{ active_session_age_s | float(99999) >= 0 and active_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
       active_session_open: '{{ active_session_status in [''detected'', ''pending'', ''captured''] and active_session_trace_id != ''trace_missing'' }}'
+      manual_startup_discard_reason: "{% if manual_startup_window_ok %}none{% elif detected_mode == 'cool' and prev_mode_raw == 'fan_only' and active_session_ttl_valid %}none{% elif not startup_trigger_bridge_ok %}manual_guard_discard=trigger_fuera_matriz{% elif detected_mode != 'cool' and prev_mode_effective != 'off' %}manual_guard_discard=sin_off_efectivo_previo{% elif detected_mode == 'cool' and prev_mode_raw == 'fan_only' and (not active_session_open or active_session_trace_id == trace_id) %}manual_guard_discard=fan_only_bridge_fuera_ventana{% else %}manual_guard_discard=sin_off_efectivo_previo{% endif %}"
       session_reusable_same_signature: '{{ active_session_open and active_session_signature == manual_on_pending_signature_core and pending_signature_is_fresh }}'
       session_locked_other_trace: '{{ active_session_open and not session_reusable_same_signature and active_session_trace_id != trace_id }}'
       trace_id_effective: '{{ active_session_trace_id if session_reusable_same_signature else trace_id }}'
@@ -5841,7 +5897,7 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Manual ON
-          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
+          message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}'
       - stop: 'Ignorado: guard manual ON descartó evento.'
     default: []
   - choose:
@@ -5907,7 +5963,7 @@
   - target:
       entity_id: input_text.ac_dda_manual_on_active_session
     data:
-      value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=detected|started_ts='' ~ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=detected|branch=manual_on_guard|started_ts='' ~ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
     service: input_text.set_value
   - target:
       entity_id: input_text.ac_dda_last_manual_on_pending_signature
@@ -5917,7 +5973,7 @@
   - target:
       entity_id: input_text.ac_dda_manual_on_active_session
     data:
-      value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=pending|started_ts='' ~ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=pending|branch=manual_on_guard|started_ts='' ~ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
     service: input_text.set_value
   - action: logbook.log
     data:
@@ -5987,6 +6043,30 @@
           message: '{{ trace_id }} | lock_rancio_recuperado_post60 | lock_age_s={{ post60_cycle_lock_age_s }} | ttl_s={{ cycle_lock_ttl_s }}'
           entity_id: climate.0200009211c7_climate
     default: []
+  - variables:
+      active_session_post60_raw: '{{ states(''input_text.ac_dda_manual_on_active_session'') | default('''', true) | trim }}'
+      active_session_post60_trace_id: "{% set parsed = active_session_post60_raw | regex_findall_index('trace_id=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'trace_missing' }}"
+      active_session_post60_started_ts: "{% set parsed = active_session_post60_raw | regex_findall_index('started_ts=([^|]+)', 0) %}{{ parsed if parsed is not none and parsed | string | length > 0 else 'ts_missing' }}"
+      active_session_post60_started_epoch: "{% if active_session_post60_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_post60_started_ts, default=none) }}{% endif %}"
+      active_session_post60_age_s: "{% if active_session_post60_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_post60_started_epoch | float)) | round(1) }}{% endif %}"
+      active_session_post60_ttl_valid: '{{ active_session_post60_age_s | float(99999) >= 0 and active_session_post60_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ final_mode_after_60s == ''fan_only'' and active_session_post60_ttl_valid and active_session_post60_trace_id == trace_id_effective }}'
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ trace_id_effective }} | hito=fan_only_bridge_retry | bridge_attempt=1 | within_ttl=true | age_s={{ active_session_post60_age_s }}'
+          entity_id: climate.0200009211c7_climate
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: cool
+        service: climate.set_hvac_mode
+      - delay: 00:00:12
+    default: []
   - choose:
     - conditions:
       - condition: template
@@ -6009,7 +6089,7 @@
       - target:
           entity_id: input_text.ac_dda_manual_on_active_session
         data:
-          value: '{{ ''trace_id='' ~ trace_id ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=ignorado|started_ts='' ~ detected_ts }}'
+          value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=ignorado|branch=manual_on_guard|started_ts='' ~ detected_ts }}'
         continue_on_error: true
         service: input_text.set_value
       - target:
@@ -6028,7 +6108,7 @@
   - target:
       entity_id: input_text.ac_dda_last_manual_event_type
     data:
-      value: '{{ ''manual_on_learning_candidate_contract_v1|trace_id='' ~ trace_id ~ ''|guard=manual_on'' }}'
+      value: '{{ ''manual_on_learning_candidate_contract_v1|trace_id='' ~ trace_id_effective ~ ''|guard=manual_on'' }}'
     service: input_text.set_value
   - variables:
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
@@ -6088,25 +6168,25 @@
   - target:
       entity_id: input_text.ac_dda_last_manual_event_type
     data:
-      value: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id }}'
+      value: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id_effective }}'
     continue_on_error: true
     service: input_text.set_value
   - target:
       entity_id: input_text.ac_dda_last_manual_on_trace_confirmed
     data:
-      value: '{{ ''trace_id='' ~ trace_id }}'
+      value: '{{ ''trace_id='' ~ trace_id_effective }}'
     continue_on_error: true
     service: input_text.set_value
   - target:
       entity_id: input_text.ac_dda_last_manual_on_snapshot
     data:
-      value: '{{ ''trace_id='' ~ trace_id ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
+      value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
     continue_on_error: true
     service: input_text.set_value
   - variables:
-      event_type_expected: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id }}'
-      snapshot_expected: '{{ ''trace_id='' ~ trace_id ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
-      trace_expected: '{{ ''trace_id='' ~ trace_id }}'
+      event_type_expected: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id_effective }}'
+      snapshot_expected: '{{ ''trace_id='' ~ trace_id_effective ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
+      trace_expected: '{{ ''trace_id='' ~ trace_id_effective }}'
       event_type_readback_pre: '{{ states(''input_text.ac_dda_last_manual_event_type'') | default('''', true) | trim }}'
       snapshot_readback_pre: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
       trace_readback_pre: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
@@ -6119,7 +6199,7 @@
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_repair_attempt | snapshot_ok={{ ''true'' if snapshot_verified_pre else ''false'' }} | snapshot_read={{ snapshot_readback_pre }} | trace_read={{ trace_readback_pre }}'
+          message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_snapshot_repair_attempt | snapshot_ok={{ ''true'' if snapshot_verified_pre else ''false'' }} | snapshot_read={{ snapshot_readback_pre }} | trace_read={{ trace_readback_pre }}'
           entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_text.ac_dda_last_manual_on_trace_confirmed
@@ -6146,7 +6226,7 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_verified | verified={{ ''true'' if snapshot_verified else ''false'' }} | repair_attempted={{ ''true'' if not snapshot_verified_pre else ''false'' }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage1_diag={{ persistence_stage_1_diag }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }} | gate={{ ''ok'' if persistence_ready_for_trigger else ''fail'' }} | gate_reason={{ persistence_gate_reason }}'
+      message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_snapshot_verified | verified={{ ''true'' if snapshot_verified else ''false'' }} | repair_attempted={{ ''true'' if not snapshot_verified_pre else ''false'' }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage1_diag={{ persistence_stage_1_diag }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }} | gate={{ ''ok'' if persistence_ready_for_trigger else ''fail'' }} | gate_reason={{ persistence_gate_reason }}'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -6163,12 +6243,12 @@
         continue_on_error: true
         data:
           name: AC Manual ON
-          message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_captured | ts={{ ts }} | event_type={{ manual_event_type_final }} | snapshot_ts={{ ts }} | gate_reason={{ persistence_gate_reason }} | stage1_diag={{ persistence_stage_1_diag }}'
+          message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_captured | ts={{ ts }} | event_type={{ manual_event_type_final }} | snapshot_ts={{ ts }} | gate_reason={{ persistence_gate_reason }} | stage1_diag={{ persistence_stage_1_diag }}'
           entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_text.ac_dda_manual_on_active_session
         data:
-          value: '{{ ''trace_id='' ~ trace_id ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=captured|started_ts='' ~ detected_ts }}'
+          value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=captured|branch=manual_on_guard|started_ts='' ~ detected_ts }}'
         continue_on_error: true
         service: input_text.set_value
     default:
@@ -6176,12 +6256,12 @@
       continue_on_error: true
       data:
         name: AC Manual ON
-        message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_capture_error_controlado | razon={{ persistence_gate_reason }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage1_diag={{ persistence_stage_1_diag }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
+        message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_capture_error_controlado | razon={{ persistence_gate_reason }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage1_diag={{ persistence_stage_1_diag }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
         entity_id: climate.0200009211c7_climate
     - target:
         entity_id: input_text.ac_dda_manual_on_active_session
       data:
-        value: '{{ ''trace_id='' ~ trace_id ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=error_controlado|started_ts='' ~ detected_ts }}'
+        value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|signature='' ~ manual_on_pending_signature_core ~ ''|status=error_controlado|branch=manual_on_guard|started_ts='' ~ detected_ts }}'
       continue_on_error: true
       service: input_text.set_value
     - target:
