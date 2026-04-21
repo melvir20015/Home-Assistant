@@ -6021,23 +6021,19 @@
       event_type_expected: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id }}'
       snapshot_expected: '{{ ''trace_id='' ~ trace_id ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
       trace_expected: '{{ ''trace_id='' ~ trace_id }}'
-      event_type_readback: '{{ states(''input_text.ac_dda_last_manual_event_type'') | default('''', true) | trim }}'
-      snapshot_readback: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
-      trace_readback: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
-      snapshot_verified: '{{ snapshot_readback == snapshot_expected and trace_readback == trace_expected }}'
-      persistence_stage_1_ok: '{{ event_type_readback == event_type_expected }}'
-      persistence_stage_2_ok: '{{ trace_readback == trace_expected }}'
-      persistence_stage_3_ok: '{{ snapshot_readback == snapshot_expected }}'
-      persistence_ready_for_trigger: '{{ persistence_stage_1_ok and persistence_stage_2_ok and persistence_stage_3_ok }}'
+      event_type_readback_pre: '{{ states(''input_text.ac_dda_last_manual_event_type'') | default('''', true) | trim }}'
+      snapshot_readback_pre: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
+      trace_readback_pre: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
+      snapshot_verified_pre: '{{ snapshot_readback_pre == snapshot_expected and trace_readback_pre == trace_expected }}'
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ not snapshot_verified }}'
+        value_template: '{{ not snapshot_verified_pre }}'
       sequence:
       - action: logbook.log
         data:
           name: AC Manual ON
-          message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_repair_attempt | snapshot_ok={{ ''true'' if snapshot_verified else ''false'' }} | snapshot_read={{ snapshot_readback }} | trace_read={{ trace_readback }}'
+          message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_repair_attempt | snapshot_ok={{ ''true'' if snapshot_verified_pre else ''false'' }} | snapshot_read={{ snapshot_readback_pre }} | trace_read={{ trace_readback_pre }}'
           entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_text.ac_dda_last_manual_on_trace_confirmed
@@ -6050,10 +6046,19 @@
           value: '{{ snapshot_expected }}'
         service: input_text.set_value
     default: []
+  - variables:
+      event_type_readback: '{{ states(''input_text.ac_dda_last_manual_event_type'') | default('''', true) | trim }}'
+      trace_readback: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
+      snapshot_readback: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
+      snapshot_verified: '{{ snapshot_readback == snapshot_expected and trace_readback == trace_expected }}'
+      persistence_stage_1_ok: '{{ event_type_readback == event_type_expected }}'
+      persistence_stage_2_ok: '{{ trace_readback == trace_expected }}'
+      persistence_stage_3_ok: '{{ snapshot_readback == snapshot_expected }}'
+      persistence_ready_for_trigger: '{{ persistence_stage_1_ok and persistence_stage_2_ok and persistence_stage_3_ok }}'
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_verified | verified={{ ''true'' if snapshot_verified else ''repaired'' }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_verified | verified={{ ''true'' if snapshot_verified else ''false'' }} | repair_attempted={{ ''true'' if not snapshot_verified_pre else ''false'' }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
