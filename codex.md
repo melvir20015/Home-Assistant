@@ -233,6 +233,31 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
   2. `Resultado=capturado`
   3. `AC Learning ON` con `Resultado=error_controlado` y `policy=force_learn|strict`.
 
+#### Política final de cierre obligatorio (Manual ON diurno)
+- **Regla operativa**: `Manual ON diurno válido cierra siempre en tercera notificación`.
+- La tercera notificación (`AC Learning ON`) debe emitirse siempre con un único resultado terminal:
+  - `aplicado`
+  - `ignorado`
+  - `error_controlado`
+- La notificación final debe incluir obligatoriamente: `Trace`, `Policy` y `Reason`.
+- Snapshot/trace de correlación se conserva como telemetría diagnóstica y no puede provocar cierre silencioso cuando existe política `force`.
+
+#### Tabla de decisión final (cierre)
+
+| Política | Resultado | Condición | Razón típica |
+|---|---|---|---|
+| `force` | `aplicado` | `last_change_origin=manual_on` + diurno + `final_mode=cool` + gate abierto | `manual_on_normal_applied_force_learn` |
+| `strict` | `aplicado` | snapshot/trace/evento confirmados + diurno + `final_mode=cool` | `manual_on_normal_applied` |
+| `force` o `strict` | `ignorado` | gate cerrado o evento ya procesado | `final_mode_not_cool`, `out_of_scope_daytime_main`, `event_already_processed` |
+| `force` o `strict` | `error_controlado` | fallo controlado en persistencia/escrituras/contrato | `learning_on_internal_error`, `persistencia_pre_learning_incompleta` |
+
+#### Checklist de depuración por trace
+1. Verificar secuencia completa: `pendiente -> capturado -> AC Learning ON`.
+2. Confirmar `Trace` idéntico entre guard y learning.
+3. Revisar `policy` reportada (`force` o `strict`) y estado del `learning_gate_ok`.
+4. Auditar cierre en logbook con: `hito=learning_on_closed`, `resultado`, `razon`, `policy`, `trace_id`.
+5. Si hay persistencia incompleta previa al trigger, validar que exista `Resultado=error_controlado` (sin cierre silencioso).
+
 ---
 
 ## 7. Flujo manual power (`off -> fan_only`)

@@ -5099,12 +5099,12 @@
       last_manual_on_age_min: "{% if last_manual_on_ts_epoch is none %}99999{% else %}{{ ((as_timestamp(now()) - (last_manual_on_ts_epoch | float)) / 60) | round(1) }}{% endif %}"
       manual_on_ts_recent: '{{ last_manual_on_ts_epoch is not none and (last_manual_on_age_min | float(99999)) >= 0 and (last_manual_on_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
       manual_recent_evidence: '{{ snapshot_recent or manual_on_ts_recent }}'
-      manual_on_force_learn: '{{ manual_recent_evidence and learning_day_scope_ok and final_mode_cool_required }}'
-      valid_feedback_strict: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
-      valid_feedback: '{{ manual_on_force_learn or valid_feedback_strict }}'
+      force_policy_active: '{{ origin_is_manual_on and learning_day_scope_ok and final_mode_cool_required }}'
+      strict_policy_ready: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
+      learning_gate_ok: '{{ force_policy_active or strict_policy_ready }}'
       manual_on_event_signature: '{{ snapshot_ts ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ trace_id }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
-      duplicate_event: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
+      event_already_processed: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
       contract_context_delta_on_helper: '{{ ''input_number.ac_dda_cool_delta_on_bucket_'' ~ (contract_context_key | replace('':'',''_'') ) }}'
       dynamic_context_helper_exists: '{{ (states.input_number | selectattr(''entity_id'', ''eq'', contract_context_helper) | list | count) > 0 }}'
       dynamic_delta_helper_exists: '{{ (states.input_number | selectattr(''entity_id'', ''eq'', contract_context_delta_on_helper) | list | count) > 0 }}'
@@ -5112,7 +5112,7 @@
       fallback_learning_helper: input_number.ac_dda_cool_off_learned
       fallback_delta_helper: input_number.ac_dda_cool_delta_on_bucket_ctx_default_presencia
       fallback_delta_helper_exists: '{{ (states.input_number | selectattr(''entity_id'', ''eq'', fallback_delta_helper) | list | count) > 0 }}'
-      learning_apply_with_fallback: '{{ valid_feedback and (manual_on_force_learn or (not duplicate_event)) }}'
+      learning_apply_with_fallback: '{{ learning_gate_ok and not event_already_processed }}'
       learning_step: -0.25
       context_after_normal: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
       tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
@@ -5132,8 +5132,7 @@
       normal_on_after: "{% if context_after_normal is none %}{{ none }}{% else %}{{ [[((context_after_normal | float) + (normal_hysteresis_after | float)), 26.2] | min, ((context_after_normal | float) + 0.35)] | max | round(2) }}{% endif %}"
       tin_outside_current_contract: '{{ tin is not none and contract_cycle_valid and ((tin | float) < (contract_cycle_off | float) or (tin | float) > (contract_cycle_on | float)) }}'
       tin_outside_normal_adjusted: '{{ tin is not none and normal_on_after is not none and context_after_normal is not none and ((tin | float) < (context_after_normal | float) or (tin | float) > (normal_on_after | float)) }}'
-      apply_learning_base: '{{ valid_feedback and (manual_on_force_learn or (not duplicate_event)) }}'
-      hard_learning_applicable: '{{ apply_learning_base and final_mode_cool_required and tin_outside_current_contract and tin_outside_normal_adjusted }}'
+      hard_learning_applicable: '{{ learning_gate_ok and (not event_already_processed) and final_mode_cool_required and tin_outside_current_contract and tin_outside_normal_adjusted }}'
       hard_new_on_raw: '{{ tin | round(2) if tin is not none else none }}'
       hard_new_off_raw: '{{ ((tin | float) - 0.5) | round(2) if tin is not none else none }}'
       hard_new_off_clamped: '{{ [[hard_new_off_raw | float(22.0), 25.7] | min, 22.0] | max | round(2) if hard_new_off_raw is not none else none }}'
@@ -5141,7 +5140,7 @@
       hard_new_on_clamped: "{% if hard_new_off_clamped is none or hard_new_on_max_clamped is none %}{{ none }}{% else %}{{ [[hard_new_on_max_clamped | float, (hard_new_off_clamped | float) + 0.1] | max, 26.2] | min | round(2) }}{% endif %}"
       hard_clamp_reason: "{% set reasons = [] %}{% if hard_new_off_raw is not none and hard_new_off_clamped is not none and (hard_new_off_raw | float) != (hard_new_off_clamped | float) %}{% set reasons = reasons + ['off_clamped'] %}{% endif %}{% if hard_new_on_raw is not none and hard_new_on_max_clamped is not none and (hard_new_on_raw | float) != (hard_new_on_max_clamped | float) %}{% set reasons = reasons + ['on_clamped_max'] %}{% endif %}{% if hard_new_on_clamped is not none and hard_new_off_clamped is not none and (hard_new_on_clamped | float) <= (hard_new_off_clamped | float) %}{% set reasons = reasons + ['on_adjusted_gt_off'] %}{% endif %}{{ reasons | join('+') if reasons | count > 0 else 'none' }}"
       apply_learning_hard: '{{ hard_learning_applicable }}'
-      apply_learning_normal: '{{ apply_learning_base and (not hard_learning_applicable) }}'
+      apply_learning_normal: '{{ learning_gate_ok and (not event_already_processed) and (not hard_learning_applicable) }}'
       apply_learning: '{{ apply_learning_hard or apply_learning_normal }}'
       context_after: '{{ hard_new_off_clamped if apply_learning_hard else context_after_normal }}'
       contract_context_delta_on_after: '{{ contract_context_delta_on if apply_learning_hard else contract_context_delta_on_after_normal }}'
@@ -5158,19 +5157,17 @@
       threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
-      ignored_reason_code: "{% if not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif manual_on_force_learn and duplicate_event %}warning_duplicate_event{% elif manual_on_force_learn and not snapshot_structure_ok %}warning_manual_snapshot_missing{% elif manual_on_force_learn and not snapshot_trace_matches_confirmed %}warning_manual_trace_mismatch{% elif manual_on_force_learn and not snapshot_event_type_ok %}warning_manual_event_not_confirmed{% elif manual_on_force_learn and not manual_event_confirmed %}warning_manual_event_not_confirmed{% elif duplicate_event %}duplicate_event{% elif not snapshot_structure_ok %}manual_snapshot_missing{% elif not snapshot_trace_matches_confirmed %}manual_trace_mismatch{% elif not snapshot_event_type_ok %}manual_event_not_confirmed{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}unknown_discard{% endif %}"
-      reason_short: "{% if ignored_reason_code in ['duplicate_event', 'warning_duplicate_event'] %}dup{% elif ignored_reason_code == 'auto_reciente' %}auto{% elif ignored_reason_code == 'origen_auto' %}origen{% elif ignored_reason_code in ['manual_trace_mismatch','warning_manual_trace_mismatch'] %}trace{% elif ignored_reason_code in ['manual_event_not_confirmed','warning_manual_event_not_confirmed'] %}event{% elif ignored_reason_code in ['manual_snapshot_missing','warning_manual_snapshot_missing'] %}snap{% elif ignored_reason_code == 'evidencia_manual_insuficiente' %}evidencia{% else %}descartado{% endif %}"
-      ignored_reason_label: "{% if ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% elif ignored_reason_code == 'final_mode_not_cool' %}final_mode_not_cool{% elif ignored_reason_code == 'manual_snapshot_missing' %}manual_snapshot_missing{% elif ignored_reason_code == 'warning_manual_snapshot_missing' %}warning_manual_snapshot_missing{% elif ignored_reason_code == 'manual_event_not_confirmed' %}manual_event_not_confirmed{% elif ignored_reason_code == 'warning_manual_event_not_confirmed' %}warning_manual_event_not_confirmed{% elif ignored_reason_code == 'manual_trace_mismatch' %}manual_trace_mismatch{% elif ignored_reason_code == 'warning_manual_trace_mismatch' %}warning_manual_trace_mismatch{% elif ignored_reason_code == 'duplicate_event' %}duplicate_event{% elif ignored_reason_code == 'warning_duplicate_event' %}warning_duplicate_event{% else %}unknown_discard{% endif %}"
+      diagnostic_snapshot_trace: "{% set warns = [] %}{% if not snapshot_structure_ok %}{% set warns = warns + ['snapshot_missing'] %}{% endif %}{% if snapshot_structure_ok and not snapshot_trace_matches_confirmed %}{% set warns = warns + ['trace_mismatch'] %}{% endif %}{% if snapshot_structure_ok and not snapshot_event_type_ok %}{% set warns = warns + ['event_type_unconfirmed'] %}{% endif %}{{ warns | join('+') if warns | count > 0 else 'ok' }}"
       delta_learning: '{{ (learning_step | float) if apply_learning_normal else 0.0 }}'
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
-      learning_type: "{% if apply_learning_hard and manual_on_force_learn %}manual_on_learning_hard_anchor_force_learn_contract_v1{% elif apply_learning_hard %}manual_on_learning_hard_anchor_contract_v1{% elif apply_learning_normal and manual_on_force_learn and not dynamic_helpers_ready %}manual_on_learning_applied_force_learn_fallback_bucket_missing_v1{% elif apply_learning_normal and manual_on_force_learn %}manual_on_learning_applied_force_learn_contract_v1{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_learning_applied_contract_v1{% elif ignored_reason_code in ['duplicate_event','warning_duplicate_event'] %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code in ['manual_snapshot_missing','warning_manual_snapshot_missing'] %}manual_on_learning_ignored_manual_snapshot_missing_contract_v1{% elif ignored_reason_code in ['manual_event_not_confirmed','warning_manual_event_not_confirmed'] %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% elif ignored_reason_code in ['manual_trace_mismatch','warning_manual_trace_mismatch'] %}manual_on_ignored_trace_mismatch_v1{% elif ignored_reason_code == 'final_mode_not_cool' %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
+      learning_type: "{% if apply_learning_hard and force_policy_active %}manual_on_learning_hard_anchor_force_learn_contract_v1{% elif apply_learning_hard %}manual_on_learning_hard_anchor_contract_v1{% elif apply_learning_normal and force_policy_active and not dynamic_helpers_ready %}manual_on_learning_applied_force_learn_fallback_bucket_missing_v1{% elif apply_learning_normal and force_policy_active %}manual_on_learning_applied_force_learn_contract_v1{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_learning_applied_contract_v1{% elif event_already_processed %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif not learning_day_scope_ok %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% elif not final_mode_cool_required %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% elif not manual_event_confirmed %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}"
       apply_learning_pre: '{{ ''true'' if apply_learning else ''false'' }}'
       learning_internal_error: '{{ apply_learning and (context_after is none or cool_on_final is none or cool_off_final is none) }}'
       controlled_error_detected: '{{ learning_internal_error or (apply_learning_normal and (not dynamic_delta_helper_exists) and (not fallback_delta_helper_exists)) }}'
-      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% else %}{{ ignored_reason_code }}{% endif %}"
+      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
       final_result_label: "{% if controlled_error_detected %}error_controlado{% elif apply_learning %}aplicado{% else %}ignorado{% endif %}"
-      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and manual_on_force_learn %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and manual_on_force_learn %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif ignored_reason_code == 'out_of_scope_daytime_main' %}out_of_scope_daytime_main{% else %}{{ ignored_reason_label }}{% endif %}"
-      policy_mode: '{{ ''force_learn'' if manual_on_force_learn else ''strict'' }}'
+      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and force_policy_active %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and force_policy_active %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
+      policy_mode: '{{ ''force'' if force_policy_active else ''strict'' }}'
       hard_flag: '{{ ''yes'' if apply_learning_hard else ''no'' }}'
       ctxoff_notify: '{{ ''%.2f'' | format(context_after | float) if apply_learning else ''n/a'' }}'
       hyson_notify: '{{ ''%.2f'' | format(contract_context_delta_on_after | float) if apply_learning_normal else ''n/a'' }}'
@@ -5326,7 +5323,7 @@
     continue_on_error: true
     data:
       name: AC Learning Manual ON
-      message: '{{ contract_version }} | hito={{ ''learning_on_applied'' if apply_learning else ''learning_on_ignored'' }} | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | reason={{ ''applied'' if apply_learning else ignored_reason_code }}'
+      message: '{{ contract_version }} | hito={{ ''learning_on_applied'' if apply_learning else ''learning_on_ignored'' }} | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | reason={{ ''applied'' if apply_learning else final_reason_label }} | diag={{ diagnostic_snapshot_trace }}'
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     continue_on_error: true
@@ -5334,18 +5331,12 @@
       name: AC Learning Manual ON
       message: '{{ contract_version }} | threshold_validation | threshold_source={{ threshold_source }} | on_final={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else ''no_disponible'' }} | off_final={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else ''no_disponible'' }} | fallback_used={{ fallback_used }}'
       entity_id: climate.0200009211c7_climate
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ ignored_reason_code in [''out_of_scope_daytime_main'', ''final_mode_not_cool'', ''manual_snapshot_missing'', ''manual_event_not_confirmed'', ''manual_trace_mismatch'', ''warning_manual_snapshot_missing'', ''warning_manual_event_not_confirmed'', ''warning_manual_trace_mismatch'', ''warning_duplicate_event''] }}'
-      sequence:
-      - action: logbook.log
-        continue_on_error: true
-        data:
-          name: AC Learning Manual ON
-          message: '{{ contract_version }} | learning_on_discard_reason=ignored:{{ ignored_reason_code }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }} | confirmed_trace={{ manual_on_trace_confirmed_raw }} | snapshot={{ manual_on_snapshot_raw }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }}'
-          entity_id: climate.0200009211c7_climate
-    default: []
+  - action: logbook.log
+    continue_on_error: true
+    data:
+      name: AC Learning Manual ON
+      message: '{{ contract_version }} | learning_on_diag | policy={{ policy_mode }} | gate={{ ''open'' if learning_gate_ok else ''closed'' }} | diag_snapshot_trace={{ diagnostic_snapshot_trace }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }} | confirmed_trace={{ manual_on_trace_confirmed_raw }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }}'
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -5385,7 +5376,7 @@
     - target:
         entity_id: input_text.ac_dda_cool_cycle_contract_reason
       data:
-        value: "{% if not learning_day_scope_ok %}ignored_reason_code=out_of_scope_daytime_main{% else %}{{ contract_invalid_reason }}{% endif %}"
+        value: "{% if not learning_day_scope_ok %}reason=out_of_scope_daytime_main{% else %}{{ contract_invalid_reason }}{% endif %}"
       continue_on_error: true
       service: input_text.set_value
   - action: logbook.log
@@ -5423,6 +5414,12 @@
           message: '{{ contract_version }} | hito=learning_on_finalize_forced | Resultado={{ final_result_label }} | Razón={{ final_reason_label }} | Trace={{ trace_id }}'
           entity_id: climate.0200009211c7_climate
     default: []
+  - continue_on_error: true
+    action: logbook.log
+    data:
+      name: AC Learning Manual ON
+      message: '{{ contract_version }} | hito=learning_on_closed | resultado={{ final_result_label }} | razon={{ final_reason_label }} | policy={{ policy_mode }} | trace_id={{ trace_id }}'
+      entity_id: climate.0200009211c7_climate
   mode: restart
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
@@ -6006,23 +6003,32 @@
       entity_id: input_text.ac_dda_last_manual_event_type
     data:
       value: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id }}'
+    continue_on_error: true
     service: input_text.set_value
   - target:
       entity_id: input_text.ac_dda_last_manual_on_trace_confirmed
     data:
       value: '{{ ''trace_id='' ~ trace_id }}'
+    continue_on_error: true
     service: input_text.set_value
   - target:
       entity_id: input_text.ac_dda_last_manual_on_snapshot
     data:
       value: '{{ ''trace_id='' ~ trace_id ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
+    continue_on_error: true
     service: input_text.set_value
   - variables:
+      event_type_expected: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id }}'
       snapshot_expected: '{{ ''trace_id='' ~ trace_id ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
       trace_expected: '{{ ''trace_id='' ~ trace_id }}'
+      event_type_readback: '{{ states(''input_text.ac_dda_last_manual_event_type'') | default('''', true) | trim }}'
       snapshot_readback: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
       trace_readback: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
       snapshot_verified: '{{ snapshot_readback == snapshot_expected and trace_readback == trace_expected }}'
+      persistence_stage_1_ok: '{{ event_type_readback == event_type_expected }}'
+      persistence_stage_2_ok: '{{ trace_readback == trace_expected }}'
+      persistence_stage_3_ok: '{{ snapshot_readback == snapshot_expected }}'
+      persistence_ready_for_trigger: '{{ persistence_stage_1_ok and persistence_stage_2_ok and persistence_stage_3_ok }}'
   - choose:
     - conditions:
       - condition: template
@@ -6047,18 +6053,32 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_verified | verified={{ ''true'' if snapshot_verified else ''repaired'' }}'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_snapshot_verified | verified={{ ''true'' if snapshot_verified else ''repaired'' }} | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
       entity_id: climate.0200009211c7_climate
-  - target:
-      entity_id: input_datetime.ac_dda_last_manual_on_ts
-    data:
-      datetime: '{{ ts }}'
-    action: input_datetime.set_datetime
-  - action: logbook.log
-    data:
-      name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_captured | ts={{ ts }} | event_type={{ manual_event_type_final }} | snapshot_ts={{ ts }}'
-      entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ persistence_ready_for_trigger }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_dda_last_manual_on_ts
+        data:
+          datetime: '{{ ts }}'
+        continue_on_error: true
+        action: input_datetime.set_datetime
+      - action: logbook.log
+        continue_on_error: true
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_captured | ts={{ ts }} | event_type={{ manual_event_type_final }} | snapshot_ts={{ ts }}'
+          entity_id: climate.0200009211c7_climate
+    default:
+    - action: logbook.log
+      continue_on_error: true
+      data:
+        name: AC Manual ON
+        message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_capture_error_controlado | razon=persistencia_pre_learning_incompleta | stage1={{ ''ok'' if persistence_stage_1_ok else ''fail'' }} | stage2={{ ''ok'' if persistence_stage_2_ok else ''fail'' }} | stage3={{ ''ok'' if persistence_stage_3_ok else ''fail'' }}'
+        entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -6105,7 +6125,7 @@
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Manual ON
-      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado=capturado Razón=esperando_learning_on Trace={{ trace_id }}'
+      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ ''esperando_learning_on'' if persistence_ready_for_trigger else ''persistencia_pre_learning_incompleta'' }} Trace={{ trace_id }}'
   mode: restart
 - id: ac_cool_manual_setpoint_feedback
   alias: AC - Feedback manual de setpoint en cool activo
