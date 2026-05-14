@@ -1300,3 +1300,17 @@ Compatibilidad de transición:
 
 ### Regla preventiva
 Toda plantilla larga (especialmente con Jinja + formatos de fecha o `%`) debe declararse en bloque YAML `>` o `|`, con cierre explícito de delimitadores (`{{ ... }}` / `{% ... %}`) y filtros defensivos (`|default(...)`, `|float(0)`, `|int(0)`) para variables potencialmente indefinidas.
+
+## Incidente de escape inválido en YAML (2026-05-14)
+
+- **Síntoma exacto**: Home Assistant reportó `unknown escape character ':'` al validar `automations.yaml`.
+- **Ubicación aproximada**: `automations.yaml` alrededor de las líneas **7630–7632** (variable `dynamic_learning_buckets`).
+- **Causa raíz**: patrón regex dentro de string YAML en comillas dobles con `\.` (`'^input_text\.ac_dda...'`); en YAML doble comilla, `\.` es un escape inválido y dispara error de parseo.
+- **Corrección aplicada**: se migró la plantilla a bloque multilinea `>` y se eliminó el backslash innecesario en el regex (`'^input_text.ac_dda...'`), preservando la misma lógica de match.
+- **Validación realizada**:
+  - revisión del bloque de contexto `7605–7650`;
+  - búsqueda preventiva en todo `automations.yaml` de secuencias sospechosas (`\:`, `\{{`, `\{%`, `\"`), sin hallazgos;
+  - `hass --script check_config` no disponible en este entorno (`hass` ausente), por lo que la validación final debe correrse en el host de Home Assistant antes del reinicio.
+
+### Regla preventiva
+Evitar escapes manuales en strings YAML largas con comillas dobles cuando contienen regex/Jinja; preferir bloque `>` y plantillas limpias sin backslashes innecesarios.

@@ -7627,10 +7627,11 @@
       'input_number.ac_dda_cool_cycle_contract_off',
       'input_number.ac_dda_cool_off_learned'
       ] }}"
-    dynamic_learning_buckets: "{{ states.input_text
-      | map(attribute='entity_id')
-      | select('match', '^input_text\.ac_dda_cool_(learning_bucket_|delta_|effective_sp_bucket_).*$')
-      | list }}"
+    dynamic_learning_buckets: >
+      {{ states.input_text
+        | map(attribute='entity_id')
+        | select('match', '^input_text.ac_dda_cool_(learning_bucket_|delta_|effective_sp_bucket_).*$')
+        | list }}
     reset_targets: "{{ layer_a_targets + dynamic_learning_buckets + layer_b_targets + layer_c_targets + ['input_text.ac_dda_last_change_origin'] }}"
     helpers_reset_count: "{{ reset_targets | count }}"
   action:
