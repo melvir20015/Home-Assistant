@@ -1213,3 +1213,74 @@ Compatibilidad de transición:
 - No disparar tercera notificación de learning manual.
 - Se permite solo traza técnica mínima opcional en logbook con razón compacta:
   - `out_of_scope_daytime_main`.
+
+## 34. Reset manual de aprendizaje (2026-05-14)
+
+### Objetivo
+- Incorporar una automatización de mantenimiento manual para limpiar aprendizaje AC-DDA sin afectar seguridad operativa ni estado físico del equipo.
+
+### Automatización
+- Alias: `AC - Mantenimiento - Reset manual aprendizaje AC-DDA`.
+- Disparo manual exclusivo: `event_type: input_button.press` sobre `input_button.ac_dda_reset_learning_manual`.
+- Guardia de seguridad obligatoria: solo ejecuta si `input_boolean.ac_dda_cycle_lock=off`.
+- Compatible con mantenimiento fuera de horario (sin guard horario), y fija `input_text.ac_dda_last_change_origin=maintenance_reset_manual`.
+
+### Modo simulación (dry-run)
+- Flag previo: `input_boolean.ac_dda_reset_dry_run`.
+- Si está `on`, reporta alcance de helpers a resetear pero no escribe cambios.
+
+### Capas de reset (orden obligatorio)
+1. **Capa A — aprendizaje contextual**
+   - `input_text.ac_dda_cool_contextual_learning_map`
+   - `input_text.ac_dda_cool_effective_setpoint_map`
+   - `input_text.ac_dda_cool_cycle_contract_bucket`
+   - Dinámicos por patrón:
+     - `input_text.ac_dda_cool_learning_bucket_*`
+     - `input_text.ac_dda_cool_delta_*`
+     - `input_text.ac_dda_cool_effective_sp_bucket_*`
+2. **Capa B — trazas manuales**
+   - `input_datetime.ac_dda_last_manual_on_ts`
+   - `input_datetime.ac_dda_last_manual_off_ts`
+   - `input_text.ac_dda_last_manual_event_type`
+   - `input_text.ac_dda_learning_last_manual_on_signature`
+   - `input_text.ac_dda_learning_last_manual_off_signature`
+   - `input_text.ac_dda_last_manual_on_snapshot`
+   - `input_text.ac_dda_last_manual_on_trace_confirmed`
+   - `input_text.ac_dda_last_manual_on_pending_signature`
+   - `input_datetime.ac_dda_last_manual_final_ts`
+   - `input_datetime.ac_dda_last_manual_feedback_ts`
+   - `input_text.ac_dda_last_manual_learning_type`
+   - `input_text.ac_dda_last_manual_final_mode`
+   - `input_text.ac_dda_last_manual_final_fan`
+3. **Capa C — contrato cool aprendido (baseline seguro)**
+   - `input_number.ac_dda_cool_cycle_contract_off = 24.2`
+   - `input_number.ac_dda_cool_cycle_contract_on = 24.8`
+   - `input_number.ac_dda_cool_off_learned = 24.2`
+   - Valores dentro de clamps contractuales (`off` en `[22.0,25.7]`, `on <= 26.2` y `on > off`).
+
+### Helpers preservados (no reset)
+- Flags de transición/seguridad inmediata (`ac_dda_cycle_lock`, flags AUTO ON/OFF).
+- Compuertas maestras de habilitación global.
+- Entidades físicas (`climate.*`, sensores) y estado real del equipo.
+
+### Observabilidad mínima obligatoria
+- `logbook.log` de inicio/fin con `trace_id` y contador de helpers objetivo.
+- Notificación S24 compacta final con:
+  - `Resultado=aplicado|simulacion`
+  - `Helpers_reset=<n>`
+  - `Trace=<id>`
+- Escrituras no críticas en modo tolerante con `continue_on_error` para evitar abortos silenciosos.
+
+### Procedimiento operativo
+1. **Pre-check**
+   - Confirmar `input_boolean.ac_dda_cycle_lock=off`.
+   - Definir `input_boolean.ac_dda_reset_dry_run=on` para validación inicial.
+2. **Ejecución**
+   - Presionar `input_button.ac_dda_reset_learning_manual`.
+3. **Validación post-reset**
+   - Revisar en logbook `hito=reset_start` y `hito=reset_end` con mismo `trace_id`.
+   - Verificar notificación S24 final y conteo de helpers.
+4. **Rollback básico**
+   - Si se requiere, restaurar contrato baseline manualmente:
+     - `off=24.2`, `on=24.8`, `off_learned=24.2`.
+   - Confirmar `input_text.ac_dda_last_change_origin` acorde al origen operativo posterior.

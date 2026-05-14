@@ -7581,3 +7581,130 @@
           name: AC DDA Watchdog
           message: 'incomplete_sequence=true | reason=notify_without_snapshot | notify_status={{ notify_status_raw }}'
           entity_id: climate.sala
+
+
+- id: 'ac_dda_manual_learning_reset'
+  alias: AC - Mantenimiento - Reset manual aprendizaje AC-DDA
+  description: 'Reset manual por capas de aprendizaje AC-DDA con modo simulación y trazabilidad.
+
+    '
+  mode: single
+  trigger:
+  - platform: event
+    event_type: input_button.press
+    event_data:
+      entity_id: input_button.ac_dda_reset_learning_manual
+  condition:
+  - condition: state
+    entity_id: input_boolean.ac_dda_cycle_lock
+    state: 'off'
+  variables:
+    trace_id: "{{ now().strftime('%Y%m%d%H%M%S') ~ '-' ~ (range(100, 999) | random) }}"
+    dry_run: "{{ is_state('input_boolean.ac_dda_reset_dry_run','on') }}"
+    result_status: "{{ 'aplicado' if not dry_run else 'simulacion' }}"
+    layer_a_targets: "{{ [
+      'input_text.ac_dda_cool_contextual_learning_map',
+      'input_text.ac_dda_cool_effective_setpoint_map',
+      'input_text.ac_dda_cool_cycle_contract_bucket'
+      ] }}"
+    layer_b_targets: "{{ [
+      'input_datetime.ac_dda_last_manual_on_ts',
+      'input_datetime.ac_dda_last_manual_off_ts',
+      'input_text.ac_dda_last_manual_event_type',
+      'input_text.ac_dda_learning_last_manual_on_signature',
+      'input_text.ac_dda_learning_last_manual_off_signature',
+      'input_text.ac_dda_last_manual_on_snapshot',
+      'input_text.ac_dda_last_manual_on_trace_confirmed',
+      'input_text.ac_dda_last_manual_on_pending_signature',
+      'input_datetime.ac_dda_last_manual_final_ts',
+      'input_datetime.ac_dda_last_manual_feedback_ts',
+      'input_text.ac_dda_last_manual_learning_type',
+      'input_text.ac_dda_last_manual_final_mode',
+      'input_text.ac_dda_last_manual_final_fan'
+      ] }}"
+    layer_c_targets: "{{ [
+      'input_number.ac_dda_cool_cycle_contract_on',
+      'input_number.ac_dda_cool_cycle_contract_off',
+      'input_number.ac_dda_cool_off_learned'
+      ] }}"
+    dynamic_learning_buckets: "{{ states.input_text
+      | map(attribute='entity_id')
+      | select('match', '^input_text\.ac_dda_cool_(learning_bucket_|delta_|effective_sp_bucket_).*$')
+      | list }}"
+    reset_targets: "{{ layer_a_targets + dynamic_learning_buckets + layer_b_targets + layer_c_targets + ['input_text.ac_dda_last_change_origin'] }}"
+    helpers_reset_count: "{{ reset_targets | count }}"
+  action:
+  - service: logbook.log
+    data:
+      name: AC Reset Manual
+      message: "hito=reset_start | resultado={{ result_status }} | trace_id={{ trace_id }} | dry_run={{ dry_run }} | helpers_objetivo={{ helpers_reset_count }}"
+      entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ not dry_run }}'
+      sequence:
+      - repeat:
+          for_each: "{{ layer_a_targets + dynamic_learning_buckets }}"
+          sequence:
+          - service: input_text.set_value
+            continue_on_error: true
+            target:
+              entity_id: '{{ repeat.item }}'
+            data:
+              value: ''
+      - repeat:
+          for_each: "{{ layer_b_targets }}"
+          sequence:
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{{ repeat.item.startswith('input_datetime.') }}"
+              sequence:
+              - service: input_datetime.set_datetime
+                continue_on_error: true
+                target:
+                  entity_id: '{{ repeat.item }}'
+                data:
+                  datetime: '1970-01-01 00:00:00'
+            default:
+            - service: input_text.set_value
+              continue_on_error: true
+              target:
+                entity_id: '{{ repeat.item }}'
+              data:
+                value: ''
+      - service: input_number.set_value
+        continue_on_error: true
+        target:
+          entity_id: input_number.ac_dda_cool_cycle_contract_off
+        data:
+          value: 24.2
+      - service: input_number.set_value
+        continue_on_error: true
+        target:
+          entity_id: input_number.ac_dda_cool_cycle_contract_on
+        data:
+          value: 24.8
+      - service: input_number.set_value
+        continue_on_error: true
+        target:
+          entity_id: input_number.ac_dda_cool_off_learned
+        data:
+          value: 24.2
+      - service: input_text.set_value
+        continue_on_error: true
+        target:
+          entity_id: input_text.ac_dda_last_change_origin
+        data:
+          value: maintenance_reset_manual
+    default: []
+  - service: logbook.log
+    data:
+      name: AC Reset Manual
+      message: "hito=reset_end | resultado={{ result_status if dry_run else 'aplicado' }} | trace_id={{ trace_id }} | helpers_reset={{ helpers_reset_count }} | nota=preserva_flags_operativos"
+      entity_id: climate.0200009211c7_climate
+  - service: notify.mobile_app_samsung_s24
+    continue_on_error: true
+    data:
+      message: "AC Reset DDA Resultado={{ result_status if dry_run else 'aplicado' }} Helpers_reset={{ helpers_reset_count }} Trace={{ trace_id }}"
