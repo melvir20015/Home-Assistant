@@ -1284,3 +1284,19 @@ Compatibilidad de transición:
    - Si se requiere, restaurar contrato baseline manualmente:
      - `off=24.2`, `on=24.8`, `off_learned=24.2`.
    - Confirmar `input_text.ac_dda_last_change_origin` acorde al origen operativo posterior.
+
+---
+
+## Incidente de parseo YAML/Jinja (2026-05-14)
+
+- **Síntoma exacto**: Home Assistant reportó `while scanning for the next token found character '%' that cannot start any token`.
+- **Ubicación aproximada**: `automations.yaml` alrededor de la línea **5666** (bloque `AC Manual OFF`, mensaje de logbook largo con `trace_id`).
+- **Causa raíz**: uso de `strftime('%Y%m%d%H%M%S')` dentro de un escalar YAML entre comillas simples; las comillas internas no escapadas rompían el token YAML y dejaban `%` fuera de contexto válido.
+- **Corrección aplicada**: se cambió a `strftime("%Y%m%d%H%M%S")` dentro de la plantilla Jinja para mantener la cadena YAML válida sin alterar la lógica funcional.
+- **Validación realizada**:
+  - verificación del bloque objetivo (líneas 5620–5710) y de la estructura `choose/default` cercana;
+  - intento de `check_config` no disponible en este entorno (`hass` ausente);
+  - parseo YAML global con `PyYAML` ya no falla en el punto 5666 y ahora reporta un error independiente preexistente en línea 7630 (escape en doble comilla), fuera del alcance de este fix.
+
+### Regla preventiva
+Toda plantilla larga (especialmente con Jinja + formatos de fecha o `%`) debe declararse en bloque YAML `>` o `|`, con cierre explícito de delimitadores (`{{ ... }}` / `{% ... %}`) y filtros defensivos (`|default(...)`, `|float(0)`, `|int(0)`) para variables potencialmente indefinidas.

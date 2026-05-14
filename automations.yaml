@@ -5663,7 +5663,7 @@
       - action: logbook.log
         data:
           name: AC Manual OFF
-          message: 'off_classification=auto | manual_guard_discard_reason={{ manual_guard_discard_reason }} | auto_flags_active={{ auto_flags_active }} | transition_age_s={{ transition_age_s }} | auto_ts_age_s={{ last_auto_age_s }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else ''n/a'' }} | auto_transition_recent={{ auto_transition_recent }} | marker_age_s={{ auto_off_marker_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | trace_id={{ now().strftime('%Y%m%d%H%M%S') }}'
+          message: 'off_classification=auto | manual_guard_discard_reason={{ manual_guard_discard_reason }} | auto_flags_active={{ auto_flags_active }} | transition_age_s={{ transition_age_s }} | auto_ts_age_s={{ last_auto_age_s }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else ''n/a'' }} | auto_transition_recent={{ auto_transition_recent }} | marker_age_s={{ auto_off_marker_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | trace_id={{ now().strftime("%Y%m%d%H%M%S") }}'
           entity_id: climate.0200009211c7_climate
       - action: logbook.log
         data:
