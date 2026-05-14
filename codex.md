@@ -877,6 +877,8 @@ Se consolidan hitos con mensajes cortos y consistentes:
 
 ### Regla de negocio obligatoria
 - **Si el encendido proviene de automatización, nunca debe producir `AC Manual ON pendiente/aplicado` ni aprendizaje ON manual.**
+- **La transición AUTO nunca puede cerrar como manual** (ni ON ni OFF), incluso si el resto de validaciones manuales parciales resultan positivas.
+- **Precedencia obligatoria:** descarte por `auto_transition_active` tiene prioridad sobre cualquier validación manual restante.
 - El descarte debe resolverse en guard/feedback con:
   - `manual_guard_discard=auto_transition_active` (guard),
   - `ignored_reason_code=auto_transition_active` (learning ON),

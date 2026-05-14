@@ -1104,7 +1104,7 @@
             if cool_context == 'normal' and cool_normal_off_dynamic is not none else
             'n/a' }} | setpoint_fijo_contractual={{ (((cool_normal_off_dynamic | float)
             - 1.5) | int(0, 'floor')) if cool_context == 'normal' and cool_normal_off_dynamic
-            is not none else 'n/a' }} | stop={{ cool_stop_threshold_selected }} |
+            is not none else ''n/a'' }} | stop={{ cool_stop_threshold_selected }} |
             learn_ref={{ cool_learning_reference_selected }} | wait_initial={{ cool_ramp_initial_wait_min
             }}m | wait_step={{ cool_ramp_followup_wait_min }}m
           entity_id: '{{ climate_ent }}'
@@ -1620,7 +1620,7 @@
     manual_on_session_protected: '{{ (manual_on_session_active | default(false)) and (manual_on_session_ttl_valid | default(false)) }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    t(/5)\n  {% elif trigger.platform == 'state' %}\n    s:{{ trigger.entity_id.split('.')[-1]
-      }}=>{{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
+      }}=>{{ trigger.to_state.state if trigger.to_state else ''n/a'' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
     notif_base: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }} | Trig={{ trig }} | C_T={{
       t1 }}°C S_T={{ t2 }}°C PromT={{ tin }}°C | C_H={{ h1 }}% S_H={{ h2 }}% PromH={{
@@ -1737,10 +1737,10 @@
           cool_cycle_contract_snapshot: >-
             Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }}
             | Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }}
-            | On={{ cool_cycle_contract_on if cool_cycle_contract_on is not none else 'n/a' }}
-            | Off={{ cool_cycle_contract_off if cool_cycle_contract_off is not none else 'n/a' }}
-            | OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else 'n/a' }}
-            | SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+            | On={{ cool_cycle_contract_on if cool_cycle_contract_on is not none else ''n/a'' }}
+            | Off={{ cool_cycle_contract_off if cool_cycle_contract_off is not none else ''n/a'' }}
+            | OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else ''n/a'' }}
+            | SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}
           cool_cycle_real_off_cause: ausencia
           cool_cycle_real_off_detail: >-
             Modo={{ cur_mode }} | Aus=30m
@@ -1749,13 +1749,13 @@
           cool_cycle_final_title: Cool↓
           cool_cycle_final_message: >-
             {{ now().strftime('%I:%M %p') | regex_replace('^0','') }}
-            Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }}
-            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }}
-            H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
-            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
-            Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
-            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
+            Tin={{ '%.1f' | format(tin | float) if tin is not none else ''n/a'' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else ''n/a'' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else ''n/a'' }}
+            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else ''n/a'' }}
+            Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else ''n/a'' }}
+            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else ''n/a'' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause }}
       - target:
           entity_id:
@@ -2177,8 +2177,8 @@
             }} Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a'
             }} H={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else
             'n/a' }} On={{ '%.1f' | format(cool_on_validated | float) if cool_on_validated
-            is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_validated |
-            float) if cool_off_validated is not none else 'n/a' }} SP={{ '%.1f' |
+            is not none else ''n/a'' }} Off={{ '%.1f' | format(cool_off_validated |
+            float) if cool_off_validated is not none else ''n/a'' }} SP={{ '%.1f' |
             format(emergency_setpoint | float) if emergency_setpoint is not none else
             'n/a' }} Fan={{ emergency_fan_mode
             if emergency_fan_mode not in ['', 'unknown', 'unavailable', 'none'] else
@@ -2279,29 +2279,29 @@
           cool_cycle_contract_snapshot: >-
             Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }}
             Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }}
-            On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else 'n/a' }}
-            Off={{ cool_cycle_contract_off_validated if cool_cycle_contract_off_validated is not none else 'n/a' }}
-            OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else 'n/a' }}
-            SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+            On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else ''n/a'' }}
+            Off={{ cool_cycle_contract_off_validated if cool_cycle_contract_off_validated is not none else ''n/a'' }}
+            OffSensor={{ cool_cycle_contract_sensor_off if cool_cycle_contract_sensor_off is not none else ''n/a'' }}
+            SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}
           cool_cycle_real_off_cause: emergencia
           cool_cycle_real_off_detail: >-
             {% if tin is not none and emergency_off_avg is not none and (tin | float) <= (emergency_off_avg | float) %}
             Prom={{ tin }}<=OffEmerg={{ emergency_off_avg }}
             {% else %}
-            Prom={{ tin if tin is not none else 'n/a' }} OffEmerg={{ emergency_off_avg if emergency_off_avg is not none else 'n/a' }}
+            Prom={{ tin if tin is not none else ''n/a'' }} OffEmerg={{ emergency_off_avg if emergency_off_avg is not none else ''n/a'' }}
             {% endif %}
           cool_cycle_branch: cool_emergency_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
           cool_cycle_final_message: >-
             {{ now().strftime('%I:%M %p') | regex_replace('^0','') }}
-            Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }}
-            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }}
-            H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
-            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
-            Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else 'n/a' }}
-            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
+            Tin={{ '%.1f' | format(tin | float) if tin is not none else ''n/a'' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else ''n/a'' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else ''n/a'' }}
+            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else ''n/a'' }}
+            Off={{ '%.1f' | format(cool_cycle_contract_off_validated | float) if cool_cycle_contract_off_validated is not none and (cool_cycle_contract_off_validated | float) >= 17 else ''n/a'' }}
+            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else ''n/a'' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_real_off_cause }}
       - target:
           entity_id:
@@ -2897,28 +2897,28 @@
             == 'corte_preventivo_t1' %}\n  t1={{ t1 }}<=SensorHardStop={{ cool_cycle_sensor_off_effective
             }}\n{% elif cool_cycle_off_cause == 'corte_preventivo_t2' %}\n  t2={{
             t2 }}<=SensorHardStop={{ cool_cycle_sensor_off_effective }}\n{% else %}\n  Prom={{
-            tin if tin is not none else 'n/a' }} | t1={{ t1 if t1 is not none else
-            'n/a' }} | t2={{ t2 if t2 is not none else 'n/a' }}\n{% endif %}"
+            tin if tin is not none else ''n/a'' }} | t1={{ t1 if t1 is not none else
+            'n/a' }} | t2={{ t2 if t2 is not none else ''n/a'' }}\n{% endif %}"
           cool_cycle_contract_snapshot: >-
             Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }}
             Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }}
-            On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else 'n/a' }}
-            Off={{ cool_cycle_off_effective if cool_cycle_off_effective is not none else 'n/a' }}
-            OffSensor={{ cool_cycle_sensor_off_effective if cool_cycle_sensor_off_effective is not none else 'n/a' }}
+            On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else ''n/a'' }}
+            Off={{ cool_cycle_off_effective if cool_cycle_off_effective is not none else ''n/a'' }}
+            OffSensor={{ cool_cycle_sensor_off_effective if cool_cycle_sensor_off_effective is not none else ''n/a'' }}
             OffSrc={{ cool_cycle_off_effective_source }}
-            SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+            SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}
           cool_cycle_branch: cool_normal_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
           cool_cycle_final_message: >-
             {{ now().strftime('%I:%M %p') | regex_replace('^0','') }}
-            Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }}
-            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }}
-            H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
-            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
-            Off={{ '%.1f' | format(cool_cycle_off_effective | float) if cool_cycle_off_effective is not none and (cool_cycle_off_effective | float) >= 17 else 'n/a' }}
-            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
-            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
+            Tin={{ '%.1f' | format(tin | float) if tin is not none else ''n/a'' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else ''n/a'' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else ''n/a'' }}
+            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else ''n/a'' }}
+            Off={{ '%.1f' | format(cool_cycle_off_effective | float) if cool_cycle_off_effective is not none and (cool_cycle_off_effective | float) >= 17 else ''n/a'' }}
+            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else ''n/a'' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_off_cause }}
             OffSrc={{ cool_cycle_off_effective_source }}
       - choose:
@@ -4165,7 +4165,7 @@
     cur_mode: '{{ states(climate_ent) }}'
     ac_set: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
     ac_fan: "{{ state_attr(climate_ent,'fan_mode')\n   if state_attr(climate_ent,'fan_mode')
-      is not none else 'n/a' }}"
+      is not none else ''n/a'' }}"
     locked: '{{ is_state(''input_boolean.ac_bloqueo_cambio_modo_2h'',''on'') }}'
     lock_txt: '{{ ''ON'' if locked else ''OFF'' }}'
     last_mode_no_fan: '{{ states(''input_select.ac_ultimo_modo_no_fan'') }}'
@@ -4729,7 +4729,7 @@
     ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    /5min\n  {% elif trigger.platform == 'state' %}\n    {{ trigger.entity_id
-      }}={{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
+      }}={{ trigger.to_state.state if trigger.to_state else ''n/a'' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
   mode: single
 - id: '1769981375282'
@@ -4761,7 +4761,7 @@
       tout_on: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
       hout_on: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
       sp_on: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
-      fan_on: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else 'n/a' }}"
+      fan_on: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else ''n/a'' }}"
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') | default('''', true) | trim }}'
@@ -4769,7 +4769,7 @@
       cycle_token_on: "{% if transition_token_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ transition_token_raw }}{% else %}no_token{% endif %}"
       cycle_signature_v2: "token:{{ cycle_token_on }}|auto_on_ts:{{ auto_on_ts }}|branch:{{ branch_on }}|src:auto_on_v2"
       trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-{{ range(100, 1000) | random }}-notify-auto-on-confirm'
-      message_on: "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin_on | float) if tin_on is not none else 'n/a' }} Tout={{ '%.1f' | format(tout_on | float) if tout_on is not none else 'n/a' }} H={{ '%.0f' | format(hout_on | float) if hout_on is not none else 'n/a' }} On={{ contract_on_show }} Off={{ contract_off_show }} SP={{ '%.1f' | format(sp_on | float) if sp_on is not none else 'n/a' }} Fan={{ fan_on if fan_on not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }} Src=AutoON"
+      message_on: "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin_on | float) if tin_on is not none else ''n/a'' }} Tout={{ '%.1f' | format(tout_on | float) if tout_on is not none else ''n/a'' }} H={{ '%.0f' | format(hout_on | float) if hout_on is not none else ''n/a'' }} On={{ contract_on_show }} Off={{ contract_off_show }} SP={{ '%.1f' | format(sp_on | float) if sp_on is not none else ''n/a'' }} Fan={{ fan_on if fan_on not in ['', 'unknown', 'unavailable', 'none'] else ''n/a'' }} Src=AutoON"
   - service: logbook.log
     continue_on_error: true
     data:
@@ -5637,8 +5637,11 @@
       transition_ts_epoch: "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}"
       transition_age_s: "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
       auto_transition_recent: "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}"
-      auto_transition_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') or auto_transition_recent }}'
-      manual_guard_discard_reason: "{% if is_state('input_boolean.ac_dda_off_por_automatizacion','on') %}auto_off_flag_on{% elif auto_off_recent %}auto_off_recent{% elif auto_transition_active %}auto_transition_active{% elif cycle_lock_effective_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% else %}none{% endif %}"
+      auto_flags_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') }}'
+      auto_transition_active: '{{ auto_flags_active or auto_transition_recent }}'
+      auto_timestamp_recent: '{{ (last_auto_age_s | float(99999)) >= 0 and (last_auto_age_s | float(99999)) <= (auto_recent_window_s | float(90)) }}'
+      auto_evidence_strong: '{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}'
+      manual_guard_discard_reason: "{% if auto_evidence_strong %}auto_transition_active{% elif auto_off_recent %}auto_off_recent{% elif cycle_lock_effective_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% else %}none{% endif %}"
   - choose:
     - conditions:
       - condition: template
@@ -5659,7 +5662,7 @@
       - action: logbook.log
         data:
           name: AC Manual OFF
-          message: 'off_classification=auto | manual_guard_discard_reason={{ manual_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else ''n/a'' }} | auto_transition_recent={{ auto_transition_recent }} | transition_age_s={{ transition_age_s }} | marker_age_s={{ auto_off_marker_age_s }} | last_origin={{ last_change_origin_raw }}'
+          message: 'off_classification=auto | manual_guard_discard_reason={{ manual_guard_discard_reason }} | auto_flags_active={{ auto_flags_active }} | transition_age_s={{ transition_age_s }} | auto_ts_age_s={{ last_auto_age_s }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else ''n/a'' }} | auto_transition_recent={{ auto_transition_recent }} | marker_age_s={{ auto_off_marker_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | trace_id={{ now().strftime('%Y%m%d%H%M%S') }}'
           entity_id: climate.0200009211c7_climate
       - action: logbook.log
         data:
@@ -5708,7 +5711,7 @@
       hin: "{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1) }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{ h2 | round(1) }}{% else %}{{ none }}{% endif %}"
       cool_on_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none) }}'
       cool_off_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none) }}'
-      fan_final: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else 'n/a' }}"
+      fan_final: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else ''n/a'' }}"
   - target:
       entity_id: input_datetime.ac_dda_last_manual_off_ts
     data:
@@ -5892,7 +5895,7 @@
       manual_on_auto_recent_compound: '{{ auto_transition_active_strict or auto_recent_observed }}'
       auto_transition_active: '{{ auto_transition_active_strict }}'
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
-      manual_on_guard_discard_reason: "{% if not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}"
+      manual_on_guard_discard_reason: "{% if auto_evidence_strong %}manual_guard_discard=auto_transition_active{% elif not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}"
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
       contract_version: contract=v1
       mobile_channel_ok: "{{ states('device_tracker.samsung_s24') | lower not in ['unknown','unavailable'] }}"
@@ -6205,7 +6208,7 @@
       post60_cycle_lock_age_s: "{% if post60_cycle_lock_since_epoch is none %}99999{% elif not post60_cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (post60_cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
       post60_cycle_lock_is_stale: '{{ post60_cycle_lock_active and (post60_cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
       post60_cycle_lock_effective_active: '{{ post60_cycle_lock_active and not post60_cycle_lock_is_stale }}'
-      post60_guard_discard_reason: "{% if not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}"
+      post60_guard_discard_reason: "{% if post60_auto_evidence_strong %}manual_guard_discard=auto_transition_active{% elif not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}"
   - action: logbook.log
     data:
       name: AC Manual ON
@@ -6332,7 +6335,7 @@
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: '{{ states(climate_ent) }}'
       final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
-      final_fan: "{{ state_attr(climate_ent,'fan_mode') if state_attr(climate_ent,'fan_mode') is not none else 'n/a' }}"
+      final_fan: "{{ state_attr(climate_ent,'fan_mode') if state_attr(climate_ent,'fan_mode') is not none else ''n/a'' }}"
       t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
         }}'
       t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
