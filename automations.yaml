@@ -4846,9 +4846,8 @@
   - trigger: state
     entity_id: input_datetime.ac_dda_last_manual_off_ts
   conditions:
-  - condition: time
-    after: 07:01:00
-    before: '21:59:00'
+  - condition: template
+    value_template: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
   actions:
   - variables:
       contract_version: contract=v1
@@ -5081,6 +5080,9 @@
   - trigger: state
     id: manual_on_snapshot
     entity_id: input_text.ac_dda_last_manual_on_snapshot
+  conditions:
+  - condition: template
+    value_template: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
   actions:
   - variables:
       contract_version: contract=v1
@@ -5607,9 +5609,8 @@
     entity_id: climate.0200009211c7_climate
     to: 'off'
   conditions:
-  - condition: time
-    after: 07:01:00
-    before: '21:59:00'
+  - condition: template
+    value_template: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
   actions:
   - variables:
       auto_off_guard_window_s: 90
@@ -5856,6 +5857,9 @@
     - heat
     - fan_only
     for: 00:00:02
+  conditions:
+  - condition: template
+    value_template: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
   actions:
   - variables:
       generated_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S'') ~ ''-'' ~ (range(100, 1000) | random) }}'

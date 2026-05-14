@@ -1184,3 +1184,32 @@ Fecha de actualización: **2026-05-14**.
 Compatibilidad de transición:
 - Se permite lectura temporal de legacy solo en diagnósticos históricos.
 - No se permite escritura cruzada a `ac_last_auto_*` desde automatizaciones AC-DDA activas.
+
+## 33. Guard horario único para secundarias AC-DDA (2026-05-14)
+
+### Expresión única reutilizable (fuente común)
+- `time_guard`: `{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}`
+- Alcance contractual diurno principal: **07:01:00–21:59:00**.
+- La misma plantilla debe usarse en todas las automatizaciones secundarias relevantes para evitar divergencias.
+
+### Precedencia obligatoria
+1. Evaluar `time_guard` al inicio de la secundaria.
+2. Solo si `time_guard=true`, ejecutar consolidación/manual workflow.
+3. Solo si `time_guard=true`, emitir notificaciones manuales de éxito/pendiente.
+
+### Tabla: Secundaria vs alcance horario
+
+| Secundaria | ¿Ejecuta fuera de horario? | ¿Notifica fuera de horario? | Razón estándar |
+|---|---|---|---|
+| `AC - Manual ON guard + presencia temporal` | No | No | `out_of_scope_daytime_main` |
+| `AC - Manual OFF guard + pausa 5 min` | No | No | `out_of_scope_daytime_main` |
+| `AC - Learning - Manual ON feedback` | No | No | `out_of_scope_daytime_main` |
+| `AC - Learning - Manual OFF feedback` | No | No | `out_of_scope_daytime_main` |
+| Secundarias derivadas de confirmación/manual notify | No (si mutan estado contractual) | No | `out_of_scope_daytime_main` |
+
+### Reglas anti-efecto-colateral fuera de horario
+- No mutar helpers de resultado manual final.
+- No actualizar firmas de deduplicación manual.
+- No disparar tercera notificación de learning manual.
+- Se permite solo traza técnica mínima opcional en logbook con razón compacta:
+  - `out_of_scope_daytime_main`.
