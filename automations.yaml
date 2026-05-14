@@ -37,7 +37,7 @@
   - platform: time_pattern
     minutes: /1
   variables:
-    last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+    last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
     minutes_since_last_auto: '{% set raw = last_auto_ts_raw | default('''', true)
       | trim %}{% set raw_lower = raw | lower %}{% if raw_lower in [''unknown'',''unavailable'',''none'','''']
       %}99999{% else %}{% set ts = as_timestamp(raw, default=none) %}{{ 99999 if ts
@@ -79,13 +79,13 @@
     event: start
   variables:
     helper_states:
-      input_text.ac_last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'')
+      input_text.ac_dda_last_auto_branch: '{{ states(''input_text.ac_dda_last_auto_branch'')
         }}'
-      input_text.ac_last_auto_action: '{{ states(''input_text.ac_last_auto_action'')
+      input_text.ac_dda_last_auto_action: '{{ states(''input_text.ac_dda_last_auto_action'')
         }}'
-      input_text.ac_last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
-      input_text.ac_last_auto_fan: '{{ states(''input_text.ac_last_auto_fan'') }}'
-      input_datetime.ac_last_auto_off_marker_ts: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'')
+      input_text.ac_dda_last_auto_mode: '{{ states(''input_text.ac_dda_last_auto_mode'') }}'
+      input_text.ac_dda_last_auto_fan: '{{ states(''input_text.ac_dda_last_auto_fan'') }}'
+      input_datetime.ac_dda_last_auto_off_marker_ts: '{{ states(''input_datetime.ac_dda_last_auto_off_marker_ts'')
         }}'
       input_text.ac_last_auto_off_marker_nonce: '{{ states(''input_text.ac_last_auto_off_marker_nonce'')
         }}'
@@ -780,12 +780,12 @@
         value_template: '{{ night_ramp_in_progress }}'
       sequence:
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: night_loop_preempted_by_new_trigger
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: night_loop_preempted_by_new_trigger
         service: input_text.set_value
@@ -963,12 +963,12 @@
           entity_id: input_boolean.ac_night_cool_bootstrap_in_progress
         service: input_boolean.turn_off
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: cool_night_ramp_stale_flag_reset
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: ramp_flag_auto_reset
         service: input_text.set_value
@@ -1016,18 +1016,18 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
           - input_datetime.ac_night_cool_last_bootstrap_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: cool_night_ramp_start
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: ramp_start
         service: input_text.set_value
@@ -1037,17 +1037,17 @@
           value: auto_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: cool
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: Low
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ cool_initial_setpoint_selected | float }}'
         service: input_number.set_value
@@ -1219,12 +1219,12 @@
                 value_template: '{{ not loop_within_night_window }}'
               sequence:
               - target:
-                  entity_id: input_text.ac_last_auto_branch
+                  entity_id: input_text.ac_dda_last_auto_branch
                 data:
                   value: cool_night_ramp_window_exit
                 service: input_text.set_value
               - target:
-                  entity_id: input_text.ac_last_auto_action
+                  entity_id: input_text.ac_dda_last_auto_action
                 data:
                   value: ramp_window_exit
                 service: input_text.set_value
@@ -1247,12 +1247,12 @@
                   | float(0)) }}'
               sequence:
               - target:
-                  entity_id: input_text.ac_last_auto_branch
+                  entity_id: input_text.ac_dda_last_auto_branch
                 data:
                   value: cool_night_ramp_timeout_exit
                 service: input_text.set_value
               - target:
-                  entity_id: input_text.ac_last_auto_action
+                  entity_id: input_text.ac_dda_last_auto_action
                 data:
                   value: ramp_timeout_exit
                 service: input_text.set_value
@@ -1275,12 +1275,12 @@
                 value_template: '{{ not loop_presence_ok }}'
               sequence:
               - target:
-                  entity_id: input_text.ac_last_auto_branch
+                  entity_id: input_text.ac_dda_last_auto_branch
                 data:
                   value: cool_night_ramp_presence_exit
                 service: input_text.set_value
               - target:
-                  entity_id: input_text.ac_last_auto_action
+                  entity_id: input_text.ac_dda_last_auto_action
                 data:
                   value: ramp_presence_exit
                 service: input_text.set_value
@@ -1302,12 +1302,12 @@
                 value_template: '{{ loop_hvac_mode != ''cool'' }}'
               sequence:
               - target:
-                  entity_id: input_text.ac_last_auto_branch
+                  entity_id: input_text.ac_dda_last_auto_branch
                 data:
                   value: cool_night_ramp_hvac_exit
                 service: input_text.set_value
               - target:
-                  entity_id: input_text.ac_last_auto_action
+                  entity_id: input_text.ac_dda_last_auto_action
                 data:
                   value: ramp_hvac_exit
                 service: input_text.set_value
@@ -1344,17 +1344,17 @@
                   datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
                 service: input_datetime.set_datetime
               - target:
-                  entity_id: input_number.ac_last_auto_setpoint
+                  entity_id: input_number.ac_dda_last_auto_setpoint
                 data:
                   value: '{{ loop_setpoint }}'
                 service: input_number.set_value
               - target:
-                  entity_id: input_text.ac_last_auto_branch
+                  entity_id: input_text.ac_dda_last_auto_branch
                 data:
                   value: cool_night_ramp_ready_for_comfort_off
                 service: input_text.set_value
               - target:
-                  entity_id: input_text.ac_last_auto_action
+                  entity_id: input_text.ac_dda_last_auto_action
                 data:
                   value: ramp_ready_for_off
                 service: input_text.set_value
@@ -1379,12 +1379,12 @@
                 value_template: '{{ loop_can_reduce }}'
               sequence:
               - target:
-                  entity_id: input_text.ac_last_auto_branch
+                  entity_id: input_text.ac_dda_last_auto_branch
                 data:
                   value: cool_night_setpoint_fijo_contractual
                 service: input_text.set_value
               - target:
-                  entity_id: input_text.ac_last_auto_action
+                  entity_id: input_text.ac_dda_last_auto_action
                 data:
                   value: setpoint_fijo_contractual
                 service: input_text.set_value
@@ -1398,12 +1398,12 @@
                   entity_id: '{{ climate_ent }}'
             default:
             - target:
-                entity_id: input_text.ac_last_auto_branch
+                entity_id: input_text.ac_dda_last_auto_branch
               data:
                 value: cool_night_ramp_hold
               service: input_text.set_value
             - target:
-                entity_id: input_text.ac_last_auto_action
+                entity_id: input_text.ac_dda_last_auto_action
               data:
                 value: ramp_hold
               service: input_text.set_value
@@ -1815,17 +1815,17 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: presence_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: auto_off
         service: input_text.set_value
@@ -1835,47 +1835,47 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: '{{ cur_mode }}'
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: '{{ ac_fan }}'
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tin
+          entity_id: input_number.ac_dda_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t1
+          entity_id: input_number.ac_dda_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t2
+          entity_id: input_number.ac_dda_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_hin
+          entity_id: input_number.ac_dda_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tout
+          entity_id: input_number.ac_dda_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_sensor_delta
+          entity_id: input_number.ac_dda_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
@@ -1888,7 +1888,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_datetime.ac_last_auto_off_marker_ts
+          entity_id: input_datetime.ac_dda_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -2025,17 +2025,17 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: cool_emergency_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: auto_on
         service: input_text.set_value
@@ -2045,47 +2045,47 @@
           value: auto_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: cool
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: '{{ emergency_fan_mode }}'
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tin
+          entity_id: input_number.ac_dda_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t1
+          entity_id: input_number.ac_dda_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t2
+          entity_id: input_number.ac_dda_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_hin
+          entity_id: input_number.ac_dda_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tout
+          entity_id: input_number.ac_dda_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ emergency_setpoint }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_sensor_delta
+          entity_id: input_number.ac_dda_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
@@ -2168,7 +2168,7 @@
           cool_push_reason: Mot=auto emergencia
           cool_notify_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-{{ range(100, 1000) | random }}-cool-emergency-on'
           cool_notify_branch: cool_emergency_on
-          cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}{% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_emergency_on|src:auto_on_v2"
+          cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_dda_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}{% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_emergency_on|src:auto_on_v2"
           cool_push_summary: SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode
             }} | Vent={{ emergency_window }}
           cool_mobile_title_local: Cool↑
@@ -2372,17 +2372,17 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: cool_emergency_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: auto_off
         service: input_text.set_value
@@ -2392,47 +2392,47 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: cool
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: '{{ ac_fan }}'
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tin
+          entity_id: input_number.ac_dda_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t1
+          entity_id: input_number.ac_dda_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t2
+          entity_id: input_number.ac_dda_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_hin
+          entity_id: input_number.ac_dda_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tout
+          entity_id: input_number.ac_dda_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_sensor_delta
+          entity_id: input_number.ac_dda_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
@@ -2445,7 +2445,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_datetime.ac_last_auto_off_marker_ts
+          entity_id: input_datetime.ac_dda_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -2554,17 +2554,17 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: heat_force_off_outdoor
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: auto_off
         service: input_text.set_value
@@ -2574,47 +2574,47 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: heat
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: '{{ ac_fan }}'
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tin
+          entity_id: input_number.ac_dda_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t1
+          entity_id: input_number.ac_dda_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t2
+          entity_id: input_number.ac_dda_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_hin
+          entity_id: input_number.ac_dda_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tout
+          entity_id: input_number.ac_dda_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_sensor_delta
+          entity_id: input_number.ac_dda_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
@@ -2656,7 +2656,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_datetime.ac_last_auto_off_marker_ts
+          entity_id: input_datetime.ac_dda_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -2720,17 +2720,17 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: heat_normal_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: auto_off
         service: input_text.set_value
@@ -2740,47 +2740,47 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: heat
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: '{{ ac_fan }}'
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tin
+          entity_id: input_number.ac_dda_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t1
+          entity_id: input_number.ac_dda_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t2
+          entity_id: input_number.ac_dda_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_hin
+          entity_id: input_number.ac_dda_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tout
+          entity_id: input_number.ac_dda_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_sensor_delta
+          entity_id: input_number.ac_dda_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
@@ -2793,7 +2793,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_datetime.ac_last_auto_off_marker_ts
+          entity_id: input_datetime.ac_dda_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -2986,12 +2986,12 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: cool_normal_off
         service: input_text.set_value
@@ -3001,7 +3001,7 @@
           value: '{{ cool_context_detail }}'
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: auto_off
         service: input_text.set_value
@@ -3011,47 +3011,47 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: cool
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: '{{ ac_fan }}'
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tin
+          entity_id: input_number.ac_dda_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t1
+          entity_id: input_number.ac_dda_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t2
+          entity_id: input_number.ac_dda_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_hin
+          entity_id: input_number.ac_dda_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tout
+          entity_id: input_number.ac_dda_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ ac_set if ac_set is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_sensor_delta
+          entity_id: input_number.ac_dda_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
@@ -3064,7 +3064,7 @@
           value: auto_off
         service: input_text.set_value
       - target:
-          entity_id: input_datetime.ac_last_auto_off_marker_ts
+          entity_id: input_datetime.ac_dda_last_auto_off_marker_ts
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -3182,7 +3182,7 @@
             is not none else ''n/a'' }} | cur_mode={{ cur_mode }} | manual_override_active={{
             (manual_override_active | default(false)) }} | emergency_latched={{ emergency_latched }} |
             cool_cycle_contract_active={{ cool_cycle_contract_active }} | last_auto_branch={{
-            states(''input_text.ac_last_auto_branch'') }} | mode_ok={{ off_gate_mode_ok
+            states(''input_text.ac_dda_last_auto_branch'') }} | mode_ok={{ off_gate_mode_ok
             }} | not_emergency={{ off_gate_not_emergency }} | not_manual_override={{
             off_gate_not_manual_override }} | contract_active_gate={{ off_gate_contract_active
             }} | threshold_met={{ off_gate_threshold_met }}'
@@ -3221,17 +3221,17 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: heat_normal_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: auto_on
         service: input_text.set_value
@@ -3241,47 +3241,47 @@
           value: auto_on
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: heat
         service: input_text.set_value
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: '{{ fan_day_mode }}'
         service: input_text.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tin
+          entity_id: input_number.ac_dda_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t1
+          entity_id: input_number.ac_dda_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_t2
+          entity_id: input_number.ac_dda_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_hin
+          entity_id: input_number.ac_dda_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_tout
+          entity_id: input_number.ac_dda_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ heat_setpoint }}'
         service: input_number.set_value
       - target:
-          entity_id: input_number.ac_last_auto_sensor_delta
+          entity_id: input_number.ac_dda_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
@@ -3376,13 +3376,13 @@
       - target:
           entity_id:
           - input_datetime.ac_ultimo_cambio_modo
-          - input_datetime.ac_last_auto_ts
+          - input_datetime.ac_dda_last_auto_ts
         data:
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
         continue_on_error: true
       - target:
-          entity_id: input_text.ac_last_auto_branch
+          entity_id: input_text.ac_dda_last_auto_branch
         data:
           value: cool_normal_on
         service: input_text.set_value
@@ -3394,7 +3394,7 @@
         service: input_text.set_value
         continue_on_error: true
       - target:
-          entity_id: input_text.ac_last_auto_action
+          entity_id: input_text.ac_dda_last_auto_action
         data:
           value: auto_on
         service: input_text.set_value
@@ -3406,49 +3406,49 @@
         service: input_text.set_value
         continue_on_error: true
       - target:
-          entity_id: input_text.ac_last_auto_mode
+          entity_id: input_text.ac_dda_last_auto_mode
         data:
           value: cool
         service: input_text.set_value
         continue_on_error: true
       - target:
-          entity_id: input_text.ac_last_auto_fan
+          entity_id: input_text.ac_dda_last_auto_fan
         data:
           value: Low
         service: input_text.set_value
         continue_on_error: true
       - target:
-          entity_id: input_number.ac_last_auto_tin
+          entity_id: input_number.ac_dda_last_auto_tin
         data:
           value: '{{ tin if tin is not none else 0 }}'
         service: input_number.set_value
         continue_on_error: true
       - target:
-          entity_id: input_number.ac_last_auto_t1
+          entity_id: input_number.ac_dda_last_auto_t1
         data:
           value: '{{ t1 if t1 is not none else 0 }}'
         service: input_number.set_value
         continue_on_error: true
       - target:
-          entity_id: input_number.ac_last_auto_t2
+          entity_id: input_number.ac_dda_last_auto_t2
         data:
           value: '{{ t2 if t2 is not none else 0 }}'
         service: input_number.set_value
         continue_on_error: true
       - target:
-          entity_id: input_number.ac_last_auto_hin
+          entity_id: input_number.ac_dda_last_auto_hin
         data:
           value: '{{ hin if hin is not none else 0 }}'
         service: input_number.set_value
         continue_on_error: true
       - target:
-          entity_id: input_number.ac_last_auto_tout
+          entity_id: input_number.ac_dda_last_auto_tout
         data:
           value: '{{ tout if tout is not none else 0 }}'
         service: input_number.set_value
         continue_on_error: true
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: "{{ ac_set_effective_normalized\n   if manual_sp_protected_lock_active
             and ac_set_effective_normalized is not none\n   else (cool_setpoint_effective
@@ -3456,7 +3456,7 @@
         service: input_number.set_value
         continue_on_error: true
       - target:
-          entity_id: input_number.ac_last_auto_sensor_delta
+          entity_id: input_number.ac_dda_last_auto_sensor_delta
         data:
           value: '{{ sensor_delta }}'
         service: input_number.set_value
@@ -3835,7 +3835,7 @@
           cool_push_reason: Mot=auto umbral
           cool_notify_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-{{ range(100, 1000) | random }}-cool-normal-on'
           cool_notify_branch: cool_normal_on
-          cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}{% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_normal_on|src:auto_on_v2"
+          cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_dda_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}{% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_normal_on|src:auto_on_v2"
           cool_push_summary: '{% set contract_bucket = states(''input_text.ac_dda_cool_cycle_contract_bucket'')
             | default('''', true) | trim %} {% set contract_calc = states(''input_text.ac_dda_cool_cycle_contract_reason'')
             | default('''', true) | trim %} {% set contract_on = states(''input_number.ac_dda_cool_cycle_contract_on'')
@@ -4085,7 +4085,7 @@
             'na' }} | status={{ sp_write_status }}
           entity_id: climate.0200009211c7_climate
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ cool_setpoint_effective_soft_resume if cool_setpoint_effective_soft_resume
             is not none else 0 }}'
@@ -4220,8 +4220,8 @@
       %}\n  tormenta\n{% else %}\n  desconocido\n{% endif %}"
     cool_presence_bucket: '{{ ''presencia'' if presence_effective else ''ausencia''
       }}'
-    cool_thermal_trend_bucket: "{% set prev = states('input_number.ac_last_auto_tin')
-      | float(none) %}\n{% set last_auto_ts = states('input_datetime.ac_last_auto_ts')
+    cool_thermal_trend_bucket: "{% set prev = states('input_number.ac_dda_last_auto_tin')
+      | float(none) %}\n{% set last_auto_ts = states('input_datetime.ac_dda_last_auto_ts')
       %}\n{% set recent = last_auto_ts not in ['unknown','unavailable','none','']
       and ((as_timestamp(now()) - as_timestamp(last_auto_ts)) / 60) <= 20 %}\n{% if
       tin is none or prev is none or prev == 0 or not recent %}\n  estable\n{% else
@@ -4534,7 +4534,7 @@
       }}'
     cool_cycle_contract_started_at_raw: '{{ states(''input_datetime.ac_dda_cool_cycle_contract_started_at'')
       }}'
-    cool_cycle_contract_active: "{{ states('input_text.ac_last_auto_branch') == 'cool_normal_on'\n
+    cool_cycle_contract_active: "{{ states('input_text.ac_dda_last_auto_branch') == 'cool_normal_on'\n
       \  and cool_cycle_contract_off is not none\n   and cool_cycle_contract_on is
       not none\n   and cool_cycle_contract_setpoint is not none\n   and cool_cycle_contract_setpoint_effective
       is not none }}"
@@ -4557,18 +4557,18 @@
       / 60) | round(1) }}\n{% endif %}"
     last_cool_sync_notified_sp: '{{ states(''input_number.ac_last_cool_sp_sync_notified'')
       | float(none) }}'
-    last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+    last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
     minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true) |
       trim %} {% set raw_lower = raw | lower %} {% if raw_lower in ['unknown', 'unavailable',
       'none', ''] %}\n  99999\n{% else %}\n  {% set ts = as_timestamp(raw, default=none)
       %}\n  {{ 99999 if ts is none else (((as_timestamp(now()) - ts) / 60) | round(1))
       }}\n{% endif %}"
-    cool_sync_recent_auto_on: '{{ states(''input_text.ac_last_auto_action'') == ''auto_on''
-      and states(''input_text.ac_last_auto_branch'') == ''cool_normal_on'' and (minutes_since_last_auto
+    cool_sync_recent_auto_on: '{{ states(''input_text.ac_dda_last_auto_action'') == ''auto_on''
+      and states(''input_text.ac_dda_last_auto_branch'') == ''cool_normal_on'' and (minutes_since_last_auto
       | float(99999)) <= 3 }}'
-    last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
-    last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
-    last_auto_branch: '{{ states(''input_text.ac_last_auto_branch'') }}'
+    last_auto_action: '{{ states(''input_text.ac_dda_last_auto_action'') }}'
+    last_auto_mode: '{{ states(''input_text.ac_dda_last_auto_mode'') }}'
+    last_auto_branch: '{{ states(''input_text.ac_dda_last_auto_branch'') }}'
     recent_any_auto_on: "{{ last_auto_action == 'auto_on'\n   and (minutes_since_last_auto
       | float(99999)) <= 2 }}"
     manual_sp_lock_window_min: '{% set raw = states(''input_number.ac_manual_setpoint_override_hold_minutes'')
@@ -4750,7 +4750,7 @@
   action:
   - variables:
       cycle_started_raw: '{{ states(''input_datetime.ac_dda_cool_cycle_contract_started_at'') | default('''', true) | trim }}'
-      branch_raw: '{{ states(''input_text.ac_last_auto_branch'') | default('''', true) | trim }}'
+      branch_raw: '{{ states(''input_text.ac_dda_last_auto_branch'') | default('''', true) | trim }}'
       branch_on: "{% if branch_raw in ['cool_normal_on','cool_emergency_on'] %}{{ branch_raw }}{% else %}cool_normal_on{% endif %}"
       contract_on_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none) }}'
       contract_off_raw: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none) }}'
@@ -4764,7 +4764,7 @@
       fan_on: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else 'n/a' }}"
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
-      auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') | default('''', true) | trim }}'
+      auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') | default('''', true) | trim }}'
       auto_on_ts: "{% if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ auto_ts_raw }}{% elif transition_ts_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ transition_ts_raw }}{% elif cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ cycle_started_raw }}{% else %}{{ now().isoformat() }}{% endif %}"
       cycle_token_on: "{% if transition_token_raw not in ['', 'unknown', 'unavailable', 'none'] %}{{ transition_token_raw }}{% else %}no_token{% endif %}"
       cycle_signature_v2: "token:{{ cycle_token_on }}|auto_on_ts:{{ auto_on_ts }}|branch:{{ branch_on }}|src:auto_on_v2"
@@ -4854,12 +4854,12 @@
       contract_version: contract=v1
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       last_change_origin: '{{ states(''input_text.ac_dda_last_change_origin'') | trim }}'
-      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') | trim }}'
-      last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') | trim }}'
-      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_action: '{{ states(''input_text.ac_dda_last_auto_action'') | trim }}'
+      last_auto_mode: '{{ states(''input_text.ac_dda_last_auto_mode'') | trim }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
       feedback_window_min: '{{ states(''input_number.ac_dda_feedback_window_minutes'') | float(120) }}'
       auto_off_guard_window_s: 90
-      auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') | default('''', true) | trim }}'
+      auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_off_marker_ts'') | default('''', true) | trim }}'
       auto_off_marker_nonce_raw: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
       auto_off_marker_ts_epoch: "{% if auto_off_marker_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(auto_off_marker_ts_raw, default=none) }}{% endif %}"
       auto_off_marker_age_s: "{% if auto_off_marker_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (auto_off_marker_ts_epoch | float)) | round(1) }}{% endif %}"
@@ -5099,9 +5099,9 @@
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: '{{ states(''climate.0200009211c7_climate'') | trim }}'
       last_change_origin: '{{ states(''input_text.ac_dda_last_change_origin'') | trim }}'
-      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') | trim }}'
-      last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') | trim }}'
-      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_action: '{{ states(''input_text.ac_dda_last_auto_action'') | trim }}'
+      last_auto_mode: '{{ states(''input_text.ac_dda_last_auto_mode'') | trim }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
       manual_feedback_min_window_min: 3
       manual_feedback_max_window_min: 120
       manual_on_trace_confirmed_raw: '{{ states(''input_text.ac_dda_last_manual_on_trace_confirmed'') | default('''', true) | trim }}'
@@ -5172,7 +5172,7 @@
       auto_recent_observed: '{{ auto_transition_active_strict or auto_timestamp_recent }}'
       auto_transition_active: '{{ auto_transition_active_strict }}'
       daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
-      branch_scope_ok: '{{ states(''input_text.ac_last_auto_branch'') | trim == ''cool_normal_on'' }}'
+      branch_scope_ok: '{{ states(''input_text.ac_dda_last_auto_branch'') | trim == ''cool_normal_on'' }}'
       context_scope_ok: '{{ contract_context_key not in ['''', ''unknown'', ''unavailable'', ''none''] }}'
       learning_day_scope_ok: '{{ daytime_scope_ok }}'
       last_manual_on_ts_raw: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') | default('''', true) | trim }}'
@@ -5613,7 +5613,7 @@
   actions:
   - variables:
       auto_off_guard_window_s: 90
-      auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') | default('''', true) | trim }}'
+      auto_off_marker_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_off_marker_ts'') | default('''', true) | trim }}'
       auto_off_marker_nonce_raw: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
       auto_off_marker_ts_epoch: "{% if auto_off_marker_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(auto_off_marker_ts_raw, default=none) }}{% endif %}"
       auto_off_marker_age_s: "{% if auto_off_marker_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (auto_off_marker_ts_epoch | float)) | round(1) }}{% endif %}"
@@ -5626,7 +5626,7 @@
       cycle_lock_age_s: "{% if cycle_lock_since_epoch is none %}99999{% elif not cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
       cycle_lock_is_stale: '{{ cycle_lock_active and (cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
       cycle_lock_effective_active: '{{ cycle_lock_active and not cycle_lock_is_stale }}'
-      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
       auto_recent_window_s: 90
       last_auto_age_s: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}"
       auto_reciente: '{{ (last_auto_age_s | float(99999)) >= 0 and (last_auto_age_s | float(99999)) <= (auto_recent_window_s | float(90)) }}'
@@ -5671,7 +5671,7 @@
   - delay: 00:00:02
   - variables:
       recheck_auto_off_flag: '{{ is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') }}'
-      recheck_auto_marker_ts_raw: '{{ states(''input_datetime.ac_last_auto_off_marker_ts'') | default('''', true) | trim }}'
+      recheck_auto_marker_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_off_marker_ts'') | default('''', true) | trim }}'
       recheck_auto_marker_nonce_raw: '{{ states(''input_text.ac_last_auto_off_marker_nonce'') | default('''', true) | trim }}'
       recheck_auto_marker_ts_epoch: "{% if recheck_auto_marker_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(recheck_auto_marker_ts_raw, default=none) }}{% endif %}"
       recheck_auto_marker_age_s: "{% if recheck_auto_marker_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (recheck_auto_marker_ts_epoch | float)) | round(1) }}{% endif %}"
@@ -5866,8 +5866,8 @@
       cycle_lock_is_stale: '{{ cycle_lock_active and (cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
       cycle_lock_effective_active: '{{ cycle_lock_active and not cycle_lock_is_stale }}'
       last_change_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''', true) | trim }}'
-      last_auto_action_raw: '{{ states(''input_text.ac_last_auto_action'') | default('''', true) | trim | lower }}'
-      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_action_raw: '{{ states(''input_text.ac_dda_last_auto_action'') | default('''', true) | trim | lower }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
       manual_feedback_min_window_min: 3
       manual_feedback_max_window_min: 120
       last_auto_age_s: "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}"
@@ -6174,8 +6174,8 @@
   - delay: 00:00:30
   - variables:
       final_mode_after_60s: '{{ states(climate_ent) }}'
-      post60_last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
-      post60_last_auto_action_raw: '{{ states(''input_text.ac_last_auto_action'') | default('''', true) | trim | lower }}'
+      post60_last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
+      post60_last_auto_action_raw: '{{ states(''input_text.ac_dda_last_auto_action'') | default('''', true) | trim | lower }}'
       post60_last_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''', true) | trim }}'
       post60_last_auto_age_s: "{% set raw = post60_last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}"
       post60_minutes_since_last_auto: '{{ ((post60_last_auto_age_s | float(99999)) / 60) | round(3) }}'
@@ -6689,13 +6689,13 @@
       cool_bucket_selected: "{% if last_auto_bucket_raw in ['','unknown','unavailable','none']
         %}\n  {{ cool_context_bucket }}\n{% else %}\n  {{ last_auto_bucket_raw.split(':subiendo')[0].split(':bajando')[0].split(':estable')[0]
         }}\n{% endif %}"
-      last_auto_setpoint: '{{ states(''input_number.ac_last_auto_setpoint'') | float(none)
+      last_auto_setpoint: '{{ states(''input_number.ac_dda_last_auto_setpoint'') | float(none)
         }}'
       cycle_last_applied_setpoint: '{{ states(''input_number.ac_cool_cycle_last_applied_setpoint'')
         | float(none) }}'
       manual_sp_lock_window_min: '{% set raw = states(''input_number.ac_manual_setpoint_override_hold_minutes'')
         | float(50) %} {{ [[raw, 60] | min, 45] | max }}'
-      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
       last_step_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_last_step_at'')
         }}'
       start_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_started_at'') }}'
@@ -6712,9 +6712,9 @@
         60) | round(1) }}{% endif %}'
       start_temp: '{{ states(''input_number.ac_cool_cycle_start_tin'') | float(none)
         }}'
-      cool_off_target: '{% if states(''input_number.ac_last_auto_setpoint'') in [''unknown'',''unavailable'',''none'','''']
-        %}{{ none }} {% else %}{{ (states(''input_number.ac_last_auto_tin'') | float(0))
-        - ((states(''input_number.ac_last_auto_setpoint'') | float(0)) - 0.5) }}{%
+      cool_off_target: '{% if states(''input_number.ac_dda_last_auto_setpoint'') in [''unknown'',''unavailable'',''none'','''']
+        %}{{ none }} {% else %}{{ (states(''input_number.ac_dda_last_auto_tin'') | float(0))
+        - ((states(''input_number.ac_dda_last_auto_setpoint'') | float(0)) - 0.5) }}{%
         endif %}'
       progress_temp: '{% if start_temp is none or tin is none %}{{ none }} {% else
         %}{{ ((start_temp | float) - (tin | float)) | round(2) }}{% endif %}'
@@ -6736,8 +6736,8 @@
         \  and (remaining_delta | float(0)) > (states('input_number.ac_cool_adaptive_close_enough_delta')
         | float(0.2))\n   and ((progress_temp | float(0)) + 0.05) < (expected_progress
         | float(0)) }}"
-      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
-      last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
+      last_auto_action: '{{ states(''input_text.ac_dda_last_auto_action'') }}'
+      last_auto_mode: '{{ states(''input_text.ac_dda_last_auto_mode'') }}'
       last_change_origin: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''',
         true) | trim }}'
       last_change_origin_normalized: '{% set origin = last_change_origin | lower %}
@@ -7016,7 +7016,7 @@
               datetime: '{{ manual_override_until_ts }}'
             action: input_datetime.set_datetime
           - target:
-              entity_id: input_number.ac_last_auto_setpoint
+              entity_id: input_number.ac_dda_last_auto_setpoint
             data:
               value: '{{ new_sp_num if new_sp_num is not none else 0 }}'
             action: input_number.set_value
@@ -7172,12 +7172,12 @@
       cycle_active: '{{ is_state(''input_boolean.ac_cool_adaptive_cycle_active'',''on'')
         }}'
       cur_mode: '{{ states(climate_ent) }}'
-      last_auto_action: '{{ states(''input_text.ac_last_auto_action'') }}'
-      last_auto_mode: '{{ states(''input_text.ac_last_auto_mode'') }}'
+      last_auto_action: '{{ states(''input_text.ac_dda_last_auto_action'') }}'
+      last_auto_mode: '{{ states(''input_text.ac_dda_last_auto_mode'') }}'
       active_bucket: '{{ states(''input_text.ac_dda_last_context_bucket'') | trim
         }}'
-      cool_off_target: '{{ states(''input_number.ac_last_auto_tin'') | float(0) -
-        (states(''input_number.ac_last_auto_setpoint'') | float(0) - 0.5) if states(''input_number.ac_last_auto_setpoint'')
+      cool_off_target: '{{ states(''input_number.ac_dda_last_auto_tin'') | float(0) -
+        (states(''input_number.ac_dda_last_auto_setpoint'') | float(0) - 0.5) if states(''input_number.ac_dda_last_auto_setpoint'')
         not in [''unknown'',''unavailable'',''none'',''''] else none }}'
       start_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_started_at'') }}'
       last_step_ts_raw: '{{ states(''input_datetime.ac_cool_cycle_last_step_at'')
@@ -7194,7 +7194,7 @@
         }}"
       manual_sp_lock_explicit: '{{ is_state(''input_boolean.ac_manual_setpoint_override_active'',''on'')
         }}'
-      last_auto_ts_raw: '{{ states(''input_datetime.ac_last_auto_ts'') }}'
+      last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
       minutes_since_last_auto: "{% set raw = last_auto_ts_raw | default('', true)
         | trim %} {% set raw_lower = raw | lower %} {% if raw_lower in ['unknown',
         'unavailable', 'none', ''] %}\n  99999\n{% else %}\n  {% set ts = as_timestamp(raw,
@@ -7398,7 +7398,7 @@
             'na' }} | status={{ sp_write_status }}
           entity_id: '{{ climate_ent }}'
       - target:
-          entity_id: input_number.ac_last_auto_setpoint
+          entity_id: input_number.ac_dda_last_auto_setpoint
         data:
           value: '{{ next_setpoint_soft_resume }}'
         action: input_number.set_value
@@ -7509,3 +7509,68 @@
     data:
       hvac_mode: fan_only
   mode: single
+
+- id: 'ac_dda_owner_mismatch_manual_on_ts'
+  alias: AC - DDA Integridad - owner mismatch Manual ON TS
+  mode: queued
+  trigger:
+  - platform: state
+    entity_id: input_datetime.ac_dda_last_manual_on_ts
+  condition:
+  - condition: template
+    value_template: '{{ states(''input_text.ac_dda_last_change_origin'') | trim != ''manual_on'' }}'
+  action:
+  - service: logbook.log
+    data:
+      name: AC DDA Owner Mismatch
+      message: 'helper=input_datetime.ac_dda_last_manual_on_ts | owner=AC - Manual ON guard + presencia temporal | origin={{ states(''input_text.ac_dda_last_change_origin'') | trim }} | reason=write_detected_outside_owner'
+      entity_id: climate.sala
+
+- id: 'ac_dda_owner_mismatch_manual_off_ts'
+  alias: AC - DDA Integridad - owner mismatch Manual OFF TS
+  mode: queued
+  trigger:
+  - platform: state
+    entity_id: input_datetime.ac_dda_last_manual_off_ts
+  condition:
+  - condition: template
+    value_template: '{{ states(''input_text.ac_dda_last_change_origin'') | trim != ''manual_off'' }}'
+  action:
+  - service: logbook.log
+    data:
+      name: AC DDA Owner Mismatch
+      message: 'helper=input_datetime.ac_dda_last_manual_off_ts | owner=AC - Manual OFF guard + pausa 5 min | origin={{ states(''input_text.ac_dda_last_change_origin'') | trim }} | reason=write_detected_outside_owner'
+      entity_id: climate.sala
+
+- id: 'ac_dda_watchdog_integridad_periodico'
+  alias: AC - DDA Watchdog integridad periódica
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: '/15'
+  variables:
+    lock_on: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
+    lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
+    lock_age_min: '{% if lock_since_raw in ['''' , ''unknown'', ''unavailable'', ''none''] %}0{% else %}{{ ((as_timestamp(now()) - as_timestamp(lock_since_raw, default=as_timestamp(now()))) / 60) | round(1) }}{% endif %}'
+    snapshot_raw: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
+    notify_status_raw: '{{ states(''input_text.ac_dda_last_notify_status'') | default('''', true) | trim }}'
+  action:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ lock_on and (lock_age_min | float(0)) > 20 }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC DDA Watchdog
+          message: 'lock_stale=true | helper=input_boolean.ac_dda_cycle_lock | age_min={{ lock_age_min }} | reason=lock_exceeds_20m'
+          entity_id: climate.sala
+    - conditions:
+      - condition: template
+        value_template: '{{ snapshot_raw in ['''' , ''unknown'', ''unavailable'', ''none''] and notify_status_raw not in ['''' , ''unknown'', ''unavailable'', ''none''] }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC DDA Watchdog
+          message: 'incomplete_sequence=true | reason=notify_without_snapshot | notify_status={{ notify_status_raw }}'
+          entity_id: climate.sala

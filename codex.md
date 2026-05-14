@@ -1136,3 +1136,49 @@ Se persiste en:
 3. **Caso C**: fallo controlado en helper dinámico → `Resultado=error_controlado` o `aplicado` con fallback, siempre con notificación final.
 4. **Caso D**: nunca truncar en dos notificaciones; secuencia observable mínima:
    - `pendiente` → `capturado` → `learning_on_started` → `notificación final`.
+
+---
+
+## 7. Matriz de propiedad de helpers (AC-DDA)
+
+Fecha de actualización: **2026-05-14**.
+
+| helper | owner writer | readers permitidos | motivo | fecha |
+|---|---|---|---|---|
+| `input_datetime.ac_dda_last_auto_ts` | `AC - Día dinámico aprendido (principal)` | confirmación AUTO ON, learning ON/OFF, guards manuales | timestamp contractual de última acción AUTO bajo namespace exclusivo DDA | 2026-05-14 |
+| `input_text.ac_dda_last_auto_branch` | `AC - Día dinámico aprendido (principal)` | confirmación AUTO ON, learning ON/OFF, guards manuales | rama de decisión AUTO para trazabilidad y filtros | 2026-05-14 |
+| `input_text.ac_dda_last_auto_action` | `AC - Día dinámico aprendido (principal)` | learning ON/OFF, guards manuales | acción AUTO consolidada para correlación temporal | 2026-05-14 |
+| `input_datetime.ac_dda_last_manual_off_ts` | `AC - Manual OFF guard + pausa 5 min` | learning manual OFF | trigger contractual de learning OFF | 2026-05-14 |
+| `input_datetime.ac_dda_last_manual_on_ts` | `AC - Manual ON guard + presencia temporal` | learning manual ON | trigger contractual de learning ON | 2026-05-14 |
+| `input_text.ac_dda_last_notify_status` | `AC - Manual ON guard + presencia temporal` | watchdog | estado de secuencia notify/manual-on | 2026-05-14 |
+
+### Reglas de naming para nuevos helpers exclusivos
+
+1. Prefijo obligatorio: `ac_dda_`.
+2. Sufijo de rol de flujo cuando aplique:
+   - `_manual_on_*`
+   - `_manual_off_*`
+   - `_auto_on_*`
+   - `_watchdog_*`
+3. Si un helper solo existe para una automatización secundaria, agregar el sufijo `_owner_<slug_corto_automatizacion>`.
+4. No reutilizar helpers globales legacy (`ac_last_auto_*`) para escrituras funcionales nuevas.
+
+### Protocolo para automatizaciones secundarias futuras
+
+1. Declarar helper exclusivo por cada dato persistente nuevo.
+2. Documentar `owner writer` y `readers` en esta matriz antes de activar la automatización.
+3. Si se requiere compartir escritura, solo permitirlo como excepción **shared by design** con razón transaccional explícita y validación de integridad.
+4. Activar chequeo de `owner mismatch` con `logbook.log` para todo helper crítico nuevo.
+
+### Ejemplos de migración (antes/después)
+
+- **Antes (legacy/global):**
+  - `input_datetime.ac_last_auto_ts`
+  - `input_text.ac_last_auto_action`
+- **Después (AC-DDA exclusivo):**
+  - `input_datetime.ac_dda_last_auto_ts`
+  - `input_text.ac_dda_last_auto_action`
+
+Compatibilidad de transición:
+- Se permite lectura temporal de legacy solo en diagnósticos históricos.
+- No se permite escritura cruzada a `ac_last_auto_*` desde automatizaciones AC-DDA activas.
