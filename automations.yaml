@@ -22,7 +22,7 @@
     target:
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
-      option: 'off'
+      option: "{{ 'off' if ('off' in (state_attr('input_select.ac_ultimo_modo_no_fan','options') | default([], true))) else 'False' }}"
 - id: ac_saneamiento_banderas_auto_ac
   alias: AC - Saneamiento defensivo banderas auto
   trace:
@@ -1620,7 +1620,7 @@
     manual_on_session_protected: '{{ (manual_on_session_active | default(false)) and (manual_on_session_ttl_valid | default(false)) }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    t(/5)\n  {% elif trigger.platform == 'state' %}\n    s:{{ trigger.entity_id.split('.')[-1]
-      }}=>{{ trigger.to_state.state if trigger.to_state else ''n/a'' }}\n  {% else %}\n
+      }}=>{{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
     notif_base: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }} | Trig={{ trig }} | C_T={{
       t1 }}°C S_T={{ t2 }}°C PromT={{ tin }}°C | C_H={{ h1 }}% S_H={{ h2 }}% PromH={{
@@ -4164,8 +4164,7 @@
     wind: '{{ (wind_kmh / 3.6) | round(2) }}'
     cur_mode: '{{ states(climate_ent) }}'
     ac_set: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
-    ac_fan: "{{ state_attr(climate_ent,'fan_mode')\n   if state_attr(climate_ent,'fan_mode')
-      is not none else ''n/a'' }}"
+    ac_fan: "{{ state_attr(climate_ent, 'fan_mode') if state_attr(climate_ent, 'fan_mode') is not none else 'n/a' }}"
     locked: '{{ is_state(''input_boolean.ac_bloqueo_cambio_modo_2h'',''on'') }}'
     lock_txt: '{{ ''ON'' if locked else ''OFF'' }}'
     last_mode_no_fan: '{{ states(''input_select.ac_ultimo_modo_no_fan'') }}'
@@ -4729,7 +4728,7 @@
     ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
     trig: "{% if trigger is defined %}\n  {% if trigger.platform == 'time_pattern'
       %}\n    /5min\n  {% elif trigger.platform == 'state' %}\n    {{ trigger.entity_id
-      }}={{ trigger.to_state.state if trigger.to_state else ''n/a'' }}\n  {% else %}\n
+      }}={{ trigger.to_state.state if trigger.to_state else 'n/a' }}\n  {% else %}\n
       \   {{ trigger.platform }}\n  {% endif %}\n{% else %}\n  manual\n{% endif %}"
   mode: single
 - id: '1769981375282'
@@ -5748,7 +5747,7 @@
   - target:
       entity_id: input_select.ac_ultimo_modo_no_fan
     data:
-      option: 'off'
+      option: "{{ 'off' if ('off' in (state_attr('input_select.ac_ultimo_modo_no_fan','options') | default([], true))) else 'False' }}"
     action: input_select.select_option
   - action: logbook.log
     data:
@@ -6346,7 +6345,7 @@
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       final_mode: '{{ states(climate_ent) }}'
       final_setpoint: '{{ state_attr(climate_ent,''temperature'') | float(none) }}'
-      final_fan: "{{ state_attr(climate_ent,'fan_mode') if state_attr(climate_ent,'fan_mode') is not none else ''n/a'' }}"
+      final_fan: "{{ state_attr(climate_ent, 'fan_mode') if state_attr(climate_ent, 'fan_mode') is not none else 'n/a' }}"
       t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none)
         }}'
       t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
