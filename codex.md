@@ -1591,3 +1591,19 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 
 ### Nota de validación operativa final
 - En este entorno no está disponible `hass --script check_config`, por lo que la confirmación de reinicio de Home Assistant debe ejecutarse en el host runtime de HA después del despliegue.
+
+## Incidente de reconstrucción AC-DDA (2026-05-15)
+
+- **Fecha/hora**: 2026-05-15T19:29:42Z.
+- **Rango intervenido**: `automations.yaml` ~4145–4505 (alias `AC - Día dinámico aprendido (principal)`).
+- **Causa raíz**: fragilidad de estructura en zona contigua `choose/sequence/default` + plantillas largas inline con quoting mixto.
+- **Corrección aplicada**:
+  - respaldo previo `automations.yaml.pre_fix_20260515T192942Z.bak`;
+  - normalización a multilinea `>-` de templates largos (`context_key_v2`, helpers dinámicos `replace(':','_')`, cálculos `ac_dda_*`, `cool_on`, `cool_off_validated`, `cool_on_validated`);
+  - normalización de quoting defensivo en plantillas compactas adyacentes.
+- **Validación**:
+  - `hass --script check_config` no disponible en este contenedor.
+  - parseo YAML con `psych` pendiente de limpieza final en el bloque afectado.
+
+### Regla preventiva explícita
+- **En AC-DDA, templates largos siempre en `>-` y cambios por bloque lógico completo**.
