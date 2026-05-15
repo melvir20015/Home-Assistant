@@ -1450,11 +1450,11 @@
               message: transition_closed=ok | hvac_confirmed=cool
               entity_id: climate.0200009211c7_climate
         default:
-        - service: logbook.log
-          data:
-            name: AC Auto Trace
-            message: transition_closed=timeout | hvac_expected=cool
-            entity_id: climate.0200009211c7_climate
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: transition_closed=timeout | hvac_expected=cool
+              entity_id: climate.0200009211c7_climate
     default: []
   mode: restart
   variables:
@@ -1683,6 +1683,11 @@
       manual_on_session_active: '{{ (manual_on_session_status | default(''closed'')) in [''detected'', ''pending'', ''captured''] and (manual_on_session_trace_id | default(''trace_missing'')) != ''trace_missing'' }}'
       manual_on_session_protected: '{{ (manual_on_session_active | default(false)) and (manual_on_session_ttl_valid | default(false)) }}'
       manual_override_active: '{{ manual_on_session_protected | default(false) }}'
+      manual_on_lock_ttl_s: 60
+      ts_manual_on_raw: '{{ states(''input_datetime.ac_dda_last_manual_on_ts'') | default('''', true) | trim }}'
+      ts_manual_on_epoch: "{% if ts_manual_on_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(ts_manual_on_raw, default=none) }}{% endif %}"
+      manual_on_lock_age_s: "{% if ts_manual_on_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (ts_manual_on_epoch | float(0))) | round(1) }}{% endif %}"
+      manual_on_lock_active: '{{ ts_manual_on_epoch is not none and (manual_on_lock_age_s | float(99999)) >= 0 and (manual_on_lock_age_s | float(99999)) <= (manual_on_lock_ttl_s | int(60)) }}'
   - service: logbook.log
     data:
       name: AC DDA Audit
@@ -1792,7 +1797,7 @@
       - choose:
         - conditions:
           - condition: template
-            value_template: '{{ cur_mode == ''cool'' }}'
+            value_template: '{{ cur_mode == ''cool'' and not (manual_on_lock_active | default(false)) }}'
           sequence:
           - service: logbook.log
             data:
@@ -1823,7 +1828,14 @@
               message: hito=fan_dry_delay_finalizado | delay={{ fan_dry_delay }} |
                 {{ cool_cycle_final_message }}
               entity_id: climate.0200009211c7_climate
-        default: []
+        default:
+        - service: logbook.log
+          data:
+            name: AC DDA Audit
+            message: >-
+              hito=auto_block_manual_lock_60s | accion=skip_fan_only |
+              reason=manual_on_lock_active | lock_age_s={{ manual_on_lock_age_s | float(99999) }}
+            entity_id: climate.0200009211c7_climate
       - target:
           entity_id:
           - input_datetime.ac_ultimo_apagado
@@ -1985,11 +1997,13 @@
               value: transition_closed=ok
             service: input_text.set_value
         default:
-        - service: logbook.log
-          data:
-            name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
-            entity_id: climate.0200009211c7_climate
+          - service: logbook.log
+            data:
+              name: AC Auto Trace
+              message: >-
+                transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+                reason=timeout_waiting_off_confirm
+              entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_off
@@ -2545,7 +2559,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
@@ -2718,7 +2734,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -2855,7 +2873,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -2874,10 +2894,8 @@
           - service: logbook.log
             data:
               name: AC Auto Trace
-              message: 'cool_off_validated fallback aplicado | off_source={{ cool_cycle_off_effective_source
-                }} | off_effective={{ cool_cycle_off_effective if cool_cycle_off_effective
-                is not none else ''n/a'' }} | contract_active={{ off_gate_contract_active
-                }}'
+              message: >-
+                cool_off_validated fallback aplicado | off_source={{ cool_cycle_off_effective_source }} | off_effective={{ cool_cycle_off_effective if cool_cycle_off_effective is not none else 'n/a' }} | contract_active={{ off_gate_contract_active }}
               entity_id: climate.0200009211c7_climate
         default: []
       - service: logbook.log
@@ -2888,11 +2906,8 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: 'cool_off_fallback_source={{ cool_cycle_off_effective_source }}
-            | off_effective={{ cool_cycle_off_effective if cool_cycle_off_effective
-            is not none else ''n/a'' }} | sensor_off_effective={{ cool_cycle_sensor_off_effective
-            if cool_cycle_sensor_off_effective is not none else ''n/a'' }} | contract_active_audit={{
-            cool_cycle_contract_active | default(false) }}'
+          message: >-
+            cool_off_fallback_source={{ cool_cycle_off_effective_source }} | off_effective={{ cool_cycle_off_effective if cool_cycle_off_effective is not none else 'n/a' }} | sensor_off_effective={{ cool_cycle_sensor_off_effective if cool_cycle_sensor_off_effective is not none else 'n/a' }} | contract_active_audit={{ cool_cycle_contract_active | default(false) }}
           entity_id: climate.0200009211c7_climate
       - variables:
           cool_cycle_off_cause: "{% if tin is not none and cool_cycle_off_effective
@@ -3180,7 +3195,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3189,15 +3206,8 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: 'ac_dda_branch=cool_normal_off_skip | Tin={{ tin if tin is not none
-            else ''n/a'' }} | Off={{ cool_cycle_off_effective if cool_cycle_off_effective
-            is not none else ''n/a'' }} | cur_mode={{ cur_mode }} | manual_override_active={{
-            (manual_override_active | default(false)) }} | emergency_latched={{ emergency_latched }} |
-            cool_cycle_contract_active={{ cool_cycle_contract_active | default(false) }} | last_auto_branch={{
-            states(''input_text.ac_dda_last_auto_branch'') }} | mode_ok={{ off_gate_mode_ok
-            }} | not_emergency={{ off_gate_not_emergency }} | not_manual_override={{
-            off_gate_not_manual_override }} | contract_active_gate={{ off_gate_contract_active
-            }} | threshold_met={{ off_gate_threshold_met }}'
+          message: >-
+            ac_dda_branch=cool_normal_off_skip | Tin={{ tin if tin is not none else 'n/a' }} | Off={{ cool_cycle_off_effective if cool_cycle_off_effective is not none else 'n/a' }} | cur_mode={{ cur_mode }} | manual_override_active={{ (manual_override_active | default(false)) }} | emergency_latched={{ emergency_latched }} | cool_cycle_contract_active={{ cool_cycle_contract_active | default(false) }} | last_auto_branch={{ states('input_text.ac_dda_last_auto_branch') }} | mode_ok={{ off_gate_mode_ok }} | not_emergency={{ off_gate_not_emergency }} | not_manual_override={{ off_gate_not_manual_override }} | contract_active_gate={{ off_gate_contract_active }} | threshold_met={{ off_gate_threshold_met }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3718,60 +3728,56 @@
                 }}
               entity_id: climate.0200009211c7_climate
         default:
-        - choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ hvac_cool_confirmed }}'
-            sequence:
-            - variables:
-                sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none)
-                  }}'
-                sp_target: '{{ cool_setpoint_effective_soft_resume }}'
-                writer_id: auto_on
-                manual_lock_state: '{{ manual_sp_lock_active }}'
-                bucket: '{{ cool_context_bucket }}'
-            - target:
-                entity_id: input_text.ac_dda_last_change_origin
-              data:
-                value: auto_on
-              service: input_text.set_value
-              continue_on_error: true
-            - choose:
+          - choose:
               - conditions:
-                - condition: template
-                  value_template: '{{ sp_target is not none and (sp_target | float(none))
-                    is not none }}'
+                  - condition: template
+                    value_template: '{{ hvac_cool_confirmed }}'
                 sequence:
-                - target:
-                    entity_id: climate.0200009211c7_climate
-                  data:
-                    temperature: '{{ cool_setpoint_effective_soft_resume }}'
-                  service: climate.set_temperature
-                  continue_on_error: true
-              default:
-              - service: logbook.log
-                data:
-                  name: AC Auto Trace
-                  message: sp_write | writer={{ writer_id }} | target_invalid={{ sp_target
-                    if sp_target is not none else 'na' }} | status=omit_invalid_setpoint
-                  entity_id: climate.0200009211c7_climate
-            - variables:
-                sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none)
-                  }}'
-                sp_write_status: "{% if sp_after is not none and sp_target is not none
-                  and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}\n
-                  \ applied\n{% else %}\n  blocked\n{% endif %}"
-            - service: logbook.log
-              data:
-                name: AC Auto Trace
-                message: sp_write | writer={{ writer_id }} | before={{ sp_before if
-                  sp_before is not none else 'na' }} | target={{ sp_target if sp_target
-                  is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{
-                  'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket
-                  is not none else 'na' }} | after={{ sp_after if sp_after is not none
-                  else 'na' }} | status={{ sp_write_status }}
-                entity_id: climate.0200009211c7_climate
-          default: []
+                  - variables:
+                      sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
+                      sp_target: '{{ cool_setpoint_effective_soft_resume }}'
+                      writer_id: auto_on
+                      manual_lock_state: '{{ manual_sp_lock_active }}'
+                      bucket: '{{ cool_context_bucket }}'
+                  - target:
+                      entity_id: input_text.ac_dda_last_change_origin
+                    data:
+                      value: auto_on
+                    service: input_text.set_value
+                    continue_on_error: true
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: '{{ sp_target is not none and (sp_target | float(none)) is not none }}'
+                        sequence:
+                          - target:
+                              entity_id: climate.0200009211c7_climate
+                            data:
+                              temperature: '{{ cool_setpoint_effective_soft_resume }}'
+                            service: climate.set_temperature
+                            continue_on_error: true
+                    default:
+                      - service: logbook.log
+                        data:
+                          name: AC Auto Trace
+                          message: >-
+                            sp_write | writer={{ writer_id }} | target_invalid={{ sp_target if sp_target is not none else 'na' }} | status=omit_invalid_setpoint
+                          entity_id: climate.0200009211c7_climate
+                  - variables:
+                      sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
+                      sp_write_status: >-
+                        {% if sp_after is not none and sp_target is not none and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}
+                          applied
+                        {% else %}
+                          blocked
+                        {% endif %}
+                  - service: logbook.log
+                    data:
+                      name: AC Auto Trace
+                      message: >-
+                        sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{ 'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+                      entity_id: climate.0200009211c7_climate
+            default: []
       - variables:
           cool_auto_reason: '{{ ''auto emergency'' if emergency_hot else ''auto_on_cool''
             }}'
@@ -3830,55 +3836,49 @@
             service: climate.set_fan_mode
             continue_on_error: true
         default:
-        - choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ hvac_cool_confirmed }}'
-            sequence:
-            - service: logbook.log
-              data:
-                name: AC Auto Trace
-                message: fan_write | status=omit_invalid_fan_mode | fan_modes={{ state_attr(climate_ent,'fan_modes')
-                  if state_attr(climate_ent,'fan_modes') is not none else 'na' }}
-                entity_id: climate.0200009211c7_climate
-          default: []
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: '{{ hvac_cool_confirmed }}'
+                sequence:
+                  - service: logbook.log
+                    data:
+                      name: AC Auto Trace
+                      message: >-
+                        fan_write | status=omit_invalid_fan_mode | fan_modes={{ state_attr(climate_ent,'fan_modes') if state_attr(climate_ent,'fan_modes') is not none else 'na' }}
+                      entity_id: climate.0200009211c7_climate
+            default: []
       - variables:
           cool_push_kind: true
           cool_push_reason: Mot=auto umbral
-          cool_notify_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-{{ range(100, 1000) | random }}-cool-normal-on'
+          cool_notify_trace_id: "{{ now().strftime('%Y%m%d%H%M%S%f') }}-{{ range(100, 1000) | random }}-cool-normal-on"
           cool_notify_branch: cool_normal_on
-          cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_dda_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}{% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_normal_on|src:auto_on_v2"
-          cool_push_summary: '{% set contract_bucket = states(''input_text.ac_dda_cool_cycle_contract_bucket'')
-            | default('''', true) | trim %} {% set contract_calc = states(''input_text.ac_dda_cool_cycle_contract_reason'')
-            | default('''', true) | trim %} {% set contract_on = states(''input_number.ac_dda_cool_cycle_contract_on'')
-            | float(none) %} {% set contract_off = states(''input_number.ac_dda_cool_cycle_contract_off'')
-            | float(none) %} {% set contract_sensor_off = states(''input_number.ac_dda_cool_cycle_contract_sensor_off'')
-            | float(none) %} {% set contract_setpoint = states(''input_number.ac_dda_cool_cycle_contract_setpoint'')
-            | float(none) %} {% set contract_setpoint_effective = states(''input_number.ac_dda_cool_cycle_contract_setpoint_effective'')
-            | float(none) %} Bucket={{ contract_bucket if contract_bucket not in ['''',
-            ''unknown'', ''unavailable'', ''none''] else cool_context_detail }} |
-            Calc={{ contract_calc if contract_calc not in ['''', ''unknown'', ''unavailable'',
-            ''none''] else cool_off_learning_source }} | Dem={{ cool_demand_score
-            }} | Encendido en={{ contract_on if contract_on is not none else ''n/a''
-            }} | Apagado promedio en={{ contract_off if contract_off is not none else
-            ''n/a'' }} | Corte por sensor individual (hard stop)={{ contract_sensor_off
-            if contract_sensor_off is not none else ''n/a'' }} | Fuente apagado={{
-            cool_contract_off_source_label }} | Setpoint teórico={{ contract_setpoint if
-            contract_setpoint is not none else ''n/a'' }} | Setpoint efectivo={{ contract_setpoint_effective
-            if contract_setpoint_effective is not none else ''n/a'' }} | Fan=Low'
+          cool_notify_cycle_signature_v2: >-
+            {% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}
+            {% set auto_ts_raw = states('input_datetime.ac_dda_last_auto_ts') | default('', true) | trim %}
+            {% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}
+            {% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}
+            {% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}
+            {% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}
+            token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_normal_on|src:auto_on_v2
+          cool_push_summary: >-
+            {% set contract_bucket = states('input_text.ac_dda_cool_cycle_contract_bucket') | default('', true) | trim %}
+            {% set contract_calc = states('input_text.ac_dda_cool_cycle_contract_reason') | default('', true) | trim %}
+            {% set contract_on = states('input_number.ac_dda_cool_cycle_contract_on') | float(none) %}
+            {% set contract_off = states('input_number.ac_dda_cool_cycle_contract_off') | float(none) %}
+            {% set contract_sensor_off = states('input_number.ac_dda_cool_cycle_contract_sensor_off') | float(none) %}
+            {% set contract_setpoint = states('input_number.ac_dda_cool_cycle_contract_setpoint') | float(none) %}
+            {% set contract_setpoint_effective = states('input_number.ac_dda_cool_cycle_contract_setpoint_effective') | float(none) %}
+            Bucket={{ contract_bucket if contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }} | Calc={{ contract_calc if contract_calc not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }} | Dem={{ cool_demand_score }} | Encendido en={{ contract_on if contract_on is not none else 'n/a' }} | Apagado promedio en={{ contract_off if contract_off is not none else 'n/a' }} | Corte por sensor individual (hard stop)={{ contract_sensor_off if contract_sensor_off is not none else 'n/a' }} | Fuente apagado={{ cool_contract_off_source_label }} | Setpoint teórico={{ contract_setpoint if contract_setpoint is not none else 'n/a' }} | Setpoint efectivo={{ contract_setpoint_effective if contract_setpoint_effective is not none else 'n/a' }} | Fan=Low
           cool_mobile_title_local: Cool↑
-          cool_mobile_message_local: '{% set cool_on_local = cool_on_validated | default(none)
-            %} {% set cool_off_local = cool_off_validated | default(none) %} {% set tin_local
-            = tin | default(none) %} {% set tout_local = tout | default(none) %} {% set
-            hout_local = hout_owm | default(none) %} {% set sp_local = cool_setpoint_effective
-            | default(none) %} {{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''')
-            }} Tin={{ ''%.1f'' | format(tin_local | float) if tin_local is not none else
-            ''n/a'' }} Tout={{ ''%.1f'' | format(tout_local | float) if tout_local is
-            not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_local | float) if hout_local
-            is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_local | float)
-            if cool_on_local is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_local
-            | float) if cool_off_local is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_local
-            | float) if sp_local is not none else ''n/a'' }} Fan=Low Src=AutoON'
+          cool_mobile_message_local: >-
+            {% set cool_on_local = cool_on_validated | default(none) %}
+            {% set cool_off_local = cool_off_validated | default(none) %}
+            {% set tin_local = tin | default(none) %}
+            {% set tout_local = tout | default(none) %}
+            {% set hout_local = hout_owm | default(none) %}
+            {% set sp_local = cool_setpoint_effective | default(none) %}
+            {{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin_local | float(0)) if tin_local is not none else 'n/a' }} Tout={{ '%.1f' | format(tout_local | float(0)) if tout_local is not none else 'n/a' }} H={{ '%.0f' | format(hout_local | float(0)) if hout_local is not none else 'n/a' }} On={{ '%.1f' | format(cool_on_local | float(0)) if cool_on_local is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_local | float(0)) if cool_off_local is not none else 'n/a' }} SP={{ '%.1f' | format(sp_local | float(0)) if sp_local is not none else 'n/a' }} Fan=Low Src=AutoON
       - choose:
         - conditions:
           - condition: template
@@ -4774,7 +4774,7 @@
       tout_on: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
       hout_on: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
       sp_on: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
-      fan_on: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') if state_attr(''climate.0200009211c7_climate'',''fan_mode'') is not none else ''n/a'' }}'
+      fan_on: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else 'n/a' }}"
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') | default('''', true) | trim }}'
@@ -4915,9 +4915,10 @@
       auto_flags_active: '{{ is_state(''input_boolean.ac_dda_on_por_automatizacion'',''on'') or is_state(''input_boolean.ac_dda_off_por_automatizacion'',''on'') }}'
       transition_origin_recent: '{{ auto_origin_detected or auto_reciente }}'
       auto_transition_active: '{{ auto_flags_active or (auto_transition_recent and transition_origin_recent) }}'
-      off_classification: '{{ ''manual'' if last_change_origin == ''manual_off'' and manual_event_confirmed and (not auto_off_recent) and (not auto_transition_active) else ''auto'' }}'
+      human_origin_allowed: '{{ last_change_origin == ''manual_off'' and (not auto_transition_active) and (not auto_off_recent) and (not auto_reciente) and (not origin_auto_recent) }}'
+      off_classification: '{{ ''manual'' if human_origin_allowed and manual_event_confirmed else ''auto'' }}'
       classification_reason: "{% if last_change_origin != 'manual_off' %}origin_not_manual_off{% elif not manual_event_confirmed %}manual_event_not_validated{% elif auto_transition_active %}auto_transition_active{% elif auto_off_recent %}auto_off_recent{% else %}manual_off_guard_validated{% endif %}"
-      valid_feedback: '{{ last_change_origin == ''manual_off'' and manual_event_confirmed and (not auto_off_recent) and (not cycle_lock_active) and (not auto_reciente) and (not origin_auto_recent) and (not auto_transition_active) }}'
+      valid_feedback: '{{ human_origin_allowed and manual_event_confirmed and (not cycle_lock_active) }}'
       manual_off_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_off_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ last_auto_action ~ ''|'' ~ last_auto_mode }}'
       last_manual_off_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_off_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_off_event_signature == last_manual_off_event_signature }}'
@@ -4990,12 +4991,14 @@
   - action: logbook.log
     data:
       name: AC Learning Manual OFF
-      message: '{{ contract_version }} | manual_off_feedback | off_classification={{ off_classification }} | classification_reason={{ classification_reason }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else ''n/a'' }} | ctx={{ contract_context_key }} | apply={{ ''yes'' if (apply_learning | default(false)) else ''no'' }} | step=+0.25 | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ ''applied'' if (apply_learning | default(false)) else ignored_reason_code }} | learning_off_discard_reason={{ learning_off_discard_reason }}'
+      message: >-
+        {{ contract_version }} | manual_off_feedback | off_classification={{ off_classification }} | classification_reason={{ classification_reason }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else 'n/a' }} | ctx={{ contract_context_key }} | apply={{ 'yes' if (apply_learning | default(false)) else 'no' }} | step=+0.25 | off={{ '%.2f' | format(context_prev | float(0)) }}->{{ '%.2f' | format(context_after | float(0)) }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ 'applied' if (apply_learning | default(false)) else ignored_reason_code }} | learning_off_discard_reason={{ learning_off_discard_reason }}
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     data:
       name: AC Learning Manual OFF
-      message: '{{ contract_version }} | threshold_validation | threshold_source={{ threshold_source }} | on_final={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else ''no_disponible'' }} | off_final={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else ''no_disponible'' }} | fallback_used={{ fallback_used }}'
+      message: >-
+        {{ contract_version }} | threshold_validation | threshold_source={{ threshold_source }} | on_final={{ '%.2f' | format(cool_on_final | float(0)) if cool_on_final is not none else 'no_disponible' }} | off_final={{ '%.2f' | format(cool_off_final | float(0)) if cool_off_final is not none else 'no_disponible' }} | fallback_used={{ fallback_used }}
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -5050,25 +5053,27 @@
           datetime: '{{ ts }}'
         service: input_datetime.set_datetime
     default:
-    - target:
-        entity_id: input_text.ac_dda_cool_cycle_contract_reason
-      data:
-        value: '{{ contract_invalid_reason }}'
-      service: input_text.set_value
+      - target:
+          entity_id: input_text.ac_dda_cool_cycle_contract_reason
+        data:
+          value: '{{ contract_invalid_reason }}'
+        service: input_text.set_value
   - choose:
     - conditions:
-      - condition: template
-        value_template: '{{ apply_learning | default(false) }}'
+        - condition: template
+          value_template: '{{ apply_learning | default(false) }}'
       sequence:
+        - service: notify.mobile_app_samsung_s24
+          data:
+            title: AC Learning OFF
+            message: >-
+              {{ hhmm }} Tin={{ '%.1f' | format(tin | float(0)) if tin is not none else 'n/a' }} Tout={{ '%.1f' | format(tout | float(0)) if tout is not none else 'n/a' }} H={{ '%.0f' | format(hout_owm | float(0)) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }} On={{ '%.1f' | format(cool_on_final | float(0)) if cool_on_final is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_final | float(0)) if cool_off_final is not none else 'n/a' }} SP={{ '%.1f' | format(sp_final | float(0)) if sp_final is not none else 'n/a' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ '%+.2f' | format(delta_learning | float(0)) }} Resultado=aplicado Razón=manual_off type={{ learning_type }} reason_code=applied
+    default:
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Learning OFF
-          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_off type={{ learning_type }} reason_code=applied'
-    default:
-    - service: notify.mobile_app_samsung_s24
-      data:
-        title: AC Learning OFF
-        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
+          message: >-
+            {{ hhmm }} Tin={{ '%.1f' | format(tin | float(0)) if tin is not none else 'n/a' }} Tout={{ '%.1f' | format(tout | float(0)) if tout is not none else 'n/a' }} H={{ '%.0f' | format(hout_owm | float(0)) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }} On={{ '%.1f' | format(cool_on_final | float(0)) if cool_on_final is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_final | float(0)) if cool_off_final is not none else 'n/a' }} SP={{ '%.1f' | format(sp_final | float(0)) if sp_final is not none else 'n/a' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ '%+.2f' | format(delta_learning | float(0)) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}
   mode: restart
 - id: '1773895045305'
   alias: TEMP - AC Learning ON trigger diagnóstico (desactivada)
@@ -5181,6 +5186,7 @@
       trace_mismatch_cross_run: '{{ snapshot_structure_ok and (trace_id == ''trace_missing'' or snapshot_trace_id != trace_id or not trace_id_matches_confirmed or not strict_session_trace_match) }}'
       manual_event_confirmed: '{{ snapshot_ok and not trace_mismatch_cross_run and session_trace_and_ttl_ok }}'
       origin_is_manual_on: '{{ last_change_origin == ''manual_on'' }}'
+      human_origin_allowed: '{{ origin_is_manual_on and (not auto_transition_active) and (not auto_flags_active) and (not auto_origin_detected) and (not auto_reciente) }}'
       transition_guard_window_s: 180
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
@@ -5204,8 +5210,8 @@
       last_manual_on_age_min: "{% if last_manual_on_ts_epoch is none %}99999{% else %}{{ ((as_timestamp(now()) - (last_manual_on_ts_epoch | float)) / 60) | round(1) }}{% endif %}"
       manual_on_ts_recent: '{{ last_manual_on_ts_epoch is not none and (last_manual_on_age_min | float(99999)) >= 0 and (last_manual_on_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
       manual_recent_evidence: '{{ snapshot_recent or manual_on_ts_recent }}'
-      force_policy_active: '{{ origin_is_manual_on and learning_day_scope_ok and final_mode_cool_required and strict_session_trace_match }}'
-      strict_policy_ready: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
+      force_policy_active: '{{ human_origin_allowed and learning_day_scope_ok and final_mode_cool_required and strict_session_trace_match }}'
+      strict_policy_ready: '{{ human_origin_allowed and manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
       learning_gate_ok: '{{ (force_policy_active or strict_policy_ready) and session_trace_and_ttl_ok }}'
       manual_on_event_signature: '{{ snapshot_ts ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ trace_id }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
@@ -5269,13 +5275,13 @@
       apply_learning_pre: '{{ ''true'' if (apply_learning | default(false)) else ''false'' }}'
       learning_internal_error: '{{ apply_learning and (context_after is none or cool_on_final is none or cool_off_final is none) }}'
       controlled_error_detected: '{{ learning_internal_error or (apply_learning_normal and (not dynamic_delta_helper_exists) and (not fallback_delta_helper_exists)) }}'
-      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% elif not active_session_ttl_valid and not final_mode_cool_required %}manual_on_session_expired_without_cool{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
+      learning_reason_code: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% elif not active_session_ttl_valid and not final_mode_cool_required %}manual_on_session_expired_without_cool{% elif not human_origin_allowed %}non_human_origin{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
       final_result_label: "{% if controlled_error_detected %}error_controlado{% elif apply_learning %}aplicado{% else %}ignorado{% endif %}"
-      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and force_policy_active %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and force_policy_active %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif not active_session_ttl_valid and not final_mode_cool_required %}manual_on_session_expired_without_cool{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
+      final_reason_label: "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and force_policy_active %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and force_policy_active %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif not active_session_ttl_valid and not final_mode_cool_required %}manual_on_session_expired_without_cool{% elif not human_origin_allowed %}non_human_origin{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}"
       policy_mode: '{{ ''force'' if force_policy_active else ''strict'' }}'
       hard_flag: '{{ ''yes'' if apply_learning_hard else ''no'' }}'
-      ctxoff_notify: '{{ ''%.2f'' | format(context_after | float) if (apply_learning | default(false)) else ''n/a'' }}'
-      hyson_notify: '{{ ''%.2f'' | format(contract_context_delta_on_after | float) if apply_learning_normal else ''n/a'' }}'
+      ctxoff_notify: '{{ ''%.2f'' | format(context_after | float) if (apply_learning | default(false)) else 'n/a' }}'
+      hyson_notify: '{{ ''%.2f'' | format(contract_context_delta_on_after | float) if apply_learning_normal else 'n/a' }}'
   - choose:
     - conditions:
       - condition: template
@@ -5440,7 +5446,7 @@
     continue_on_error: true
     data:
       name: AC Learning Manual ON
-      message: '{{ contract_version }} | hito={{ ''learning_on_applied'' if (apply_learning | default(false)) else ''learning_on_ignored'' }} | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | reason={{ ''applied'' if (apply_learning | default(false)) else final_reason_label }} | off={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} | on={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} | helper={{ contract_context_helper }} | diag={{ diagnostic_snapshot_trace }}'
+      message: '{{ contract_version }} | hito={{ ''learning_on_applied'' if (apply_learning | default(false)) else ''learning_on_ignored'' }} | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | reason={{ ''applied'' if (apply_learning | default(false)) else final_reason_label }} | off={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} | on={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} | helper={{ contract_context_helper }} | diag={{ diagnostic_snapshot_trace }}'
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     continue_on_error: true
@@ -5509,7 +5515,7 @@
       final_channel_label: '{{ ''mobile'' if mobile_channel_ok | default(false) else ''persistent'' }}'
       notify_pending_status: '{{ pending_trace_label ~ ''|stage=learning_final|channel=mobile|result=pendiente|ts='' ~ pending_ts }}'
       notify_result_status: '{{ pending_trace_label ~ ''|stage=learning_final|channel='' ~ final_channel_label ~ ''|result='' ~ (final_result_label | default(''ignorado'', true)) ~ ''|ts='' ~ pending_ts }}'
-      notify_mobile_message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label | default(''ignorado'', true) }} Razón={{ final_reason_label | default(''sin_razon'', true) }} policy={{ policy_mode | default(''strict'', true) }} Trace={{ pending_trace_label }} RunTrace={{ run_trace_label }} PendingTrace={{ pending_trace_label if pending_trace_label != ''trace_missing'' else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag | default(''no'', true) }}'
+      notify_mobile_message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label | default(''ignorado'', true) }} Razón={{ final_reason_label | default(''sin_razon'', true) }} policy={{ policy_mode | default(''strict'', true) }} Trace={{ pending_trace_label }} RunTrace={{ run_trace_label }} PendingTrace={{ pending_trace_label if pending_trace_label != ''trace_missing'' else 'n/a' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else 'n/a' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else 'n/a' }} hard={{ hard_flag | default(''no'', true) }}'
   - service: input_text.set_value
     continue_on_error: true
     target:
@@ -5554,7 +5560,7 @@
       action: logbook.log
       data:
         name: AC Learning Manual ON
-        message: '{{ contract_version }} | hito=learning_on_applied | trace_id={{ trace_id }} | fallback_evidence=mobile_failed_fallback_persistent | off={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} | on={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} | helper={{ contract_context_helper }}'
+        message: '{{ contract_version }} | hito=learning_on_applied | trace_id={{ trace_id }} | fallback_evidence=mobile_failed_fallback_persistent | off={{ ''%.2f'' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} | on={{ ''%.2f'' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} | helper={{ contract_context_helper }}'
         entity_id: climate.0200009211c7_climate
   - service: input_text.set_value
     continue_on_error: true
@@ -5685,7 +5691,7 @@
       - action: logbook.log
         data:
           name: AC Manual OFF
-          message: 'off_classification=auto | manual_guard_discard_reason={{ manual_guard_discard_reason }} | auto_flags_active={{ auto_flags_active }} | transition_age_s={{ transition_age_s }} | auto_ts_age_s={{ last_auto_age_s }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else ''n/a'' }} | auto_transition_recent={{ auto_transition_recent }} | marker_age_s={{ auto_off_marker_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | trace_id={{ now().strftime("%Y%m%d%H%M%S") }}'
+          message: 'off_classification=auto | manual_guard_discard_reason={{ manual_guard_discard_reason }} | auto_flags_active={{ auto_flags_active }} | transition_age_s={{ transition_age_s }} | auto_ts_age_s={{ last_auto_age_s }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else 'n/a' }} | auto_transition_recent={{ auto_transition_recent }} | marker_age_s={{ auto_off_marker_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | trace_id={{ now().strftime("%Y%m%d%H%M%S") }}'
           entity_id: climate.0200009211c7_climate
       - action: logbook.log
         data:
@@ -5712,7 +5718,7 @@
       - action: logbook.log
         data:
           name: AC Manual OFF
-          message: 'off_classification=auto | manual_guard_discard_reason={{ recheck_abort_reason }} | off_nonce={{ recheck_auto_marker_nonce_raw if recheck_auto_marker_nonce_raw | length > 0 else ''n/a'' }} | marker_age_s={{ recheck_auto_marker_age_s }} | last_origin={{ recheck_last_origin_raw }}'
+          message: 'off_classification=auto | manual_guard_discard_reason={{ recheck_abort_reason }} | off_nonce={{ recheck_auto_marker_nonce_raw if recheck_auto_marker_nonce_raw | length > 0 else 'n/a' }} | marker_age_s={{ recheck_auto_marker_age_s }} | last_origin={{ recheck_last_origin_raw }}'
           entity_id: climate.0200009211c7_climate
       - stop: 'Ignorado tras revalidación corta: evidencia AUTO OFF'
     default: []
@@ -5734,7 +5740,7 @@
       hin: "{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1) }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{ h2 | round(1) }}{% else %}{{ none }}{% endif %}"
       cool_on_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'') | float(none) }}'
       cool_off_final: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'') | float(none) }}'
-      fan_final: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') if state_attr(''climate.0200009211c7_climate'',''fan_mode'') is not none else ''n/a'' }}'
+      fan_final: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') if state_attr(''climate.0200009211c7_climate'',''fan_mode'') is not none else 'n/a' }}'
   - target:
       entity_id: input_datetime.ac_dda_last_manual_off_ts
     data:
@@ -5768,12 +5774,12 @@
   - action: logbook.log
     data:
       name: AC Manual OFF
-      message: '{{ contract_version }} | off_classification=manual | classification_reason=manual_off_guard_validated | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else ''n/a'' }} | manual_off_guard_discard_reason=none | ctx={{ contract_context_key }} | pause=5m | prev={{ prev_mode }} | learning=pending(+0.25)'
+      message: '{{ contract_version }} | off_classification=manual | classification_reason=manual_off_guard_validated | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else 'n/a' }} | manual_off_guard_discard_reason=none | ctx={{ contract_context_key }} | pause=5m | prev={{ prev_mode }} | learning=pending(+0.25)'
       entity_id: climate.0200009211c7_climate
   - service: notify.mobile_app_samsung_s24
     data:
       title: AC Manual OFF
-      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP=n/a Fan={{ fan_final }} Src=ManualOFF Delta=+0.25 Resultado=pendiente Razón=esperando_learning_off'
+      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else 'n/a' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else 'n/a' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else 'n/a' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} SP=n/a Fan={{ fan_final }} Src=ManualOFF Delta=+0.25 Resultado=pendiente Razón=esperando_learning_off'
   - choose:
     - conditions:
       - condition: template
@@ -6427,12 +6433,12 @@
   - target:
       entity_id: input_text.ac_dda_last_manual_on_snapshot
     data:
-      value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
+      value: '{{ ''trace_id='' ~ trace_id_effective ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|final_fan='' ~ final_fan ~ ''|final_setpoint='' ~ (final_setpoint if final_setpoint is not none else 'n/a') ~ ''|lock_started_ts='' ~ detected_ts ~ ''|ts='' ~ ts }}'
     continue_on_error: true
     service: input_text.set_value
   - variables:
       event_type_expected: '{{ manual_event_type_final ~ ''|trace_id='' ~ trace_id_effective }}'
-      snapshot_expected: '{{ ''trace_id='' ~ trace_id_effective ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|ts='' ~ ts }}'
+      snapshot_expected: '{{ ''trace_id='' ~ trace_id_effective ~ ''|event_type='' ~ manual_event_type_final ~ ''|final_mode='' ~ final_mode ~ ''|final_fan='' ~ final_fan ~ ''|final_setpoint='' ~ (final_setpoint if final_setpoint is not none else 'n/a') ~ ''|lock_started_ts='' ~ detected_ts ~ ''|ts='' ~ ts }}'
       trace_expected: '{{ ''trace_id='' ~ trace_id_effective }}'
       event_type_readback_pre: '{{ states(''input_text.ac_dda_last_manual_event_type'') | default('''', true) | trim }}'
       snapshot_readback_pre: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
@@ -6546,7 +6552,7 @@
   - action: logbook.log
     data:
       name: AC Manual ON
-      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else ''n/a'' }} | presence_source={{ presence_source }} | learn_step=-0.25'
+      message: '{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else 'n/a' }} | presence_source={{ presence_source }} | learn_step=-0.25'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -6579,7 +6585,7 @@
         service: notify.mobile_app_samsung_s24
         data:
           title: AC Manual ON
-          message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
+          message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else 'n/a' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else 'n/a' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else 'n/a' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else 'n/a' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
       - action: logbook.log
         data:
           name: AC Manual ON
@@ -6589,7 +6595,7 @@
     - action: persistent_notification.create
       data:
         title: 'AC Manual ON (fallback)'
-        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
+        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else 'n/a' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else 'n/a' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else 'n/a' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else 'n/a' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
     - action: logbook.log
       data:
         name: AC Manual ON
@@ -7127,7 +7133,7 @@
           sequence:
           - data:
               title: AC SP manual
-              message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(contract_on_display | float) if contract_on_display is not none else ''n/a'' }} Off={{ ''%.1f'' | format(contract_off_display | float) if contract_off_display is not none else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado={{ ''aplicado'' if feedback_or_override_apply else ''ignorado'' }} Razón={{ manual_sp_reason_output }}'
+              message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else 'n/a' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else 'n/a' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else 'n/a' }} On={{ ''%.1f'' | format(contract_on_display | float) if contract_on_display is not none else 'n/a' }} Off={{ ''%.1f'' | format(contract_off_display | float) if contract_off_display is not none else 'n/a' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else 'n/a' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else 'n/a' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else 'n/a' }} Resultado={{ ''aplicado'' if feedback_or_override_apply else ''ignorado'' }} Razón={{ manual_sp_reason_output }}'
               data:
                 ttl: 0
                 priority: high
@@ -7172,7 +7178,7 @@
         entity_id: '{{ climate_ent }}'
     - data:
         title: AC SP manual
-        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(contract_on_display | float) if contract_on_display is not none else ''n/a'' }} Off={{ ''%.1f'' | format(contract_off_display | float) if contract_off_display is not none else ''n/a'' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else ''n/a'' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else ''n/a'' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else ''n/a'' }} Resultado=ignorado Razón={{ manual_sp_reason_output }}'
+        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else 'n/a' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else 'n/a' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else 'n/a' }} On={{ ''%.1f'' | format(contract_on_display | float) if contract_on_display is not none else 'n/a' }} Off={{ ''%.1f'' | format(contract_off_display | float) if contract_off_display is not none else 'n/a' }} SP={{ ''%.1f'' | format(new_sp_num | float) if new_sp_num is not none else 'n/a' }} Fan={{ state_attr(climate_ent,''fan_mode'') if state_attr(climate_ent,''fan_mode'') is not none else 'n/a' }} Src=ManualSP Delta={{ ''%+.2f'' | format(delta_sp | float(0)) if delta_sp is not none else 'n/a' }} Resultado=ignorado Razón={{ manual_sp_reason_output }}'
         data:
           ttl: 0
           priority: high

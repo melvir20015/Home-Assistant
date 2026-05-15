@@ -1553,3 +1553,41 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
   2. Revisión de forma canónica `choose -> sequence -> default`.
   3. Evitar strings Jinja gigantes inline con comillas mixtas.
   4. Verificación final con `check_config`/restart controlado en host HA.
+
+## Rollback controlado para cascada YAML en `automations.yaml` (2026-05-15)
+
+- **Objetivo operativo**: detener la cascada de errores de parser y recuperar un estado reiniciable priorizando rollback seguro sobre parches puntuales.
+- **Errores observados antes del rollback**:
+  - `1453/1454` (`block collection`, `?`)
+  - `3721/3769` (`block collection`, `?`)
+  - `3846/3862` (`block mapping`, `<scalar>`)
+  - `4993/4994` (`block mapping`, `<scalar>`)
+  - `5127/5283` (`block mapping`, `<scalar>`)
+
+### Evidencia y punto de recuperación
+- Se congelaron cambios directos sobre el archivo roto.
+- Se preservó evidencia íntegra:
+  - `automations.yaml.broken.20260515T030539Z`
+- Se identificó y usó como baseline sintáctico válido el contenido de `automations.yaml` en el commit:
+  - `608990dd5ff854ff3556f0ecc6889b4561af3656`
+
+### Acción de recuperación aplicada
+1. Restauración completa de `automations.yaml` desde baseline válido (`git checkout <commit> -- automations.yaml`).
+2. Validación de parseo YAML global del archivo restaurado con `ruby/psych`:
+   - resultado: `YAML_OK`.
+
+### Estado posterior
+- Se recuperó estado de parseo limpio de `automations.yaml` en este workspace.
+- No se avanzó con microparches sobre líneas sueltas del archivo roto para evitar recaída de estructura.
+
+### Regla operativa reforzada (obligatoria)
+- **Sin validación YAML global exitosa no se continúa al siguiente bloque.**
+- Reaplicación de cambios funcionales solo por **bloque lógico completo** (`choose/sequence/default`), nunca por edición puntual de líneas aisladas.
+- En bloques con templates extensos:
+  - usar `message: >-` y `value_template: >-`,
+  - usar fallback `'n/a'` consistente,
+  - no dejar `?` en posición estructural,
+  - verificar delimitadores Jinja completos (`{{ ... }}`, `{% ... %}`).
+
+### Nota de validación operativa final
+- En este entorno no está disponible `hass --script check_config`, por lo que la confirmación de reinicio de Home Assistant debe ejecutarse en el host runtime de HA después del despliegue.
