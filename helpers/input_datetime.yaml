@@ -112,3 +112,8 @@ ac_dda_cycle_lock_since:
   name: "AC DDA Cycle Lock Since"
   has_date: true
   has_time: true
+
+ac_dda_cycle_lock_started_at:
+  name: "AC DDA Cycle Lock Started At"
+  has_date: true
+  has_time: true

@@ -959,3 +959,12 @@ ac_dda_cool_cycle_contract_setpoint_effective:
   step: 0.01
   mode: box
   unit_of_measurement: "°C"
+
+ac_dda_cycle_lock_ttl_s:
+  name: "AC DDA Cycle Lock TTL (s)"
+  min: 30
+  max: 1800
+  step: 5
+  mode: box
+  unit_of_measurement: "s"
+  initial: 180

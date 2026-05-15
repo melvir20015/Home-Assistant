@@ -1775,7 +1775,7 @@
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
       - target:
-          entity_id: input_datetime.ac_dda_cycle_lock_since
+          entity_id: input_datetime.ac_dda_cycle_lock_started_at
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -2015,7 +2015,7 @@
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
       - target:
-          entity_id: input_datetime.ac_dda_cycle_lock_since
+          entity_id: input_datetime.ac_dda_cycle_lock_started_at
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -2321,7 +2321,7 @@
           - input_boolean.ac_dda_cycle_lock
         service: input_boolean.turn_on
       - target:
-          entity_id: input_datetime.ac_dda_cycle_lock_since
+          entity_id: input_datetime.ac_dda_cycle_lock_started_at
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -5659,8 +5659,8 @@
       auto_off_recent: "{{ auto_off_marker_nonce_raw | length > 0 and auto_off_marker_age_s | float(99999) >= 0 and auto_off_marker_age_s | float(99999) <= (auto_off_guard_window_s | float(30)) }}"
       last_change_origin_raw: '{{ states(''input_text.ac_dda_last_change_origin'') | default('''', true) | trim }}'
       cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
-      cycle_lock_ttl_s: 180
-      cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
+      cycle_lock_ttl_s: '{{ states(''input_number.ac_dda_cycle_lock_ttl_s'') | float(180) }}'
+      cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_started_at'') | default('''', true) | trim }}'
       cycle_lock_since_epoch: "{% if cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(cycle_lock_since_raw, default=none) }}{% endif %}"
       cycle_lock_age_s: "{% if cycle_lock_since_epoch is none %}99999{% elif not cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
       cycle_lock_is_stale: '{{ cycle_lock_active and (cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
@@ -5811,7 +5811,7 @@
           - input_boolean.ac_dda_cycle_lock
         action: input_boolean.turn_on
       - target:
-          entity_id: input_datetime.ac_dda_cycle_lock_since
+          entity_id: input_datetime.ac_dda_cycle_lock_started_at
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         service: input_datetime.set_datetime
@@ -5904,8 +5904,8 @@
       trigger_to_context_id: "{% if trigger is defined and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.context is defined and trigger.to_state.context is not none and trigger.to_state.context.id is defined and (trigger.to_state.context.id | string | trim | length > 0) %}{{ trigger.to_state.context.id | string | trim }}{% else %}unknown{% endif %}"
       trace_id: '{{ trigger_to_context_id if trigger_to_context_id != ''unknown'' else generated_trace_id }}'
       cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
-      cycle_lock_ttl_s: 180
-      cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
+      cycle_lock_ttl_s: '{{ states(''input_number.ac_dda_cycle_lock_ttl_s'') | float(180) }}'
+      cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_started_at'') | default('''', true) | trim }}'
       cycle_lock_since_epoch: "{% if cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(cycle_lock_since_raw, default=none) }}{% endif %}"
       cycle_lock_age_s: "{% if cycle_lock_since_epoch is none %}99999{% elif not cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
       cycle_lock_is_stale: '{{ cycle_lock_active and (cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
@@ -6245,7 +6245,7 @@
       post60_auto_transition_active: '{{ post60_auto_transition_active_strict }}'
       post60_daytime_scope_ok: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
       post60_cycle_lock_active: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
-      post60_cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
+      post60_cycle_lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_started_at'') | default('''', true) | trim }}'
       post60_cycle_lock_since_epoch: "{% if post60_cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(post60_cycle_lock_since_raw, default=none) }}{% endif %}"
       post60_cycle_lock_age_s: "{% if post60_cycle_lock_since_epoch is none %}99999{% elif not post60_cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (post60_cycle_lock_since_epoch | float)) | round(1) }}{% endif %}"
       post60_cycle_lock_is_stale: '{{ post60_cycle_lock_active and (post60_cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}'
@@ -7505,7 +7505,7 @@
         - (transition_ts_epoch | float)) | round(1) }}{% endif %}"
       recent_transition: '{{ (transition_age_s | float(99999)) >= 0 and (transition_age_s
         | float(99999)) <= (transition_guard_window_s | float(180)) }}'
-      lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''',
+      lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_started_at'') | default('''',
         true) | trim }}'
       lock_since_epoch: "{% if lock_since_raw | lower in ['unknown','unavailable','none','']
         %}{{ none }}{% else %}{{ as_timestamp(lock_since_raw, default=none) }}{% endif %}"
@@ -7595,7 +7595,7 @@
     minutes: '/15'
   variables:
     lock_on: '{{ is_state(''input_boolean.ac_dda_cycle_lock'',''on'') }}'
-    lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_since'') | default('''', true) | trim }}'
+    lock_since_raw: '{{ states(''input_datetime.ac_dda_cycle_lock_started_at'') | default('''', true) | trim }}'
     lock_age_min: '{% if lock_since_raw in ['''' , ''unknown'', ''unavailable'', ''none''] %}0{% else %}{{ ((as_timestamp(now()) - as_timestamp(lock_since_raw, default=as_timestamp(now()))) / 60) | round(1) }}{% endif %}'
     snapshot_raw: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
     notify_status_raw: '{{ states(''input_text.ac_dda_last_notify_status'') | default('''', true) | trim }}'
