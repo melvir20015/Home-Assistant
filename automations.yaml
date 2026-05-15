@@ -881,25 +881,25 @@
           entity_id: '{{ climate_ent }}'
       - data:
           title: AC AUTO OFF
-          message: '{{ notif_base }} | Prev=cool | Act=Off | Stop={{ (cool_emergency_off|float)
-            if (tout|float) < 17 else (cool_stop_threshold|float) }} | R={{ ''cool_emergency_off''
-            if (tout|float) < 17 else ''cool_off/cool_sensor_off'' }} | Source={{
-            cool_off_reason | trim }} | TriggerSensor={{ cool_sensor_off_name if (cool_off_reason
-            | trim) != ''Promedio'' else ''Promedio'' }} | SensorDelta={{ sensor_temp_delta
-            }} | SensorColdEnabled={{ ''ON'' if cool_sensor_off_enabled else ''OFF''
-            }} | Ctx={{ ''Emerg'' if (tout|float) < 17 else ''Normal'' }} | On={{
-            '%.1f' | format(cool_emergency_on | float) if (tout|float) < 17 else ('%.1f'
-            | format(cool_on | float) if cool_on is not none else 'n/a') }} | Off={{
-            '%.1f' | format(cool_emergency_off | float) if (tout|float) < 17 else ('%.1f'
-            | format(cool_stop_threshold | float) if cool_stop_threshold is not none
-            else 'n/a') }} | H={{ '%.1f' | format(cool_night_hysteresis | float) }}
-            | OffBase={{ cool_off }} | OffDyn={{ cool_normal_off_dynamic
-            if (tout|float) >= 17 else ''n/a'' }} | Bedroom={{ bedroom_temp }} | Cold={{
-            cold_sensor_name }}={{ cold_temp }} | SensorOFF={{ cool_sensor_off_name
-            }}={{ cool_sensor_off_temp }}<= {{ cool_sensor_off_trigger if (tout|float)
-            >= 17 else ''n/a'' }} | EOn={{ cool_emergency_on }} EOff={{ cool_emergency_off
-            }} | LastUseful={{ last_effective_setpoint }} | Set={{ cool_setpoint_emerg
-            if (tout|float) < 17 else cool_setpoint_normal }}'
+          message: >-
+            {{ notif_base }} | Prev=cool | Act=Off | Stop={{ (cool_emergency_off | float)
+            if (tout | float) < 17 else (cool_stop_threshold | float) }} | R={{ 'cool_emergency_off'
+            if (tout | float) < 17 else 'cool_off/cool_sensor_off' }} | Source={{ cool_off_reason
+            | trim }} | TriggerSensor={{ cool_sensor_off_name if (cool_off_reason | trim)
+            != 'Promedio' else 'Promedio' }} | SensorDelta={{ sensor_temp_delta }} | SensorColdEnabled={{
+            'ON' if cool_sensor_off_enabled else 'OFF' }} | Ctx={{ 'Emerg' if (tout | float)
+            < 17 else 'Normal' }} | On={{ '%.1f' | format(cool_emergency_on | float)
+            if (tout | float) < 17 else ('%.1f' | format(cool_on | float) if cool_on
+            is not none else 'n/a') }} | Off={{ '%.1f' | format(cool_emergency_off
+            | float) if (tout | float) < 17 else ('%.1f' | format(cool_stop_threshold
+            | float) if cool_stop_threshold is not none else 'n/a') }} | H={{ '%.1f'
+            | format(cool_night_hysteresis | float) }} | OffBase={{ cool_off }} | OffDyn={{
+            cool_normal_off_dynamic if (tout | float) >= 17 else 'n/a' }} | Bedroom={{
+            bedroom_temp }} | Cold={{ cold_sensor_name }}={{ cold_temp }} | SensorOFF={{
+            cool_sensor_off_name }}={{ cool_sensor_off_temp }}<= {{ cool_sensor_off_trigger
+            if (tout | float) >= 17 else 'n/a' }} | EOn={{ cool_emergency_on }} EOff={{
+            cool_emergency_off }} | LastUseful={{ last_effective_setpoint }} | Set={{
+            cool_setpoint_emerg if (tout | float) < 17 else cool_setpoint_normal }}
         service: '{{ notify_service }}'
     - conditions:
       - condition: template

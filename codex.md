@@ -1409,3 +1409,12 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
     2. reducción de sensación de sudor previa al encendido,
     3. número de ciclos ON/OFF por noche;
   - si persiste calor o aparece sobreenfriamiento, ajustar `cool_on_dew_bias` en pasos de `±0.1 °C`.
+
+## Incidente de quoting YAML/Jinja en notificación AUTO OFF (2026-05-15)
+
+- **Síntoma potencial**: bloque de mensaje largo en `automations.yaml` alrededor de la línea **891** con alto riesgo de colisión por comillas al usar plantilla Jinja embebida en escalar YAML con comillas simples.
+- **Causa raíz exacta**: el mensaje `AC AUTO OFF` usaba un string YAML de una sola línea con múltiples literales Jinja escapados como `''...''` (por ejemplo `''cool_emergency_off''`, `''n/a''`), lo que vuelve frágil el parseo y dificulta mantenimiento.
+- **Bloque corregido**: rama `cool` de `AC AUTO OFF` (alrededor de `automations.yaml:883-902`) migrada a bloque multilinea `>-` con delimitadores Jinja completos y comillas internas consistentes (`'...'`) dentro de `{{ ... }}`.
+- **Validación ejecutada**:
+  - parseo YAML completo tras el cambio (`yaml.safe_load`) exitoso: lista de 37 automatizaciones;
+  - en este entorno no se ejecutó reinicio de Home Assistant ni `hass --script check_config` (binario no disponible).
