@@ -1479,3 +1479,24 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
   2. No mezclar escalar YAML con comilla simple externa + fallback internos sin revisar parseo.
   3. Validar sintaxis YAML completa tras cada cambio de bloques `choose/sequence/default`.
   4. Revisar específicamente alias AC-DDA tocados en el diff antes de recargar HA.
+
+## Incidente de sintaxis YAML en bloques AC-DDA (2026-05-15)
+
+- **Fecha**: 2026-05-15.
+- **Rangos corregidos**:
+  - `automations.yaml:2865–2915` (error reportado en 2888/2891).
+  - `automations.yaml:3830–3875` (error reportado en 3846/3862).
+- **Causas raíz por rango**:
+  - **Rango A**: estructura `default` desalineada con su rama `choose`, provocando riesgo de cierre incorrecto de mapping y colisión `block end/scalar`.
+  - **Rango B**: combinación de indentación frágil en `default` + string template muy largo con quoting mixto (`''n/a''` / `'n/a'`) dentro de escalares inline.
+- **Patrón de corrección aplicado**:
+  - normalización de jerarquía `choose -> - conditions -> sequence` y `default` al mismo nivel de ramas;
+  - migración de templates largos a `message: >-` / `>-'` multilinea;
+  - normalización de fallback a `'n/a'` consistente;
+  - preservación de delimitadores Jinja completos (`{{ ... }}`, `{% ... %}`) y filtros defensivos existentes.
+- **Mini-checklist preventivo**:
+  1. En cada `choose`, revisar que `default:` esté alineado con las ramas `- conditions:`.
+  2. Si un `message`/template supera una línea o mezcla quotes, convertir a `>-`.
+  3. Evitar `''n/a''`; usar siempre `'n/a'` dentro de Jinja.
+  4. Validar YAML completo tras tocar `sequence/default`.
+  5. Revalidar específicamente los rangos corregidos antes de recarga/reinicio.

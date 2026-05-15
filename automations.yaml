@@ -1450,7 +1450,7 @@
               message: transition_closed=ok | hvac_confirmed=cool
               entity_id: climate.0200009211c7_climate
         default:
-        - service: logbook.log
+          - service: logbook.log
           data:
             name: AC Auto Trace
             message: transition_closed=timeout | hvac_expected=cool
@@ -3718,7 +3718,7 @@
                 }}
               entity_id: climate.0200009211c7_climate
         default:
-        - choose:
+          - choose:
           - conditions:
             - condition: template
               value_template: '{{ hvac_cool_confirmed }}'
@@ -3838,34 +3838,32 @@
             - service: logbook.log
               data:
                 name: AC Auto Trace
-                message: fan_write | status=omit_invalid_fan_mode | fan_modes={{ state_attr(climate_ent,'fan_modes')
-                  if state_attr(climate_ent,'fan_modes') is not none else 'na' }}
+                message: >-
+                  fan_write | status=omit_invalid_fan_mode | fan_modes={{ state_attr(climate_ent,'fan_modes') if state_attr(climate_ent,'fan_modes') is not none else 'na' }}
                 entity_id: climate.0200009211c7_climate
           default: []
       - variables:
           cool_push_kind: true
           cool_push_reason: Mot=auto umbral
-          cool_notify_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') }}-{{ range(100, 1000) | random }}-cool-normal-on'
+          cool_notify_trace_id: "{{ now().strftime('%Y%m%d%H%M%S%f') }}-{{ range(100, 1000) | random }}-cool-normal-on"
           cool_notify_branch: cool_normal_on
-          cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_dda_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}{% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_normal_on|src:auto_on_v2"
-          cool_push_summary: '{% set contract_bucket = states(''input_text.ac_dda_cool_cycle_contract_bucket'')
-            | default('''', true) | trim %} {% set contract_calc = states(''input_text.ac_dda_cool_cycle_contract_reason'')
-            | default('''', true) | trim %} {% set contract_on = states(''input_number.ac_dda_cool_cycle_contract_on'')
-            | float(none) %} {% set contract_off = states(''input_number.ac_dda_cool_cycle_contract_off'')
-            | float(none) %} {% set contract_sensor_off = states(''input_number.ac_dda_cool_cycle_contract_sensor_off'')
-            | float(none) %} {% set contract_setpoint = states(''input_number.ac_dda_cool_cycle_contract_setpoint'')
-            | float(none) %} {% set contract_setpoint_effective = states(''input_number.ac_dda_cool_cycle_contract_setpoint_effective'')
-            | float(none) %} Bucket={{ contract_bucket if contract_bucket not in ['''',
-            ''unknown'', ''unavailable'', ''none''] else cool_context_detail }} |
-            Calc={{ contract_calc if contract_calc not in ['''', ''unknown'', ''unavailable'',
-            ''none''] else cool_off_learning_source }} | Dem={{ cool_demand_score
-            }} | Encendido en={{ contract_on if contract_on is not none else 'n/a'
-            }} | Apagado promedio en={{ contract_off if contract_off is not none else
-            ''n/a'' }} | Corte por sensor individual (hard stop)={{ contract_sensor_off
-            if contract_sensor_off is not none else 'n/a' }} | Fuente apagado={{
-            cool_contract_off_source_label }} | Setpoint teórico={{ contract_setpoint if
-            contract_setpoint is not none else 'n/a' }} | Setpoint efectivo={{ contract_setpoint_effective
-            if contract_setpoint_effective is not none else 'n/a' }} | Fan=Low'
+          cool_notify_cycle_signature_v2: >-
+            {% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}
+            {% set auto_ts_raw = states('input_datetime.ac_dda_last_auto_ts') | default('', true) | trim %}
+            {% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}
+            {% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}
+            {% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}
+            {% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}
+            token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_normal_on|src:auto_on_v2
+          cool_push_summary: >-
+            {% set contract_bucket = states('input_text.ac_dda_cool_cycle_contract_bucket') | default('', true) | trim %}
+            {% set contract_calc = states('input_text.ac_dda_cool_cycle_contract_reason') | default('', true) | trim %}
+            {% set contract_on = states('input_number.ac_dda_cool_cycle_contract_on') | float(none) %}
+            {% set contract_off = states('input_number.ac_dda_cool_cycle_contract_off') | float(none) %}
+            {% set contract_sensor_off = states('input_number.ac_dda_cool_cycle_contract_sensor_off') | float(none) %}
+            {% set contract_setpoint = states('input_number.ac_dda_cool_cycle_contract_setpoint') | float(none) %}
+            {% set contract_setpoint_effective = states('input_number.ac_dda_cool_cycle_contract_setpoint_effective') | float(none) %}
+            Bucket={{ contract_bucket if contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }} | Calc={{ contract_calc if contract_calc not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }} | Dem={{ cool_demand_score }} | Encendido en={{ contract_on if contract_on is not none else 'n/a' }} | Apagado promedio en={{ contract_off if contract_off is not none else 'n/a' }} | Corte por sensor individual (hard stop)={{ contract_sensor_off if contract_sensor_off is not none else 'n/a' }} | Fuente apagado={{ cool_contract_off_source_label }} | Setpoint teórico={{ contract_setpoint if contract_setpoint is not none else 'n/a' }} | Setpoint efectivo={{ contract_setpoint_effective if contract_setpoint_effective is not none else 'n/a' }} | Fan=Low
           cool_mobile_title_local: Cool↑
           cool_mobile_message_local: '{% set cool_on_local = cool_on_validated | default(none)
             %} {% set cool_off_local = cool_off_validated | default(none) %} {% set tin_local
