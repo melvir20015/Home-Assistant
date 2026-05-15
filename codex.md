@@ -1648,3 +1648,103 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 4. Confirmar manual ON válido escribe override +60m y **no** corta por salida posterior de S24.
 5. Auditar logbook por claves: `hito=contexto_calculado`, `gate=confirmando_3m`, `gate=abierto_revalidado`, `override_60m_set`.
 6. Ejecutar `check_config` y recarga de automatizaciones en host HA antes de reinicio total.
+
+## Actualización del contrato funcional/técnico AC-DDA: eventos manuales válidos y semántica explícita (2026-05-15)
+
+### 1) Eventos de aprendizaje manual permitidos (únicos válidos)
+
+Se redefine el aprendizaje manual AC-DDA para aceptar **solo** los siguientes eventos terminales:
+
+- `manual_off_during_active_cycle`
+  - Definición: usuario apaga manualmente mientras el equipo está activo por un ciclo automático en curso.
+  - Estado previo mínimo: equipo en `ON` por activación automática vigente.
+- `manual_on_after_auto_stop`
+  - Definición: usuario enciende manualmente después de un apagado automático previo.
+  - Estado previo mínimo: último cierre de ciclo fue `auto_off` válido.
+
+Evento **no válido / no existente** para aprendizaje:
+
+- `manual_on_after_auto_on`
+  - Se declara explícitamente inexistente como evento aprendible cuando el equipo ya está `ON`.
+  - Cualquier detección equivalente debe normalizarse a descarte diagnóstico (`ignorado`) por ambigüedad operacional.
+
+### 2) Reglas de ajuste con paso fijo `0.25°C` (inmediatas y sin tope)
+
+Regla global:
+
+- Paso de aprendizaje fijo: `Δ = 0.25°C`.
+- Aplicación: desde el **primer** evento válido (sin umbral mínimo de ocurrencias).
+- Sin tope artificial de acumulación (solo aplican invariantes de coherencia de banda).
+
+#### Modo COOL
+
+- `manual_off_during_active_cycle`
+  - `T_on_cool = T_on_cool + 0.25`
+  - `T_off_cool = T_off_cool + 0.25`
+- `manual_on_after_auto_stop`
+  - `T_on_cool = T_on_cool - 0.25`
+  - `T_off_cool = T_off_cool - 0.25`
+
+#### Modo HEAT
+
+- `manual_off_during_active_cycle`
+  - `T_on_heat = T_on_heat - 0.25`
+  - `T_off_heat = T_off_heat - 0.25`
+- `manual_on_after_auto_stop`
+  - `T_on_heat = T_on_heat + 0.25`
+  - `T_off_heat = T_off_heat + 0.25`
+
+### 3) Invariantes operativos y corrección determinística de banda
+
+Para preservar histéresis y evitar zonas ambiguas:
+
+- COOL: debe cumplirse siempre `T_on_cool > T_off_cool`.
+- HEAT: debe cumplirse siempre `T_on_heat < T_off_heat`.
+
+Si una actualización viola la relación, se aplica corrección determinística inmediata:
+
+- Definir `delta_min_band` configurable (recomendado inicial: `0.10°C`).
+- COOL (si `T_on_cool <= T_off_cool`):
+  - `T_on_cool = T_off_cool + delta_min_band`.
+- HEAT (si `T_on_heat >= T_off_heat`):
+  - `T_off_heat = T_on_heat + delta_min_band`.
+
+Regla de desempate: en corrección, se conserva el umbral que represente el estado de salida (`off`) y se re-separa el de entrada (`on`) con `delta_min_band`.
+
+### 4) Prioridad temporal del aprendizaje
+
+Orden temporal obligatorio:
+
+1. Detectar evento manual válido.
+2. Esperar cierre/confirmación del evento manual (estado terminal consolidado).
+3. Aplicar aprendizaje sobre umbrales en ese momento de cierre.
+4. Publicar persistencia/auditoría del cambio.
+5. Activar vigencia del nuevo rango en el **siguiente ciclo de decisión** (no retroactivo sobre la decisión ya tomada en curso).
+
+### 5) Persistencia y trazabilidad mínima obligatoria
+
+Cada aplicación de aprendizaje debe persistir un registro auditable con:
+
+- `event_type` (`manual_off_during_active_cycle` o `manual_on_after_auto_stop`)
+- `mode` (`COOL` / `HEAT`)
+- `previous_state` (estado HVAC previo al evento)
+- `thresholds_before` (par de umbrales antes del ajuste)
+- `thresholds_after` (par de umbrales después del ajuste)
+- `timestamp` (fecha/hora exacta de aplicación)
+
+Objetivo: habilitar depuración y auditoría causal de por qué cambió cada rango.
+
+### 6) Ejemplos de aceptación para QA (cambios exactos ±0.25)
+
+| Caso | Evento | Before | After | Resultado esperado |
+|---|---|---|---|---|
+| COOL + apagado manual durante ON automático | `manual_off_during_active_cycle` | `T_on_cool=24.50`, `T_off_cool=23.75` | `T_on_cool=24.75`, `T_off_cool=24.00` | ambos `+0.25` |
+| COOL + encendido manual tras auto-OFF | `manual_on_after_auto_stop` | `T_on_cool=24.50`, `T_off_cool=23.75` | `T_on_cool=24.25`, `T_off_cool=23.50` | ambos `-0.25` |
+| HEAT + apagado manual durante ON automático | `manual_off_during_active_cycle` | `T_on_heat=20.25`, `T_off_heat=21.00` | `T_on_heat=20.00`, `T_off_heat=20.75` | ambos `-0.25` |
+| HEAT + encendido manual tras auto-OFF | `manual_on_after_auto_stop` | `T_on_heat=20.25`, `T_off_heat=21.00` | `T_on_heat=20.50`, `T_off_heat=21.25` | ambos `+0.25` |
+
+### 7) Criterio de no ambigüedad (norma de contrato)
+
+- Si un evento manual no cumple precondiciones de los dos tipos permitidos, el resultado debe ser `ignorado` con razón explícita.
+- No se permiten reinterpretaciones automáticas de eventos ambiguos para forzar aprendizaje.
+- Toda decisión terminal de aprendizaje debe cerrar en `aplicado`, `ignorado` o `error_controlado`, con razón trazable.
