@@ -5003,6 +5003,7 @@
       apply_learning_seed: false
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       last_change_origin: '{{ states(''input_text.ac_dda_last_change_origin'') | trim }}'
+      hvac_mode_current: '{{ trigger.from_state.state if trigger.from_state is not none else states(''input_select.ac_ultimo_modo_no_fan'') | lower }}'
       last_auto_action: '{{ states(''input_text.ac_dda_last_auto_action'') | trim }}'
       last_auto_mode: '{{ states(''input_text.ac_dda_last_auto_mode'') | trim }}'
       last_auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') }}'
@@ -5034,7 +5035,7 @@
       auto_origin_detected: '{{ last_change_origin in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
       origin_auto_recent: '{{ auto_reciente and last_change_origin in [''auto_off'', ''auto_on'', ''cool_normal_off'', ''cool_normal_on'', ''cool_emergency_off'', ''cool_emergency_on''] }}'
       last_manual_event_type_raw: '{{ states(''input_text.ac_dda_last_manual_event_type'') | trim }}'
-      manual_event_confirmed: '{{ last_manual_event_type_raw == ''manual_off_final_valid_contract_v1'' }}'
+      manual_event_confirmed: '{{ last_manual_event_type_raw == ''manual_off_during_active_cycle'' }}'
       transition_guard_window_s: 180
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
@@ -5056,7 +5057,8 @@
       duplicate_event: '{{ manual_off_event_signature == last_manual_off_event_signature }}'
       apply_learning: '{{ (valid_feedback and (not duplicate_event)) | default(apply_learning_seed) }}'
       learning_step: 0.25
-      context_after: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      learning_delta: "{% if hvac_mode_current == 'cool' %}{{ learning_step | float }}{% elif hvac_mode_current == 'heat' %}{{ (learning_step | float) * -1 }}{% else %}0{% endif %}"
+      context_after: '{{ ((context_prev | float) + (learning_delta | float)) | round(2) }}'
       tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
       tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
       hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
@@ -5291,7 +5293,7 @@
       snapshot_recent: '{{ snapshot_ts_epoch is not none and (snapshot_age_min | float(99999)) >= 0 and (snapshot_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
       snapshot_structure_ok: '{{ manual_on_snapshot_raw | length > 0 and snapshot_trace_id != ''trace_missing'' and snapshot_event_type != ''event_missing'' and snapshot_final_mode != ''mode_missing'' and snapshot_ts != ''ts_missing'' }}'
       snapshot_trace_matches_confirmed: '{{ snapshot_structure_ok and trace_id != ''trace_missing'' and snapshot_trace_id == trace_id }}'
-      snapshot_event_type_ok: '{{ snapshot_event_type in [''manual_on_final_valid_contract_v1'', ''manual_on_final_valid_presence_gap_contract_v1''] }}'
+      snapshot_event_type_ok: '{{ snapshot_event_type in [''manual_on_after_auto_stop'', ''manual_on_after_auto_stop''] }}'
       snapshot_ok: '{{ snapshot_structure_ok and snapshot_trace_matches_confirmed and snapshot_event_type_ok }}'
       mov_raw: '{{ states(''binary_sensor.presencia_movimiento_estable'') | lower }}'
       s24_raw: '{{ states(''device_tracker.samsung_s24'') | lower }}'
@@ -5363,8 +5365,9 @@
       fallback_delta_helper: input_number.ac_dda_cool_delta_on_bucket_ctx_default_presencia
       fallback_delta_helper_exists: '{{ (states.input_number | selectattr(''entity_id'', ''eq'', fallback_delta_helper) | list | count) > 0 }}'
       learning_apply_with_fallback: '{{ learning_gate_ok and not event_already_processed and not trace_mismatch_cross_run }}'
-      learning_step: -0.25
-      context_after_normal: '{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}'
+      learning_step: 0.25
+      learning_delta: "{% if final_mode == 'cool' %}{{ (learning_step | float) * -1 }}{% elif final_mode == 'heat' %}{{ learning_step | float }}{% else %}0{% endif %}"
+      context_after_normal: '{{ ((context_prev | float) + (learning_delta | float)) | round(2) }}'
       tin: "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}"
       tout_owm: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
       hout_owm: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
@@ -5866,7 +5869,7 @@
       ts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       prev_mode: '{{ trigger.from_state.state if trigger.from_state is not none else ''unknown'' }}'
       contract_context_key: "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
-      manual_event_type: manual_off_final_valid_contract_v1
+      manual_event_type: manual_off_during_active_cycle
       t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'') | float(none) }}'
       t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'') | float(none) }}'
       h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'') | float(none) }}'
@@ -6536,7 +6539,7 @@
         }}{% else %}{{ none }}{% endif %}'
       manual_presence_until: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_presence_override_until: '{{ (now() + timedelta(minutes=60)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
-      manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_final_valid_presence_gap_contract_v1{% else %}manual_on_final_valid_contract_v1{% endif %}"
+      manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_after_auto_stop{% else %}manual_on_after_auto_stop{% endif %}"
   - target:
       entity_id: input_datetime.ac_dda_last_manual_final_ts
     data:
@@ -6559,7 +6562,7 @@
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ manual_event_type_final == ''manual_on_final_valid_presence_gap_contract_v1'' }}'
+        value_template: '{{ manual_event_type_final == ''manual_on_after_auto_stop'' }}'
       sequence:
       - target:
           entity_id: input_datetime.ac_dda_manual_presence_until
