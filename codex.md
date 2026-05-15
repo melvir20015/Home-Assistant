@@ -1353,3 +1353,26 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
   - revisión de ocurrencias dentro del alias objetivo;
   - validación sintáctica YAML del archivo completo con `PyYAML` (`yaml.safe_load`) luego del ajuste.
 - **Fecha**: 2026-05-15.
+
+## Actualización de robustez (2026-05-15)
+
+- Se reforzó la automatización `AC - Learning - Manual OFF feedback` para evitar warnings por variables indefinidas en plantillas Jinja.
+- Se agregó una semilla defensiva `apply_learning_seed: false` y se definió `apply_learning` de forma explícita con fallback seguro.
+- Se actualizaron expresiones derivadas para usar `apply_learning | default(false)` en:
+  - `learning_off_discard_reason`
+  - `delta_learning`
+  - `learning_type`
+  - mensajes de logbook/notificación con `apply=yes|no`
+  - condiciones `if apply_learning` / `value_template`.
+- Se preserva el contrato funcional de salida:
+  - `Resultado=aplicado|ignorado`
+  - `reason_code=applied|<ignored_reason_code>`.
+
+### Identificadores clave tocados
+- `apply_learning_seed`
+- `apply_learning`
+- `learning_off_discard_reason`
+- `learning_type`
+- `delta_learning`
+- `ignored_reason_code`
+- Mensajes de `AC Learning Manual OFF` (logbook y notificación móvil).
