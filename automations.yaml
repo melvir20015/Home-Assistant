@@ -2892,7 +2892,7 @@
             | off_effective={{ cool_cycle_off_effective if cool_cycle_off_effective
             is not none else ''n/a'' }} | sensor_off_effective={{ cool_cycle_sensor_off_effective
             if cool_cycle_sensor_off_effective is not none else ''n/a'' }} | contract_active_audit={{
-            cool_cycle_contract_active }}'
+            cool_cycle_contract_active | default(false) }}'
           entity_id: climate.0200009211c7_climate
       - variables:
           cool_cycle_off_cause: "{% if tin is not none and cool_cycle_off_effective
@@ -3193,7 +3193,7 @@
             else ''n/a'' }} | Off={{ cool_cycle_off_effective if cool_cycle_off_effective
             is not none else ''n/a'' }} | cur_mode={{ cur_mode }} | manual_override_active={{
             (manual_override_active | default(false)) }} | emergency_latched={{ emergency_latched }} |
-            cool_cycle_contract_active={{ cool_cycle_contract_active }} | last_auto_branch={{
+            cool_cycle_contract_active={{ cool_cycle_contract_active | default(false) }} | last_auto_branch={{
             states(''input_text.ac_dda_last_auto_branch'') }} | mode_ok={{ off_gate_mode_ok
             }} | not_emergency={{ off_gate_not_emergency }} | not_manual_override={{
             off_gate_not_manual_override }} | contract_active_gate={{ off_gate_contract_active
@@ -3206,7 +3206,7 @@
       - service: logbook.log
         data:
           name: AC Auto Trace
-          message: auto_on_denied_discard_off_context | cur_mode={{ cur_mode }} | Tin={{ tin if tin is not none else 'na' }} | off_validated={{ cool_off_validated if cool_off_validated is not none else 'na' }} | cool_cycle_contract_active={{ cool_cycle_contract_active }} | manual_override_active={{ (manual_override_active | default(false)) }} | emergency_latched={{ emergency_latched }} | reason={{ auto_on_block_reason }} | branch={{ auto_on_target_branch }} | trig={{ trig }}
+          message: auto_on_denied_discard_off_context | cur_mode={{ cur_mode }} | Tin={{ tin if tin is not none else 'na' }} | off_validated={{ cool_off_validated if cool_off_validated is not none else 'na' }} | cool_cycle_contract_active={{ cool_cycle_contract_active | default(false) }} | manual_override_active={{ (manual_override_active | default(false)) }} | emergency_latched={{ emergency_latched }} | reason={{ auto_on_block_reason }} | branch={{ auto_on_target_branch }} | trig={{ trig }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3939,7 +3939,7 @@
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: "{{ cur_mode == 'cool'\n   and cool_cycle_contract_active\n
+        value_template: "{{ cur_mode == 'cool'\n   and (cool_cycle_contract_active | default(false))\n
           \  and cool_cycle_contract_setpoint is not none\n   and ac_set_effective_normalized
           is not none\n   and ((((ac_set_effective_normalized | float) - (cool_cycle_contract_setpoint
           | float)) | abs) >= 0.11) }}"
@@ -4530,7 +4530,7 @@
     off_gate_mode_ok: '{{ cur_mode == ''cool'' }}'
     off_gate_not_emergency: '{{ not emergency_latched }}'
     off_gate_not_manual_override: '{{ not (manual_override_active | default(false)) }}'
-    off_gate_contract_active: '{{ cool_cycle_contract_active }}'
+    off_gate_contract_active: '{{ cool_cycle_contract_active | default(false) }}'
     off_gate_threshold_met: '{{ (tin is not none and cool_cycle_off_effective is not none
       and (tin | float) <= (cool_cycle_off_effective | float)) or (t1 is not none
       and cool_cycle_sensor_off_effective is not none and (t1 | float) <= (cool_cycle_sensor_off_effective
@@ -4545,10 +4545,12 @@
       }}'
     cool_cycle_contract_started_at_raw: '{{ states(''input_datetime.ac_dda_cool_cycle_contract_started_at'')
       }}'
-    cool_cycle_contract_active: "{{ states('input_text.ac_dda_last_auto_branch') == 'cool_normal_on'\n
+    cool_cycle_contract_active_seed: false
+    cool_cycle_contract_active_computed: "{{ states('input_text.ac_dda_last_auto_branch') == 'cool_normal_on'\n
       \  and cool_cycle_contract_off is not none\n   and cool_cycle_contract_on is
       not none\n   and cool_cycle_contract_setpoint is not none\n   and cool_cycle_contract_setpoint_effective
       is not none }}"
+    cool_cycle_contract_active: "{{ cool_cycle_contract_active_computed | default(cool_cycle_contract_active_seed) }}"
     ac_set_normalized_f: "{% if ac_set is none %}\n  {{ none }}\n{% else %}\n  {%
       set sp_f = (((ac_set | float) * 9 / 5) + 32) | round(0) %}\n  {{ [[sp_f, 75]
       | min, 70] | max | int }}\n{% endif %}"

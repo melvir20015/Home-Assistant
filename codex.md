@@ -1418,3 +1418,24 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 - **Validación ejecutada**:
   - parseo YAML completo tras el cambio (`yaml.safe_load`) exitoso: lista de 37 automatizaciones;
   - en este entorno no se ejecutó reinicio de Home Assistant ni `hass --script check_config` (binario no disponible).
+
+## Endurecimiento defensivo de `cool_cycle_contract_active` (2026-05-15)
+
+- **Objetivo**: eliminar riesgos de `UndefinedError`/warnings cuando `cool_cycle_contract_active` sea referenciado en condiciones, logs o ramas `choose/default` antes de quedar materializada en el contexto de templates.
+- **Cambios aplicados en `automations.yaml`**:
+  - Se agregó semilla explícita:
+    - `cool_cycle_contract_active_seed: false`
+  - Se separó el cálculo contractual en variable dedicada:
+    - `cool_cycle_contract_active_computed`
+  - Se normalizó la variable operativa con fallback defensivo:
+    - `cool_cycle_contract_active: "{{ cool_cycle_contract_active_computed | default(cool_cycle_contract_active_seed) }}"`
+  - Se forzó fallback explícito `| default(false)` en usos de:
+    - mensajes de auditoría/log (`contract_active_audit`, `cool_cycle_contract_active=...`),
+    - condición template de desvío contractual en rama `cool`,
+    - compuerta derivada `off_gate_contract_active`.
+- **Cobertura funcional**:
+  - ninguna rama `choose/default` dependiente de `cool_cycle_contract_active` queda sin valor booleano seguro;
+  - se preserva el comportamiento contractual normal cuando el cálculo sí está disponible.
+- **Validación en este entorno**:
+  - se confirmó inventario de ocurrencias y presencia de fallback explícito con búsqueda dirigida;
+  - no fue posible validar recarga/reinicio de Home Assistant ni `check_config` dentro de este contenedor (requiere host HA con binarios/entorno runtime).
