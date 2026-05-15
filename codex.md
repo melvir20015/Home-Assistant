@@ -1152,6 +1152,9 @@ Fecha de actualización: **2026-05-14**.
 | `input_text.ac_dda_last_auto_action` | `AC - Día dinámico aprendido (principal)` | learning ON/OFF, guards manuales | acción AUTO consolidada para correlación temporal | 2026-05-14 |
 | `input_datetime.ac_dda_last_manual_off_ts` | `AC - Manual OFF guard + pausa 5 min` | learning manual OFF | trigger contractual de learning OFF | 2026-05-14 |
 | `input_datetime.ac_dda_last_manual_on_ts` | `AC - Manual ON guard + presencia temporal` | learning manual ON | trigger contractual de learning ON | 2026-05-14 |
+| `input_text.ac_dda_last_manual_on_pending_signature` | `AC - Manual ON guard + presencia temporal` | `AC - Learning - Manual ON feedback` | deduplicación temprana por firma de sesión manual ON | 2026-05-15 |
+| `input_text.ac_dda_last_manual_on_trace_confirmed` | `AC - Manual ON guard + presencia temporal` | `AC - Learning - Manual ON feedback` | correlación transaccional del `trace_id` manual ON consolidado | 2026-05-15 |
+| `input_text.ac_dda_last_manual_on_snapshot` | `AC - Manual ON guard + presencia temporal` | `AC - Learning - Manual ON feedback` | snapshot inmutable (`trace_id|event_type|final_mode|ts`) para validación estricta | 2026-05-15 |
 | `input_text.ac_dda_last_notify_status` | `AC - Manual ON guard + presencia temporal` | watchdog | estado de secuencia notify/manual-on | 2026-05-14 |
 
 ### Reglas de naming para nuevos helpers exclusivos
