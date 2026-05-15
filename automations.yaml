@@ -4916,8 +4916,12 @@
       transition_origin_recent: '{{ auto_origin_detected or auto_reciente }}'
       auto_transition_active: '{{ auto_flags_active or (auto_transition_recent and transition_origin_recent) }}'
       off_classification: '{{ ''manual'' if last_change_origin == ''manual_off'' and manual_event_confirmed and (not auto_off_recent) and (not auto_transition_active) else ''auto'' }}'
-      classification_reason: "{% if last_change_origin != 'manual_off' %}origin_not_manual_off{% elif not manual_event_confirmed %}manual_event_not_validated{% elif auto_transition_active %}auto_transition_active{% elif auto_off_recent %}auto_off_recent{% else %}manual_off_guard_validated{% endif %}"
-      valid_feedback: '{{ last_change_origin == ''manual_off'' and manual_event_confirmed and (not auto_off_recent) and (not cycle_lock_active) and (not auto_reciente) and (not origin_auto_recent) and (not auto_transition_active) }}'
+      classification_reason: "{% if last_change_origin != 'manual_off' %}origin_not_manual_off{% elif not manual_event_confirmed %}manual_event_not_confirmed{% elif auto_transition_active %}auto_transition_active{% elif auto_off_recent %}auto_off_recent{% else %}manual_off_guard_validated{% endif %}"
+      manual_human_origin_ok: '{{ last_change_origin == ''manual_off'' and not auto_off_recent and not auto_transition_active }}'
+      eligibility_manual_event: '{{ manual_human_origin_ok and manual_event_confirmed }}'
+      eligibility_scope: '{{ now().strftime(''%H:%M:%S'') >= ''07:01:00'' and now().strftime(''%H:%M:%S'') <= ''21:59:00'' and contract_context_key not in ['''', ''unknown'', ''unavailable'', ''none''] }}'
+      eligibility_safety: '{{ not cycle_lock_active and not auto_reciente and not origin_auto_recent and not auto_transition_active }}'
+      valid_feedback: '{{ eligibility_manual_event and eligibility_scope and eligibility_safety }}'
       manual_off_event_signature: '{{ states(''input_datetime.ac_dda_last_manual_off_ts'') ~ ''|'' ~ contract_context_key ~ ''|'' ~ last_auto_action ~ ''|'' ~ last_auto_mode }}'
       last_manual_off_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_off_signature'') | default('''', true) | trim }}'
       duplicate_event: '{{ manual_off_event_signature == last_manual_off_event_signature }}'
@@ -4950,12 +4954,20 @@
       threshold_status: '{{ ''ok'' if contract_values_valid else ''no_disponible'' }}'
       sp_final: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
       fan_final: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_mode'') | default(''na'', true) }}'
-      ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif cycle_lock_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% elif auto_transition_active %}auto_transition_active{% elif auto_off_recent %}auto_off_recent{% elif not manual_event_confirmed %}manual_event_not_validated{% elif last_change_origin != 'manual_off' %}origin_not_manual_off{% else %}unknown_discard{% endif %}"
+      ignored_reason_code: "{% if duplicate_event %}duplicate_event{% elif cycle_lock_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% elif auto_transition_active %}auto_transition_active{% elif auto_off_recent %}auto_off_recent{% elif not manual_event_confirmed %}manual_event_not_confirmed{% elif last_change_origin != 'manual_off' %}origin_not_manual_off{% else %}learning_gate_closed{% endif %}"
       learning_off_discard_reason: "{% if apply_learning | default(false) %}none{% else %}ignored:{{ ignored_reason_code }}{% endif %}"
       reason_short: "{% if ignored_reason_code == 'duplicate_event' %}dup{% elif ignored_reason_code == 'auto_off_recent' %}auto_recent{% elif ignored_reason_code == 'origin_not_manual_off' %}origen{% else %}descartado{% endif %}"
       delta_learning: '{{ (learning_step | float) if (apply_learning | default(false)) else 0.0 }}'
       hhmm: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }}'
       learning_type: "{% if apply_learning | default(false) %}manual_off_learning_applied_contract_v1{% elif ignored_reason_code == 'duplicate_event' %}manual_off_learning_ignored_duplicate_event_contract_v1{% elif ignored_reason_code == 'auto_off_recent' %}manual_off_learning_ignored_auto_off_recent_contract_v1{% elif ignored_reason_code == 'origin_not_manual_off' %}manual_off_learning_ignored_not_manual_contract_v1{% else %}manual_off_learning_ignored_unknown_contract_v1{% endif %}"
+      policy_mode: '{{ ''strict'' if eligibility_manual_event else ''discard'' }}'
+      terminal_reason_code: '{{ ''applied'' if (apply_learning | default(false)) else (ignored_reason_code | default(''learning_gate_closed'', true)) }}'
+      terminal_resultado: '{{ ''aplicado'' if (apply_learning | default(false)) else ''ignorado'' }}'
+  - action: logbook.log
+    data:
+      name: AC Learning Manual OFF
+      message: '{{ contract_version }} | hito=learning_off_closed | Resultado={{ terminal_resultado | default(''ignorado'', true) }} | Reason={{ terminal_reason_code | default(''learning_gate_closed'', true) }} | Policy={{ policy_mode | default(''discard'', true) }} | Trace=n/a'
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -5063,12 +5075,12 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Learning OFF
-          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=aplicado Razón=manual_off type={{ learning_type }} reason_code=applied'
+          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado={{ terminal_resultado }} Reason={{ terminal_reason_code }} Policy={{ policy_mode }} Trace=n/a'
     default:
     - service: notify.mobile_app_samsung_s24
       data:
         title: AC Learning OFF
-        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado=ignorado Razón={{ ignored_reason_code }} type={{ learning_type }} reason_code={{ ignored_reason_code }}'
+        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado={{ terminal_resultado }} Reason={{ terminal_reason_code }} Policy={{ policy_mode }} Trace=n/a'
   mode: restart
 - id: '1773895045305'
   alias: TEMP - AC Learning ON trigger diagnóstico (desactivada)
@@ -5179,7 +5191,11 @@
       session_status_allows_learning: '{{ active_session_status in [''pending'', ''captured''] }}'
       session_trace_and_ttl_ok: '{{ strict_session_trace_match and session_status_allows_learning and active_session_ttl_valid }}'
       trace_mismatch_cross_run: '{{ snapshot_structure_ok and (trace_id == ''trace_missing'' or snapshot_trace_id != trace_id or not trace_id_matches_confirmed or not strict_session_trace_match) }}'
-      manual_event_confirmed: '{{ snapshot_ok and not trace_mismatch_cross_run and session_trace_and_ttl_ok }}'
+      manual_human_origin_ok: '{{ origin_is_manual_on and (snapshot_recent or manual_on_ts_recent) }}'
+      eligibility_manual_event: '{{ manual_human_origin_ok and snapshot_ok }}'
+      eligibility_scope: '{{ learning_day_scope_ok and final_mode_cool_required and context_scope_ok }}'
+      eligibility_safety: '{{ session_trace_and_ttl_ok }}'
+      manual_event_confirmed: '{{ eligibility_manual_event and eligibility_safety }}'
       origin_is_manual_on: '{{ last_change_origin == ''manual_on'' }}'
       transition_guard_window_s: 180
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
@@ -5206,7 +5222,7 @@
       manual_recent_evidence: '{{ snapshot_recent or manual_on_ts_recent }}'
       force_policy_active: '{{ origin_is_manual_on and learning_day_scope_ok and final_mode_cool_required and strict_session_trace_match }}'
       strict_policy_ready: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
-      learning_gate_ok: '{{ (force_policy_active or strict_policy_ready) and session_trace_and_ttl_ok }}'
+      learning_gate_ok: '{{ (force_policy_active or strict_policy_ready or (eligibility_manual_event and eligibility_scope and eligibility_safety)) and session_trace_and_ttl_ok }}'
       manual_on_event_signature: '{{ snapshot_ts ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ trace_id }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       event_already_processed: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
@@ -5509,7 +5525,7 @@
       final_channel_label: '{{ ''mobile'' if mobile_channel_ok | default(false) else ''persistent'' }}'
       notify_pending_status: '{{ pending_trace_label ~ ''|stage=learning_final|channel=mobile|result=pendiente|ts='' ~ pending_ts }}'
       notify_result_status: '{{ pending_trace_label ~ ''|stage=learning_final|channel='' ~ final_channel_label ~ ''|result='' ~ (final_result_label | default(''ignorado'', true)) ~ ''|ts='' ~ pending_ts }}'
-      notify_mobile_message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label | default(''ignorado'', true) }} Razón={{ final_reason_label | default(''sin_razon'', true) }} policy={{ policy_mode | default(''strict'', true) }} Trace={{ pending_trace_label }} RunTrace={{ run_trace_label }} PendingTrace={{ pending_trace_label if pending_trace_label != ''trace_missing'' else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag | default(''no'', true) }}'
+      notify_mobile_message: '{{ hhmm }} Src=ManualON Resultado={{ final_result_label | default(''ignorado'', true) }} Reason={{ final_reason_label | default(''sin_razon'', true) }} Policy={{ policy_mode | default(''strict'', true) }} Trace={{ pending_trace_label }} RunTrace={{ run_trace_label }} PendingTrace={{ pending_trace_label if pending_trace_label != ''trace_missing'' else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else ''n/a'' }} hard={{ hard_flag | default(''no'', true) }}'
   - service: input_text.set_value
     continue_on_error: true
     target:
