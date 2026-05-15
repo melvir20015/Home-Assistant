@@ -1314,3 +1314,25 @@ Toda plantilla larga (especialmente con Jinja + formatos de fecha o `%`) debe de
 
 ### Regla preventiva
 Evitar escapes manuales en strings YAML largas con comillas dobles cuando contienen regex/Jinja; preferir bloque `>` y plantillas limpias sin backslashes innecesarios.
+
+## Incidente de restauración y corrección limitada de automatizaciones (2026-05-15)
+
+- **Causa raíz**:
+  - `automations.yaml` quedó contaminado con contenido de diff en una revisión posterior, por lo que se restauró una base íntegra desde una versión previa válida del historial (`ead1100`, anterior al rango afectado por `ef33330`).
+  - Dentro de dos automatizaciones específicas, había literales Jinja inválidos `''n/a''` en bloques template multilinea (`>-`), provocando error de parser Jinja (`expected token 'end of print statement', got 'n'`).
+- **Alcance limitado del fix**:
+  - Solo se tocaron los alias:
+    1. `AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones`
+    2. `AC - Día dinámico aprendido (principal)`
+  - No se modificaron otras automatizaciones fuera de esos bloques (salvo la restauración íntegra del archivo base).
+- **Líneas/variables corregidas**:
+  - En alias nocturno:
+    - `setpoint_fijo_contractual` fallback: `''n/a''` → `'n/a'`.
+  - En alias principal diurno:
+    - `cool_cycle_contract_snapshot`: campos `On`, `Off`, `OffSensor`, `SP`.
+    - `cool_cycle_final_message`: campos `Tin`, `Tout`, `H`, `On`, `Off`, `SP`, `Fan`.
+    - Rama `emergency_off`: normalización equivalente en `cool_cycle_contract_snapshot`, `cool_cycle_real_off_detail` y `cool_cycle_final_message`.
+- **Evidencia de validación**:
+  - Validación YAML general ejecutada con `PyYAML`: carga exitosa como lista de 37 automatizaciones.
+  - `Home Assistant Check Configuration` intentado en host con `hass --script check_config -c /workspace/Home-Assistant`, pero el binario `hass` no está disponible en este entorno de trabajo.
+- **Fecha**: 2026-05-15.
