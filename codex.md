@@ -1459,3 +1459,23 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 - Usar `'n/a'` como literal estándar para no disponible.
 - Aplicar filtros defensivos `|default`, `|float`, `|int` en campos propensos a indefinidos.
 - Evitar quoting frágil en regex/templates y verificar delimitadores Jinja balanceados en cada alias modificado.
+
+## Incidente de mapping/scalar en bloque AC-DDA OFF (2026-05-15)
+
+- **Fecha**: 2026-05-15.
+- **Líneas afectadas**: `automations.yaml` alrededor de **2888–2891** (y normalización adicional del mismo bloque `cool_normal_off_skip` en ~3199).
+- **Síntoma**: error de parser tipo `expected <block end>, but found <scalar>` al evaluar mensajes largos con Jinja incrustado.
+- **Causa raíz**:
+  - escalar YAML en una sola línea entre comillas simples con templates Jinja extensos;
+  - mezcla frágil de quoting interno (`'n/a'`) dentro del mismo escalar;
+  - alto riesgo de desalineación mapping/scalar al envolver líneas.
+- **Patrón seguro aplicado**:
+  - migración de mensajes largos a `message: >-`;
+  - quoting consistente en Jinja (`'n/a'`);
+  - conservación de delimitadores completos `{{ ... }}`;
+  - uso/retención de filtros defensivos (`|default(false)` en bandera contractual).
+- **Checklist preventivo corto**:
+  1. Si `message` contiene múltiples `{{ ... }}` o condicionales inline, usar `>-`.
+  2. No mezclar escalar YAML con comilla simple externa + fallback internos sin revisar parseo.
+  3. Validar sintaxis YAML completa tras cada cambio de bloques `choose/sequence/default`.
+  4. Revisar específicamente alias AC-DDA tocados en el diff antes de recargar HA.
