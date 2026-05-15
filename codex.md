@@ -1336,3 +1336,20 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
   - Validación YAML general ejecutada con `PyYAML`: carga exitosa como lista de 37 automatizaciones.
   - `Home Assistant Check Configuration` intentado en host con `hass --script check_config -c /workspace/Home-Assistant`, pero el binario `hass` no está disponible en este entorno de trabajo.
 - **Fecha**: 2026-05-15.
+
+## Incidente de quoting Jinja en bloque OFF del alias principal (2026-05-15)
+
+- **Síntoma exacto**: Home Assistant marcó error de plantilla/Jinja por fallback inválido en bloque de variables del alias `AC - Día dinámico aprendido (principal)`.
+- **Ubicación funcional**: rama de apagado `cool_normal_off` en `actions -> choose -> sequence -> variables`, incluyendo:
+  - `cool_cycle_contract_snapshot`
+  - `cool_cycle_final_message`
+  - `cool_cycle_off_cause_detail`
+- **Causa raíz**: uso de literal `''n/a''` dentro de expresiones Jinja en escalares template multilinea (`>-` / string template), lo que genera quoting ambiguo al evaluar el parser.
+- **Corrección aplicada**:
+  - normalización de fallback a `'n/a'` en los campos de snapshot/notificación:
+    - `On`, `Off`, `OffSensor`, `SP`, `Tin`, `Tout`, `H`, `Fan`,
+  - y en detalle de causa OFF (`cool_cycle_off_cause_detail`) para `Prom/t1/t2`.
+- **Validación ejecutada en entorno**:
+  - revisión de ocurrencias dentro del alias objetivo;
+  - validación sintáctica YAML del archivo completo con `PyYAML` (`yaml.safe_load`) luego del ajuste.
+- **Fecha**: 2026-05-15.

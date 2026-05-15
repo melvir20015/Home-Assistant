@@ -2897,28 +2897,28 @@
             == 'corte_preventivo_t1' %}\n  t1={{ t1 }}<=SensorHardStop={{ cool_cycle_sensor_off_effective
             }}\n{% elif cool_cycle_off_cause == 'corte_preventivo_t2' %}\n  t2={{
             t2 }}<=SensorHardStop={{ cool_cycle_sensor_off_effective }}\n{% else %}\n  Prom={{
-            tin if tin is not none else ''n/a'' }} | t1={{ t1 if t1 is not none else
-            'n/a' }} | t2={{ t2 if t2 is not none else ''n/a'' }}\n{% endif %}"
+            tin if tin is not none else 'n/a' }} | t1={{ t1 if t1 is not none else
+            'n/a' }} | t2={{ t2 if t2 is not none else 'n/a' }}\n{% endif %}"
           cool_cycle_contract_snapshot: >-
             Calc={{ cool_cycle_contract_reason if cool_cycle_contract_reason not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }}
             Bucket={{ cool_cycle_contract_bucket if cool_cycle_contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }}
-            On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else ''n/a'' }}
-            Off={{ cool_cycle_off_effective if cool_cycle_off_effective is not none else ''n/a'' }}
-            OffSensor={{ cool_cycle_sensor_off_effective if cool_cycle_sensor_off_effective is not none else ''n/a'' }}
+            On={{ cool_cycle_contract_on_validated if cool_cycle_contract_on_validated is not none else 'n/a' }}
+            Off={{ cool_cycle_off_effective if cool_cycle_off_effective is not none else 'n/a' }}
+            OffSensor={{ cool_cycle_sensor_off_effective if cool_cycle_sensor_off_effective is not none else 'n/a' }}
             OffSrc={{ cool_cycle_off_effective_source }}
-            SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}
+            SP={{ cool_cycle_contract_setpoint_effective if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
           cool_cycle_branch: cool_normal_off
           cool_cycle_hito_ts: '{{ now().isoformat() }}'
           cool_cycle_final_title: Cool↓
           cool_cycle_final_message: >-
             {{ now().strftime('%I:%M %p') | regex_replace('^0','') }}
-            Tin={{ '%.1f' | format(tin | float) if tin is not none else ''n/a'' }}
-            Tout={{ '%.1f' | format(tout | float) if tout is not none else ''n/a'' }}
-            H={{ '%.0f' | format(hin | float) if hin is not none else ''n/a'' }}
-            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else ''n/a'' }}
-            Off={{ '%.1f' | format(cool_cycle_off_effective | float) if cool_cycle_off_effective is not none and (cool_cycle_off_effective | float) >= 17 else ''n/a'' }}
-            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else ''n/a'' }}
-            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else ''n/a'' }}
+            Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }}
+            Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }}
+            H={{ '%.0f' | format(hin | float) if hin is not none else 'n/a' }}
+            On={{ '%.1f' | format(cool_cycle_contract_on_validated | float) if cool_cycle_contract_on_validated is not none and (cool_cycle_contract_on_validated | float) >= 17 else 'n/a' }}
+            Off={{ '%.1f' | format(cool_cycle_off_effective | float) if cool_cycle_off_effective is not none and (cool_cycle_off_effective | float) >= 17 else 'n/a' }}
+            SP={{ '%.1f' | format(cool_cycle_contract_setpoint_effective | float) if cool_cycle_contract_setpoint_effective is not none else 'n/a' }}
+            Fan={{ ac_fan if ac_fan not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }}
             Src=AutoOFF Delta=n/a Resultado=aplicado Razón={{ cool_cycle_off_cause }}
             OffSrc={{ cool_cycle_off_effective_source }}
       - choose:
