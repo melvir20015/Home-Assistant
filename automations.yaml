@@ -888,7 +888,12 @@
             | trim) != ''Promedio'' else ''Promedio'' }} | SensorDelta={{ sensor_temp_delta
             }} | SensorColdEnabled={{ ''ON'' if cool_sensor_off_enabled else ''OFF''
             }} | Ctx={{ ''Emerg'' if (tout|float) < 17 else ''Normal'' }} | On={{
-            cool_on }} | OffBase={{ cool_off }} | OffDyn={{ cool_normal_off_dynamic
+            '%.1f' | format(cool_emergency_on | float) if (tout|float) < 17 else ('%.1f'
+            | format(cool_on | float) if cool_on is not none else 'n/a') }} | Off={{
+            '%.1f' | format(cool_emergency_off | float) if (tout|float) < 17 else ('%.1f'
+            | format(cool_stop_threshold | float) if cool_stop_threshold is not none
+            else 'n/a') }} | H={{ '%.1f' | format(cool_night_hysteresis | float) }}
+            | OffBase={{ cool_off }} | OffDyn={{ cool_normal_off_dynamic
             if (tout|float) >= 17 else ''n/a'' }} | Bedroom={{ bedroom_temp }} | Cold={{
             cold_sensor_name }}={{ cold_temp }} | SensorOFF={{ cool_sensor_off_name
             }}={{ cool_sensor_off_temp }}<= {{ cool_sensor_off_trigger if (tout|float)
@@ -1112,8 +1117,14 @@
           cool_push_reason: '{{ ''Mot=auto emergencia'' if cool_context == ''emergency''
             else ''Mot=auto umbral'' }}'
           cool_push_summary: Rampa térmica | Init={{ cool_initial_setpoint_selected
-            }} | OffDyn={{ cool_normal_off_dynamic if cool_context == 'normal' else
-            'n/a' }} | dp_offset={{ dp_offset }} | dewpoint={{ dewpoint }} | Espera={{
+            }} | On={{ '%.1f' | format(cool_emergency_on | float) if cool_context ==
+            'emergency' else ('%.1f' | format(cool_on | float) if cool_on is not none
+            else 'n/a') }} | Off={{ '%.1f' | format(cool_emergency_off | float) if
+            cool_context == 'emergency' else ('%.1f' | format(cool_stop_threshold |
+            float) if cool_stop_threshold is not none else 'n/a') }} | H={{ '%.1f'
+            | format(cool_night_hysteresis | float) }} | OffDyn={{ cool_normal_off_dynamic
+            if cool_context == 'normal' else 'n/a' }} | dp_offset={{ dp_offset }}
+            | dewpoint={{ dewpoint }} | Espera={{
             cool_ramp_initial_wait_min }}m/{{ cool_ramp_followup_wait_min }}m | Stop={{
             cool_stop_threshold_selected }} | Learn={{ cool_learning_reference_selected
             }}
@@ -1522,15 +1533,15 @@
     cool_ramp_min_setpoint: 20
     heat_force_off_outdoor: 20
     cool_emergency_outdoor_min: 8
+    cool_on_dew_bias: -0.2
+    cool_night_hysteresis: 0.7
     cool_emergency_on_base: 24
-    cool_emergency_on: '{{ (cool_emergency_on_base + (dp_offset|float)) | round(2)
+    cool_emergency_on: '{{ (cool_emergency_on_base + (dp_offset|float) + (cool_on_dew_bias|float)) | round(2)
       }}'
     cool_emergency_off: '{{ (cool_emergency_on|float - 0.3) | round(2) }}'
     cool_setpoint_emerg: '{{ max(((cool_emergency_off|float) - 2) | round(0,''floor''),
       16) | int }}'
-    cool_on: "{% if tout is none %}\n  {{ none }}\n{% elif tout >= 17 %}\n  {{ 23.5
-      if month in [11,12,1,2,3] else 22.8 if (month in [6,7,8,9] and tout>=30) else
-      23.3 }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    cool_on_base: "{% if tout is none %}\n  {{ none }}\n{% elif tout >= 17 %}\n  {{ 23.5 if month in [11,12,1,2,3] else 22.8 if (month in [6,7,8,9] and tout>=30) else 23.3 }}\n{% else %}\n  {{ none }}\n{% endif %}"
     cool_off: "{% if cool_on is none %}\n  {{ none }}\n{% else %}\n  {{ 23.0 if month
       in [11,12,1,2,3] else 21.3 if (month in [6,7,8,9] and tout>=30) else 22.5 }}\n{%
       endif %}"
@@ -1541,6 +1552,7 @@
       | float(0) %}\n  {% set raw_off = base_off + humidity_adjustment %}\n  {{ [[raw_off,
       cool_normal_off_max | float] | min, cool_normal_off_min | float] | max | round(2)
       }}\n{% endif %}"
+    cool_on: "{% if cool_normal_off_dynamic is none %}\n  {{ none }}\n{% else %}\n  {% set raw_on = (cool_normal_off_dynamic | float) + (cool_night_hysteresis | float) + (cool_on_dew_bias | float) %}\n  {% if cool_on_base is not none %}\n    {{ [raw_on, (cool_on_base | float)] | min | round(2) }}\n  {% else %}\n    {{ raw_on | round(2) }}\n  {% endif %}\n{% endif %}"
     cool_night_branch: cool_night_ramp
     cool_night_context_bucket: '{{ cool_night_branch ~ '':'' ~ (''emergency'' if ((tout|float)
       < 17) else ''normal'') }}'

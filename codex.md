@@ -1387,3 +1387,25 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
   - normalización de salida con fallback numérico (`sensor.openweathermap_temperature | float(0)`) cuando no hay forecast o no hay muestras válidas.
 - **Resultado**:
   - el `state` del sensor queda siempre numérico en todas las ramas (`if/else`), manteniendo `unit_of_measurement: "°C"` coherente.
+
+## Ajuste nocturno de anticipación por rocío/confort (2026-05-15)
+
+- **Objetivo del ajuste**:
+  - reducir la ventana de disconfort (sensación de sudor) antes del primer encendido nocturno en `cool`, sin romper límites de seguridad térmica ya vigentes.
+- **Parámetros modificados (alias nocturno)**:
+  - se agregó sesgo de anticipación `cool_on_dew_bias: -0.2` aplicado al cálculo de encendido nocturno ligado a rocío/confort;
+  - se elevó histéresis nocturna a `cool_night_hysteresis: 0.7`;
+  - el umbral `cool_on` nocturno normal ahora se deriva de `cool_normal_off_dynamic + h + bias` y conserva guardas al no superar el `cool_on_base` previo;
+  - la rama `cool` de emergencia también aplica el mismo sesgo de rocío/confort (`cool_emergency_on` incorpora `cool_on_dew_bias`) para mantener consistencia entre ramas de encendido.
+- **Impacto esperado**:
+  - encendido nocturno más temprano en contexto húmedo/bochornoso;
+  - menos ciclos por separación ON/OFF más amplia (`h=0.7`);
+  - transición más estable manteniendo criterio `on > off`.
+- **Observabilidad/notificaciones**:
+  - mensajes compactos S24 de alias nocturno actualizados para mostrar `On`, `Off` y `H` con formato de 1 decimal.
+- **Validación operativa recomendada (post-despliegue)**:
+  - observar durante **2–3 noches**:
+    1. hora del primer encendido nocturno,
+    2. reducción de sensación de sudor previa al encendido,
+    3. número de ciclos ON/OFF por noche;
+  - si persiste calor o aparece sobreenfriamiento, ajustar `cool_on_dew_bias` en pasos de `±0.1 °C`.
