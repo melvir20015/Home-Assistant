@@ -1607,3 +1607,23 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 
 ### Regla preventiva explícita
 - **En AC-DDA, templates largos siempre en `>-` y cambios por bloque lógico completo**.
+
+## Incidente AC-DDA `choose/default` + templates largos (2026-05-15)
+
+- **Fecha/hora**: 2026-05-15T19:44:12Z.
+- **Archivo/rango corregido**: `automations.yaml`, bloque del alias `AC - Día dinámico aprendido (principal)` en torno a **4161–4505**.
+- **Causa raíz**:
+  - riesgo de quiebre de parser en la zona de variables por plantillas largas inline y quoting frágil;
+  - `cool_contract_invalid_reason` tenía cierre de comilla residual al final del template;
+  - área sensible alrededor de `cool_related_daytime_helper` y derivadas (`cool_effective_sp_inconsistency_reason`) con alto acoplamiento de Jinja/YAML.
+- **Patrón aplicado**:
+  - respaldo previo completo: `automations.yaml.pre_fix_20260515T194412Z.bak`;
+  - normalización de templates largos a bloque `>-` en el rango intervenido (`cool_related_daytime_bucket`, `cool_related_daytime_helper`, `cool_effective_sp_doubtful_recent_feedback`, `cool_effective_sp_inconsistency_reason`);
+  - normalización de quoting defensivo (`'n/a'` y comillas internas consistentes);
+  - corrección de cierre inválido en `cool_contract_invalid_reason`.
+- **Validación**:
+  - parseo YAML estricto exitoso con `ruby/psych` (`YAML_OK`);
+  - `hass --script check_config -c /config` no disponible en este contenedor (`hass: command not found`), por lo que la validación final y reinicio quedan pendientes en el host runtime de Home Assistant.
+- **Regla preventiva explícita AC-DDA**:
+  - en `AC - Día dinámico aprendido (principal)`, cualquier template largo o con múltiples operadores/condicionales debe declararse en `>-` (no inline);
+  - en cada edición de `choose`, verificar `default` al mismo nivel que cada `- conditions` y confirmar que no quede mapping abierto antes de `variables:`.
