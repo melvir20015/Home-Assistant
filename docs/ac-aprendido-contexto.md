@@ -831,3 +831,57 @@ Resultado esperado:
 - ahora: el AC sigue operando con `24.0 °C` porque el ajuste manual se respeta;
 - después: el bucket contextual aprende que ese contexto tolera mejor `24.0 °C` que `23.0 °C`;
 - próxima vez en el mismo contexto: el `AUTO ON` usa el setpoint efectivo aprendido sin exigir que el usuario vuelva a corregirlo manualmente.
+
+## 12. Unidad de dominio única para aprendizaje manual AC-DDA
+
+A partir de este contrato, el aprendizaje manual debe pasar por una sola unidad de dominio:
+
+- `applyManualLearning(mode, eventType, thresholds) -> thresholdsUpdated`
+
+### Eventos válidos
+
+- `manual_off_during_active_cycle`
+- `manual_on_after_auto_stop`
+
+### Modos válidos
+
+- `COOL`
+- `HEAT`
+
+### Fórmula de ajuste
+
+- `step` fijo: `0.25`
+- Sin topes de acumulación (solo invariantes de banda).
+
+Reglas:
+
+- `COOL + manual_off_during_active_cycle`: `on += 0.25`, `off += 0.25`
+- `COOL + manual_on_after_auto_stop`: `on -= 0.25`, `off -= 0.25`
+- `HEAT + manual_off_during_active_cycle`: `on -= 0.25`, `off -= 0.25`
+- `HEAT + manual_on_after_auto_stop`: `on += 0.25`, `off += 0.25`
+
+### Invariantes de banda
+
+- COOL: `on > off`
+- HEAT: `on < off`
+
+Si una actualización viola la relación, se corrige en forma determinística con una separación mínima (`delta_min_band=0.10`) preservando el umbral `off` como referencia.
+
+### Telemetría interna mínima
+
+Cada flujo que aplique aprendizaje manual debe emitir/persistir payload con:
+
+- `mode`
+- `eventType`
+- `thresholds_before`
+- `thresholds_after`
+- `applied_step`
+
+### Ejemplos de transición
+
+- COOL + OFF manual:
+  - before: `on=24.50`, `off=23.75`
+  - after: `on=24.75`, `off=24.00`
+- HEAT + ON manual tras auto-stop:
+  - before: `on=20.25`, `off=21.00`
+  - after: `on=20.50`, `off=21.25`
