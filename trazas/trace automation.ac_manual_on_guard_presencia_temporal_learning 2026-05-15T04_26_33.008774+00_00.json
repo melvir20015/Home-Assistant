@@ -1,0 +1,1706 @@
+{
+  "trace": {
+    "last_step": "action/6/choose/0/sequence/1",
+    "run_id": "bb7620f5f657f662afd35d0485ac6dc5",
+    "state": "stopped",
+    "script_execution": "finished",
+    "timestamp": {
+      "start": "2026-05-15T04:26:33.008774+00:00",
+      "finish": "2026-05-15T04:26:33.025235+00:00"
+    },
+    "domain": "automation",
+    "item_id": "1773947560399",
+    "trigger": "state of climate.0200009211c7_climate",
+    "trace": {
+      "trigger/1": [
+        {
+          "path": "trigger/1",
+          "timestamp": "2026-05-15T04:26:33.009477+00:00",
+          "changed_variables": {
+            "this": {
+              "entity_id": "automation.ac_manual_on_guard_presencia_temporal_learning",
+              "state": "on",
+              "attributes": {
+                "id": "1773947560399",
+                "last_triggered": "2026-05-15T04:26:32.993845+00:00",
+                "mode": "queued",
+                "current": 0,
+                "max": 2,
+                "friendly_name": "AC - Manual ON guard + presencia temporal"
+              },
+              "last_changed": "2026-05-15T04:25:58.082750+00:00",
+              "last_reported": "2026-05-15T04:26:33.008523+00:00",
+              "last_updated": "2026-05-15T04:26:33.008523+00:00",
+              "context": {
+                "id": "01KRMY5P51Y2Q4N3S4HRFES9Q2",
+                "parent_id": "01KRMY5JTTJXHS95DNP6E2GDCQ",
+                "user_id": null
+              }
+            },
+            "trigger": {
+              "id": "cool_any",
+              "idx": "1",
+              "alias": null,
+              "platform": "state",
+              "entity_id": "climate.0200009211c7_climate",
+              "from_state": {
+                "entity_id": "climate.0200009211c7_climate",
+                "state": "off",
+                "attributes": {
+                  "hvac_modes": [
+                    "off",
+                    "auto",
+                    "cool",
+                    "fan_only",
+                    "heat"
+                  ],
+                  "min_temp": 17.8,
+                  "max_temp": 30,
+                  "fan_modes": [
+                    "Auto",
+                    "Low",
+                    "Med",
+                    "High"
+                  ],
+                  "current_temperature": 19,
+                  "temperature": 22,
+                  "fan_mode": "Low",
+                  "icon": "mdi:air-conditioner",
+                  "friendly_name": "Aire Acondicionado 0200009211C7 Climate",
+                  "supported_features": 393
+                },
+                "last_changed": "2026-05-15T04:26:16.491266+00:00",
+                "last_reported": "2026-05-15T04:26:30.878597+00:00",
+                "last_updated": "2026-05-15T04:26:16.491266+00:00",
+                "context": {
+                  "id": "01KRMY561B4E3JM9PMW4RDWSNH",
+                  "parent_id": null,
+                  "user_id": null
+                }
+              },
+              "to_state": {
+                "entity_id": "climate.0200009211c7_climate",
+                "state": "cool",
+                "attributes": {
+                  "hvac_modes": [
+                    "off",
+                    "auto",
+                    "cool",
+                    "fan_only",
+                    "heat"
+                  ],
+                  "min_temp": 17.8,
+                  "max_temp": 30,
+                  "fan_modes": [
+                    "Auto",
+                    "Low",
+                    "Med",
+                    "High"
+                  ],
+                  "current_temperature": 19,
+                  "temperature": 22,
+                  "fan_mode": "Low",
+                  "icon": "mdi:air-conditioner",
+                  "friendly_name": "Aire Acondicionado 0200009211C7 Climate",
+                  "supported_features": 393
+                },
+                "last_changed": "2026-05-15T04:26:30.881609+00:00",
+                "last_reported": "2026-05-15T04:26:58.881077+00:00",
+                "last_updated": "2026-05-15T04:26:30.881609+00:00",
+                "context": {
+                  "id": "01KRMY5JTTJXHS95DNP6E2GDCQ",
+                  "parent_id": null,
+                  "user_id": "79fd93a0b48847108497947e294ff42b"
+                }
+              },
+              "for": {
+                "__type": "<class 'datetime.timedelta'>",
+                "total_seconds": 2
+              },
+              "attribute": null,
+              "description": "state of climate.0200009211c7_climate"
+            }
+          }
+        }
+      ],
+      "condition/0": [
+        {
+          "path": "condition/0",
+          "timestamp": "2026-05-15T04:26:33.009501+00:00",
+          "result": {
+            "result": true,
+            "entities": []
+          }
+        }
+      ],
+      "action/0": [
+        {
+          "path": "action/0",
+          "timestamp": "2026-05-15T04:26:33.009939+00:00",
+          "changed_variables": {
+            "context": {
+              "id": "01KRMY5P5GVW6JPCGP16GYARQT",
+              "parent_id": "01KRMY5JTTJXHS95DNP6E2GDCQ",
+              "user_id": null
+            },
+            "generated_trace_id": "20260514212633-966",
+            "trigger_to_context_id": "01KRMY5JTTJXHS95DNP6E2GDCQ",
+            "trace_id": "01KRMY5JTTJXHS95DNP6E2GDCQ",
+            "cycle_lock_active": false,
+            "cycle_lock_ttl_s": 180,
+            "cycle_lock_since_raw": "2026-05-14 18:03:25",
+            "cycle_lock_since_epoch": 1778807005,
+            "cycle_lock_age_s": 0,
+            "cycle_lock_is_stale": false,
+            "cycle_lock_effective_active": false,
+            "last_change_origin_raw": "auto_off",
+            "last_auto_action_raw": "unknown",
+            "last_auto_ts_raw": "unknown",
+            "manual_feedback_min_window_min": 3,
+            "manual_feedback_max_window_min": 120,
+            "last_auto_age_s": 99999,
+            "minutes_since_last_auto": 1666.65,
+            "auto_reciente": false,
+            "within_manual_feedback_window": true,
+            "auto_origin_detected": true,
+            "auto_on_action_recent": false,
+            "auto_timestamp_recent": false,
+            "auto_flags_active": false,
+            "transition_guard_window_s": 180,
+            "transition_token_raw": "unknown",
+            "transition_ts_raw": "unknown",
+            "transition_ts_epoch": null,
+            "transition_age_s": 99999,
+            "auto_transition_token_recent": false,
+            "auto_transition_origin_evidence_active": true,
+            "auto_transition_recent": false,
+            "auto_transition_active_strict": false,
+            "auto_recent_observed": false,
+            "auto_evidence_strong": false,
+            "manual_on_auto_recent_compound": false,
+            "auto_transition_active": false,
+            "daytime_scope_ok": true,
+            "manual_on_guard_discard_reason": "none",
+            "hhmm": "9:26 PM",
+            "contract_version": "contract=v1",
+            "mobile_channel_ok": true,
+            "climate_ent": "climate.0200009211c7_climate",
+            "trigger_id": "cool_any",
+            "detected_mode": "cool",
+            "prev_mode_raw": "off",
+            "prev_mode_effective": "off",
+            "prev_state_age_s": 16.5,
+            "startup_window_s": 45,
+            "startup_from_off_recent": true,
+            "startup_from_fan_only_bridge": false,
+            "startup_trigger_bridge_ok": true,
+            "manual_startup_window_ok": true,
+            "dedupe_pending_ttl_s": 8,
+            "manual_on_session_ttl_s": 110,
+            "manual_on_pending_signature_core": "ctx=01KRMY5JTTJXHS95DNP6E2GDCQ",
+            "manual_on_pending_signature_ts_epoch": 1778819193,
+            "manual_on_pending_signature": "sig=ctx=01KRMY5JTTJXHS95DNP6E2GDCQ|saved_ts=1778819193|trace_id=01KRMY5JTTJXHS95DNP6E2GDCQ|trigger_id=cool_any",
+            "last_manual_on_pending_signature": "sig=ctx=01KRMMH6SGG5EEYBKGRVNRB370|saved_ts=1778809088|trace_id=01KRMMH6SGG5EEYBKGRVNRB370|trigger_id=cool_any",
+            "last_manual_on_pending_signature_core": "ctx=01KRMMH6SGG5EEYBKGRVNRB370",
+            "last_manual_on_pending_signature_saved_ts_epoch": 1778809088,
+            "last_manual_on_pending_trace_id": "01KRMMH6SGG5EEYBKGRVNRB370",
+            "manual_on_pending_signature_age_s": 10105,
+            "pending_signature_is_fresh": false,
+            "duplicate_pending_signature": false,
+            "active_session_raw": "trace_id=01KRMMH6SGG5EEYBKGRVNRB370|signature=ctx=01KRMMH6SGG5EEYBKGRVNRB370|status=captured|branch=manual_on_guard|started_ts=2026-05-14 18:38:08",
+            "active_session_trace_id": "01KRMMH6SGG5EEYBKGRVNRB370",
+            "active_session_signature": "ctx=01KRMMH6SGG5EEYBKGRVNRB370",
+            "active_session_status": "captured",
+            "active_session_started_ts": "2026-05-14 18:38:08",
+            "active_session_started_epoch": 1778809088,
+            "active_session_age_s": 10105,
+            "active_session_ttl_valid": false,
+            "active_session_open": true,
+            "manual_startup_discard_reason": "none",
+            "session_reusable_same_signature": false,
+            "session_locked_other_trace": true,
+            "trace_id_effective": "01KRMY5JTTJXHS95DNP6E2GDCQ",
+            "manual_on_pending_signature_effective": "sig=ctx=01KRMY5JTTJXHS95DNP6E2GDCQ|saved_ts=1778819193|trace_id=01KRMY5JTTJXHS95DNP6E2GDCQ|trigger_id=cool_any",
+            "pending_already_notified_for_session": false
+          }
+        }
+      ],
+      "action/1": [
+        {
+          "path": "action/1",
+          "timestamp": "2026-05-15T04:26:33.015321+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Manual ON",
+                "message": "contract=v1 | trace_id=01KRMY5JTTJXHS95DNP6E2GDCQ | hito=manual_on_detected | mode=cool | trigger_id=cool_any | from=off | from_effective=off | prev_age_s=16.5 | startup_window_ok=True | startup_reason=none",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/2": [
+        {
+          "path": "action/2",
+          "timestamp": "2026-05-15T04:26:33.015896+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Manual ON",
+                "message": "01KRMY5JTTJXHS95DNP6E2GDCQ | pre_guard | auto_transition_recent=False | auto_transition_token_recent=False | transition_age_s=99999 | last_change_origin_raw=auto_off | auto_flags_active=False | auto_timestamp_recent=False | auto_evidence_strong=False | auto_transition_active_strict=False | auto_recent_observed=False | minutes_since_last_auto=1666.65 | manual_on_guard_discard_reason=none | startup_window_ok=True",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/3": [
+        {
+          "path": "action/3",
+          "timestamp": "2026-05-15T04:26:33.016414+00:00",
+          "result": {
+            "choice": "default"
+          }
+        }
+      ],
+      "action/3/choose/0": [
+        {
+          "path": "action/3/choose/0",
+          "timestamp": "2026-05-15T04:26:33.016549+00:00",
+          "result": {
+            "result": false
+          }
+        }
+      ],
+      "action/3/choose/0/conditions/0": [
+        {
+          "path": "action/3/choose/0/conditions/0",
+          "timestamp": "2026-05-15T04:26:33.016843+00:00",
+          "result": {
+            "result": false,
+            "entities": []
+          }
+        }
+      ],
+      "action/4": [
+        {
+          "path": "action/4",
+          "timestamp": "2026-05-15T04:26:33.017702+00:00",
+          "result": {
+            "choice": "default"
+          }
+        }
+      ],
+      "action/4/choose/0": [
+        {
+          "path": "action/4/choose/0",
+          "timestamp": "2026-05-15T04:26:33.017867+00:00",
+          "result": {
+            "result": false
+          }
+        }
+      ],
+      "action/4/choose/0/conditions/0": [
+        {
+          "path": "action/4/choose/0/conditions/0",
+          "timestamp": "2026-05-15T04:26:33.018076+00:00",
+          "result": {
+            "result": false,
+            "entities": []
+          }
+        }
+      ],
+      "action/5": [
+        {
+          "path": "action/5",
+          "timestamp": "2026-05-15T04:26:33.018989+00:00",
+          "result": {
+            "choice": "default"
+          }
+        }
+      ],
+      "action/5/choose/0": [
+        {
+          "path": "action/5/choose/0",
+          "timestamp": "2026-05-15T04:26:33.019185+00:00",
+          "result": {
+            "result": false
+          }
+        }
+      ],
+      "action/5/choose/0/conditions/0": [
+        {
+          "path": "action/5/choose/0/conditions/0",
+          "timestamp": "2026-05-15T04:26:33.019451+00:00",
+          "result": {
+            "result": false,
+            "entities": []
+          }
+        }
+      ],
+      "action/6": [
+        {
+          "path": "action/6",
+          "timestamp": "2026-05-15T04:26:33.022781+00:00",
+          "result": {
+            "choice": 0
+          }
+        }
+      ],
+      "action/6/choose/0": [
+        {
+          "path": "action/6/choose/0",
+          "timestamp": "2026-05-15T04:26:33.022969+00:00",
+          "result": {
+            "result": true
+          }
+        }
+      ],
+      "action/6/choose/0/conditions/0": [
+        {
+          "path": "action/6/choose/0/conditions/0",
+          "timestamp": "2026-05-15T04:26:33.023224+00:00",
+          "result": {
+            "result": true,
+            "entities": []
+          }
+        }
+      ],
+      "action/6/choose/0/sequence/0": [
+        {
+          "path": "action/6/choose/0/sequence/0",
+          "timestamp": "2026-05-15T04:26:33.023794+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Manual ON",
+                "message": "01KRMY5JTTJXHS95DNP6E2GDCQ | hito=session_locked_other_trace | active_trace=01KRMMH6SGG5EEYBKGRVNRB370 | active_status=captured | signature=ctx=01KRMY5JTTJXHS95DNP6E2GDCQ",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/6/choose/0/sequence/1": [
+        {
+          "path": "action/6/choose/0/sequence/1",
+          "timestamp": "2026-05-15T04:26:33.024504+00:00",
+          "result": {
+            "stop": "Ignorado: existe sesión activa en consolidación/captura con otro trace_id.",
+            "error": false
+          }
+        }
+      ]
+    },
+    "config": {
+      "id": "1773947560399",
+      "alias": "AC - Manual ON guard + presencia temporal",
+      "trace": {
+        "stored_traces": 50
+      },
+      "description": "Contrato v1: guard de encendido manual con consolidación a 30s, flujo off->fan_only->cool (12s) y presencia temporal cuando corresponde. Presencia telefónica limitada a `device_tracker.samsung_s24` y `person.ivan`.\n",
+      "triggers": [
+        {
+          "trigger": "state",
+          "id": "off_direct",
+          "entity_id": "climate.0200009211c7_climate",
+          "from": "off",
+          "to": [
+            "cool",
+            "heat",
+            "fan_only"
+          ],
+          "for": "00:00:02"
+        },
+        {
+          "trigger": "state",
+          "id": "cool_any",
+          "entity_id": "climate.0200009211c7_climate",
+          "to": "cool",
+          "for": "00:00:02"
+        },
+        {
+          "trigger": "state",
+          "id": "bridge_unknown_unavailable",
+          "entity_id": "climate.0200009211c7_climate",
+          "from": [
+            "unknown",
+            "unavailable"
+          ],
+          "to": [
+            "cool",
+            "heat",
+            "fan_only"
+          ],
+          "for": "00:00:02"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "template",
+          "value_template": "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
+        }
+      ],
+      "actions": [
+        {
+          "variables": {
+            "generated_trace_id": "{{ now().strftime('%Y%m%d%H%M%S') ~ '-' ~ (range(100, 1000) | random) }}",
+            "trigger_to_context_id": "{% if trigger is defined and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.context is defined and trigger.to_state.context is not none and trigger.to_state.context.id is defined and (trigger.to_state.context.id | string | trim | length > 0) %}{{ trigger.to_state.context.id | string | trim }}{% else %}unknown{% endif %}",
+            "trace_id": "{{ trigger_to_context_id if trigger_to_context_id != 'unknown' else generated_trace_id }}",
+            "cycle_lock_active": "{{ is_state('input_boolean.ac_dda_cycle_lock','on') }}",
+            "cycle_lock_ttl_s": 180,
+            "cycle_lock_since_raw": "{{ states('input_datetime.ac_dda_cycle_lock_since') | default('', true) | trim }}",
+            "cycle_lock_since_epoch": "{% if cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(cycle_lock_since_raw, default=none) }}{% endif %}",
+            "cycle_lock_age_s": "{% if cycle_lock_since_epoch is none %}99999{% elif not cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (cycle_lock_since_epoch | float)) | round(1) }}{% endif %}",
+            "cycle_lock_is_stale": "{{ cycle_lock_active and (cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}",
+            "cycle_lock_effective_active": "{{ cycle_lock_active and not cycle_lock_is_stale }}",
+            "last_change_origin_raw": "{{ states('input_text.ac_dda_last_change_origin') | default('', true) | trim }}",
+            "last_auto_action_raw": "{{ states('input_text.ac_dda_last_auto_action') | default('', true) | trim | lower }}",
+            "last_auto_ts_raw": "{{ states('input_datetime.ac_dda_last_auto_ts') }}",
+            "manual_feedback_min_window_min": 3,
+            "manual_feedback_max_window_min": 120,
+            "last_auto_age_s": "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}",
+            "minutes_since_last_auto": "{{ ((last_auto_age_s | float(99999)) / 60) | round(3) }}",
+            "auto_reciente": "{{ (minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}",
+            "within_manual_feedback_window": "{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}",
+            "auto_origin_detected": "{{ last_change_origin_raw in ['auto_off', 'auto_on', 'cool_normal_off', 'cool_normal_on', 'cool_emergency_off', 'cool_emergency_on'] }}",
+            "auto_on_action_recent": "{{ auto_reciente and last_auto_action_raw in ['auto_on', 'cool_normal_on', 'cool_emergency_on'] }}",
+            "auto_timestamp_recent": "{{ auto_reciente or auto_on_action_recent }}",
+            "auto_flags_active": "{{ is_state('input_boolean.ac_dda_off_por_automatizacion','on') or is_state('input_boolean.ac_dda_on_por_automatizacion','on') }}",
+            "transition_guard_window_s": 180,
+            "transition_token_raw": "{{ states('input_text.ac_dda_transition_token') | default('', true) | trim }}",
+            "transition_ts_raw": "{{ states('input_datetime.ac_dda_transition_ts') | default('', true) | trim }}",
+            "transition_ts_epoch": "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}",
+            "transition_age_s": "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}",
+            "auto_transition_token_recent": "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}",
+            "auto_transition_origin_evidence_active": "{{ auto_flags_active or auto_origin_detected }}",
+            "auto_transition_recent": "{{ auto_transition_token_recent and auto_transition_origin_evidence_active }}",
+            "auto_transition_active_strict": "{{ auto_flags_active or auto_transition_recent }}",
+            "auto_recent_observed": "{{ auto_timestamp_recent }}",
+            "auto_evidence_strong": "{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}",
+            "manual_on_auto_recent_compound": "{{ auto_transition_active_strict or auto_recent_observed }}",
+            "auto_transition_active": "{{ auto_transition_active_strict }}",
+            "daytime_scope_ok": "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}",
+            "manual_on_guard_discard_reason": "{% if auto_evidence_strong %}manual_guard_discard=auto_transition_active{% elif not daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}",
+            "hhmm": "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }}",
+            "contract_version": "contract=v1",
+            "mobile_channel_ok": "{{ states('device_tracker.samsung_s24') | lower not in ['unknown','unavailable'] }}",
+            "climate_ent": "climate.0200009211c7_climate",
+            "trigger_id": "{{ trigger.id if trigger is defined and trigger.id is defined else 'unknown' }}",
+            "detected_mode": "{{ trigger.to_state.state if trigger.to_state is not none else states(climate_ent) }}",
+            "prev_mode_raw": "{{ trigger.from_state.state if trigger.from_state is not none else 'unknown' }}",
+            "prev_mode_effective": "{{ 'off' if prev_mode_raw in ['off','unknown','unavailable'] else prev_mode_raw }}",
+            "prev_state_age_s": "{% if trigger.from_state is not none and trigger.from_state.last_changed is not none %}{{ (as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed)) | round(1) }}{% else %}99999{% endif %}",
+            "startup_window_s": 45,
+            "startup_from_off_recent": "{{ prev_mode_effective == 'off' }}",
+            "startup_from_fan_only_bridge": "{{ detected_mode == 'cool' and prev_mode_raw == 'fan_only' and (prev_state_age_s | float(99999)) <= (startup_window_s | float(45)) }}",
+            "startup_trigger_bridge_ok": "{{ trigger_id in ['off_direct', 'bridge_unknown_unavailable', 'cool_any'] }}",
+            "manual_startup_window_ok": "{{ startup_trigger_bridge_ok and (startup_from_off_recent or startup_from_fan_only_bridge) }}",
+            "dedupe_pending_ttl_s": 8,
+            "manual_on_session_ttl_s": 110,
+            "manual_on_pending_signature_core": "{{ 'ctx=' ~ trigger_to_context_id }}",
+            "manual_on_pending_signature_ts_epoch": "{{ as_timestamp(now()) | int(0) }}",
+            "manual_on_pending_signature": "{{ 'sig=' ~ manual_on_pending_signature_core ~ '|saved_ts=' ~ manual_on_pending_signature_ts_epoch ~ '|trace_id=' ~ trace_id ~ '|trigger_id=' ~ trigger_id }}",
+            "last_manual_on_pending_signature": "{{ states('input_text.ac_dda_last_manual_on_pending_signature') | default('', true) | trim }}",
+            "last_manual_on_pending_signature_core": "{% set raw = last_manual_on_pending_signature %}{% if raw | length == 0 %}unknown{% elif 'sig=' in raw %}{{ raw.split('|saved_ts=')[0] | replace('sig=','') }}{% else %}{{ raw }}{% endif %}",
+            "last_manual_on_pending_signature_saved_ts_epoch": "{% set raw = last_manual_on_pending_signature %}{% if '|saved_ts=' in raw %}{% set after = raw.split('|saved_ts=')[1] %}{% set ts = after.split('|')[0] %}{{ ts | int(0) }}{% else %}0{% endif %}",
+            "last_manual_on_pending_trace_id": "{% set raw = last_manual_on_pending_signature %}{% if '|trace_id=' in raw %}{% set after = raw.split('|trace_id=')[1] %}{{ after.split('|')[0] }}{% else %}trace_missing{% endif %}",
+            "manual_on_pending_signature_age_s": "{% set ts = last_manual_on_pending_signature_saved_ts_epoch | int(0) %}{% if ts <= 0 %}99999{% else %}{{ (as_timestamp(now()) - ts) | round(1) }}{% endif %}",
+            "pending_signature_is_fresh": "{{ (manual_on_pending_signature_age_s | float(99999)) <= (dedupe_pending_ttl_s | float(8)) }}",
+            "duplicate_pending_signature": "{{ (manual_on_pending_signature_core == last_manual_on_pending_signature_core) and pending_signature_is_fresh }}",
+            "active_session_raw": "{{ states('input_text.ac_dda_manual_on_active_session') | default('', true) | trim }}",
+            "active_session_trace_id": "{% set matches = active_session_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}",
+            "active_session_signature": "{% set matches = active_session_raw | regex_findall('signature=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'sig_missing' }}",
+            "active_session_status": "{% set matches = active_session_raw | regex_findall('status=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'closed' }}",
+            "active_session_started_ts": "{% set matches = active_session_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}",
+            "active_session_started_epoch": "{% if active_session_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_started_ts, default=none) }}{% endif %}",
+            "active_session_age_s": "{% if active_session_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_started_epoch | float)) | round(1) }}{% endif %}",
+            "active_session_ttl_valid": "{{ active_session_age_s | float(99999) >= 0 and active_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}",
+            "active_session_open": "{{ active_session_status in ['detected', 'pending', 'captured'] and active_session_trace_id != 'trace_missing' }}",
+            "manual_startup_discard_reason": "{% if manual_startup_window_ok %}none{% elif detected_mode == 'cool' and prev_mode_raw == 'fan_only' and active_session_ttl_valid %}none{% elif not startup_trigger_bridge_ok %}manual_guard_discard=trigger_fuera_matriz{% elif detected_mode != 'cool' and prev_mode_effective != 'off' %}manual_guard_discard=sin_off_efectivo_previo{% elif detected_mode == 'cool' and prev_mode_raw == 'fan_only' and (not active_session_open or active_session_trace_id == trace_id) %}manual_guard_discard=fan_only_bridge_fuera_ventana{% else %}manual_guard_discard=sin_off_efectivo_previo{% endif %}",
+            "session_reusable_same_signature": "{{ active_session_open and active_session_signature == manual_on_pending_signature_core and pending_signature_is_fresh }}",
+            "session_locked_other_trace": "{{ active_session_open and not session_reusable_same_signature and active_session_trace_id != trace_id }}",
+            "trace_id_effective": "{{ active_session_trace_id if session_reusable_same_signature else trace_id }}",
+            "manual_on_pending_signature_effective": "{{ 'sig=' ~ manual_on_pending_signature_core ~ '|saved_ts=' ~ manual_on_pending_signature_ts_epoch ~ '|trace_id=' ~ trace_id_effective ~ '|trigger_id=' ~ trigger_id }}",
+            "pending_already_notified_for_session": "{{ session_reusable_same_signature and active_session_status == 'pending' }}"
+          }
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_detected | mode={{ detected_mode }} | trigger_id={{ trigger_id }} | from={{ prev_mode_raw }} | from_effective={{ prev_mode_effective }} | prev_age_s={{ prev_state_age_s }} | startup_window_ok={{ manual_startup_window_ok }} | startup_reason={{ manual_startup_discard_reason }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ trace_id }} | pre_guard | auto_transition_recent={{ auto_transition_recent }} | auto_transition_token_recent={{ auto_transition_token_recent }} | transition_age_s={{ transition_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | auto_flags_active={{ auto_flags_active }} | auto_timestamp_recent={{ auto_timestamp_recent }} | auto_evidence_strong={{ auto_evidence_strong }} | auto_transition_active_strict={{ auto_transition_active_strict }} | auto_recent_observed={{ auto_recent_observed }} | minutes_since_last_auto={{ minutes_since_last_auto }} | manual_on_guard_discard_reason={{ manual_on_guard_discard_reason }} | startup_window_ok={{ manual_startup_window_ok }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ cycle_lock_is_stale }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "target": {
+                    "entity_id": "input_boolean.ac_dda_cycle_lock"
+                  },
+                  "action": "input_boolean.turn_off"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id }} | lock_rancio_recuperado | lock_age_s={{ cycle_lock_age_s }} | ttl_s={{ cycle_lock_ttl_s }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ manual_on_guard_discard_reason != 'none' }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id }} | {{ manual_on_guard_discard_reason }} | lock={{ cycle_lock_active }} | auto_flags_active={{ auto_flags_active }} | auto_transition_token_recent={{ auto_transition_token_recent }} | transition_age_s={{ transition_age_s }} | auto_ts_age_s={{ last_auto_age_s }} | auto_reciente={{ auto_reciente }} | auto_evidence_strong={{ auto_evidence_strong }} | auto_transition_active_strict={{ auto_transition_active_strict }} | auto_recent_observed={{ auto_recent_observed }} | min_since_auto={{ minutes_since_last_auto }} | auto_action={{ last_auto_action_raw }} | auto_origin={{ auto_origin_detected }} | last_origin={{ last_change_origin_raw }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id }} | hito=notify_descartado_fuera_alcance | reason={{ manual_on_guard_discard_reason }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_notify_status"
+                  },
+                  "data": {
+                    "value": "{{ trace_id_effective ~ '|stage=cierre|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=cierre | result=pendiente_ignorado_fuera_alcance",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "choose": [
+                    {
+                      "conditions": [
+                        {
+                          "condition": "template",
+                          "value_template": "{{ mobile_channel_ok }}"
+                        }
+                      ],
+                      "sequence": [
+                        {
+                          "continue_on_error": true,
+                          "data": {
+                            "title": "AC Manual ON",
+                            "message": "{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}"
+                          },
+                          "action": "notify.mobile_app_samsung_s24"
+                        },
+                        {
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Manual ON",
+                            "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "default": [
+                    {
+                      "action": "persistent_notification.create",
+                      "data": {
+                        "title": "AC Manual ON (fallback)",
+                        "message": "{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}"
+                      }
+                    },
+                    {
+                      "action": "logbook.log",
+                      "data": {
+                        "name": "AC Manual ON",
+                        "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard",
+                        "entity_id": "climate.0200009211c7_climate"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_notify_status"
+                  },
+                  "data": {
+                    "value": "{{ trace_id_effective ~ '|stage=cierre|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=ignorado|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "stop": "Ignorado: guard manual ON descartó evento."
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ manual_startup_discard_reason != 'none' }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id }} | {{ manual_startup_discard_reason }} | trigger_id={{ trigger_id }} | from={{ prev_mode_raw }} | from_effective={{ prev_mode_effective }} | prev_age_s={{ prev_state_age_s }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_notify_status"
+                  },
+                  "data": {
+                    "value": "{{ trace_id ~ '|stage=cierre|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=cierre | result=pendiente_startup_discard",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "choose": [
+                    {
+                      "conditions": [
+                        {
+                          "condition": "template",
+                          "value_template": "{{ mobile_channel_ok }}"
+                        }
+                      ],
+                      "sequence": [
+                        {
+                          "continue_on_error": true,
+                          "data": {
+                            "title": "AC Manual ON",
+                            "message": "{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}"
+                          },
+                          "action": "notify.mobile_app_samsung_s24"
+                        },
+                        {
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Manual ON",
+                            "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "default": [
+                    {
+                      "action": "persistent_notification.create",
+                      "data": {
+                        "title": "AC Manual ON (fallback)",
+                        "message": "{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}"
+                      }
+                    },
+                    {
+                      "action": "logbook.log",
+                      "data": {
+                        "name": "AC Manual ON",
+                        "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard",
+                        "entity_id": "climate.0200009211c7_climate"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_notify_status"
+                  },
+                  "data": {
+                    "value": "{{ trace_id ~ '|stage=cierre|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=ignorado|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "stop": "Ignorado: no cumple ventana de arranque manual desde OFF."
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ session_locked_other_trace }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id }} | hito=session_locked_other_trace | active_trace={{ active_session_trace_id }} | active_status={{ active_session_status }} | signature={{ manual_on_pending_signature_core }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "stop": "Ignorado: existe sesión activa en consolidación/captura con otro trace_id."
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ duplicate_pending_signature or pending_already_notified_for_session }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id_effective }} | duplicate_pending_suppressed | signature={{ manual_on_pending_signature_core }} | active_status={{ active_session_status }} | last_signature={{ last_manual_on_pending_signature_core }} | signature_age_s={{ manual_on_pending_signature_age_s }} | trigger_id={{ trigger_id }} | reuse_trace={{ active_session_trace_id if active_session_trace_id != 'trace_missing' else last_manual_on_pending_trace_id }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "stop": "Ignorado: pendiente duplicado suprimido para la misma sesión activa."
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "variables": {
+            "detected_ts_epoch": "{{ as_timestamp(now()) | int(0) }}",
+            "detected_ts": "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}",
+            "mov_raw": "{{ states('binary_sensor.presencia_movimiento_estable') | lower }}",
+            "s24_raw": "{{ states('device_tracker.samsung_s24') | lower }}",
+            "person_raw": "{{ states('person.ivan') | lower }}",
+            "presence_ok": "{{ is_state('binary_sensor.presencia_ok_estable','on') }}",
+            "presence_real_now": "{{ mov_raw == 'on' }}",
+            "presence_sensor_strict": "{{ presence_ok and presence_real_now }}",
+            "presence_phone_home": "{{ (s24_raw in ['home','on']) or (person_raw == 'home') }}",
+            "manual_presence_until_raw": "{{ states('input_datetime.ac_dda_manual_presence_until') }}",
+            "presence_temp_from_manual": "{% if manual_presence_until_raw in ['unknown','unavailable','none',''] %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw) }}\n{% endif %}",
+            "presence_source": "{% if presence_sensor_strict %}\n  movimiento\n{% elif presence_phone_home %}\n  s24_home\n{% elif presence_temp_from_manual %}\n  manual_temporal\n{% else %}\n  sin_presencia\n{% endif %}",
+            "presence_effective_guard": "{{ presence_source != 'sin_presencia' }}",
+            "contract_context_key": "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}"
+          }
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_detected_context | mode={{ detected_mode }} | consolidate=30s | ctx={{ contract_context_key }} | presence_source={{ presence_source }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_manual_on_active_session"
+          },
+          "data": {
+            "value": "{{ 'trace_id=' ~ trace_id_effective ~ '|signature=' ~ manual_on_pending_signature_core ~ '|status=detected|branch=manual_on_guard|started_ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_on_pending_signature"
+          },
+          "data": {
+            "value": "{{ manual_on_pending_signature_effective }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_manual_on_active_session"
+          },
+          "data": {
+            "value": "{{ 'trace_id=' ~ trace_id_effective ~ '|signature=' ~ manual_on_pending_signature_core ~ '|status=pending|branch=manual_on_guard|started_ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_pending_notified | phase=pre_consolidation | detected_mode={{ detected_mode }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_notify_status"
+          },
+          "data": {
+            "value": "{{ trace_id_effective ~ '|stage=pendiente|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=pendiente",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ mobile_channel_ok }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "continue_on_error": true,
+                  "data": {
+                    "title": "AC Manual ON",
+                    "message": "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}"
+                  },
+                  "action": "notify.mobile_app_samsung_s24"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard | stage=pendiente",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": [
+            {
+              "action": "persistent_notification.create",
+              "data": {
+                "title": "AC Manual ON (fallback)",
+                "message": "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}"
+              }
+            },
+            {
+              "action": "logbook.log",
+              "data": {
+                "name": "AC Manual ON",
+                "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard | stage=pendiente",
+                "entity_id": "climate.0200009211c7_climate"
+              }
+            }
+          ]
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_validating | reason=consolidacion_30s",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "delay": "00:00:30"
+        },
+        {
+          "variables": {
+            "final_mode_after_60s": "{{ states(climate_ent) }}",
+            "post60_last_auto_ts_raw": "{{ states('input_datetime.ac_dda_last_auto_ts') }}",
+            "post60_last_auto_action_raw": "{{ states('input_text.ac_dda_last_auto_action') | default('', true) | trim | lower }}",
+            "post60_last_origin_raw": "{{ states('input_text.ac_dda_last_change_origin') | default('', true) | trim }}",
+            "post60_last_auto_age_s": "{% set raw = post60_last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}",
+            "post60_minutes_since_last_auto": "{{ ((post60_last_auto_age_s | float(99999)) / 60) | round(3) }}",
+            "post60_auto_reciente": "{{ (post60_minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}",
+            "post60_within_manual_feedback_window": "{{ (post60_minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}",
+            "post60_auto_origin_detected": "{{ post60_last_origin_raw in ['auto_off', 'auto_on', 'cool_normal_off', 'cool_normal_on', 'cool_emergency_off', 'cool_emergency_on'] }}",
+            "post60_auto_on_action_recent": "{{ post60_auto_reciente and post60_last_auto_action_raw in ['auto_on', 'cool_normal_on', 'cool_emergency_on'] }}",
+            "post60_auto_timestamp_recent": "{{ post60_auto_reciente or post60_auto_on_action_recent }}",
+            "post60_auto_happened_during_consolidation": "{% set raw = post60_last_auto_ts_raw | default('', true) | trim %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ ts_auto is not none and (ts_auto | int(0)) >= (detected_ts_epoch | int(0)) }}",
+            "post60_transition_token_raw": "{{ states('input_text.ac_dda_transition_token') | default('', true) | trim }}",
+            "post60_transition_ts_raw": "{{ states('input_datetime.ac_dda_transition_ts') | default('', true) | trim }}",
+            "post60_transition_ts_epoch": "{% if post60_transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(post60_transition_ts_raw, default=none) }}{% endif %}",
+            "post60_transition_age_s": "{% if post60_transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (post60_transition_ts_epoch | float)) | round(1) }}{% endif %}",
+            "post60_auto_flags_active": "{{ is_state('input_boolean.ac_dda_off_por_automatizacion','on') or is_state('input_boolean.ac_dda_on_por_automatizacion','on') }}",
+            "post60_auto_transition_token_recent": "{{ post60_transition_token_raw | length > 0 and post60_transition_age_s | float(99999) >= 0 and post60_transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}",
+            "post60_auto_transition_origin_evidence_active": "{{ post60_auto_flags_active or post60_auto_origin_detected }}",
+            "post60_auto_transition_recent": "{{ post60_auto_transition_token_recent and post60_auto_transition_origin_evidence_active }}",
+            "post60_auto_transition_active_strict": "{{ post60_auto_flags_active or post60_auto_transition_recent }}",
+            "post60_auto_recent_observed": "{{ post60_auto_timestamp_recent }}",
+            "post60_auto_evidence_strong": "{{ post60_auto_flags_active or post60_auto_transition_recent or post60_auto_timestamp_recent }}",
+            "post60_manual_on_auto_recent_compound": "{{ post60_auto_transition_active_strict or post60_auto_recent_observed }}",
+            "post60_auto_transition_active": "{{ post60_auto_transition_active_strict }}",
+            "post60_daytime_scope_ok": "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}",
+            "post60_cycle_lock_active": "{{ is_state('input_boolean.ac_dda_cycle_lock','on') }}",
+            "post60_cycle_lock_since_raw": "{{ states('input_datetime.ac_dda_cycle_lock_since') | default('', true) | trim }}",
+            "post60_cycle_lock_since_epoch": "{% if post60_cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(post60_cycle_lock_since_raw, default=none) }}{% endif %}",
+            "post60_cycle_lock_age_s": "{% if post60_cycle_lock_since_epoch is none %}99999{% elif not post60_cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (post60_cycle_lock_since_epoch | float)) | round(1) }}{% endif %}",
+            "post60_cycle_lock_is_stale": "{{ post60_cycle_lock_active and (post60_cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}",
+            "post60_cycle_lock_effective_active": "{{ post60_cycle_lock_active and not post60_cycle_lock_is_stale }}",
+            "post60_guard_discard_reason": "{% if post60_auto_evidence_strong %}manual_guard_discard=auto_transition_active{% elif not post60_daytime_scope_ok %}manual_guard_discard=out_of_scope_daytime_main{% else %}none{% endif %}"
+          }
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ trace_id }} | post60_guard | auto_transition_recent={{ post60_auto_transition_recent }} | auto_transition_token_recent={{ post60_auto_transition_token_recent }} | transition_age_s={{ post60_transition_age_s }} | last_change_origin_raw={{ post60_last_origin_raw }} | auto_flags_active={{ post60_auto_flags_active }} | auto_timestamp_recent={{ post60_auto_timestamp_recent }} | post60_auto_evidence_strong={{ post60_auto_evidence_strong }} | post60_auto_transition_active_strict={{ post60_auto_transition_active_strict }} | post60_auto_recent_observed={{ post60_auto_recent_observed }} | minutes_since_last_auto={{ post60_minutes_since_last_auto }} | post60_guard_discard_reason={{ post60_guard_discard_reason }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ post60_cycle_lock_is_stale }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "target": {
+                    "entity_id": "input_boolean.ac_dda_cycle_lock"
+                  },
+                  "action": "input_boolean.turn_off"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id }} | lock_rancio_recuperado_post60 | lock_age_s={{ post60_cycle_lock_age_s }} | ttl_s={{ cycle_lock_ttl_s }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "variables": {
+            "active_session_post60_raw": "{{ states('input_text.ac_dda_manual_on_active_session') | default('', true) | trim }}",
+            "active_session_post60_trace_id": "{% set matches = active_session_post60_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}",
+            "active_session_post60_started_ts": "{% set matches = active_session_post60_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}",
+            "active_session_post60_started_epoch": "{% if active_session_post60_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_post60_started_ts, default=none) }}{% endif %}",
+            "active_session_post60_age_s": "{% if active_session_post60_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_post60_started_epoch | float)) | round(1) }}{% endif %}",
+            "active_session_post60_ttl_valid": "{{ active_session_post60_age_s | float(99999) >= 0 and active_session_post60_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ final_mode_after_60s == 'fan_only' and active_session_post60_ttl_valid and active_session_post60_trace_id == trace_id_effective }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id_effective }} | hito=fan_only_bridge_retry | bridge_attempt=1 | within_ttl=true | age_s={{ active_session_post60_age_s }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "target": {
+                    "entity_id": "climate.0200009211c7_climate"
+                  },
+                  "data": {
+                    "hvac_mode": "cool"
+                  },
+                  "action": "climate.set_hvac_mode"
+                },
+                {
+                  "delay": "00:00:12"
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ post60_guard_discard_reason != 'none' }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id }} | {{ post60_guard_discard_reason }} | auto_flags_active={{ post60_auto_flags_active }} | auto_transition_token_recent={{ post60_auto_transition_token_recent }} | transition_age_s={{ post60_transition_age_s }} | auto_ts_age_s={{ post60_last_auto_age_s }} | auto_reciente={{ post60_auto_reciente }} | post60_auto_evidence_strong={{ post60_auto_evidence_strong }} | post60_auto_transition_active_strict={{ post60_auto_transition_active_strict }} | post60_auto_recent_observed={{ post60_auto_recent_observed }} | auto_during_60s={{ post60_auto_happened_during_consolidation }} | min_since_auto={{ post60_minutes_since_last_auto }} | auto_action={{ post60_last_auto_action_raw }} | auto_origin={{ post60_auto_origin_detected }} | last_origin={{ post60_last_origin_raw }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ trace_id }} | hito=notify_descartado_fuera_alcance | reason={{ post60_guard_discard_reason }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_notify_status"
+                  },
+                  "data": {
+                    "value": "{{ trace_id ~ '|stage=cierre|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=cierre | result=pendiente_post60_discard",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "choose": [
+                    {
+                      "conditions": [
+                        {
+                          "condition": "template",
+                          "value_template": "{{ mobile_channel_ok }}"
+                        }
+                      ],
+                      "sequence": [
+                        {
+                          "continue_on_error": true,
+                          "data": {
+                            "title": "AC Manual ON",
+                            "message": "{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}"
+                          },
+                          "action": "notify.mobile_app_samsung_s24"
+                        },
+                        {
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Manual ON",
+                            "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "default": [
+                    {
+                      "action": "persistent_notification.create",
+                      "data": {
+                        "title": "AC Manual ON (fallback)",
+                        "message": "{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}"
+                      }
+                    },
+                    {
+                      "action": "logbook.log",
+                      "data": {
+                        "name": "AC Manual ON",
+                        "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard",
+                        "entity_id": "climate.0200009211c7_climate"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_notify_status"
+                  },
+                  "data": {
+                    "value": "{{ trace_id ~ '|stage=cierre|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=ignorado|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_manual_on_active_session"
+                  },
+                  "data": {
+                    "value": "{{ 'trace_id=' ~ trace_id_effective ~ '|signature=' ~ manual_on_pending_signature_core ~ '|status=ignorado|branch=manual_on_guard|started_ts=' ~ detected_ts }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_text.set_value"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_manual_on_active_session"
+                  },
+                  "data": {
+                    "value": ""
+                  },
+                  "continue_on_error": true,
+                  "action": "input_text.set_value"
+                },
+                {
+                  "stop": "Ignorado: guard manual ON post60 descartó evento."
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_change_origin"
+          },
+          "data": {
+            "value": "manual_on"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_event_type"
+          },
+          "data": {
+            "value": "{{ 'manual_on_learning_candidate_contract_v1|trace_id=' ~ trace_id_effective ~ '|guard=manual_on' }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "variables": {
+            "ts": "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}",
+            "final_mode": "{{ states(climate_ent) }}",
+            "final_setpoint": "{{ state_attr(climate_ent,'temperature') | float(none) }}",
+            "final_fan": "{{ state_attr(climate_ent, 'fan_mode') if state_attr(climate_ent, 'fan_mode') is not none else 'n/a' }}",
+            "t1": "{{ states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) }}",
+            "t2": "{{ states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) }}",
+            "h1": "{{ states('sensor.lumi_lumi_weather_cuarto_humedad') | float(none) }}",
+            "h2": "{{ states('sensor.lumi_lumi_weather_coco_humedad') | float(none) }}",
+            "tin": "{% if t1 is not none and t2 is not none %}{{ ((t1 + t2) / 2) | round(1) }}{% elif t1 is not none %}{{ t1 | round(1) }}{% elif t2 is not none %}{{ t2 | round(1) }}{% else %}{{ none }}{% endif %}",
+            "tout_owm": "{{ state_attr('weather.openweathermap','temperature') | float(none) }}",
+            "hout_owm": "{{ state_attr('weather.openweathermap','humidity') | float(none) }}",
+            "cond_owm": "{{ states('weather.openweathermap') | lower }}",
+            "tout": "{{ tout_owm if tout_owm is not none else none }}",
+            "hin": "{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1) }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{ h2 | round(1) }}{% else %}{{ none }}{% endif %}",
+            "contract_cycle_on_raw": "{{ states('input_number.ac_dda_cool_cycle_contract_on') }}",
+            "contract_cycle_off_raw": "{{ states('input_number.ac_dda_cool_cycle_contract_off') }}",
+            "contract_cycle_on": "{{ contract_cycle_on_raw | float(none) }}",
+            "contract_cycle_off": "{{ contract_cycle_off_raw | float(none) }}",
+            "contract_cycle_valid": "{{ contract_cycle_on is not none and contract_cycle_off is not none and (contract_cycle_on | float) > (contract_cycle_off | float) and (contract_cycle_off | float) >= 22 and (contract_cycle_off | float) <= 25.7 and (contract_cycle_on | float) <= 26.2 }}",
+            "cool_on_final": "{% if contract_cycle_valid %}{{ contract_cycle_on | round(2) }}{% else %}{{ none }}{% endif %}",
+            "cool_off_final": "{% if contract_cycle_valid %}{{ contract_cycle_off | round(2) }}{% else %}{{ none }}{% endif %}",
+            "manual_presence_until": "{{ (now() + timedelta(minutes=90)).strftime('%Y-%m-%d %H:%M:%S') }}",
+            "manual_event_type_final": "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_final_valid_presence_gap_contract_v1{% else %}manual_on_final_valid_contract_v1{% endif %}"
+          }
+        },
+        {
+          "target": {
+            "entity_id": "input_datetime.ac_dda_last_manual_final_ts"
+          },
+          "data": {
+            "datetime": "{{ ts }}"
+          },
+          "action": "input_datetime.set_datetime"
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ manual_event_type_final == 'manual_on_final_valid_presence_gap_contract_v1' }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "target": {
+                    "entity_id": "input_datetime.ac_dda_manual_presence_until"
+                  },
+                  "data": {
+                    "datetime": "{{ manual_presence_until }}"
+                  },
+                  "action": "input_datetime.set_datetime"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | presencia_temporal | until={{ manual_presence_until }} | presence_source={{ presence_source }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_event_type"
+          },
+          "data": {
+            "value": "{{ manual_event_type_final ~ '|trace_id=' ~ trace_id_effective }}"
+          },
+          "continue_on_error": true,
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_on_trace_confirmed"
+          },
+          "data": {
+            "value": "{{ 'trace_id=' ~ trace_id_effective }}"
+          },
+          "continue_on_error": true,
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_on_snapshot"
+          },
+          "data": {
+            "value": "{{ 'trace_id=' ~ trace_id_effective ~ '|event_type=' ~ manual_event_type_final ~ '|final_mode=' ~ final_mode ~ '|ts=' ~ ts }}"
+          },
+          "continue_on_error": true,
+          "action": "input_text.set_value"
+        },
+        {
+          "variables": {
+            "event_type_expected": "{{ manual_event_type_final ~ '|trace_id=' ~ trace_id_effective }}",
+            "snapshot_expected": "{{ 'trace_id=' ~ trace_id_effective ~ '|event_type=' ~ manual_event_type_final ~ '|final_mode=' ~ final_mode ~ '|ts=' ~ ts }}",
+            "trace_expected": "{{ 'trace_id=' ~ trace_id_effective }}",
+            "event_type_readback_pre": "{{ states('input_text.ac_dda_last_manual_event_type') | default('', true) | trim }}",
+            "snapshot_readback_pre": "{{ states('input_text.ac_dda_last_manual_on_snapshot') | default('', true) | trim }}",
+            "trace_readback_pre": "{{ states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim }}",
+            "snapshot_verified_pre": "{{ snapshot_readback_pre == snapshot_expected and trace_readback_pre == trace_expected }}"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ not snapshot_verified_pre }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_snapshot_repair_attempt | snapshot_ok={{ 'true' if snapshot_verified_pre else 'false' }} | snapshot_read={{ snapshot_readback_pre }} | trace_read={{ trace_readback_pre }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_manual_on_trace_confirmed"
+                  },
+                  "data": {
+                    "value": "{{ trace_expected }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_manual_on_snapshot"
+                  },
+                  "data": {
+                    "value": "{{ snapshot_expected }}"
+                  },
+                  "action": "input_text.set_value"
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "variables": {
+            "event_type_readback": "{{ states('input_text.ac_dda_last_manual_event_type') | default('', true) | trim }}",
+            "trace_readback": "{{ states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim }}",
+            "snapshot_readback": "{{ states('input_text.ac_dda_last_manual_on_snapshot') | default('', true) | trim }}",
+            "snapshot_verified": "{{ snapshot_readback == snapshot_expected and trace_readback == trace_expected }}",
+            "persistence_stage_1_ok": "{{ event_type_readback == event_type_expected }}",
+            "persistence_stage_2_ok": "{{ trace_readback == trace_expected }}",
+            "persistence_stage_3_ok": "{{ snapshot_readback == snapshot_expected }}",
+            "persistence_ready_for_trigger": "{{ persistence_stage_2_ok and persistence_stage_3_ok }}",
+            "persistence_gate_reason": "{{ 'capturado_por_snapshot_trace' if persistence_ready_for_trigger else 'persistencia_pre_learning_incompleta' }}",
+            "persistence_stage_1_diag": "{{ 'ok' if persistence_stage_1_ok else 'telemetria_event_type_desalineada' }}"
+          }
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_snapshot_verified | verified={{ 'true' if snapshot_verified else 'false' }} | repair_attempted={{ 'true' if not snapshot_verified_pre else 'false' }} | stage1={{ 'ok' if persistence_stage_1_ok else 'fail' }} | stage1_diag={{ persistence_stage_1_diag }} | stage2={{ 'ok' if persistence_stage_2_ok else 'fail' }} | stage3={{ 'ok' if persistence_stage_3_ok else 'fail' }} | gate={{ 'ok' if persistence_ready_for_trigger else 'fail' }} | gate_reason={{ persistence_gate_reason }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ persistence_ready_for_trigger }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "target": {
+                    "entity_id": "input_datetime.ac_dda_last_manual_on_ts"
+                  },
+                  "data": {
+                    "datetime": "{{ ts }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_datetime.set_datetime"
+                },
+                {
+                  "action": "logbook.log",
+                  "continue_on_error": true,
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_captured | ts={{ ts }} | event_type={{ manual_event_type_final }} | snapshot_ts={{ ts }} | gate_reason={{ persistence_gate_reason }} | stage1_diag={{ persistence_stage_1_diag }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_manual_on_active_session"
+                  },
+                  "data": {
+                    "value": "{{ 'trace_id=' ~ trace_id_effective ~ '|signature=' ~ manual_on_pending_signature_core ~ '|status=captured|branch=manual_on_guard|started_ts=' ~ detected_ts }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_text.set_value"
+                }
+              ]
+            }
+          ],
+          "default": [
+            {
+              "action": "logbook.log",
+              "continue_on_error": true,
+              "data": {
+                "name": "AC Manual ON",
+                "message": "{{ contract_version }} | trace_id={{ trace_id_effective }} | hito=manual_on_capture_error_controlado | razon={{ persistence_gate_reason }} | stage1={{ 'ok' if persistence_stage_1_ok else 'fail' }} | stage1_diag={{ persistence_stage_1_diag }} | stage2={{ 'ok' if persistence_stage_2_ok else 'fail' }} | stage3={{ 'ok' if persistence_stage_3_ok else 'fail' }}",
+                "entity_id": "climate.0200009211c7_climate"
+              }
+            },
+            {
+              "target": {
+                "entity_id": "input_text.ac_dda_manual_on_active_session"
+              },
+              "data": {
+                "value": "{{ 'trace_id=' ~ trace_id_effective ~ '|signature=' ~ manual_on_pending_signature_core ~ '|status=error_controlado|branch=manual_on_guard|started_ts=' ~ detected_ts }}"
+              },
+              "continue_on_error": true,
+              "action": "input_text.set_value"
+            },
+            {
+              "target": {
+                "entity_id": "input_text.ac_dda_manual_on_active_session"
+              },
+              "data": {
+                "value": ""
+              },
+              "continue_on_error": true,
+              "action": "input_text.set_value"
+            }
+          ]
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ final_mode in ['cool','heat'] }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "target": {
+                    "entity_id": "input_select.ac_ultimo_modo_no_fan"
+                  },
+                  "data": {
+                    "option": "{{ final_mode }}"
+                  },
+                  "action": "input_select.select_option"
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_final_mode"
+          },
+          "data": {
+            "value": "{{ final_mode }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_final_fan"
+          },
+          "data": {
+            "value": "{{ final_fan }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_number.ac_dda_last_manual_setpoint"
+          },
+          "data": {
+            "value": "{{ final_setpoint if final_setpoint is not none else 0 }}"
+          },
+          "action": "input_number.set_value"
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ trace_id }} | hito=manual_on_final | mode={{ final_mode }} | fan={{ final_fan }} | sp={{ final_setpoint if final_setpoint is not none else 'n/a' }} | presence_source={{ presence_source }} | learn_step=-0.25",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ not contract_cycle_valid }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | contract_cycle_invalid | on_raw={{ contract_cycle_on_raw }} | off_raw={{ contract_cycle_off_raw }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_notify_status"
+          },
+          "data": {
+            "value": "{{ trace_id ~ '|stage=capturado|channel=mobile|result=pendiente|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_attempt | notify_channel=mobile | flow=manual_on_guard | stage=capturado",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ mobile_channel_ok }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "continue_on_error": true,
+                  "data": {
+                    "title": "AC Manual ON",
+                    "message": "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }} Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }} H={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }} On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} SP={{ '%.1f' | format(final_setpoint | float) if final_setpoint is not none else 'n/a' }} Fan={{ final_fan }} Src=ManualON Resultado={{ 'capturado' if persistence_ready_for_trigger else 'error_controlado' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}"
+                  },
+                  "action": "notify.mobile_app_samsung_s24"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual ON",
+                    "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard | stage=capturado",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": [
+            {
+              "action": "persistent_notification.create",
+              "data": {
+                "title": "AC Manual ON (fallback)",
+                "message": "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }} Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }} H={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }} On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} SP={{ '%.1f' | format(final_setpoint | float) if final_setpoint is not none else 'n/a' }} Fan={{ final_fan }} Src=ManualON Resultado={{ 'capturado' if persistence_ready_for_trigger else 'error_controlado' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}"
+              }
+            },
+            {
+              "action": "logbook.log",
+              "data": {
+                "name": "AC Manual ON",
+                "message": "{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=manual_on_guard | stage=capturado",
+                "entity_id": "climate.0200009211c7_climate"
+              }
+            }
+          ]
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_notify_status"
+          },
+          "data": {
+            "value": "{{ trace_id ~ '|stage=capturado|channel=' ~ ('mobile' if mobile_channel_ok else 'persistent') ~ '|result=' ~ ('capturado' if persistence_ready_for_trigger else 'error_controlado') ~ '|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          },
+          "action": "input_text.set_value"
+        }
+      ],
+      "mode": "queued",
+      "max": 2
+    },
+    "blueprint_inputs": null,
+    "context": {
+      "id": "01KRMY5P5GVW6JPCGP16GYARQT",
+      "parent_id": "01KRMY5JTTJXHS95DNP6E2GDCQ",
+      "user_id": null
+    }
+  },
+  "logbookEntries": [
+    {
+      "name": "AC - Manual ON guard + presencia temporal",
+      "message": "triggered by state of climate.0200009211c7_climate",
+      "source": "state of climate.0200009211c7_climate",
+      "entity_id": "automation.ac_manual_on_guard_presencia_temporal_learning",
+      "context_id": "01KRMY5P5GVW6JPCGP16GYARQT",
+      "domain": "automation",
+      "when": 1778819193.009729
+    },
+    {
+      "name": "AC Manual ON",
+      "message": "contract=v1 | trace_id=01KRMY5JTTJXHS95DNP6E2GDCQ | hito=manual_on_detected | mode=cool | trigger_id=cool_any | from=off | from_effective=off | prev_age_s=16.5 | startup_window_ok=True | startup_reason=none",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778819193.0157435,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Manual ON guard + presencia temporal",
+      "context_message": "triggered by state of climate.0200009211c7_climate",
+      "context_source": "state of climate.0200009211c7_climate",
+      "context_entity_id": "automation.ac_manual_on_guard_presencia_temporal_learning"
+    },
+    {
+      "name": "AC Manual ON",
+      "message": "01KRMY5JTTJXHS95DNP6E2GDCQ | pre_guard | auto_transition_recent=False | auto_transition_token_recent=False | transition_age_s=99999 | last_change_origin_raw=auto_off | auto_flags_active=False | auto_timestamp_recent=False | auto_evidence_strong=False | auto_transition_active_strict=False | auto_recent_observed=False | minutes_since_last_auto=1666.65 | manual_on_guard_discard_reason=none | startup_window_ok=True",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778819193.0162704,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Manual ON guard + presencia temporal",
+      "context_message": "triggered by state of climate.0200009211c7_climate",
+      "context_source": "state of climate.0200009211c7_climate",
+      "context_entity_id": "automation.ac_manual_on_guard_presencia_temporal_learning"
+    },
+    {
+      "name": "AC Manual ON",
+      "message": "01KRMY5JTTJXHS95DNP6E2GDCQ | hito=session_locked_other_trace | active_trace=01KRMMH6SGG5EEYBKGRVNRB370 | active_status=captured | signature=ctx=01KRMY5JTTJXHS95DNP6E2GDCQ",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778819193.024292,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Manual ON guard + presencia temporal",
+      "context_message": "triggered by state of climate.0200009211c7_climate",
+      "context_source": "state of climate.0200009211c7_climate",
+      "context_entity_id": "automation.ac_manual_on_guard_presencia_temporal_learning"
+    }
+  ]
+}
