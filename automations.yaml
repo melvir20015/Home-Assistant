@@ -2177,8 +2177,8 @@
             }} Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a'
             }} H={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else
             'n/a' }} On={{ '%.1f' | format(cool_on_validated | float) if cool_on_validated
-            is not none else ''n/a'' }} Off={{ '%.1f' | format(cool_off_validated |
-            float) if cool_off_validated is not none else ''n/a'' }} SP={{ '%.1f' |
+            is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_validated |
+            float) if cool_off_validated is not none else 'n/a' }} SP={{ '%.1f' |
             format(emergency_setpoint | float) if emergency_setpoint is not none else
             'n/a' }} Fan={{ emergency_fan_mode
             if emergency_fan_mode not in ['', 'unknown', 'unavailable', 'none'] else
