@@ -117,3 +117,13 @@ ac_dda_cycle_lock_started_at:
   name: "AC DDA Cycle Lock Started At"
   has_date: true
   has_time: true
+
+ac_dda_presence_gate_checked_at:
+  name: "AC DDA Presence Gate Checked At"
+  has_date: true
+  has_time: true
+
+ac_dda_manual_presence_override_until:
+  name: "AC DDA Manual Presence Override Until"
+  has_date: true
+  has_time: true

@@ -1627,3 +1627,24 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 - **Regla preventiva explícita AC-DDA**:
   - en `AC - Día dinámico aprendido (principal)`, cualquier template largo o con múltiples operadores/condicionales debe declararse en `>-` (no inline);
   - en cada edición de `choose`, verificar `default` al mismo nivel que cada `- conditions` y confirmar que no quede mapping abierto antes de `variables:`.
+
+## Rediseño robusto AC-DDA (2026-05-15)
+
+- **Presencia efectiva OR multi-ocupante**: la elegibilidad de presencia del control diurno AC-DDA considera `movimiento estable OR S24/home`, y adicionalmente respeta ventana de override manual activa (`input_datetime.ac_dda_manual_presence_override_until`) durante 60 minutos.
+- **Confirmación de presencia 3m**: se incorpora `timer.ac_dda_presence_confirm_3m` junto con `input_boolean.ac_dda_presence_gate_open`; la compuerta solo abre al completar timer con revalidación de señal de movimiento estable.
+- **Ausencia sostenida 30m para OFF por desocupación**: el apagado por desocupación exige simultáneamente ausencia de movimiento y S24/persona fuera, manteniendo semántica multi-ocupante y sin corte por ruido breve.
+- **Override manual ON 60m sin corte anticipado por salida S24**: ante encendido manual válido, se escribe `input_datetime.ac_dda_manual_presence_override_until = now + 60m`; durante esa ventana no se invalida presencia por salida de S24.
+- **Desacople de contexto**:
+  - `input_text.ac_dda_context_key_v2_active`: se actualiza en cada cálculo contextual.
+  - `input_text.ac_dda_context_key_v2_last_applied`: reservado para escritura estricta solo cuando exista acción HVAC real (modo/setpoint).
+- **Observabilidad**: se registran hitos compactos en logbook para gate (`confirmando_3m`, `abierto_revalidado`, `cerrado_por_ausencia_total`), override 60m y fuente de presencia.
+
+### Checklist breve de validación futura en host HA
+1. Verificar creación/carga de helpers nuevos (`input_text`, `input_boolean`, `input_datetime`, `timer`) y estado inicial.
+2. Confirmar flujo gate:
+   - movimiento estable <3m: gate cerrado,
+   - timer 3m finalizado + revalidación positiva: gate abierto.
+3. Confirmar OFF por desocupación solo cuando simultáneamente no haya movimiento ni S24/persona en home en ventana sostenida.
+4. Confirmar manual ON válido escribe override +60m y **no** corta por salida posterior de S24.
+5. Auditar logbook por claves: `hito=contexto_calculado`, `gate=confirmando_3m`, `gate=abierto_revalidado`, `override_60m_set`.
+6. Ejecutar `check_config` y recarga de automatizaciones en host HA antes de reinicio total.

@@ -1666,6 +1666,10 @@
     - person.ivan
     - input_boolean.ac_bloqueo_cambio_modo_2h
     - input_select.ac_ultimo_modo_no_fan
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.ac_dda_presence_confirm_3m
   condition:
   - condition: time
     after: 07:01:00
@@ -1693,6 +1697,67 @@
       name: AC DDA Audit
       message: hito=manual_session_scope_ok | trace_id={{ manual_on_session_trace_id | default('trace_missing') }} | session_status={{ manual_on_session_status | default('closed') }} | session_age_s={{ manual_on_session_age_s | default(99999) | float(99999) }} | manual_override_active={{ manual_override_active | default(false) }}
       entity_id: climate.0200009211c7_climate
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_dda_context_key_v2_active
+    data:
+      value: '{{ context_key_active }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ presence_sensor_strict and (not presence_gate_open) }}'
+      sequence:
+      - service: timer.start
+        target:
+          entity_id: timer.ac_dda_presence_confirm_3m
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_dda_presence_gate_checked_at
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: logbook.log
+        data:
+          name: AC DDA Audit
+          message: 'gate=confirmando_3m | src={{ presence_source }} | gate_open={{ presence_gate_open }}'
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.platform == ''event'' and presence_sensor_strict }}'
+      sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ac_dda_presence_gate_open
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_dda_presence_gate_checked_at
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: logbook.log
+        data:
+          name: AC DDA Audit
+          message: 'gate=abierto_revalidado | src={{ presence_source }}'
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ (not presence_sensor_strict) and (not manual_presence_override_active) and (not presence_phone_home) and presence_gate_open }}'
+      sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.ac_dda_presence_gate_open
+      - service: timer.cancel
+        target:
+          entity_id: timer.ac_dda_presence_confirm_3m
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_dda_presence_gate_checked_at
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: logbook.log
+        data:
+          name: AC DDA Audit
+          message: gate=cerrado_por_ausencia_total
+          entity_id: climate.0200009211c7_climate
+    default: []
   - service: logbook.log
     data:
       name: AC DDA Audit
@@ -4193,20 +4258,25 @@
     presence_real_now: '{{ mov_raw == ''on'' }}'
     presence_phone_home: '{{ (s24_raw in [''home'',''on'']) or (person_raw == ''home'')
       }}'
+    presence_gate_open: '{{ is_state(''input_boolean.ac_dda_presence_gate_open'',''on'') }}'
+    manual_presence_override_until_raw: '{{ states(''input_datetime.ac_dda_manual_presence_override_until'') }}'
+    manual_presence_override_active: >-
+      {% if manual_presence_override_until_raw in ['unknown','unavailable','none',''] %}false
+      {% else %}{{ as_timestamp(now()) < as_timestamp(manual_presence_override_until_raw, 0) }}{% endif %}
     manual_presence_until_raw: '{{ states(''input_datetime.ac_dda_manual_presence_until'')
       }}'
     presence_temp_from_manual: "{% if manual_presence_until_raw in ['unknown','unavailable','none','']
       %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw)
       }}\n{% endif %}"
     presence_sensor_strict: '{{ presence_ok and presence_real_now }}'
-    presence_source: "{% if presence_sensor_strict %}\n  movimiento\n{% elif presence_phone_home %}\n  s24_home\n{% elif presence_temp_from_manual %}\n  manual_temporal\n{% else %}\n  sin_presencia\n{% endif %}"
+    presence_source: "{% if presence_sensor_strict %}\n  movimiento\n{% elif presence_phone_home %}\n  s24_home\n{% elif manual_presence_override_active %}\n  override_60m\n{% elif presence_temp_from_manual %}\n  manual_temporal\n{% else %}\n  sin_presencia\n{% endif %}"
     presence_effective: '{{ presence_source != ''sin_presencia'' }}'
-    auto_on_presence_gate: '{{ presence_sensor_strict or presence_phone_home or presence_temp_from_manual }}'
+    auto_on_presence_gate: '{{ presence_gate_open or presence_phone_home or manual_presence_override_active }}'
     auto_on_presence_reason: "{% if presence_sensor_strict %}\n  movimiento_y_presencia_real\n{% elif
       presence_phone_home %}\n  phone_home\n{% elif presence_temp_from_manual %}\n
       \ manual_presence_exception_blocked_for_auto_on\n{% else %}\n  sin_presencia\n{%
       endif %}"
-    presence_away_30m: "{{ (not presence_effective)\n   and is_state('binary_sensor.presencia_movimiento_estable','off')\n
+    presence_away_30m: "{{ (not manual_presence_override_active)\n   and is_state('binary_sensor.presencia_movimiento_estable','off')\n
       \  and (person_raw != 'home')\n   and (s24_raw not in ['home','on']) }}"
     away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
     learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
@@ -6465,6 +6535,7 @@
       cool_off_final: '{% if contract_cycle_valid %}{{ contract_cycle_off | round(2)
         }}{% else %}{{ none }}{% endif %}'
       manual_presence_until: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      manual_presence_override_until: '{{ (now() + timedelta(minutes=60)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_final_valid_presence_gap_contract_v1{% else %}manual_on_final_valid_contract_v1{% endif %}"
   - target:
       entity_id: input_datetime.ac_dda_last_manual_final_ts
@@ -6472,6 +6543,20 @@
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
   - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ final_mode in [''cool'',''fan_only'',''heat''] }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_dda_manual_presence_override_until
+        data:
+          datetime: '{{ manual_presence_override_until }}'
+        action: input_datetime.set_datetime
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | override_60m_set | until={{ manual_presence_override_until }} | trace_id={{ trace_id_effective }}'
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: '{{ manual_event_type_final == ''manual_on_final_valid_presence_gap_contract_v1'' }}'

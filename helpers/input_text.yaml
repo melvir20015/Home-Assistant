@@ -180,3 +180,11 @@ ac_dda_last_notify_on_cycle_signature:
 ac_dda_last_notify_status:
   name: "AC DDA Last Notify Status"
   max: 255
+
+ac_dda_context_key_v2_active:
+  name: "AC DDA Context Key V2 Active"
+  max: 255
+
+ac_dda_context_key_v2_last_applied:
+  name: "AC DDA Context Key V2 Last Applied"
+  max: 255
