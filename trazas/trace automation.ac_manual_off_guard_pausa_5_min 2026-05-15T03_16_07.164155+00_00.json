@@ -1,0 +1,692 @@
+{
+  "trace": {
+    "last_step": "action/1/choose/1/sequence/2",
+    "run_id": "6b3a943c67d4dd52073bf5e664e0f062",
+    "state": "stopped",
+    "script_execution": "finished",
+    "timestamp": {
+      "start": "2026-05-15T03:16:07.164155+00:00",
+      "finish": "2026-05-15T03:16:07.169886+00:00"
+    },
+    "domain": "automation",
+    "item_id": "1773939304415",
+    "trigger": "state of climate.0200009211c7_climate",
+    "trace": {
+      "trigger/0": [
+        {
+          "path": "trigger/0",
+          "timestamp": "2026-05-15T03:16:07.164206+00:00",
+          "changed_variables": {
+            "this": {
+              "entity_id": "automation.ac_manual_off_guard_pausa_5_min",
+              "state": "on",
+              "attributes": {
+                "id": "1773939304415",
+                "last_triggered": "2026-05-15T03:09:42.354103+00:00",
+                "mode": "restart",
+                "current": 0,
+                "friendly_name": "AC - Manual OFF guard + pausa 5 min"
+              },
+              "last_changed": "2026-05-15T03:09:13.478878+00:00",
+              "last_reported": "2026-05-15T03:09:44.360794+00:00",
+              "last_updated": "2026-05-15T03:09:44.360794+00:00",
+              "context": {
+                "id": "01KRMSRZJHGYSVYZBPZ25ZG768",
+                "parent_id": "01KRMSRZJB3TAK8RWXJ4KF96NJ",
+                "user_id": null
+              }
+            },
+            "trigger": {
+              "id": "0",
+              "idx": "0",
+              "alias": null,
+              "platform": "state",
+              "entity_id": "climate.0200009211c7_climate",
+              "from_state": {
+                "entity_id": "climate.0200009211c7_climate",
+                "state": "fan_only",
+                "attributes": {
+                  "hvac_modes": [
+                    "off",
+                    "auto",
+                    "cool",
+                    "fan_only",
+                    "heat"
+                  ],
+                  "min_temp": 17.8,
+                  "max_temp": 30,
+                  "fan_modes": [
+                    "Low",
+                    "Med",
+                    "High"
+                  ],
+                  "current_temperature": 23,
+                  "temperature": 22,
+                  "fan_mode": "Low",
+                  "icon": "mdi:air-conditioner",
+                  "friendly_name": "Aire Acondicionado 0200009211C7 Climate",
+                  "supported_features": 393
+                },
+                "last_changed": "2026-05-15T03:13:07.060826+00:00",
+                "last_reported": "2026-05-15T03:15:46.681988+00:00",
+                "last_updated": "2026-05-15T03:14:57.385718+00:00",
+                "context": {
+                  "id": "01KRMT2K79V8828KVBXRW2N30E",
+                  "parent_id": null,
+                  "user_id": null
+                }
+              },
+              "to_state": {
+                "entity_id": "climate.0200009211c7_climate",
+                "state": "off",
+                "attributes": {
+                  "hvac_modes": [
+                    "off",
+                    "auto",
+                    "cool",
+                    "fan_only",
+                    "heat"
+                  ],
+                  "min_temp": 17.8,
+                  "max_temp": 30,
+                  "fan_modes": [
+                    "Auto",
+                    "Low",
+                    "Med",
+                    "High"
+                  ],
+                  "current_temperature": 23,
+                  "temperature": 22,
+                  "fan_mode": "Low",
+                  "icon": "mdi:air-conditioner",
+                  "friendly_name": "Aire Acondicionado 0200009211C7 Climate",
+                  "supported_features": 393
+                },
+                "last_changed": "2026-05-15T03:16:07.160661+00:00",
+                "last_reported": "2026-05-15T03:17:46.700144+00:00",
+                "last_updated": "2026-05-15T03:16:07.160661+00:00",
+                "context": {
+                  "id": "01KRMSZ6M3WE79YRS10QF3KANZ",
+                  "parent_id": "01KRMSZ6KVH8PS1CQ0T81K9Q55",
+                  "user_id": null
+                }
+              },
+              "for": null,
+              "attribute": null,
+              "description": "state of climate.0200009211c7_climate"
+            }
+          }
+        }
+      ],
+      "condition/0": [
+        {
+          "path": "condition/0",
+          "timestamp": "2026-05-15T03:16:07.164233+00:00",
+          "result": {
+            "result": true,
+            "entities": []
+          }
+        }
+      ],
+      "action/0": [
+        {
+          "path": "action/0",
+          "timestamp": "2026-05-15T03:16:07.164692+00:00",
+          "changed_variables": {
+            "context": {
+              "id": "01KRMT4QBWRV74AQW90JE8W2BG",
+              "parent_id": "01KRMSZ6M3WE79YRS10QF3KANZ",
+              "user_id": null
+            },
+            "auto_off_guard_window_s": 90,
+            "auto_off_marker_ts_raw": "unknown",
+            "auto_off_marker_nonce_raw": "20260514201606319489-auto-off",
+            "auto_off_marker_ts_epoch": null,
+            "auto_off_marker_age_s": 99999,
+            "auto_off_recent": false,
+            "last_change_origin_raw": "auto_off",
+            "cycle_lock_active": false,
+            "cycle_lock_ttl_s": 180,
+            "cycle_lock_since_raw": "2026-05-14 18:03:25",
+            "cycle_lock_since_epoch": 1778807005,
+            "cycle_lock_age_s": 0,
+            "cycle_lock_is_stale": false,
+            "cycle_lock_effective_active": false,
+            "last_auto_ts_raw": "unknown",
+            "auto_recent_window_s": 90,
+            "last_auto_age_s": 99999,
+            "auto_reciente": false,
+            "origin_auto_recent": false,
+            "transition_guard_window_s": 180,
+            "transition_token_raw": "unknown",
+            "transition_ts_raw": "unknown",
+            "transition_ts_epoch": null,
+            "transition_age_s": 99999,
+            "auto_transition_recent": false,
+            "auto_flags_active": true,
+            "auto_transition_active": true,
+            "auto_timestamp_recent": false,
+            "auto_evidence_strong": true,
+            "manual_guard_discard_reason": "auto_transition_active"
+          }
+        }
+      ],
+      "action/1": [
+        {
+          "path": "action/1",
+          "timestamp": "2026-05-15T03:16:07.166627+00:00",
+          "result": {
+            "choice": 1
+          }
+        }
+      ],
+      "action/1/choose/0": [
+        {
+          "path": "action/1/choose/0",
+          "timestamp": "2026-05-15T03:16:07.166772+00:00",
+          "result": {
+            "result": false
+          }
+        }
+      ],
+      "action/1/choose/0/conditions/0": [
+        {
+          "path": "action/1/choose/0/conditions/0",
+          "timestamp": "2026-05-15T03:16:07.166942+00:00",
+          "result": {
+            "result": false,
+            "entities": []
+          }
+        }
+      ],
+      "action/1/choose/1": [
+        {
+          "path": "action/1/choose/1",
+          "timestamp": "2026-05-15T03:16:07.167316+00:00",
+          "result": {
+            "result": true
+          }
+        }
+      ],
+      "action/1/choose/1/conditions/0": [
+        {
+          "path": "action/1/choose/1/conditions/0",
+          "timestamp": "2026-05-15T03:16:07.168090+00:00",
+          "result": {
+            "result": true,
+            "entities": []
+          }
+        }
+      ],
+      "action/1/choose/1/sequence/0": [
+        {
+          "path": "action/1/choose/1/sequence/0",
+          "timestamp": "2026-05-15T03:16:07.168511+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Manual OFF",
+                "message": "off_classification=auto | manual_guard_discard_reason=auto_transition_active | auto_flags_active=True | transition_age_s=99999 | auto_ts_age_s=99999 | lock=False | auto_reciente=False | origen_auto_recent=False | auto_off_recent=False | off_nonce=20260514201606319489-auto-off | auto_transition_recent=False | marker_age_s=99999 | last_change_origin_raw=auto_off | trace_id=20260514201607",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/1/choose/1/sequence/1": [
+        {
+          "path": "action/1/choose/1/sequence/1",
+          "timestamp": "2026-05-15T03:16:07.169140+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Manual OFF",
+                "message": "hito=notify_omitido_por_auto | reason=auto_transition_active",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/1/choose/1/sequence/2": [
+        {
+          "path": "action/1/choose/1/sequence/2",
+          "timestamp": "2026-05-15T03:16:07.169486+00:00",
+          "result": {
+            "stop": "Ignorado: AUTO OFF reciente",
+            "error": false
+          }
+        }
+      ]
+    },
+    "config": {
+      "id": "1773939304415",
+      "alias": "AC - Manual OFF guard + pausa 5 min",
+      "trace": {
+        "stored_traces": 50
+      },
+      "description": "Contrato v1: guard de apagado manual con pausa de 5 min y secado post-cool de 3 min en fan_only. El aprendizaje se resuelve en la automatización dedicada.\n",
+      "triggers": [
+        {
+          "trigger": "state",
+          "entity_id": "climate.0200009211c7_climate",
+          "to": "off"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "template",
+          "value_template": "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
+        }
+      ],
+      "actions": [
+        {
+          "variables": {
+            "auto_off_guard_window_s": 90,
+            "auto_off_marker_ts_raw": "{{ states('input_datetime.ac_dda_last_auto_off_marker_ts') | default('', true) | trim }}",
+            "auto_off_marker_nonce_raw": "{{ states('input_text.ac_last_auto_off_marker_nonce') | default('', true) | trim }}",
+            "auto_off_marker_ts_epoch": "{% if auto_off_marker_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(auto_off_marker_ts_raw, default=none) }}{% endif %}",
+            "auto_off_marker_age_s": "{% if auto_off_marker_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (auto_off_marker_ts_epoch | float)) | round(1) }}{% endif %}",
+            "auto_off_recent": "{{ auto_off_marker_nonce_raw | length > 0 and auto_off_marker_age_s | float(99999) >= 0 and auto_off_marker_age_s | float(99999) <= (auto_off_guard_window_s | float(30)) }}",
+            "last_change_origin_raw": "{{ states('input_text.ac_dda_last_change_origin') | default('', true) | trim }}",
+            "cycle_lock_active": "{{ is_state('input_boolean.ac_dda_cycle_lock','on') }}",
+            "cycle_lock_ttl_s": 180,
+            "cycle_lock_since_raw": "{{ states('input_datetime.ac_dda_cycle_lock_since') | default('', true) | trim }}",
+            "cycle_lock_since_epoch": "{% if cycle_lock_since_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(cycle_lock_since_raw, default=none) }}{% endif %}",
+            "cycle_lock_age_s": "{% if cycle_lock_since_epoch is none %}99999{% elif not cycle_lock_active %}0{% else %}{{ (as_timestamp(now()) - (cycle_lock_since_epoch | float)) | round(1) }}{% endif %}",
+            "cycle_lock_is_stale": "{{ cycle_lock_active and (cycle_lock_age_s | float(99999)) > (cycle_lock_ttl_s | float(180)) }}",
+            "cycle_lock_effective_active": "{{ cycle_lock_active and not cycle_lock_is_stale }}",
+            "last_auto_ts_raw": "{{ states('input_datetime.ac_dda_last_auto_ts') }}",
+            "auto_recent_window_s": 90,
+            "last_auto_age_s": "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else ((as_timestamp(now()) - ts_auto) | round(1)) }}{% endif %}",
+            "auto_reciente": "{{ (last_auto_age_s | float(99999)) >= 0 and (last_auto_age_s | float(99999)) <= (auto_recent_window_s | float(90)) }}",
+            "origin_auto_recent": "{{ auto_reciente and last_change_origin_raw in ['auto_off', 'auto_on', 'cool_normal_off', 'cool_normal_on', 'cool_emergency_off', 'cool_emergency_on'] }}",
+            "transition_guard_window_s": 180,
+            "transition_token_raw": "{{ states('input_text.ac_dda_transition_token') | default('', true) | trim }}",
+            "transition_ts_raw": "{{ states('input_datetime.ac_dda_transition_ts') | default('', true) | trim }}",
+            "transition_ts_epoch": "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}",
+            "transition_age_s": "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}",
+            "auto_transition_recent": "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}",
+            "auto_flags_active": "{{ is_state('input_boolean.ac_dda_on_por_automatizacion','on') or is_state('input_boolean.ac_dda_off_por_automatizacion','on') }}",
+            "auto_transition_active": "{{ auto_flags_active or auto_transition_recent }}",
+            "auto_timestamp_recent": "{{ (last_auto_age_s | float(99999)) >= 0 and (last_auto_age_s | float(99999)) <= (auto_recent_window_s | float(90)) }}",
+            "auto_evidence_strong": "{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}",
+            "manual_guard_discard_reason": "{% if auto_evidence_strong %}auto_transition_active{% elif auto_off_recent %}auto_off_recent{% elif cycle_lock_effective_active %}lock_activo{% elif origin_auto_recent %}origen_auto{% elif auto_reciente %}auto_reciente{% else %}none{% endif %}"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ cycle_lock_is_stale }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "target": {
+                    "entity_id": "input_boolean.ac_dda_cycle_lock"
+                  },
+                  "action": "input_boolean.turn_off"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual OFF",
+                    "message": "lock_rancio_recuperado | lock_age_s={{ cycle_lock_age_s }} | ttl_s={{ cycle_lock_ttl_s }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            },
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ manual_guard_discard_reason != 'none' }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual OFF",
+                    "message": "off_classification=auto | manual_guard_discard_reason={{ manual_guard_discard_reason }} | auto_flags_active={{ auto_flags_active }} | transition_age_s={{ transition_age_s }} | auto_ts_age_s={{ last_auto_age_s }} | lock={{ cycle_lock_active }} | auto_reciente={{ auto_reciente }} | origen_auto_recent={{ origin_auto_recent }} | auto_off_recent={{ auto_off_recent }} | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else 'n/a' }} | auto_transition_recent={{ auto_transition_recent }} | marker_age_s={{ auto_off_marker_age_s }} | last_change_origin_raw={{ last_change_origin_raw }} | trace_id={{ now().strftime(\"%Y%m%d%H%M%S\") }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual OFF",
+                    "message": "hito=notify_omitido_por_auto | reason={{ manual_guard_discard_reason }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "stop": "Ignorado: AUTO OFF reciente"
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "delay": "00:00:02"
+        },
+        {
+          "variables": {
+            "recheck_auto_off_flag": "{{ is_state('input_boolean.ac_dda_off_por_automatizacion','on') }}",
+            "recheck_auto_marker_ts_raw": "{{ states('input_datetime.ac_dda_last_auto_off_marker_ts') | default('', true) | trim }}",
+            "recheck_auto_marker_nonce_raw": "{{ states('input_text.ac_last_auto_off_marker_nonce') | default('', true) | trim }}",
+            "recheck_auto_marker_ts_epoch": "{% if recheck_auto_marker_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(recheck_auto_marker_ts_raw, default=none) }}{% endif %}",
+            "recheck_auto_marker_age_s": "{% if recheck_auto_marker_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (recheck_auto_marker_ts_epoch | float)) | round(1) }}{% endif %}",
+            "recheck_auto_off_recent": "{{ recheck_auto_marker_nonce_raw | length > 0 and recheck_auto_marker_age_s | float(99999) >= 0 and recheck_auto_marker_age_s | float(99999) <= (auto_off_guard_window_s | float(90)) }}",
+            "recheck_last_origin_raw": "{{ states('input_text.ac_dda_last_change_origin') | default('', true) | trim }}",
+            "recheck_abort_reason": "{% if recheck_auto_off_flag %}auto_off_flag_on_recheck{% elif recheck_auto_off_recent %}auto_off_recent_recheck{% elif recheck_last_origin_raw in ['auto_off','cool_normal_off'] %}origin_auto_off_recheck{% else %}none{% endif %}"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ recheck_abort_reason != 'none' }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual OFF",
+                    "message": "off_classification=auto | manual_guard_discard_reason={{ recheck_abort_reason }} | off_nonce={{ recheck_auto_marker_nonce_raw if recheck_auto_marker_nonce_raw | length > 0 else 'n/a' }} | marker_age_s={{ recheck_auto_marker_age_s }} | last_origin={{ recheck_last_origin_raw }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "stop": "Ignorado tras revalidación corta: evidencia AUTO OFF"
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "variables": {
+            "contract_version": "contract=v1",
+            "ts": "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}",
+            "prev_mode": "{{ trigger.from_state.state if trigger.from_state is not none else 'unknown' }}",
+            "contract_context_key": "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}",
+            "manual_event_type": "manual_off_final_valid_contract_v1",
+            "t1": "{{ states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) }}",
+            "t2": "{{ states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) }}",
+            "h1": "{{ states('sensor.lumi_lumi_weather_cuarto_humedad') | float(none) }}",
+            "h2": "{{ states('sensor.lumi_lumi_weather_coco_humedad') | float(none) }}",
+            "tin": "{% if t1 is not none and t2 is not none %}{{ ((t1 + t2) / 2) | round(1) }}{% elif t1 is not none %}{{ t1 | round(1) }}{% elif t2 is not none %}{{ t2 | round(1) }}{% else %}{{ none }}{% endif %}",
+            "tout_owm": "{{ state_attr('weather.openweathermap','temperature') | float(none) }}",
+            "hout_owm": "{{ state_attr('weather.openweathermap','humidity') | float(none) }}",
+            "cond_owm": "{{ states('weather.openweathermap') | lower }}",
+            "tout": "{{ tout_owm if tout_owm is not none else none }}",
+            "hin": "{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1) }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{ h2 | round(1) }}{% else %}{{ none }}{% endif %}",
+            "cool_on_final": "{{ states('input_number.ac_dda_cool_cycle_contract_on') | float(none) }}",
+            "cool_off_final": "{{ states('input_number.ac_dda_cool_cycle_contract_off') | float(none) }}",
+            "fan_final": "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else 'n/a' }}"
+          }
+        },
+        {
+          "target": {
+            "entity_id": "input_datetime.ac_dda_last_manual_off_ts"
+          },
+          "data": {
+            "datetime": "{{ ts }}"
+          },
+          "action": "input_datetime.set_datetime"
+        },
+        {
+          "target": {
+            "entity_id": "input_datetime.ac_dda_last_manual_final_ts"
+          },
+          "data": {
+            "datetime": "{{ ts }}"
+          },
+          "action": "input_datetime.set_datetime"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_change_origin"
+          },
+          "data": {
+            "value": "manual_off"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_event_type"
+          },
+          "data": {
+            "value": "{{ manual_event_type }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_learning_type"
+          },
+          "data": {
+            "value": "manual_off_pending_learning_contract_v1"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "target": {
+            "entity_id": "input_select.ac_ultimo_modo_no_fan"
+          },
+          "data": {
+            "option": "{{ 'off' if ('off' in (state_attr('input_select.ac_ultimo_modo_no_fan','options') | default([], true))) else 'False' }}"
+          },
+          "action": "input_select.select_option"
+        },
+        {
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Manual OFF",
+            "message": "{{ contract_version }} | off_classification=manual | classification_reason=manual_off_guard_validated | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else 'n/a' }} | manual_off_guard_discard_reason=none | ctx={{ contract_context_key }} | pause=5m | prev={{ prev_mode }} | learning=pending(+0.25)",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "data": {
+            "title": "AC Manual OFF",
+            "message": "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a' }} Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a' }} H={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'n/a' }} W={{ cond_owm if cond_owm not in ['', 'unknown', 'unavailable', 'none'] else 'n/a' }} On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} SP=n/a Fan={{ fan_final }} Src=ManualOFF Delta=+0.25 Resultado=pendiente Razón=esperando_learning_off"
+          },
+          "action": "notify.mobile_app_samsung_s24"
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ prev_mode == 'cool' }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual OFF",
+                    "message": "{{ contract_version }} | post_cool_dry_start | mode=fan_only | duration=3m",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "target": {
+                    "entity_id": "timer.hvac_post_cool_dry"
+                  },
+                  "data": {
+                    "duration": "00:03:00"
+                  },
+                  "action": "timer.start"
+                },
+                {
+                  "target": {
+                    "entity_id": [
+                      "input_boolean.ac_dda_on_por_automatizacion",
+                      "input_boolean.ac_dda_cycle_lock"
+                    ]
+                  },
+                  "action": "input_boolean.turn_on"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_datetime.ac_dda_cycle_lock_since"
+                  },
+                  "data": {
+                    "datetime": "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  },
+                  "action": "input_datetime.set_datetime"
+                },
+                {
+                  "target": {
+                    "entity_id": "climate.0200009211c7_climate"
+                  },
+                  "data": {
+                    "hvac_mode": "fan_only"
+                  },
+                  "action": "climate.set_hvac_mode"
+                },
+                {
+                  "wait_for_trigger": [
+                    {
+                      "trigger": "event",
+                      "event_type": "timer.finished",
+                      "event_data": {
+                        "entity_id": "timer.hvac_post_cool_dry"
+                      }
+                    }
+                  ],
+                  "timeout": "00:03:30",
+                  "continue_on_timeout": true
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual OFF",
+                    "message": "{{ 'transition_closed=ok' if wait.trigger is not none else 'transition_closed=timeout' }} | phase=post_cool_dry | lock={{ states('input_boolean.ac_dda_cycle_lock') }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "target": {
+                    "entity_id": "input_boolean.ac_dda_on_por_automatizacion"
+                  },
+                  "action": "input_boolean.turn_off"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_boolean.ac_dda_cycle_lock"
+                  },
+                  "action": "input_boolean.turn_off"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_boolean.ac_dda_off_por_automatizacion"
+                  },
+                  "action": "input_boolean.turn_on"
+                },
+                {
+                  "target": {
+                    "entity_id": "climate.0200009211c7_climate"
+                  },
+                  "data": {
+                    "hvac_mode": "off"
+                  },
+                  "action": "climate.set_hvac_mode"
+                },
+                {
+                  "delay": "00:00:02"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_boolean.ac_dda_off_por_automatizacion"
+                  },
+                  "action": "input_boolean.turn_off"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_boolean.ac_dda_cycle_lock"
+                  },
+                  "action": "input_boolean.turn_off"
+                },
+                {
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Manual OFF",
+                    "message": "{{ contract_version }} | post_cool_dry_end | mode=off | duration=3m",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": []
+        }
+      ],
+      "mode": "restart"
+    },
+    "blueprint_inputs": null,
+    "context": {
+      "id": "01KRMT4QBWRV74AQW90JE8W2BG",
+      "parent_id": "01KRMSZ6M3WE79YRS10QF3KANZ",
+      "user_id": null
+    }
+  },
+  "logbookEntries": [
+    {
+      "name": "AC - Manual OFF guard + pausa 5 min",
+      "message": "triggered by state of climate.0200009211c7_climate",
+      "source": "state of climate.0200009211c7_climate",
+      "entity_id": "automation.ac_manual_off_guard_pausa_5_min",
+      "context_id": "01KRMT4QBWRV74AQW90JE8W2BG",
+      "domain": "automation",
+      "when": 1778814967.1644905
+    },
+    {
+      "name": "AC Manual OFF",
+      "message": "off_classification=auto | manual_guard_discard_reason=auto_transition_active | auto_flags_active=True | transition_age_s=99999 | auto_ts_age_s=99999 | lock=False | auto_reciente=False | origen_auto_recent=False | auto_off_recent=False | off_nonce=20260514201606319489-auto-off | auto_transition_recent=False | marker_age_s=99999 | last_change_origin_raw=auto_off | trace_id=20260514201607",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778814967.1690016,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Manual OFF guard + pausa 5 min",
+      "context_message": "triggered by state of climate.0200009211c7_climate",
+      "context_source": "state of climate.0200009211c7_climate",
+      "context_entity_id": "automation.ac_manual_off_guard_pausa_5_min"
+    },
+    {
+      "name": "AC Manual OFF",
+      "message": "hito=notify_omitido_por_auto | reason=auto_transition_active",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778814967.1693666,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Manual OFF guard + pausa 5 min",
+      "context_message": "triggered by state of climate.0200009211c7_climate",
+      "context_source": "state of climate.0200009211c7_climate",
+      "context_entity_id": "automation.ac_manual_off_guard_pausa_5_min"
+    }
+  ]
+}

@@ -1,0 +1,1931 @@
+{
+  "trace": {
+    "last_step": "action/21",
+    "run_id": "c5933af6e3ba14497e38dc01e256beab",
+    "state": "stopped",
+    "script_execution": "finished",
+    "timestamp": {
+      "start": "2026-05-15T01:38:38.596019+00:00",
+      "finish": "2026-05-15T01:39:29.123165+00:00"
+    },
+    "domain": "automation",
+    "item_id": "1773895045306",
+    "trigger": "state of input_datetime.ac_dda_last_manual_on_ts",
+    "trace": {
+      "trigger/0": [
+        {
+          "path": "trigger/0",
+          "timestamp": "2026-05-15T01:38:38.596169+00:00",
+          "changed_variables": {
+            "this": {
+              "entity_id": "automation.ac_learning_manual_on_feedback_2",
+              "state": "on",
+              "attributes": {
+                "id": "1773895045306",
+                "last_triggered": "2026-05-15T01:38:38.592465+00:00",
+                "mode": "queued",
+                "current": 1,
+                "max": 2,
+                "friendly_name": "AC - Learning - Manual ON feedback"
+              },
+              "last_changed": "2026-05-15T01:35:32.945368+00:00",
+              "last_reported": "2026-05-15T01:38:38.595646+00:00",
+              "last_updated": "2026-05-15T01:38:38.592553+00:00",
+              "context": {
+                "id": "01KRMMJ7VZ34AMPQCVDX5ZZRQA",
+                "parent_id": "01KRMMHA7XSQDZEFQ4W4H1FR93",
+                "user_id": null
+              }
+            },
+            "trigger": {
+              "id": "manual_on_ts",
+              "idx": "0",
+              "alias": null,
+              "platform": "state",
+              "entity_id": "input_datetime.ac_dda_last_manual_on_ts",
+              "from_state": {
+                "entity_id": "input_datetime.ac_dda_last_manual_on_ts",
+                "state": "1970-01-01 00:00:00",
+                "attributes": {
+                  "has_date": true,
+                  "has_time": true,
+                  "editable": false,
+                  "year": 1970,
+                  "month": 1,
+                  "day": 1,
+                  "hour": 0,
+                  "minute": 0,
+                  "second": 0,
+                  "timestamp": 28800,
+                  "friendly_name": "AC DDA Last Manual ON Timestamp"
+                },
+                "last_changed": "2026-05-15T01:35:27.666078+00:00",
+                "last_reported": "2026-05-15T01:35:27.666078+00:00",
+                "last_updated": "2026-05-15T01:35:27.666078+00:00",
+                "context": {
+                  "id": "01KRMMCDDJCDAAF5A5MBA2YYBC",
+                  "parent_id": null,
+                  "user_id": null
+                }
+              },
+              "to_state": {
+                "entity_id": "input_datetime.ac_dda_last_manual_on_ts",
+                "state": "2026-05-14 18:38:38",
+                "attributes": {
+                  "has_date": true,
+                  "has_time": true,
+                  "editable": false,
+                  "year": 2026,
+                  "month": 5,
+                  "day": 14,
+                  "hour": 18,
+                  "minute": 38,
+                  "second": 38,
+                  "timestamp": 1778809118,
+                  "friendly_name": "AC DDA Last Manual ON Timestamp"
+                },
+                "last_changed": "2026-05-15T01:38:38.517932+00:00",
+                "last_reported": "2026-05-15T01:38:38.517932+00:00",
+                "last_updated": "2026-05-15T01:38:38.517932+00:00",
+                "context": {
+                  "id": "01KRMMHA7XSQDZEFQ4W4H1FR93",
+                  "parent_id": "01KRMMH6SGG5EEYBKGRVNRB370",
+                  "user_id": null
+                }
+              },
+              "for": null,
+              "attribute": null,
+              "description": "state of input_datetime.ac_dda_last_manual_on_ts"
+            }
+          }
+        }
+      ],
+      "condition/0": [
+        {
+          "path": "condition/0",
+          "timestamp": "2026-05-15T01:38:38.596230+00:00",
+          "result": {
+            "result": true,
+            "entities": []
+          }
+        }
+      ],
+      "action/0": [
+        {
+          "path": "action/0",
+          "timestamp": "2026-05-15T01:39:03.837281+00:00",
+          "changed_variables": {
+            "context": {
+              "id": "01KRMMJ7W32N0CH76JX11R7XTT",
+              "parent_id": "01KRMMHA7XSQDZEFQ4W4H1FR93",
+              "user_id": null
+            },
+            "contract_version": "contract=v1",
+            "trigger_id": "manual_on_ts",
+            "trace_helper_actual_raw": "trace_id=01KRMMH6SGG5EEYBKGRVNRB370",
+            "trace_helper_actual": "01KRMMH6SGG5EEYBKGRVNRB370"
+          }
+        }
+      ],
+      "action/1": [
+        {
+          "path": "action/1",
+          "timestamp": "2026-05-15T01:39:03.838082+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | hito=learning_on_started | trigger_id=manual_on_ts | Trace=01KRMMH6SGG5EEYBKGRVNRB370",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/2": [
+        {
+          "path": "action/2",
+          "timestamp": "2026-05-15T01:39:03.838705+00:00",
+          "result": {
+            "delay": 25,
+            "done": true
+          }
+        }
+      ],
+      "action/3": [
+        {
+          "path": "action/3",
+          "timestamp": "2026-05-15T01:39:28.840231+00:00",
+          "changed_variables": {
+            "ts": "2026-05-14 18:39:28",
+            "final_mode": "cool",
+            "last_change_origin": "manual_on",
+            "last_auto_action": "unknown",
+            "last_auto_mode": "unknown",
+            "last_auto_ts_raw": "unknown",
+            "manual_feedback_min_window_min": 3,
+            "manual_feedback_max_window_min": 120,
+            "manual_on_trace_confirmed_raw": "trace_id=01KRMMH6SGG5EEYBKGRVNRB370",
+            "trace_id": "01KRMMH6SGG5EEYBKGRVNRB370",
+            "mobile_channel_ok": true,
+            "active_session_raw": "trace_id=01KRMMH6SGG5EEYBKGRVNRB370|signature=ctx=01KRMMH6SGG5EEYBKGRVNRB370|status=captured|branch=manual_on_guard|started_ts=2026-05-14 18:38:08",
+            "active_session_trace_id": "01KRMMH6SGG5EEYBKGRVNRB370",
+            "active_session_status": "captured",
+            "active_session_signature": "ctx=01KRMMH6SGG5EEYBKGRVNRB370",
+            "active_session_started_ts": "2026-05-14 18:38:08",
+            "active_session_started_epoch": 1778809088,
+            "manual_on_session_ttl_s": 110,
+            "active_session_age_s": 80.8,
+            "active_session_ttl_valid": true,
+            "manual_on_snapshot_raw": "trace_id=01KRMMH6SGG5EEYBKGRVNRB370|event_type=manual_on_final_valid_contract_v1|final_mode=cool|ts=2026-05-14 18:38:38",
+            "snapshot_trace_id": "01KRMMH6SGG5EEYBKGRVNRB370",
+            "snapshot_event_type": "manual_on_final_valid_contract_v1",
+            "snapshot_final_mode": "cool",
+            "snapshot_ts": "2026-05-14 18:38:38",
+            "snapshot_ts_epoch": 1778809118,
+            "snapshot_age_min": 0.8,
+            "snapshot_recent": true,
+            "snapshot_structure_ok": true,
+            "snapshot_trace_matches_confirmed": true,
+            "snapshot_event_type_ok": true,
+            "snapshot_ok": true,
+            "mov_raw": "on",
+            "s24_raw": "home",
+            "person_raw": "unknown",
+            "presence_ok": true,
+            "presence_real_now": true,
+            "presence_sensor_strict": true,
+            "presence_phone_home": true,
+            "manual_presence_until_raw": "2026-04-15 18:32:49",
+            "presence_temp_from_manual": false,
+            "presence_source": "movimiento",
+            "contract_context_key": "exterior_templado:humedad_normal:franja_1801_2059:niebla:presencia:bajando",
+            "contract_context_helper": "input_number.ac_dda_cool_learning_bucket_exterior_templado_humedad_normal_franja_1801_2059_niebla_presencia_bajando",
+            "context_prev_raw": "unknown",
+            "context_prev": 24.2,
+            "minutes_since_last_auto": 99999,
+            "final_mode_cool_required": true,
+            "cycle_lock_active": false,
+            "auto_origin_detected": false,
+            "auto_reciente": false,
+            "within_manual_feedback_window": true,
+            "last_manual_event_type_raw": "manual_off_final_valid_contract_v1",
+            "manual_event_trace_id": "trace_missing",
+            "trace_id_matches_confirmed": false,
+            "strict_session_trace_match": false,
+            "session_status_allows_learning": true,
+            "session_trace_and_ttl_ok": false,
+            "trace_mismatch_cross_run": true,
+            "manual_event_confirmed": false,
+            "origin_is_manual_on": true,
+            "transition_guard_window_s": 180,
+            "transition_token_raw": "unknown",
+            "transition_ts_raw": "unknown",
+            "transition_ts_epoch": null,
+            "transition_age_s": 99999,
+            "auto_transition_token_recent": false,
+            "auto_flags_active": false,
+            "auto_transition_origin_evidence_active": false,
+            "auto_transition_recent": false,
+            "auto_timestamp_recent": false,
+            "auto_evidence_strong": false,
+            "auto_transition_active_strict": false,
+            "auto_recent_observed": false,
+            "auto_transition_active": false,
+            "daytime_scope_ok": true,
+            "branch_scope_ok": false,
+            "context_scope_ok": true,
+            "learning_day_scope_ok": true,
+            "last_manual_on_ts_raw": "2026-05-14 18:38:38",
+            "last_manual_on_ts_epoch": 1778809118,
+            "last_manual_on_age_min": 0.8,
+            "manual_on_ts_recent": true,
+            "manual_recent_evidence": true,
+            "force_policy_active": false,
+            "strict_policy_ready": false,
+            "learning_gate_ok": false,
+            "manual_on_event_signature": "2026-05-14 18:38:38|exterior_templado:humedad_normal:franja_1801_2059:niebla:presencia:bajando|cool|01KRMMH6SGG5EEYBKGRVNRB370",
+            "last_manual_on_event_signature": "ts_missing|exterior_templado:humedad_normal:franja_1801_2059:niebla:presencia:bajando|off|trace_missing",
+            "event_already_processed": false,
+            "contract_context_delta_on_helper": "input_number.ac_dda_cool_delta_on_bucket_exterior_templado_humedad_normal_franja_1801_2059_niebla_presencia_bajando",
+            "dynamic_context_helper_exists": false,
+            "dynamic_delta_helper_exists": false,
+            "dynamic_helpers_ready": false,
+            "fallback_learning_helper": "input_number.ac_dda_cool_off_learned",
+            "fallback_delta_helper": "input_number.ac_dda_cool_delta_on_bucket_ctx_default_presencia",
+            "fallback_delta_helper_exists": false,
+            "learning_apply_with_fallback": false,
+            "learning_step": -0.25,
+            "context_after_normal": 23.95,
+            "tin": 23.7,
+            "tout_owm": 19.9,
+            "hout_owm": 67,
+            "cond_owm": "sunny",
+            "tout": 19.9,
+            "hin": 48,
+            "contract_cycle_on_raw": 24.8,
+            "contract_cycle_off_raw": 24.2,
+            "contract_cycle_on": 24.8,
+            "contract_cycle_off": 24.2,
+            "contract_cycle_valid": true,
+            "contract_context_delta_on": 0,
+            "contract_context_delta_on_after_normal": -0.02,
+            "normal_hysteresis_after": 0.5,
+            "normal_on_after": 24.45,
+            "tin_outside_current_contract": true,
+            "tin_outside_normal_adjusted": true,
+            "hard_learning_applicable": false,
+            "hard_new_on_raw": 23.7,
+            "hard_new_off_raw": 23.2,
+            "hard_new_off_clamped": 23.2,
+            "hard_new_on_max_clamped": 23.7,
+            "hard_new_on_clamped": 23.7,
+            "hard_clamp_reason": "none",
+            "apply_learning_hard": false,
+            "apply_learning_normal": false,
+            "apply_learning": false,
+            "context_after": 23.95,
+            "contract_context_delta_on_after": -0.02,
+            "contextual_off_candidate": null,
+            "contextual_hysteresis_candidate": null,
+            "contextual_on_candidate": null,
+            "contextual_contract_valid": false,
+            "threshold_source": "cycle_contract_helpers",
+            "fallback_used": "no",
+            "cool_on_final": 24.8,
+            "cool_off_final": 24.2,
+            "contract_values_valid": true,
+            "contract_invalid_reason": "reject_invalid_contract_values",
+            "threshold_status": "ok",
+            "sp_final": 22,
+            "fan_final": "Low",
+            "diagnostic_snapshot_trace": "ok",
+            "delta_learning": 0,
+            "hhmm": "6:39 PM",
+            "learning_type": "manual_on_learning_ignored_manual_event_not_confirmed_contract_v1",
+            "apply_learning_pre": "false",
+            "learning_internal_error": false,
+            "controlled_error_detected": false,
+            "learning_reason_code": "trace_mismatch_cross_run",
+            "final_result_label": "ignorado",
+            "final_reason_label": "trace_mismatch_cross_run",
+            "policy_mode": "strict",
+            "hard_flag": "no",
+            "ctxoff_notify": "n/a",
+            "hyson_notify": "n/a"
+          }
+        }
+      ],
+      "action/4": [
+        {
+          "path": "action/4",
+          "timestamp": "2026-05-15T01:39:28.854002+00:00",
+          "result": {
+            "choice": "default"
+          }
+        }
+      ],
+      "action/4/choose/0": [
+        {
+          "path": "action/4/choose/0",
+          "timestamp": "2026-05-15T01:39:28.854299+00:00",
+          "result": {
+            "result": false
+          }
+        }
+      ],
+      "action/4/choose/0/conditions/0": [
+        {
+          "path": "action/4/choose/0/conditions/0",
+          "timestamp": "2026-05-15T01:39:28.854759+00:00",
+          "result": {
+            "result": false,
+            "entities": []
+          }
+        }
+      ],
+      "action/5": [
+        {
+          "path": "action/5",
+          "timestamp": "2026-05-15T01:39:28.855977+00:00",
+          "result": {
+            "params": {
+              "domain": "input_text",
+              "service": "set_value",
+              "service_data": {
+                "value": "manual_on_learning_ignored_manual_event_not_confirmed_contract_v1",
+                "entity_id": [
+                  "input_text.ac_dda_last_manual_learning_type"
+                ]
+              },
+              "target": {
+                "entity_id": [
+                  "input_text.ac_dda_last_manual_learning_type"
+                ]
+              }
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/6": [
+        {
+          "path": "action/6",
+          "timestamp": "2026-05-15T01:39:28.857255+00:00",
+          "result": {
+            "choice": "default"
+          }
+        }
+      ],
+      "action/6/choose/0": [
+        {
+          "path": "action/6/choose/0",
+          "timestamp": "2026-05-15T01:39:28.857540+00:00",
+          "result": {
+            "result": false
+          }
+        }
+      ],
+      "action/6/choose/0/conditions/0": [
+        {
+          "path": "action/6/choose/0/conditions/0",
+          "timestamp": "2026-05-15T01:39:28.857998+00:00",
+          "result": {
+            "result": false,
+            "entities": []
+          }
+        }
+      ],
+      "action/6/default/0": [
+        {
+          "path": "action/6/default/0",
+          "timestamp": "2026-05-15T01:39:28.858898+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | hito=learning_on_trace_mismatch_cross_run | RunTrace=01KRMMH6SGG5EEYBKGRVNRB370 | PendingTrace=01KRMMH6SGG5EEYBKGRVNRB370 | trigger_id=manual_on_ts",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/7": [
+        {
+          "path": "action/7",
+          "timestamp": "2026-05-15T01:39:28.860169+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | manual_on_feedback | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | event_type_snapshot=manual_on_final_valid_contract_v1 | snapshot_ok=true | ctx=exterior_templado:humedad_normal:franja_1801_2059:niebla:presencia:bajando | scope_day_main=True | apply=no | learning_type=ignored | step=0.00 | off=24.20->23.95 | hys_on=0.00->-0.02 | hard_clamp_reason=none | min=99999 | presence_source=movimiento | type=manual_on_learning_ignored_manual_event_not_confirmed_contract_v1 | reason_code=trace_mismatch_cross_run",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/8": [
+        {
+          "path": "action/8",
+          "timestamp": "2026-05-15T01:39:28.861176+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | hito=learning_on_ignored | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | event_type_snapshot=manual_on_final_valid_contract_v1 | snapshot_ok=true | reason=trace_mismatch_cross_run | off=24.20 | on=24.80 | helper=input_number.ac_dda_cool_learning_bucket_exterior_templado_humedad_normal_franja_1801_2059_niebla_presencia_bajando | diag=ok",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/9": [
+        {
+          "path": "action/9",
+          "timestamp": "2026-05-15T01:39:28.862975+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | threshold_validation | threshold_source=cycle_contract_helpers | on_final=24.80 | off_final=24.20 | fallback_used=no",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/10": [
+        {
+          "path": "action/10",
+          "timestamp": "2026-05-15T01:39:28.864064+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | learning_on_diag | policy=strict | gate=closed | diag_snapshot_trace=ok | branch_scope=False | daytime_scope=True | context_scope=True | origin=manual_on | manual_event=manual_off_final_valid_contract_v1 | confirmed_trace=trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | snapshot_ok=true",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/11": [
+        {
+          "path": "action/11",
+          "timestamp": "2026-05-15T01:39:28.865075+00:00",
+          "result": {
+            "choice": 0
+          }
+        }
+      ],
+      "action/11/choose/0": [
+        {
+          "path": "action/11/choose/0",
+          "timestamp": "2026-05-15T01:39:28.865366+00:00",
+          "result": {
+            "result": true
+          }
+        }
+      ],
+      "action/11/choose/0/conditions/0": [
+        {
+          "path": "action/11/choose/0/conditions/0",
+          "timestamp": "2026-05-15T01:39:28.865823+00:00",
+          "result": {
+            "result": true,
+            "entities": []
+          }
+        }
+      ],
+      "action/11/choose/0/sequence/0": [
+        {
+          "path": "action/11/choose/0/sequence/0",
+          "timestamp": "2026-05-15T01:39:28.866729+00:00",
+          "result": {
+            "params": {
+              "domain": "input_number",
+              "service": "set_value",
+              "service_data": {
+                "value": 24.8,
+                "entity_id": [
+                  "input_number.ac_dda_cool_cycle_contract_on"
+                ]
+              },
+              "target": {
+                "entity_id": [
+                  "input_number.ac_dda_cool_cycle_contract_on"
+                ]
+              }
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/11/choose/0/sequence/1": [
+        {
+          "path": "action/11/choose/0/sequence/1",
+          "timestamp": "2026-05-15T01:39:28.868538+00:00",
+          "result": {
+            "params": {
+              "domain": "input_number",
+              "service": "set_value",
+              "service_data": {
+                "value": 24.2,
+                "entity_id": [
+                  "input_number.ac_dda_cool_cycle_contract_off"
+                ]
+              },
+              "target": {
+                "entity_id": [
+                  "input_number.ac_dda_cool_cycle_contract_off"
+                ]
+              }
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/11/choose/0/sequence/2": [
+        {
+          "path": "action/11/choose/0/sequence/2",
+          "timestamp": "2026-05-15T01:39:28.869671+00:00",
+          "result": {
+            "params": {
+              "domain": "input_text",
+              "service": "set_value",
+              "service_data": {
+                "value": "exterior_templado:humedad_normal:franja_1801_2059:niebla:presencia:bajando",
+                "entity_id": [
+                  "input_text.ac_dda_cool_cycle_contract_bucket"
+                ]
+              },
+              "target": {
+                "entity_id": [
+                  "input_text.ac_dda_cool_cycle_contract_bucket"
+                ]
+              }
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/11/choose/0/sequence/3": [
+        {
+          "path": "action/11/choose/0/sequence/3",
+          "timestamp": "2026-05-15T01:39:28.870803+00:00",
+          "result": {
+            "params": {
+              "domain": "input_text",
+              "service": "set_value",
+              "service_data": {
+                "value": "learning_feedback_refresh:cycle_contract_helpers|reason_code=trace_mismatch_cross_run|hard_clamp_reason=none",
+                "entity_id": [
+                  "input_text.ac_dda_cool_cycle_contract_reason"
+                ]
+              },
+              "target": {
+                "entity_id": [
+                  "input_text.ac_dda_cool_cycle_contract_reason"
+                ]
+              }
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/11/choose/0/sequence/4": [
+        {
+          "path": "action/11/choose/0/sequence/4",
+          "timestamp": "2026-05-15T01:39:28.872024+00:00",
+          "result": {
+            "params": {
+              "domain": "input_datetime",
+              "service": "set_datetime",
+              "service_data": {
+                "datetime": "2026-05-14 18:39:28",
+                "entity_id": [
+                  "input_datetime.ac_dda_cool_cycle_contract_started_at"
+                ]
+              },
+              "target": {
+                "entity_id": [
+                  "input_datetime.ac_dda_cool_cycle_contract_started_at"
+                ]
+              }
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/12": [
+        {
+          "path": "action/12",
+          "timestamp": "2026-05-15T01:39:28.876074+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | hito=learning_on_pre_notify_ok | Trace=01KRMMH6SGG5EEYBKGRVNRB370 | Resultado=ignorado | Razón=trace_mismatch_cross_run",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/13": [
+        {
+          "path": "action/13",
+          "timestamp": "2026-05-15T01:39:28.877122+00:00",
+          "changed_variables": {
+            "pending_trace_label": "01KRMMH6SGG5EEYBKGRVNRB370",
+            "run_trace_label": "01KRMMH6SGG5EEYBKGRVNRB370",
+            "pending_ts": "2026-05-14 18:39:28",
+            "final_channel_label": "mobile",
+            "notify_pending_status": "01KRMMH6SGG5EEYBKGRVNRB370|stage=learning_final|channel=mobile|result=pendiente|ts=2026-05-14 18:39:28",
+            "notify_result_status": "01KRMMH6SGG5EEYBKGRVNRB370|stage=learning_final|channel=mobile|result=ignorado|ts=2026-05-14 18:39:28",
+            "notify_mobile_message": "6:39 PM Src=ManualON Resultado=ignorado Razón=trace_mismatch_cross_run policy=strict Trace=01KRMMH6SGG5EEYBKGRVNRB370 RunTrace=01KRMMH6SGG5EEYBKGRVNRB370 PendingTrace=01KRMMH6SGG5EEYBKGRVNRB370 Off=n/a On=n/a hard=no"
+          }
+        }
+      ],
+      "action/14": [
+        {
+          "path": "action/14",
+          "timestamp": "2026-05-15T01:39:28.878852+00:00",
+          "result": {
+            "params": {
+              "domain": "input_text",
+              "service": "set_value",
+              "service_data": {
+                "value": "01KRMMH6SGG5EEYBKGRVNRB370|stage=learning_final|channel=mobile|result=pendiente|ts=2026-05-14 18:39:28",
+                "entity_id": [
+                  "input_text.ac_dda_last_notify_status"
+                ]
+              },
+              "target": {
+                "entity_id": [
+                  "input_text.ac_dda_last_notify_status"
+                ]
+              }
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/15": [
+        {
+          "path": "action/15",
+          "timestamp": "2026-05-15T01:39:28.880114+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | notify_stage=send_attempt | notify_channel=mobile | flow=learning_manual_on | stage=learning_final | result=pendiente",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/16": [
+        {
+          "path": "action/16",
+          "timestamp": "2026-05-15T01:39:28.881867+00:00",
+          "result": {
+            "choice": 0
+          }
+        }
+      ],
+      "action/16/choose/0": [
+        {
+          "path": "action/16/choose/0",
+          "timestamp": "2026-05-15T01:39:28.882169+00:00",
+          "result": {
+            "result": true
+          }
+        }
+      ],
+      "action/16/choose/0/conditions/0": [
+        {
+          "path": "action/16/choose/0/conditions/0",
+          "timestamp": "2026-05-15T01:39:28.882645+00:00",
+          "result": {
+            "result": true,
+            "entities": []
+          }
+        }
+      ],
+      "action/16/choose/0/sequence/0": [
+        {
+          "path": "action/16/choose/0/sequence/0",
+          "timestamp": "2026-05-15T01:39:28.883578+00:00",
+          "result": {
+            "params": {
+              "domain": "notify",
+              "service": "mobile_app_samsung_s24",
+              "service_data": {
+                "title": "AC Learning ON",
+                "message": "6:39 PM Src=ManualON Resultado=ignorado Razón=trace_mismatch_cross_run policy=strict Trace=01KRMMH6SGG5EEYBKGRVNRB370 RunTrace=01KRMMH6SGG5EEYBKGRVNRB370 PendingTrace=01KRMMH6SGG5EEYBKGRVNRB370 Off=n/a On=n/a hard=no"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/16/choose/0/sequence/1": [
+        {
+          "path": "action/16/choose/0/sequence/1",
+          "timestamp": "2026-05-15T01:39:29.105376+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=learning_manual_on | stage=learning_final",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/17": [
+        {
+          "path": "action/17",
+          "timestamp": "2026-05-15T01:39:29.107582+00:00",
+          "result": {
+            "params": {
+              "domain": "input_text",
+              "service": "set_value",
+              "service_data": {
+                "value": "01KRMMH6SGG5EEYBKGRVNRB370|stage=learning_final|channel=mobile|result=ignorado|ts=2026-05-14 18:39:28",
+                "entity_id": [
+                  "input_text.ac_dda_last_notify_status"
+                ]
+              },
+              "target": {
+                "entity_id": [
+                  "input_text.ac_dda_last_notify_status"
+                ]
+              }
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/18": [
+        {
+          "path": "action/18",
+          "timestamp": "2026-05-15T01:39:29.109305+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | hito=learning_on_notify_sent | Trace=01KRMMH6SGG5EEYBKGRVNRB370 | Resultado=ignorado | Razón=trace_mismatch_cross_run | policy=strict",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/19": [
+        {
+          "path": "action/19",
+          "timestamp": "2026-05-15T01:39:29.110694+00:00",
+          "result": {
+            "choice": "default"
+          }
+        }
+      ],
+      "action/19/choose/0": [
+        {
+          "path": "action/19/choose/0",
+          "timestamp": "2026-05-15T01:39:29.111083+00:00",
+          "result": {
+            "result": false
+          }
+        }
+      ],
+      "action/19/choose/0/conditions/0": [
+        {
+          "path": "action/19/choose/0/conditions/0",
+          "timestamp": "2026-05-15T01:39:29.111700+00:00",
+          "result": {
+            "result": false,
+            "entities": []
+          }
+        }
+      ],
+      "action/20": [
+        {
+          "path": "action/20",
+          "timestamp": "2026-05-15T01:39:29.115124+00:00",
+          "result": {
+            "choice": "default"
+          }
+        }
+      ],
+      "action/20/choose/0": [
+        {
+          "path": "action/20/choose/0",
+          "timestamp": "2026-05-15T01:39:29.115694+00:00",
+          "result": {
+            "result": false
+          }
+        }
+      ],
+      "action/20/choose/0/conditions/0": [
+        {
+          "path": "action/20/choose/0/conditions/0",
+          "timestamp": "2026-05-15T01:39:29.116515+00:00",
+          "result": {
+            "result": false,
+            "entities": []
+          }
+        }
+      ],
+      "action/20/default/0": [
+        {
+          "path": "action/20/default/0",
+          "timestamp": "2026-05-15T01:39:29.118281+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | hito=learning_on_session_not_closed | reason=trace_mismatch_cross_run | active_trace=01KRMMH6SGG5EEYBKGRVNRB370 | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | snapshot_trace=01KRMMH6SGG5EEYBKGRVNRB370",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ],
+      "action/21": [
+        {
+          "path": "action/21",
+          "timestamp": "2026-05-15T01:39:29.120806+00:00",
+          "result": {
+            "params": {
+              "domain": "logbook",
+              "service": "log",
+              "service_data": {
+                "name": "AC Learning Manual ON",
+                "message": "contract=v1 | hito=learning_on_closed | resultado=ignorado | razon=trace_mismatch_cross_run | policy=strict | trace_id=01KRMMH6SGG5EEYBKGRVNRB370",
+                "entity_id": "climate.0200009211c7_climate"
+              },
+              "target": {}
+            },
+            "running_script": false
+          }
+        }
+      ]
+    },
+    "config": {
+      "id": "1773895045306",
+      "alias": "AC - Learning - Manual ON feedback",
+      "trace": {
+        "stored_traces": 50
+      },
+      "description": "Contrato v1: aprendizaje manual ON unificado. Espera 25s para consolidación, usa una sola definición de contexto y aplica semántica -0.25 sin ramas legacy. Presencia telefónica limitada a `device_tracker.samsung_s24` y `person.ivan`.\n",
+      "triggers": [
+        {
+          "trigger": "state",
+          "id": "manual_on_ts",
+          "entity_id": "input_datetime.ac_dda_last_manual_on_ts"
+        },
+        {
+          "trigger": "state",
+          "id": "manual_on_snapshot",
+          "entity_id": "input_text.ac_dda_last_manual_on_snapshot"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "template",
+          "value_template": "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
+        }
+      ],
+      "actions": [
+        {
+          "variables": {
+            "contract_version": "contract=v1",
+            "trigger_id": "{{ trigger.id if trigger is defined and trigger.id is defined else 'unknown' }}",
+            "trace_helper_actual_raw": "{{ states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim }}",
+            "trace_helper_actual": "{% set matches = trace_helper_actual_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
+          }
+        },
+        {
+          "continue_on_error": true,
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | hito=learning_on_started | trigger_id={{ trigger_id }} | Trace={{ trace_helper_actual }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "delay": "00:00:25"
+        },
+        {
+          "variables": {
+            "contract_version": "contract=v1",
+            "ts": "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}",
+            "final_mode": "{{ states('climate.0200009211c7_climate') | trim }}",
+            "last_change_origin": "{{ states('input_text.ac_dda_last_change_origin') | trim }}",
+            "last_auto_action": "{{ states('input_text.ac_dda_last_auto_action') | trim }}",
+            "last_auto_mode": "{{ states('input_text.ac_dda_last_auto_mode') | trim }}",
+            "last_auto_ts_raw": "{{ states('input_datetime.ac_dda_last_auto_ts') }}",
+            "manual_feedback_min_window_min": 3,
+            "manual_feedback_max_window_min": 120,
+            "manual_on_trace_confirmed_raw": "{{ states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim }}",
+            "trace_id": "{% set matches = manual_on_trace_confirmed_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}",
+            "mobile_channel_ok": "{{ states('device_tracker.samsung_s24') | lower not in ['unknown','unavailable'] }}",
+            "active_session_raw": "{{ states('input_text.ac_dda_manual_on_active_session') | default('', true) | trim }}",
+            "active_session_trace_id": "{% set matches = active_session_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}",
+            "active_session_status": "{% set matches = active_session_raw | regex_findall('status=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'closed' }}",
+            "active_session_signature": "{% set matches = active_session_raw | regex_findall('signature=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'sig_missing' }}",
+            "active_session_started_ts": "{% set matches = active_session_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}",
+            "active_session_started_epoch": "{% if active_session_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_started_ts, default=none) }}{% endif %}",
+            "manual_on_session_ttl_s": 110,
+            "active_session_age_s": "{% if active_session_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_started_epoch | float)) | round(1) }}{% endif %}",
+            "active_session_ttl_valid": "{{ active_session_age_s | float(99999) >= 0 and active_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}",
+            "manual_on_snapshot_raw": "{{ states('input_text.ac_dda_last_manual_on_snapshot') | default('', true) | trim }}",
+            "snapshot_trace_id": "{% set matches = manual_on_snapshot_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}",
+            "snapshot_event_type": "{% set matches = manual_on_snapshot_raw | regex_findall('event_type=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'event_missing' }}",
+            "snapshot_final_mode": "{% set matches = manual_on_snapshot_raw | regex_findall('final_mode=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'mode_missing' }}",
+            "snapshot_ts": "{% set matches = manual_on_snapshot_raw | regex_findall('ts=(.+)$') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}",
+            "snapshot_ts_epoch": "{% if snapshot_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(snapshot_ts, default=none) }}{% endif %}",
+            "snapshot_age_min": "{% if snapshot_ts_epoch is none %}99999{% else %}{{ ((as_timestamp(now()) - (snapshot_ts_epoch | float)) / 60) | round(1) }}{% endif %}",
+            "snapshot_recent": "{{ snapshot_ts_epoch is not none and (snapshot_age_min | float(99999)) >= 0 and (snapshot_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}",
+            "snapshot_structure_ok": "{{ manual_on_snapshot_raw | length > 0 and snapshot_trace_id != 'trace_missing' and snapshot_event_type != 'event_missing' and snapshot_final_mode != 'mode_missing' and snapshot_ts != 'ts_missing' }}",
+            "snapshot_trace_matches_confirmed": "{{ snapshot_structure_ok and trace_id != 'trace_missing' and snapshot_trace_id == trace_id }}",
+            "snapshot_event_type_ok": "{{ snapshot_event_type in ['manual_on_final_valid_contract_v1', 'manual_on_final_valid_presence_gap_contract_v1'] }}",
+            "snapshot_ok": "{{ snapshot_structure_ok and snapshot_trace_matches_confirmed and snapshot_event_type_ok }}",
+            "mov_raw": "{{ states('binary_sensor.presencia_movimiento_estable') | lower }}",
+            "s24_raw": "{{ states('device_tracker.samsung_s24') | lower }}",
+            "person_raw": "{{ states('person.ivan') | lower }}",
+            "presence_ok": "{{ is_state('binary_sensor.presencia_ok_estable','on') }}",
+            "presence_real_now": "{{ mov_raw == 'on' }}",
+            "presence_sensor_strict": "{{ presence_ok and presence_real_now }}",
+            "presence_phone_home": "{{ (s24_raw in ['home','on']) or (person_raw == 'home') }}",
+            "manual_presence_until_raw": "{{ states('input_datetime.ac_dda_manual_presence_until') }}",
+            "presence_temp_from_manual": "{% if manual_presence_until_raw in ['unknown','unavailable','none',''] %}\n  false\n{% else %}\n  {{ as_timestamp(now()) < as_timestamp(manual_presence_until_raw) }}\n{% endif %}",
+            "presence_source": "{% if presence_sensor_strict %}\n  movimiento\n{% elif presence_phone_home %}\n  s24_home\n{% elif presence_temp_from_manual %}\n  manual_temporal\n{% else %}\n  sin_presencia\n{% endif %}",
+            "contract_context_key": "{% set raw = states('input_text.ac_dda_last_context_bucket') | trim %}{{ raw if raw not in ['', 'unknown', 'unavailable', 'none'] else 'ctx_default:presencia' }}",
+            "contract_context_helper": "{{ 'input_number.ac_dda_cool_learning_bucket_' ~ (contract_context_key | replace(':','_') ) }}",
+            "context_prev_raw": "{{ states(contract_context_helper) }}",
+            "context_prev": "{% set v = context_prev_raw | float(none) %}{{ v if v is not none else (states('input_number.ac_dda_cool_off_learned') | float(24.0)) }}",
+            "minutes_since_last_auto": "{% set raw = last_auto_ts_raw | default('', true) | trim %}{% if raw | lower in ['unknown','unavailable','none',''] %}99999{% else %}{% set ts_auto = as_timestamp(raw, default=none) %}{{ 99999 if ts_auto is none else (((as_timestamp(now()) - ts_auto) / 60) | round(1)) }}{% endif %}",
+            "final_mode_cool_required": "{{ final_mode == 'cool' }}",
+            "cycle_lock_active": "{{ is_state('input_boolean.ac_dda_cycle_lock','on') }}",
+            "auto_origin_detected": "{{ last_change_origin in ['auto_off', 'auto_on', 'cool_normal_off', 'cool_normal_on', 'cool_emergency_off', 'cool_emergency_on'] }}",
+            "auto_reciente": "{{ (minutes_since_last_auto | float(99999)) < (manual_feedback_min_window_min | float(3)) }}",
+            "within_manual_feedback_window": "{{ (minutes_since_last_auto | float(99999)) >= (manual_feedback_min_window_min | float(3)) }}",
+            "last_manual_event_type_raw": "{{ states('input_text.ac_dda_last_manual_event_type') | trim }}",
+            "manual_event_trace_id": "{% set matches = last_manual_event_type_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}",
+            "trace_id_matches_confirmed": "{{ trace_id != 'trace_missing' and manual_event_trace_id == trace_id }}",
+            "strict_session_trace_match": "{{ active_session_trace_id != 'trace_missing' and snapshot_trace_id == active_session_trace_id and trace_id == active_session_trace_id and trace_id_matches_confirmed }}",
+            "session_status_allows_learning": "{{ active_session_status in ['pending', 'captured'] }}",
+            "session_trace_and_ttl_ok": "{{ strict_session_trace_match and session_status_allows_learning and active_session_ttl_valid }}",
+            "trace_mismatch_cross_run": "{{ snapshot_structure_ok and (trace_id == 'trace_missing' or snapshot_trace_id != trace_id or not trace_id_matches_confirmed or not strict_session_trace_match) }}",
+            "manual_event_confirmed": "{{ snapshot_ok and not trace_mismatch_cross_run and session_trace_and_ttl_ok }}",
+            "origin_is_manual_on": "{{ last_change_origin == 'manual_on' }}",
+            "transition_guard_window_s": 180,
+            "transition_token_raw": "{{ states('input_text.ac_dda_transition_token') | default('', true) | trim }}",
+            "transition_ts_raw": "{{ states('input_datetime.ac_dda_transition_ts') | default('', true) | trim }}",
+            "transition_ts_epoch": "{% if transition_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(transition_ts_raw, default=none) }}{% endif %}",
+            "transition_age_s": "{% if transition_ts_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (transition_ts_epoch | float)) | round(1) }}{% endif %}",
+            "auto_transition_token_recent": "{{ transition_token_raw | length > 0 and transition_age_s | float(99999) >= 0 and transition_age_s | float(99999) <= (transition_guard_window_s | float(180)) }}",
+            "auto_flags_active": "{{ is_state('input_boolean.ac_dda_on_por_automatizacion','on') or is_state('input_boolean.ac_dda_off_por_automatizacion','on') }}",
+            "auto_transition_origin_evidence_active": "{{ auto_flags_active or auto_origin_detected }}",
+            "auto_transition_recent": "{{ auto_transition_token_recent and auto_transition_origin_evidence_active }}",
+            "auto_timestamp_recent": "{{ auto_reciente }}",
+            "auto_evidence_strong": "{{ auto_flags_active or auto_transition_recent or auto_timestamp_recent }}",
+            "auto_transition_active_strict": "{{ auto_evidence_strong }}",
+            "auto_recent_observed": "{{ auto_transition_active_strict or auto_timestamp_recent }}",
+            "auto_transition_active": "{{ auto_transition_active_strict }}",
+            "daytime_scope_ok": "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}",
+            "branch_scope_ok": "{{ states('input_text.ac_dda_last_auto_branch') | trim == 'cool_normal_on' }}",
+            "context_scope_ok": "{{ contract_context_key not in ['', 'unknown', 'unavailable', 'none'] }}",
+            "learning_day_scope_ok": "{{ daytime_scope_ok }}",
+            "last_manual_on_ts_raw": "{{ states('input_datetime.ac_dda_last_manual_on_ts') | default('', true) | trim }}",
+            "last_manual_on_ts_epoch": "{% if last_manual_on_ts_raw | lower in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(last_manual_on_ts_raw, default=none) }}{% endif %}",
+            "last_manual_on_age_min": "{% if last_manual_on_ts_epoch is none %}99999{% else %}{{ ((as_timestamp(now()) - (last_manual_on_ts_epoch | float)) / 60) | round(1) }}{% endif %}",
+            "manual_on_ts_recent": "{{ last_manual_on_ts_epoch is not none and (last_manual_on_age_min | float(99999)) >= 0 and (last_manual_on_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}",
+            "manual_recent_evidence": "{{ snapshot_recent or manual_on_ts_recent }}",
+            "force_policy_active": "{{ origin_is_manual_on and learning_day_scope_ok and final_mode_cool_required and strict_session_trace_match }}",
+            "strict_policy_ready": "{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}",
+            "learning_gate_ok": "{{ (force_policy_active or strict_policy_ready) and session_trace_and_ttl_ok }}",
+            "manual_on_event_signature": "{{ snapshot_ts ~ '|' ~ contract_context_key ~ '|' ~ final_mode ~ '|' ~ trace_id }}",
+            "last_manual_on_event_signature": "{{ states('input_text.ac_dda_learning_last_manual_on_signature') | default('', true) | trim }}",
+            "event_already_processed": "{{ manual_on_event_signature == last_manual_on_event_signature }}",
+            "contract_context_delta_on_helper": "{{ 'input_number.ac_dda_cool_delta_on_bucket_' ~ (contract_context_key | replace(':','_') ) }}",
+            "dynamic_context_helper_exists": "{{ (states.input_number | selectattr('entity_id', 'eq', contract_context_helper) | list | count) > 0 }}",
+            "dynamic_delta_helper_exists": "{{ (states.input_number | selectattr('entity_id', 'eq', contract_context_delta_on_helper) | list | count) > 0 }}",
+            "dynamic_helpers_ready": "{{ dynamic_context_helper_exists and dynamic_delta_helper_exists }}",
+            "fallback_learning_helper": "input_number.ac_dda_cool_off_learned",
+            "fallback_delta_helper": "input_number.ac_dda_cool_delta_on_bucket_ctx_default_presencia",
+            "fallback_delta_helper_exists": "{{ (states.input_number | selectattr('entity_id', 'eq', fallback_delta_helper) | list | count) > 0 }}",
+            "learning_apply_with_fallback": "{{ learning_gate_ok and not event_already_processed and not trace_mismatch_cross_run }}",
+            "learning_step": -0.25,
+            "context_after_normal": "{{ [[(context_prev | float) + (learning_step | float), 25.7] | min, 22.4] | max | round(2) }}",
+            "tin": "{% set t1 = states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none) %}{% set t2 = states('sensor.lumi_lumi_weather_coco_temperatura') | float(none) %}{{ ((t1 + t2) / 2) | round(1) if t1 is not none and t2 is not none else none }}",
+            "tout_owm": "{{ state_attr('weather.openweathermap','temperature') | float(none) }}",
+            "hout_owm": "{{ state_attr('weather.openweathermap','humidity') | float(none) }}",
+            "cond_owm": "{{ states('weather.openweathermap') | lower }}",
+            "tout": "{{ tout_owm if tout_owm is not none else none }}",
+            "hin": "{% set h1 = states('sensor.lumi_lumi_weather_cuarto_humedad') | float(none) %}{% set h2 = states('sensor.lumi_lumi_weather_coco_humedad') | float(none) %}{{ ((h1 + h2) / 2) | round(1) if h1 is not none and h2 is not none else none }}",
+            "contract_cycle_on_raw": "{{ states('input_number.ac_dda_cool_cycle_contract_on') }}",
+            "contract_cycle_off_raw": "{{ states('input_number.ac_dda_cool_cycle_contract_off') }}",
+            "contract_cycle_on": "{{ contract_cycle_on_raw | float(none) }}",
+            "contract_cycle_off": "{{ contract_cycle_off_raw | float(none) }}",
+            "contract_cycle_valid": "{{ contract_cycle_on is not none and contract_cycle_off is not none and (contract_cycle_on | float) > (contract_cycle_off | float) and (contract_cycle_off | float) >= 22 and (contract_cycle_off | float) <= 25.7 and (contract_cycle_on | float) <= 26.2 }}",
+            "contract_context_delta_on": "{{ states(contract_context_delta_on_helper) | float(0) }}",
+            "contract_context_delta_on_after_normal": "{{ [[((contract_context_delta_on | float(0)) + ((learning_step | float) * 0.08)), 0.55] | min, -0.55] | max | round(2) }}",
+            "normal_hysteresis_after": "{% set base = 0.52 %}{% set raw = (base + (contract_context_delta_on_after_normal | float(0))) %}{{ [[raw, 1.1] | min, 0.35] | max | round(2) }}",
+            "normal_on_after": "{% if context_after_normal is none %}{{ none }}{% else %}{{ [[((context_after_normal | float) + (normal_hysteresis_after | float)), 26.2] | min, ((context_after_normal | float) + 0.35)] | max | round(2) }}{% endif %}",
+            "tin_outside_current_contract": "{{ tin is not none and contract_cycle_valid and ((tin | float) < (contract_cycle_off | float) or (tin | float) > (contract_cycle_on | float)) }}",
+            "tin_outside_normal_adjusted": "{{ tin is not none and normal_on_after is not none and context_after_normal is not none and ((tin | float) < (context_after_normal | float) or (tin | float) > (normal_on_after | float)) }}",
+            "hard_learning_applicable": "{{ learning_gate_ok and (not event_already_processed) and final_mode_cool_required and tin_outside_current_contract and tin_outside_normal_adjusted }}",
+            "hard_new_on_raw": "{{ tin | round(2) if tin is not none else none }}",
+            "hard_new_off_raw": "{{ ((tin | float) - 0.5) | round(2) if tin is not none else none }}",
+            "hard_new_off_clamped": "{{ [[hard_new_off_raw | float(22.0), 25.7] | min, 22.0] | max | round(2) if hard_new_off_raw is not none else none }}",
+            "hard_new_on_max_clamped": "{{ [hard_new_on_raw | float(26.2), 26.2] | min | round(2) if hard_new_on_raw is not none else none }}",
+            "hard_new_on_clamped": "{% if hard_new_off_clamped is none or hard_new_on_max_clamped is none %}{{ none }}{% else %}{{ [[hard_new_on_max_clamped | float, (hard_new_off_clamped | float) + 0.1] | max, 26.2] | min | round(2) }}{% endif %}",
+            "hard_clamp_reason": "{% set reasons = [] %}{% if hard_new_off_raw is not none and hard_new_off_clamped is not none and (hard_new_off_raw | float) != (hard_new_off_clamped | float) %}{% set reasons = reasons + ['off_clamped'] %}{% endif %}{% if hard_new_on_raw is not none and hard_new_on_max_clamped is not none and (hard_new_on_raw | float) != (hard_new_on_max_clamped | float) %}{% set reasons = reasons + ['on_clamped_max'] %}{% endif %}{% if hard_new_on_clamped is not none and hard_new_off_clamped is not none and (hard_new_on_clamped | float) <= (hard_new_off_clamped | float) %}{% set reasons = reasons + ['on_adjusted_gt_off'] %}{% endif %}{{ reasons | join('+') if reasons | count > 0 else 'none' }}",
+            "apply_learning_hard": "{{ hard_learning_applicable }}",
+            "apply_learning_normal": "{{ learning_gate_ok and (not event_already_processed) and (not hard_learning_applicable) }}",
+            "apply_learning": "{{ apply_learning_hard or apply_learning_normal }}",
+            "context_after": "{{ hard_new_off_clamped if apply_learning_hard else context_after_normal }}",
+            "contract_context_delta_on_after": "{{ contract_context_delta_on if apply_learning_hard else contract_context_delta_on_after_normal }}",
+            "contextual_off_candidate": "{% set v = context_prev_raw | float(none) %}{{ [[v, 25.7] | min, 22.0] | max | round(2) if v is not none else none }}",
+            "contextual_hysteresis_candidate": "{% set base = 0.52 %}{% set raw = (base + (contract_context_delta_on | float(0))) %}{{ [[raw, 1.1] | min, 0.35] | max | round(2) if contextual_off_candidate is not none else none }}",
+            "contextual_on_candidate": "{% if contextual_off_candidate is none or contextual_hysteresis_candidate is none %}{{ none }}{% else %}{{ [[((contextual_off_candidate | float) + (contextual_hysteresis_candidate | float)), 26.2] | min, ((contextual_off_candidate | float) + 0.35)] | max | round(2) }}{% endif %}",
+            "contextual_contract_valid": "{{ contextual_on_candidate is not none and contextual_off_candidate is not none and (contextual_on_candidate | float) > (contextual_off_candidate | float) }}",
+            "threshold_source": "{% if apply_learning_hard %}hard_learning_anchor{% elif contract_cycle_valid %}cycle_contract_helpers{% elif contextual_contract_valid %}contextual_contract_recalc{% else %}no_disponible{% endif %}",
+            "fallback_used": "{{ 'yes' if threshold_source in ['contextual_contract_recalc', 'hard_learning_anchor'] else 'no' }}",
+            "cool_on_final": "{% if apply_learning_hard %}{{ hard_new_on_clamped }}{% elif threshold_source == 'cycle_contract_helpers' %}{{ contract_cycle_on | round(2) }}{% elif threshold_source == 'contextual_contract_recalc' %}{{ contextual_on_candidate }}{% else %}{{ none }}{% endif %}",
+            "cool_off_final": "{% if apply_learning_hard %}{{ hard_new_off_clamped }}{% elif threshold_source == 'cycle_contract_helpers' %}{{ contract_cycle_off | round(2) }}{% elif threshold_source == 'contextual_contract_recalc' %}{{ contextual_off_candidate }}{% else %}{{ none }}{% endif %}",
+            "contract_values_valid": "{{ cool_on_final is not none and cool_off_final is not none and (cool_on_final | float) > (cool_off_final | float) and (cool_off_final | float) >= 22 and (cool_off_final | float) <= 25.7 and (cool_on_final | float) <= 26.2 }}",
+            "contract_invalid_reason": "{% if cool_on_final is none or cool_off_final is none %}missing_contract_values{% else %}reject_invalid_contract_values{% endif %}",
+            "threshold_status": "{{ 'ok' if contract_values_valid else 'no_disponible' }}",
+            "sp_final": "{{ state_attr('climate.0200009211c7_climate', 'temperature') | float(none) }}",
+            "fan_final": "{{ state_attr('climate.0200009211c7_climate', 'fan_mode') | default('na', true) }}",
+            "diagnostic_snapshot_trace": "{% set warns = [] %}{% if not snapshot_structure_ok %}{% set warns = warns + ['snapshot_missing'] %}{% endif %}{% if snapshot_structure_ok and not snapshot_trace_matches_confirmed %}{% set warns = warns + ['trace_mismatch'] %}{% endif %}{% if snapshot_structure_ok and not snapshot_event_type_ok %}{% set warns = warns + ['event_type_unconfirmed'] %}{% endif %}{{ warns | join('+') if warns | count > 0 else 'ok' }}",
+            "delta_learning": "{{ (learning_step | float) if apply_learning_normal else 0.0 }}",
+            "hhmm": "{{ now().strftime('%I:%M %p') | regex_replace('^0','') }}",
+            "learning_type": "{% if apply_learning_hard and force_policy_active %}manual_on_learning_hard_anchor_force_learn_contract_v1{% elif apply_learning_hard %}manual_on_learning_hard_anchor_contract_v1{% elif apply_learning_normal and force_policy_active and not dynamic_helpers_ready %}manual_on_learning_applied_force_learn_fallback_bucket_missing_v1{% elif apply_learning_normal and force_policy_active %}manual_on_learning_applied_force_learn_contract_v1{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_learning_applied_contract_v1{% elif event_already_processed %}manual_on_learning_ignored_duplicate_event_contract_v1{% elif not learning_day_scope_ok %}manual_on_learning_ignored_out_of_scope_daytime_main_contract_v1{% elif not final_mode_cool_required %}manual_on_learning_ignored_final_mode_not_cool_contract_v1{% elif not manual_event_confirmed %}manual_on_learning_ignored_manual_event_not_confirmed_contract_v1{% else %}manual_on_learning_ignored_unknown_contract_v1{% endif %}",
+            "apply_learning_pre": "{{ 'true' if (apply_learning | default(false)) else 'false' }}",
+            "learning_internal_error": "{{ apply_learning and (context_after is none or cool_on_final is none or cool_off_final is none) }}",
+            "controlled_error_detected": "{{ learning_internal_error or (apply_learning_normal and (not dynamic_delta_helper_exists) and (not fallback_delta_helper_exists)) }}",
+            "learning_reason_code": "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and not dynamic_helpers_ready %}manual_on_learning_applied_fallback_bucket_missing_v1{% elif apply_learning_normal %}manual_on_normal_applied{% elif not active_session_ttl_valid and not final_mode_cool_required %}manual_on_session_expired_without_cool{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}",
+            "final_result_label": "{% if controlled_error_detected %}error_controlado{% elif apply_learning %}aplicado{% else %}ignorado{% endif %}",
+            "final_reason_label": "{% if controlled_error_detected %}learning_on_internal_error{% elif apply_learning_hard and force_policy_active %}manual_on_hard_anchor_applied_force_learn{% elif apply_learning_hard %}manual_on_hard_anchor_applied{% elif apply_learning_normal and force_policy_active %}manual_on_normal_applied_force_learn{% elif apply_learning_normal %}manual_on_normal_applied{% elif not active_session_ttl_valid and not final_mode_cool_required %}manual_on_session_expired_without_cool{% elif not learning_day_scope_ok %}out_of_scope_daytime_main{% elif not final_mode_cool_required %}final_mode_not_cool{% elif event_already_processed %}event_already_processed{% elif trace_mismatch_cross_run %}trace_mismatch_cross_run{% elif not manual_event_confirmed %}manual_event_not_confirmed{% else %}learning_gate_closed{% endif %}",
+            "policy_mode": "{{ 'force' if force_policy_active else 'strict' }}",
+            "hard_flag": "{{ 'yes' if apply_learning_hard else 'no' }}",
+            "ctxoff_notify": "{{ '%.2f' | format(context_after | float) if (apply_learning | default(false)) else 'n/a' }}",
+            "hyson_notify": "{{ '%.2f' | format(contract_context_delta_on_after | float) if apply_learning_normal else 'n/a' }}"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ learning_apply_with_fallback }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "choose": [
+                    {
+                      "conditions": [
+                        {
+                          "condition": "template",
+                          "value_template": "{{ dynamic_context_helper_exists }}"
+                        }
+                      ],
+                      "sequence": [
+                        {
+                          "continue_on_error": true,
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Learning Manual ON",
+                            "message": "{{ contract_version }} | hito=learning_on_helper_write_before | helper={{ contract_context_helper }} | prev={{ context_prev_raw }} | after={{ '%.2f' | format(context_after | float) if context_after is not none else 'none' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        },
+                        {
+                          "continue_on_error": true,
+                          "target": {
+                            "entity_id": "{{ contract_context_helper }}"
+                          },
+                          "data": {
+                            "value": "{{ context_after }}"
+                          },
+                          "action": "input_number.set_value"
+                        },
+                        {
+                          "continue_on_error": true,
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Learning Manual ON",
+                            "message": "{{ contract_version }} | hito=learning_on_helper_write_after | helper={{ contract_context_helper }} | prev={{ context_prev_raw }} | after={{ states(contract_context_helper) }} | expected_after={{ '%.2f' | format(context_after | float) if context_after is not none else 'none' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "default": [
+                    {
+                      "continue_on_error": true,
+                      "action": "logbook.log",
+                      "data": {
+                        "name": "AC Learning Manual ON",
+                        "message": "{{ contract_version }} | hito=learning_on_helper_write_before | helper={{ fallback_learning_helper }} | prev={{ states(fallback_learning_helper) }} | after={{ '%.2f' | format(context_after | float) if context_after is not none else 'none' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                        "entity_id": "climate.0200009211c7_climate"
+                      }
+                    },
+                    {
+                      "continue_on_error": true,
+                      "target": {
+                        "entity_id": "{{ fallback_learning_helper }}"
+                      },
+                      "data": {
+                        "value": "{{ context_after }}"
+                      },
+                      "action": "input_number.set_value"
+                    },
+                    {
+                      "continue_on_error": true,
+                      "action": "logbook.log",
+                      "data": {
+                        "name": "AC Learning Manual ON",
+                        "message": "{{ contract_version }} | hito=learning_on_helper_write_after | helper={{ fallback_learning_helper }} | prev={{ context_prev_raw }} | after={{ states(fallback_learning_helper) }} | expected_after={{ '%.2f' | format(context_after | float) if context_after is not none else 'none' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                        "entity_id": "climate.0200009211c7_climate"
+                      }
+                    },
+                    {
+                      "continue_on_error": true,
+                      "action": "logbook.log",
+                      "data": {
+                        "name": "AC Learning Manual ON",
+                        "message": "{{ contract_version }} | controlled_error=missing_contract_context_helper | Trace={{ trace_id }} | contract_context_key={{ contract_context_key }} | contract_context_helper={{ contract_context_helper }} | fallback_used=yes",
+                        "entity_id": "climate.0200009211c7_climate"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "choose": [
+                    {
+                      "conditions": [
+                        {
+                          "condition": "template",
+                          "value_template": "{{ dynamic_delta_helper_exists }}"
+                        }
+                      ],
+                      "sequence": [
+                        {
+                          "continue_on_error": true,
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Learning Manual ON",
+                            "message": "{{ contract_version }} | hito=learning_on_helper_write_before | helper={{ contract_context_delta_on_helper }} | prev={{ '%.2f' | format(contract_context_delta_on | float) }} | after={{ '%.2f' | format(contract_context_delta_on_after | float) if contract_context_delta_on_after is not none else 'none' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        },
+                        {
+                          "continue_on_error": true,
+                          "target": {
+                            "entity_id": "{{ contract_context_delta_on_helper }}"
+                          },
+                          "data": {
+                            "value": "{{ contract_context_delta_on_after }}"
+                          },
+                          "action": "input_number.set_value"
+                        },
+                        {
+                          "continue_on_error": true,
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Learning Manual ON",
+                            "message": "{{ contract_version }} | hito=learning_on_helper_write_after | helper={{ contract_context_delta_on_helper }} | prev={{ '%.2f' | format(contract_context_delta_on | float) }} | after={{ states(contract_context_delta_on_helper) }} | expected_after={{ '%.2f' | format(contract_context_delta_on_after | float) if contract_context_delta_on_after is not none else 'none' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "conditions": [
+                        {
+                          "condition": "template",
+                          "value_template": "{{ fallback_delta_helper_exists }}"
+                        }
+                      ],
+                      "sequence": [
+                        {
+                          "continue_on_error": true,
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Learning Manual ON",
+                            "message": "{{ contract_version }} | hito=learning_on_helper_write_before | helper={{ fallback_delta_helper }} | prev={{ states(fallback_delta_helper) }} | after={{ '%.2f' | format(contract_context_delta_on_after | float) if contract_context_delta_on_after is not none else 'none' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        },
+                        {
+                          "continue_on_error": true,
+                          "target": {
+                            "entity_id": "{{ fallback_delta_helper }}"
+                          },
+                          "data": {
+                            "value": "{{ contract_context_delta_on_after }}"
+                          },
+                          "action": "input_number.set_value"
+                        },
+                        {
+                          "continue_on_error": true,
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Learning Manual ON",
+                            "message": "{{ contract_version }} | hito=learning_on_helper_write_after | helper={{ fallback_delta_helper }} | prev={{ states(fallback_delta_helper) }} | after={{ states(fallback_delta_helper) }} | expected_after={{ '%.2f' | format(contract_context_delta_on_after | float) if contract_context_delta_on_after is not none else 'none' }} | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        },
+                        {
+                          "continue_on_error": true,
+                          "action": "logbook.log",
+                          "data": {
+                            "name": "AC Learning Manual ON",
+                            "message": "{{ contract_version }} | controlled_error=missing_contract_context_delta_on_helper | Trace={{ trace_id }} | contract_context_delta_on_helper={{ contract_context_delta_on_helper }} | fallback_delta_helper={{ fallback_delta_helper }} | fallback_used=yes",
+                            "entity_id": "climate.0200009211c7_climate"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "default": [
+                    {
+                      "continue_on_error": true,
+                      "action": "logbook.log",
+                      "data": {
+                        "name": "AC Learning Manual ON",
+                        "message": "{{ contract_version }} | controlled_error=missing_contract_context_delta_on_helper_no_fallback | Trace={{ trace_id }} | contract_context_delta_on_helper={{ contract_context_delta_on_helper }} | fallback_used=no",
+                        "entity_id": "climate.0200009211c7_climate"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "continue_on_error": true,
+                  "target": {
+                    "entity_id": "input_text.ac_dda_cool_contextual_learning_map"
+                  },
+                  "data": {
+                    "value": "{{ contract_context_key ~ '=' ~ ('%.2f' | format(context_after | float)) }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "continue_on_error": true,
+                  "target": {
+                    "entity_id": "input_text.ac_dda_last_context_bucket"
+                  },
+                  "data": {
+                    "value": "{{ contract_context_key }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "continue_on_error": true,
+                  "target": {
+                    "entity_id": "input_datetime.ac_dda_last_manual_feedback_ts"
+                  },
+                  "data": {
+                    "datetime": "{{ ts }}"
+                  },
+                  "action": "input_datetime.set_datetime"
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "target": {
+            "entity_id": "input_text.ac_dda_last_manual_learning_type"
+          },
+          "data": {
+            "value": "{{ learning_type }}"
+          },
+          "continue_on_error": true,
+          "action": "input_text.set_value"
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ not trace_mismatch_cross_run }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_learning_last_manual_on_signature"
+                  },
+                  "data": {
+                    "value": "{{ manual_on_event_signature }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_text.set_value"
+                }
+              ]
+            }
+          ],
+          "default": [
+            {
+              "continue_on_error": true,
+              "action": "logbook.log",
+              "data": {
+                "name": "AC Learning Manual ON",
+                "message": "{{ contract_version }} | hito=learning_on_trace_mismatch_cross_run | RunTrace={{ snapshot_trace_id }} | PendingTrace={{ trace_id }} | trigger_id={{ trigger_id }}",
+                "entity_id": "climate.0200009211c7_climate"
+              }
+            }
+          ]
+        },
+        {
+          "action": "logbook.log",
+          "continue_on_error": true,
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | manual_on_feedback | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ 'true' if snapshot_ok else 'false' }} | ctx={{ contract_context_key }} | scope_day_main={{ learning_day_scope_ok }} | apply={{ 'yes' if (apply_learning | default(false)) else 'no' }} | learning_type={{ 'hard' if apply_learning_hard else 'normal' if apply_learning_normal else 'ignored' }} | step={{ '-0.25' if apply_learning_normal else '0.00' }} | off={{ '%.2f' | format(context_prev | float) }}->{{ '%.2f' | format(context_after | float) }} | hys_on={{ '%.2f' | format(contract_context_delta_on | float) }}->{{ '%.2f' | format(contract_context_delta_on_after | float) }} | hard_clamp_reason={{ hard_clamp_reason }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ learning_reason_code }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "action": "logbook.log",
+          "continue_on_error": true,
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | hito={{ 'learning_on_applied' if (apply_learning | default(false)) else 'learning_on_ignored' }} | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ 'true' if snapshot_ok else 'false' }} | reason={{ 'applied' if (apply_learning | default(false)) else final_reason_label }} | off={{ '%.2f' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} | on={{ '%.2f' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} | helper={{ contract_context_helper }} | diag={{ diagnostic_snapshot_trace }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "action": "logbook.log",
+          "continue_on_error": true,
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | threshold_validation | threshold_source={{ threshold_source }} | on_final={{ '%.2f' | format(cool_on_final | float) if cool_on_final is not none else 'no_disponible' }} | off_final={{ '%.2f' | format(cool_off_final | float) if cool_off_final is not none else 'no_disponible' }} | fallback_used={{ fallback_used }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "action": "logbook.log",
+          "continue_on_error": true,
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | learning_on_diag | policy={{ policy_mode }} | gate={{ 'open' if learning_gate_ok else 'closed' }} | diag_snapshot_trace={{ diagnostic_snapshot_trace }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }} | confirmed_trace={{ manual_on_trace_confirmed_raw }} | snapshot_ok={{ 'true' if snapshot_ok else 'false' }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ contract_values_valid and learning_day_scope_ok }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "target": {
+                    "entity_id": "input_number.ac_dda_cool_cycle_contract_on"
+                  },
+                  "data": {
+                    "value": "{{ cool_on_final }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_number.set_value"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_number.ac_dda_cool_cycle_contract_off"
+                  },
+                  "data": {
+                    "value": "{{ cool_off_final }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_number.set_value"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_cool_cycle_contract_bucket"
+                  },
+                  "data": {
+                    "value": "{{ contract_context_key }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_text.set_value"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_text.ac_dda_cool_cycle_contract_reason"
+                  },
+                  "data": {
+                    "value": "{{ 'learning_feedback_refresh:' ~ threshold_source ~ '|reason_code=' ~ learning_reason_code ~ '|hard_clamp_reason=' ~ hard_clamp_reason }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_text.set_value"
+                },
+                {
+                  "target": {
+                    "entity_id": "input_datetime.ac_dda_cool_cycle_contract_started_at"
+                  },
+                  "data": {
+                    "datetime": "{{ ts }}"
+                  },
+                  "continue_on_error": true,
+                  "action": "input_datetime.set_datetime"
+                }
+              ]
+            }
+          ],
+          "default": [
+            {
+              "target": {
+                "entity_id": "input_text.ac_dda_cool_cycle_contract_reason"
+              },
+              "data": {
+                "value": "{% if not learning_day_scope_ok %}reason=out_of_scope_daytime_main{% else %}{{ contract_invalid_reason }}{% endif %}"
+              },
+              "continue_on_error": true,
+              "action": "input_text.set_value"
+            }
+          ]
+        },
+        {
+          "action": "logbook.log",
+          "continue_on_error": true,
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | hito=learning_on_pre_notify_ok | Trace={{ trace_id }} | Resultado={{ final_result_label }} | Razón={{ final_reason_label }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "variables": {
+            "pending_trace_label": "{{ trace_id | default('trace_missing', true) }}",
+            "run_trace_label": "{{ snapshot_trace_id | default('trace_missing', true) }}",
+            "pending_ts": "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}",
+            "final_channel_label": "{{ 'mobile' if mobile_channel_ok | default(false) else 'persistent' }}",
+            "notify_pending_status": "{{ pending_trace_label ~ '|stage=learning_final|channel=mobile|result=pendiente|ts=' ~ pending_ts }}",
+            "notify_result_status": "{{ pending_trace_label ~ '|stage=learning_final|channel=' ~ final_channel_label ~ '|result=' ~ (final_result_label | default('ignorado', true)) ~ '|ts=' ~ pending_ts }}",
+            "notify_mobile_message": "{{ hhmm }} Src=ManualON Resultado={{ final_result_label | default('ignorado', true) }} Razón={{ final_reason_label | default('sin_razon', true) }} policy={{ policy_mode | default('strict', true) }} Trace={{ pending_trace_label }} RunTrace={{ run_trace_label }} PendingTrace={{ pending_trace_label if pending_trace_label != 'trace_missing' else 'n/a' }} Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none and apply_learning else 'n/a' }} On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none and apply_learning else 'n/a' }} hard={{ hard_flag | default('no', true) }}"
+          }
+        },
+        {
+          "continue_on_error": true,
+          "target": {
+            "entity_id": "input_text.ac_dda_last_notify_status"
+          },
+          "data": {
+            "value": "{{ notify_pending_status }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "action": "logbook.log",
+          "continue_on_error": true,
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | trace_id={{ pending_trace_label }} | notify_stage=send_attempt | notify_channel=mobile | flow=learning_manual_on | stage=learning_final | result=pendiente",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ mobile_channel_ok }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "continue_on_error": true,
+                  "data": {
+                    "title": "AC Learning ON",
+                    "message": "{{ notify_mobile_message }}"
+                  },
+                  "action": "notify.mobile_app_samsung_s24"
+                },
+                {
+                  "continue_on_error": true,
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Learning Manual ON",
+                    "message": "{{ contract_version }} | trace_id={{ pending_trace_label }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=learning_manual_on | stage=learning_final",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": [
+            {
+              "continue_on_error": true,
+              "action": "persistent_notification.create",
+              "data": {
+                "title": "AC Learning ON (fallback)",
+                "message": "{{ notify_mobile_message }}"
+              }
+            },
+            {
+              "continue_on_error": true,
+              "action": "logbook.log",
+              "data": {
+                "name": "AC Learning Manual ON",
+                "message": "{{ contract_version }} | trace_id={{ pending_trace_label }} | notify_stage=send_result | notify_channel=fallback_persistent | notify_result=mobile_failed_fallback_persistent | flow=learning_manual_on | stage=learning_final",
+                "entity_id": "climate.0200009211c7_climate"
+              }
+            },
+            {
+              "continue_on_error": true,
+              "action": "logbook.log",
+              "data": {
+                "name": "AC Learning Manual ON",
+                "message": "{{ contract_version }} | hito=learning_on_applied | trace_id={{ trace_id }} | fallback_evidence=mobile_failed_fallback_persistent | off={{ '%.2f' | format(cool_off_final | float) if cool_off_final is not none else 'n/a' }} | on={{ '%.2f' | format(cool_on_final | float) if cool_on_final is not none else 'n/a' }} | helper={{ contract_context_helper }}",
+                "entity_id": "climate.0200009211c7_climate"
+              }
+            }
+          ]
+        },
+        {
+          "continue_on_error": true,
+          "target": {
+            "entity_id": "input_text.ac_dda_last_notify_status"
+          },
+          "data": {
+            "value": "{{ notify_result_status }}"
+          },
+          "action": "input_text.set_value"
+        },
+        {
+          "continue_on_error": true,
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | hito=learning_on_notify_sent | Trace={{ trace_id }} | Resultado={{ final_result_label }} | Razón={{ final_reason_label }} | policy={{ policy_mode }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ controlled_error_detected }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "continue_on_error": true,
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Learning Manual ON",
+                    "message": "{{ contract_version }} | hito=learning_on_internal_error | reason_code={{ learning_reason_code }} | learning_type={{ learning_type }} | Trace={{ trace_id }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                },
+                {
+                  "continue_on_error": true,
+                  "action": "logbook.log",
+                  "data": {
+                    "name": "AC Learning Manual ON",
+                    "message": "{{ contract_version }} | hito=learning_on_finalize_forced | Resultado={{ final_result_label }} | Razón={{ final_reason_label }} | Trace={{ trace_id }}",
+                    "entity_id": "climate.0200009211c7_climate"
+                  }
+                }
+              ]
+            }
+          ],
+          "default": []
+        },
+        {
+          "choose": [
+            {
+              "conditions": [
+                {
+                  "condition": "template",
+                  "value_template": "{{ not trace_mismatch_cross_run and active_session_trace_id == trace_id and active_session_trace_id != 'trace_missing' }}"
+                }
+              ],
+              "sequence": [
+                {
+                  "continue_on_error": true,
+                  "target": {
+                    "entity_id": "input_text.ac_dda_manual_on_active_session"
+                  },
+                  "data": {
+                    "value": "{{ 'trace_id=' ~ trace_id ~ '|signature=' ~ active_session_signature ~ '|status=' ~ final_result_label ~ '|branch=learning_on|started_ts=' ~ ts }}"
+                  },
+                  "action": "input_text.set_value"
+                },
+                {
+                  "continue_on_error": true,
+                  "target": {
+                    "entity_id": "input_text.ac_dda_manual_on_active_session"
+                  },
+                  "data": {
+                    "value": ""
+                  },
+                  "action": "input_text.set_value"
+                }
+              ]
+            }
+          ],
+          "default": [
+            {
+              "continue_on_error": true,
+              "action": "logbook.log",
+              "data": {
+                "name": "AC Learning Manual ON",
+                "message": "{{ contract_version }} | hito=learning_on_session_not_closed | reason=trace_mismatch_cross_run | active_trace={{ active_session_trace_id }} | trace_id={{ trace_id }} | snapshot_trace={{ snapshot_trace_id }}",
+                "entity_id": "climate.0200009211c7_climate"
+              }
+            }
+          ]
+        },
+        {
+          "continue_on_error": true,
+          "action": "logbook.log",
+          "data": {
+            "name": "AC Learning Manual ON",
+            "message": "{{ contract_version }} | hito=learning_on_closed | resultado={{ final_result_label }} | razon={{ final_reason_label }} | policy={{ policy_mode }} | trace_id={{ trace_id }}",
+            "entity_id": "climate.0200009211c7_climate"
+          }
+        }
+      ],
+      "mode": "queued",
+      "max": 2
+    },
+    "blueprint_inputs": null,
+    "context": {
+      "id": "01KRMMJ7W32N0CH76JX11R7XTT",
+      "parent_id": "01KRMMHA7XSQDZEFQ4W4H1FR93",
+      "user_id": null
+    }
+  },
+  "logbookEntries": [
+    {
+      "name": "AC - Learning - Manual ON feedback",
+      "message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "entity_id": "automation.ac_learning_manual_on_feedback_2",
+      "context_id": "01KRMMJ7W32N0CH76JX11R7XTT",
+      "domain": "automation",
+      "when": 1778809118.5968108
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | hito=learning_on_started | trigger_id=manual_on_ts | Trace=01KRMMH6SGG5EEYBKGRVNRB370",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809143.838556,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | hito=learning_on_trace_mismatch_cross_run | RunTrace=01KRMMH6SGG5EEYBKGRVNRB370 | PendingTrace=01KRMMH6SGG5EEYBKGRVNRB370 | trigger_id=manual_on_ts",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809168.85961,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | manual_on_feedback | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | event_type_snapshot=manual_on_final_valid_contract_v1 | snapshot_ok=true | ctx=exterior_templado:humedad_normal:franja_1801_2059:niebla:presencia:bajando | scope_day_main=True | apply=no | learning_type=ignored | step=0.00 | off=24.20->23.95 | hys_on=0.00->-0.02 | hard_clamp_reason=none | min=99999 | presence_source=movimiento | type=manual_on_learning_ignored_manual_event_not_confirmed_contract_v1 | reason_code=trace_mismatch_cross_run",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809168.8608856,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | hito=learning_on_ignored | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | event_type_snapshot=manual_on_final_valid_contract_v1 | snapshot_ok=true | reason=trace_mismatch_cross_run | off=24.20 | on=24.80 | helper=input_number.ac_dda_cool_learning_bucket_exterior_templado_humedad_normal_franja_1801_2059_niebla_presencia_bajando | diag=ok",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809168.8626478,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | threshold_validation | threshold_source=cycle_contract_helpers | on_final=24.80 | off_final=24.20 | fallback_used=no",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809168.863762,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | learning_on_diag | policy=strict | gate=closed | diag_snapshot_trace=ok | branch_scope=False | daytime_scope=True | context_scope=True | origin=manual_on | manual_event=manual_off_final_valid_contract_v1 | confirmed_trace=trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | snapshot_ok=true",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809168.8647864,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "state": "2026-05-14 18:39:28",
+      "entity_id": "input_datetime.ac_dda_cool_cycle_contract_started_at",
+      "when": 1778809168.872909,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | hito=learning_on_pre_notify_ok | Trace=01KRMMH6SGG5EEYBKGRVNRB370 | Resultado=ignorado | Razón=trace_mismatch_cross_run",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809168.8768318,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "state": "01KRMMH6SGG5EEYBKGRVNRB370|stage=learning_final|channel=mobile|result=pendiente|ts=2026-05-14 18:39:28",
+      "entity_id": "input_text.ac_dda_last_notify_status",
+      "when": 1778809168.879707,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | notify_stage=send_attempt | notify_channel=mobile | flow=learning_manual_on | stage=learning_final | result=pendiente",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809168.8808203,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=learning_manual_on | stage=learning_final",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809169.1067903,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "state": "01KRMMH6SGG5EEYBKGRVNRB370|stage=learning_final|channel=mobile|result=ignorado|ts=2026-05-14 18:39:28",
+      "entity_id": "input_text.ac_dda_last_notify_status",
+      "when": 1778809169.1087506,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | hito=learning_on_notify_sent | Trace=01KRMMH6SGG5EEYBKGRVNRB370 | Resultado=ignorado | Razón=trace_mismatch_cross_run | policy=strict",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809169.1102889,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | hito=learning_on_session_not_closed | reason=trace_mismatch_cross_run | active_trace=01KRMMH6SGG5EEYBKGRVNRB370 | trace_id=01KRMMH6SGG5EEYBKGRVNRB370 | snapshot_trace=01KRMMH6SGG5EEYBKGRVNRB370",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809169.1197264,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    },
+    {
+      "name": "AC Learning Manual ON",
+      "message": "contract=v1 | hito=learning_on_closed | resultado=ignorado | razon=trace_mismatch_cross_run | policy=strict | trace_id=01KRMMH6SGG5EEYBKGRVNRB370",
+      "domain": "climate",
+      "entity_id": "climate.0200009211c7_climate",
+      "when": 1778809169.1220534,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "AC - Learning - Manual ON feedback",
+      "context_message": "triggered by state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_source": "state of input_datetime.ac_dda_last_manual_on_ts",
+      "context_entity_id": "automation.ac_learning_manual_on_feedback_2"
+    }
+  ]
+}
