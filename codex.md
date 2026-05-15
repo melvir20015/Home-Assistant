@@ -1500,3 +1500,34 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
   3. Evitar `''n/a''`; usar siempre `'n/a'` dentro de Jinja.
   4. Validar YAML completo tras tocar `sequence/default`.
   5. Revalidar específicamente los rangos corregidos antes de recarga/reinicio.
+
+## Registro técnico de incidente YAML (2026-05-15)
+
+- **Fecha:** 2026-05-15
+- **Archivo afectado:** `automations.yaml`
+- **Rangos corregidos por reconstrucción de bloque:**
+  - A: 1435–1468
+  - B: 2868–2920
+  - C: 3705–3778
+  - D: 3838–3872
+- **Causa raíz por tipo:**
+  - `collection ?`: mezcla de niveles de lista/mapa en ramas `choose/default` y plantillas embebidas con estructura frágil.
+  - `mapping/scalar`: escalares largos inline y comillas conflictivas dentro de Jinja/YAML.
+- **Patrón aplicado:** reconstrucción completa de bloques lógicos, normalización de `choose/default`, migración de mensajes/plantillas largas a multilinea (`>-`) y endurecimiento defensivo en expresiones (`default`, `float`, `int`).
+
+### Checklist preventivo obligatorio antes de reiniciar
+
+1. Validar sintaxis YAML global completa (`automations.yaml`) y no solo el rango tocado.
+2. Revisar cada `choose` para asegurar formato:
+   - `choose:`
+     - `- conditions:`
+       - ...
+       - `sequence:`
+         - ...
+   - `default:`
+     - ...
+3. Evitar escalares Jinja largos en una sola línea cuando incluyan comillas mixtas.
+4. Usar `>-` en `message` / `value_template` con contenido extenso.
+5. Confirmar delimitadores Jinja completos: `{{ ... }}` y `{% ... %}`.
+6. Verificar defaults defensivos en variables opcionales: `|default('n/a')`, `|float(0)`, `|int(0)`.
+7. Ejecutar check de configuración de Home Assistant antes de reiniciar.

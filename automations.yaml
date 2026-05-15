@@ -2000,7 +2000,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
@@ -2557,7 +2559,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
       - target:
           entity_id: input_boolean.ac_dda_cycle_lock
@@ -2730,7 +2734,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -2867,7 +2873,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3187,7 +3195,9 @@
         - service: logbook.log
           data:
             name: AC Auto Trace
-            message: transition_closed=timeout | auto_off_flag_retained_pending_confirm_off | reason=timeout_waiting_off_confirm
+            message: >-
+              transition_closed=timeout | auto_off_flag_retained_pending_confirm_off |
+              reason=timeout_waiting_off_confirm
             entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3755,18 +3765,19 @@
                           entity_id: climate.0200009211c7_climate
                   - variables:
                       sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
-                      sp_write_status: "{% if sp_after is not none and sp_target is not none and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}
-  applied
-{% else %}
-  blocked
-{% endif %}"
+                      sp_write_status: >-
+                        {% if sp_after is not none and sp_target is not none and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}
+                          applied
+                        {% else %}
+                          blocked
+                        {% endif %}
                   - service: logbook.log
                     data:
                       name: AC Auto Trace
                       message: >-
                         sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{ 'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
                       entity_id: climate.0200009211c7_climate
-          default: []
+            default: []
       - variables:
           cool_auto_reason: '{{ ''auto emergency'' if emergency_hot else ''auto_on_cool''
             }}'
@@ -3825,18 +3836,18 @@
             service: climate.set_fan_mode
             continue_on_error: true
         default:
-        - choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ hvac_cool_confirmed }}'
-            sequence:
-            - service: logbook.log
-              data:
-                name: AC Auto Trace
-                message: >-
-                  fan_write | status=omit_invalid_fan_mode | fan_modes={{ state_attr(climate_ent,'fan_modes') if state_attr(climate_ent,'fan_modes') is not none else 'na' }}
-                entity_id: climate.0200009211c7_climate
-          default: []
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: '{{ hvac_cool_confirmed }}'
+                sequence:
+                  - service: logbook.log
+                    data:
+                      name: AC Auto Trace
+                      message: >-
+                        fan_write | status=omit_invalid_fan_mode | fan_modes={{ state_attr(climate_ent,'fan_modes') if state_attr(climate_ent,'fan_modes') is not none else 'na' }}
+                      entity_id: climate.0200009211c7_climate
+            default: []
       - variables:
           cool_push_kind: true
           cool_push_reason: Mot=auto umbral
@@ -4763,7 +4774,7 @@
       tout_on: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
       hout_on: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
       sp_on: '{{ state_attr(''climate.0200009211c7_climate'', ''temperature'') | float(none) }}'
-      fan_on: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') if state_attr(''climate.0200009211c7_climate'',''fan_mode'') is not none else 'n/a' }}'
+      fan_on: "{{ state_attr('climate.0200009211c7_climate','fan_mode') if state_attr('climate.0200009211c7_climate','fan_mode') is not none else 'n/a' }}"
       transition_token_raw: '{{ states(''input_text.ac_dda_transition_token'') | default('''', true) | trim }}'
       transition_ts_raw: '{{ states(''input_datetime.ac_dda_transition_ts'') | default('''', true) | trim }}'
       auto_ts_raw: '{{ states(''input_datetime.ac_dda_last_auto_ts'') | default('''', true) | trim }}'
