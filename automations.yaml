@@ -7696,9 +7696,15 @@
     entity_id: input_boolean.ac_dda_cycle_lock
     state: 'off'
   variables:
-    trace_id: "{{ now().strftime('%Y%m%d%H%M%S') ~ '-' ~ (range(100, 999) | random) }}"
-    dry_run: "{{ is_state('input_boolean.ac_dda_reset_dry_run','on') }}"
-    result_status: "{{ 'aplicado' if not dry_run else 'simulacion' }}"
+    manual_sp_lock_active_seed: false
+    dry_run_seed: false
+    helpers_reset_count_seed: 0
+    trace_id_seed: 'n/a'
+    trace_id_generated: "{{ now().strftime('%Y%m%d%H%M%S') ~ '-' ~ (range(100, 999) | random) }}"
+    manual_sp_lock_active: "{{ manual_sp_lock_active | default(manual_sp_lock_active_seed) }}"
+    dry_run: "{{ dry_run | default(dry_run_seed) }}"
+    trace_id: "{{ trace_id_generated | default(trace_id_seed, true) | string }}"
+    result_status: "{{ 'simulacion' if (dry_run | default(false)) else 'aplicado' }}"
     layer_a_targets: "{{ [
       'input_text.ac_dda_cool_contextual_learning_map',
       'input_text.ac_dda_cool_effective_setpoint_map',
@@ -7730,7 +7736,8 @@
         | select('match', '^input_text.ac_dda_cool_(learning_bucket_|delta_|effective_sp_bucket_).*$')
         | list }}
     reset_targets: "{{ layer_a_targets + dynamic_learning_buckets + layer_b_targets + layer_c_targets + ['input_text.ac_dda_last_change_origin'] }}"
-    helpers_reset_count: "{{ reset_targets | count }}"
+    helpers_reset_count_computed: "{{ reset_targets | count }}"
+    helpers_reset_count: "{{ helpers_reset_count_computed | default(helpers_reset_count_seed) | int(0) }}"
   action:
   - service: logbook.log
     data:
@@ -7800,9 +7807,9 @@
   - service: logbook.log
     data:
       name: AC Reset Manual
-      message: "hito=reset_end | resultado={{ result_status if dry_run else 'aplicado' }} | trace_id={{ trace_id }} | helpers_reset={{ helpers_reset_count }} | nota=preserva_flags_operativos"
+      message: "hito=reset_end | resultado={{ result_status if (dry_run | default(false)) else 'aplicado' }} | trace_id={{ trace_id | default('n/a', true) }} | helpers_reset={{ helpers_reset_count | default(0) }} | nota=preserva_flags_operativos"
       entity_id: climate.0200009211c7_climate
   - service: notify.mobile_app_samsung_s24
     continue_on_error: true
     data:
-      message: "AC Reset DDA Resultado={{ result_status if dry_run else 'aplicado' }} Helpers_reset={{ helpers_reset_count }} Trace={{ trace_id }}"
+      message: "AC Reset DDA Resultado={{ result_status if (dry_run | default(false)) else 'aplicado' }} Helpers_reset={{ helpers_reset_count | default(0) }} Trace={{ trace_id | default('n/a', true) }}"
