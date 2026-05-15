@@ -1451,10 +1451,10 @@
               entity_id: climate.0200009211c7_climate
         default:
           - service: logbook.log
-          data:
-            name: AC Auto Trace
-            message: transition_closed=timeout | hvac_expected=cool
-            entity_id: climate.0200009211c7_climate
+            data:
+              name: AC Auto Trace
+              message: transition_closed=timeout | hvac_expected=cool
+              entity_id: climate.0200009211c7_climate
     default: []
   mode: restart
   variables:
@@ -3719,58 +3719,53 @@
               entity_id: climate.0200009211c7_climate
         default:
           - choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ hvac_cool_confirmed }}'
-            sequence:
-            - variables:
-                sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none)
-                  }}'
-                sp_target: '{{ cool_setpoint_effective_soft_resume }}'
-                writer_id: auto_on
-                manual_lock_state: '{{ manual_sp_lock_active }}'
-                bucket: '{{ cool_context_bucket }}'
-            - target:
-                entity_id: input_text.ac_dda_last_change_origin
-              data:
-                value: auto_on
-              service: input_text.set_value
-              continue_on_error: true
-            - choose:
               - conditions:
-                - condition: template
-                  value_template: '{{ sp_target is not none and (sp_target | float(none))
-                    is not none }}'
+                  - condition: template
+                    value_template: '{{ hvac_cool_confirmed }}'
                 sequence:
-                - target:
-                    entity_id: climate.0200009211c7_climate
-                  data:
-                    temperature: '{{ cool_setpoint_effective_soft_resume }}'
-                  service: climate.set_temperature
-                  continue_on_error: true
-              default:
-              - service: logbook.log
-                data:
-                  name: AC Auto Trace
-                  message: sp_write | writer={{ writer_id }} | target_invalid={{ sp_target
-                    if sp_target is not none else 'na' }} | status=omit_invalid_setpoint
-                  entity_id: climate.0200009211c7_climate
-            - variables:
-                sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none)
-                  }}'
-                sp_write_status: "{% if sp_after is not none and sp_target is not none
-                  and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}\n
-                  \ applied\n{% else %}\n  blocked\n{% endif %}"
-            - service: logbook.log
-              data:
-                name: AC Auto Trace
-                message: sp_write | writer={{ writer_id }} | before={{ sp_before if
-                  sp_before is not none else 'na' }} | target={{ sp_target if sp_target
-                  is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{
-                  'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket
-                  is not none else 'na' }} | after={{ sp_after if sp_after is not none
-                  else 'na' }} | status={{ sp_write_status }}
-                entity_id: climate.0200009211c7_climate
+                  - variables:
+                      sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
+                      sp_target: '{{ cool_setpoint_effective_soft_resume }}'
+                      writer_id: auto_on
+                      manual_lock_state: '{{ manual_sp_lock_active }}'
+                      bucket: '{{ cool_context_bucket }}'
+                  - target:
+                      entity_id: input_text.ac_dda_last_change_origin
+                    data:
+                      value: auto_on
+                    service: input_text.set_value
+                    continue_on_error: true
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: '{{ sp_target is not none and (sp_target | float(none)) is not none }}'
+                        sequence:
+                          - target:
+                              entity_id: climate.0200009211c7_climate
+                            data:
+                              temperature: '{{ cool_setpoint_effective_soft_resume }}'
+                            service: climate.set_temperature
+                            continue_on_error: true
+                    default:
+                      - service: logbook.log
+                        data:
+                          name: AC Auto Trace
+                          message: >-
+                            sp_write | writer={{ writer_id }} | target_invalid={{ sp_target if sp_target is not none else 'na' }} | status=omit_invalid_setpoint
+                          entity_id: climate.0200009211c7_climate
+                  - variables:
+                      sp_after: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
+                      sp_write_status: "{% if sp_after is not none and sp_target is not none and ((sp_after | float) - (sp_target | float)) | abs < 0.11 %}
+  applied
+{% else %}
+  blocked
+{% endif %}"
+                  - service: logbook.log
+                    data:
+                      name: AC Auto Trace
+                      message: >-
+                        sp_write | writer={{ writer_id }} | before={{ sp_before if sp_before is not none else 'na' }} | target={{ sp_target if sp_target is not none else 'na' }} | lock={{ manual_lock_state }} | blocked_by_manual_lock={{ 'yes' if manual_lock_state else 'no' }} | bucket={{ bucket if bucket is not none else 'na' }} | after={{ sp_after if sp_after is not none else 'na' }} | status={{ sp_write_status }}
+                      entity_id: climate.0200009211c7_climate
           default: []
       - variables:
           cool_auto_reason: '{{ ''auto emergency'' if emergency_hot else ''auto_on_cool''
@@ -3865,18 +3860,14 @@
             {% set contract_setpoint_effective = states('input_number.ac_dda_cool_cycle_contract_setpoint_effective') | float(none) %}
             Bucket={{ contract_bucket if contract_bucket not in ['', 'unknown', 'unavailable', 'none'] else cool_context_detail }} | Calc={{ contract_calc if contract_calc not in ['', 'unknown', 'unavailable', 'none'] else cool_off_learning_source }} | Dem={{ cool_demand_score }} | Encendido en={{ contract_on if contract_on is not none else 'n/a' }} | Apagado promedio en={{ contract_off if contract_off is not none else 'n/a' }} | Corte por sensor individual (hard stop)={{ contract_sensor_off if contract_sensor_off is not none else 'n/a' }} | Fuente apagado={{ cool_contract_off_source_label }} | Setpoint teórico={{ contract_setpoint if contract_setpoint is not none else 'n/a' }} | Setpoint efectivo={{ contract_setpoint_effective if contract_setpoint_effective is not none else 'n/a' }} | Fan=Low
           cool_mobile_title_local: Cool↑
-          cool_mobile_message_local: '{% set cool_on_local = cool_on_validated | default(none)
-            %} {% set cool_off_local = cool_off_validated | default(none) %} {% set tin_local
-            = tin | default(none) %} {% set tout_local = tout | default(none) %} {% set
-            hout_local = hout_owm | default(none) %} {% set sp_local = cool_setpoint_effective
-            | default(none) %} {{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''')
-            }} Tin={{ ''%.1f'' | format(tin_local | float) if tin_local is not none else
-            ''n/a'' }} Tout={{ ''%.1f'' | format(tout_local | float) if tout_local is
-            not none else 'n/a' }} H={{ ''%.0f'' | format(hout_local | float) if hout_local
-            is not none else 'n/a' }} On={{ ''%.1f'' | format(cool_on_local | float)
-            if cool_on_local is not none else 'n/a' }} Off={{ ''%.1f'' | format(cool_off_local
-            | float) if cool_off_local is not none else 'n/a' }} SP={{ ''%.1f'' | format(sp_local
-            | float) if sp_local is not none else 'n/a' }} Fan=Low Src=AutoON'
+          cool_mobile_message_local: >-
+            {% set cool_on_local = cool_on_validated | default(none) %}
+            {% set cool_off_local = cool_off_validated | default(none) %}
+            {% set tin_local = tin | default(none) %}
+            {% set tout_local = tout | default(none) %}
+            {% set hout_local = hout_owm | default(none) %}
+            {% set sp_local = cool_setpoint_effective | default(none) %}
+            {{ now().strftime('%I:%M %p') | regex_replace('^0','') }} Tin={{ '%.1f' | format(tin_local | float(0)) if tin_local is not none else 'n/a' }} Tout={{ '%.1f' | format(tout_local | float(0)) if tout_local is not none else 'n/a' }} H={{ '%.0f' | format(hout_local | float(0)) if hout_local is not none else 'n/a' }} On={{ '%.1f' | format(cool_on_local | float(0)) if cool_on_local is not none else 'n/a' }} Off={{ '%.1f' | format(cool_off_local | float(0)) if cool_off_local is not none else 'n/a' }} SP={{ '%.1f' | format(sp_local | float(0)) if sp_local is not none else 'n/a' }} Fan=Low Src=AutoON
       - choose:
         - conditions:
           - condition: template
