@@ -1531,3 +1531,25 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 5. Confirmar delimitadores Jinja completos: `{{ ... }}` y `{% ... %}`.
 6. Verificar defaults defensivos en variables opcionales: `|default('n/a')`, `|float(0)`, `|int(0)`.
 7. Ejecutar check de configuración de Home Assistant antes de reiniciar.
+
+## Incidente consolidado de parseo YAML (2026-05-15 00:00 UTC)
+
+- **Rangos intervenidos en esta pasada**:
+  - A: `1435–1470`
+  - B: `2868–2925`
+  - C: `3705–3778`
+  - D: `3838–3875`
+  - E: `4978–5005`
+- **Causa raíz por rango**:
+  - A/C: riesgo estructural de `block collection` por ramas `choose/default` y bloques extensos con indentación frágil.
+  - B/D/E: `block mapping` con escalares largos inline y quoting Jinja mixto (`''n/a''`, formatos inline extensos).
+- **Patrón aplicado**:
+  - reconstrucción por bloque completo en zonas afectadas;
+  - normalización de `default` al nivel correcto de `choose`;
+  - migración de mensajes largos a `message: >-`;
+  - quoting defensivo (`'n/a'`) y filtros (`|default(...)`, `|float(0)`).
+- **Checklist de validación previa a restart**:
+  1. Parseo YAML global después de cada bloque corregido.
+  2. Revisión de forma canónica `choose -> sequence -> default`.
+  3. Evitar strings Jinja gigantes inline con comillas mixtas.
+  4. Verificación final con `check_config`/restart controlado en host HA.
