@@ -1376,3 +1376,14 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 - `delta_learning`
 - `ignored_reason_code`
 - Mensajes de `AC Learning Manual OFF` (logbook y notificación móvil).
+
+## Endurecimiento de `sensor.minima_23_a_07` (2026-05-15)
+
+- **Fuente que generaba `unknown`**:
+  - `sensor.pronostico_horario_casa` atributo `forecast` vacío/no disponible.
+  - muestras horarias sin `temperature`/`native_temperature` numérico en la franja 23:00–07:00.
+- **Mitigación aplicada**:
+  - validación defensiva `is_number(t)` antes de agregar temperaturas al cálculo del mínimo;
+  - normalización de salida con fallback numérico (`sensor.openweathermap_temperature | float(0)`) cuando no hay forecast o no hay muestras válidas.
+- **Resultado**:
+  - el `state` del sensor queda siempre numérico en todas las ramas (`if/else`), manteniendo `unit_of_measurement: "°C"` coherente.

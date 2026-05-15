@@ -29,8 +29,9 @@
       unit_of_measurement: "°C"
       state: >
         {% set fc = state_attr('sensor.pronostico_horario_casa', 'forecast') or [] %}
+        {% set fallback_min = states('sensor.openweathermap_temperature') | float(0) %}
         {% if not fc %}
-          unknown
+          {{ fallback_min }}
         {% else %}
           {% set temps = [] %}
           {% for h in fc %}
@@ -43,15 +44,15 @@
                   if h.native_temperature is defined
                   else none
               ) %}
-              {% if t is not none %}
-                {% set temps = temps + [ t | float ] %}
+              {% if t is not none and is_number(t) %}
+                {% set temps = temps + [ t | float(0) ] %}
               {% endif %}
             {% endif %}
           {% endfor %}
           {% if temps | length == 0 %}
-            unknown
+            {{ fallback_min }}
           {% else %}
-            {{ temps | min }}
+            {{ (temps | min) | float(0) }}
           {% endif %}
         {% endif %}
 
