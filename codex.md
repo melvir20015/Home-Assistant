@@ -1442,3 +1442,20 @@ Evitar escapes manuales en strings YAML largas con comillas dobles cuando contie
 - **Validación en este entorno**:
   - se confirmó inventario de ocurrencias y presencia de fallback explícito con búsqueda dirigida;
   - no fue posible validar recarga/reinicio de Home Assistant ni `check_config` dentro de este contenedor (requiere host HA con binarios/entorno runtime).
+
+### Endurecimiento operativo AC-DDA (mayo 2026)
+- Se establece una compuerta explícita `manual_on_lock_active` de **60 s** tras detectar `Manual ON` en `cool`.
+- Durante esa ventana, la automatización principal no debe ejecutar intervenciones invasivas de cambio inmediato de modo (ej. `cool -> fan_only`), salvo excepciones de seguridad dura del equipo.
+- El cierre de ventana de 60 s debe consolidar snapshot final inmutable para Learning ON con: `trace_id`, `event_type`, `final_mode`, `final_fan`, `final_setpoint`, `lock_started_ts` y `ts`.
+- La confirmación de Learning ON se mantiene transaccional por `trace_id` + snapshot correlacionado; no se confirma desde estado global mutable.
+
+### Política dura de aprendizaje por origen humano
+- `AC - Learning - Manual ON feedback` y `AC - Learning - Manual OFF feedback` sólo aplican aprendizaje cuando el origen del evento es humano verificable (`manual_on` / `manual_off`) y sin evidencia de transición automática reciente.
+- Eventos automáticos (`auto_on`, `auto_off`, ramas automáticas, transiciones técnicas) se clasifican como **no aprendibles**: conservan telemetría y trazabilidad, pero no modifican mapas ni umbrales.
+- Todo ciclo ON/OFF debe cerrar obligatoriamente en resultado terminal único: `aplicado`, `ignorado` o `error_controlado`, con `Trace`, `Policy` y `Reason`.
+
+### Reglas de sintaxis defensiva YAML/Jinja
+- En mensajes extensos usar `message: >-`.
+- Usar `'n/a'` como literal estándar para no disponible.
+- Aplicar filtros defensivos `|default`, `|float`, `|int` en campos propensos a indefinidos.
+- Evitar quoting frágil en regex/templates y verificar delimitadores Jinja balanceados en cada alias modificado.
