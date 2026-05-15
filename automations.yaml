@@ -1693,6 +1693,12 @@
       name: AC DDA Audit
       message: hito=manual_session_scope_ok | trace_id={{ manual_on_session_trace_id | default('trace_missing') }} | session_status={{ manual_on_session_status | default('closed') }} | session_age_s={{ manual_on_session_age_s | default(99999) | float(99999) }} | manual_override_active={{ manual_override_active | default(false) }}
       entity_id: climate.0200009211c7_climate
+  - service: logbook.log
+    data:
+      name: AC DDA Audit
+      message: >-
+        hito=contexto_calculado | key_v2={{ context_key_v2 }} | key_active={{ context_key_active }} | ext={{ estado_exterior_norm }} | est={{ estacion_calendario }} | franja={{ franja_diurna }}
+      entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -4195,7 +4201,7 @@
     presence_sensor_strict: '{{ presence_ok and presence_real_now }}'
     presence_source: "{% if presence_sensor_strict %}\n  movimiento\n{% elif presence_phone_home %}\n  s24_home\n{% elif presence_temp_from_manual %}\n  manual_temporal\n{% else %}\n  sin_presencia\n{% endif %}"
     presence_effective: '{{ presence_source != ''sin_presencia'' }}'
-    auto_on_presence_gate: '{{ presence_sensor_strict or presence_phone_home }}'
+    auto_on_presence_gate: '{{ presence_sensor_strict or presence_phone_home or presence_temp_from_manual }}'
     auto_on_presence_reason: "{% if presence_sensor_strict %}\n  movimiento_y_presencia_real\n{% elif
       presence_phone_home %}\n  phone_home\n{% elif presence_temp_from_manual %}\n
       \ manual_presence_exception_blocked_for_auto_on\n{% else %}\n  sin_presencia\n{%
@@ -4211,6 +4217,34 @@
     cool_effective_sp_summary_raw: '{{ states(''input_text.ac_dda_cool_effective_setpoint_map'')
       | trim }}'
     last_manual_ts_raw: '{{ states(''input_datetime.ac_dda_last_manual_final_ts'') }}'
+    estado_exterior_raw: '{{ states(''weather.openweathermap'') | default(''unknown'', true) | string | lower | trim }}'
+    estado_exterior_norm: >-
+      {% set raw = estado_exterior_raw | default('unknown', true) | trim %}
+      {% if raw in ['', 'none'] %}sin_datos
+      {% elif raw in ['unknown', 'unavailable'] %}desconocido
+      {% elif raw in ['sunny', 'clear-night', 'clear'] %}soleado
+      {% elif raw in ['partlycloudy', 'windy', 'windy-variant'] %}parcialmente_soleado
+      {% elif raw in ['cloudy'] %}nubes_dispersas
+      {% elif raw in ['overcast'] %}nublado
+      {% elif raw in ['rainy', 'pouring', 'hail', 'snowy-rainy', 'snowy'] %}lluvioso
+      {% elif raw in ['lightning', 'lightning-rainy'] %}tormenta
+      {% elif raw in ['fog', 'mist'] %}niebla_bruma
+      {% else %}desconocido{% endif %}
+    estacion_calendario: >-
+      {% set m = now().month | int(0) %}
+      {% if m in [3,4,5] %}primavera{% elif m in [6,7,8] %}verano{% elif m in [9,10,11] %}otoño{% else %}invierno{% endif %}
+    franja_diurna: >-
+      {% set hm = now().strftime('%H:%M') %}
+      {% if '07:01' <= hm <= '09:59' %}f1_0701_0959
+      {% elif '10:00' <= hm <= '13:59' %}f2_1000_1359
+      {% elif '14:00' <= hm <= '17:59' %}f3_1400_1759
+      {% elif '18:00' <= hm <= '21:59' %}f4_1800_2159
+      {% else %}f0_fuera_rango{% endif %}
+    context_key_v2: '{{ ''v2:'' ~ estado_exterior_norm ~ ''|'' ~ estacion_calendario ~ ''|'' ~ franja_diurna }}'
+    context_key_legacy: '{{ cool_context_bucket | default(''ctx_legacy:sin_datos'', true) | trim }}'
+    context_key_active: >-
+      {% set k = context_key_v2 | default('', true) | trim %}
+      {% if k in ['', 'unknown', 'unavailable', 'none'] %}{{ context_key_legacy }}{% else %}{{ k }}{% endif %}
     cool_tod_bucket: "{% set hm = now().strftime('%H:%M') %}\n{% if '07:00' <= hm
       <= '10:00' %}\n  franja_0700_1000\n{% elif '10:01' <= hm <= '15:00' %}\n  franja_1001_1500\n{%
       elif '15:01' <= hm <= '18:00' %}\n  franja_1501_1800\n{% elif '18:01' <= hm
@@ -4274,9 +4308,9 @@
       ''unknown'', ''unavailable'', ''none''] %}sin_resumen {% else %}{{ cool_effective_sp_summary_raw
       }}{% endif %}'
     cool_context_learning_helper: '{{ ''input_number.ac_dda_cool_learning_bucket_'' ~
-      (cool_context_bucket | replace('':'',''_'') ) }}'
+      (context_key_active | replace(":","_") | replace("|","_")) }}'
     cool_effective_sp_helper: '{{ ''input_number.ac_dda_cool_effective_sp_bucket_'' ~
-      (cool_context_bucket | replace('':'',''_'') ) }}'
+      (context_key_active | replace(":","_") | replace("|","_")) }}'
     cool_context_learning_summary_value: "{% set raw = cool_learning_summary_note
       | default('', true) | trim %} {% set prefix = cool_context_bucket ~ '=' %} {%
       if raw.startswith(prefix) %}\n  {{ raw | replace(prefix, '', 1) | float(none)
@@ -4322,8 +4356,8 @@
       [[raw, 26.0] | min, (heat_on | float) + 0.6] | max | round(2) }}\n{% endif %}"
     heat_setpoint: '{% set raw = 28 + (bias_heat_setpoint if learning_enabled else
       0) %} {{ [[raw, 30] | min, 24] | max | round(1) }}'
-    ac_dda_context_delta_off_helper: '{{ ''input_number.ac_dda_cool_delta_off_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
-    ac_dda_context_delta_on_helper: '{{ ''input_number.ac_dda_cool_delta_on_bucket_'' ~ (cool_context_bucket | replace('':'',''_'') ) }}'
+    ac_dda_context_delta_off_helper: '{{ ''input_number.ac_dda_cool_delta_off_bucket_'' ~ (context_key_active | replace(":","_") | replace("|","_")) }}'
+    ac_dda_context_delta_on_helper: '{{ ''input_number.ac_dda_cool_delta_on_bucket_'' ~ (context_key_active | replace(":","_") | replace("|","_")) }}'
     ac_dda_context_delta_off: '{{ states(ac_dda_context_delta_off_helper) | float(0) }}'
     ac_dda_context_delta_on: '{{ states(ac_dda_context_delta_on_helper) | float(0) }}'
     ac_dda_hysteresis_min: 0.35
@@ -4445,7 +4479,7 @@
       }}\n{% endif %}"
     cool_related_daytime_helper: "{% if cool_related_daytime_bucket is not none %}\n
       \ {{ 'input_number.ac_dda_cool_effective_sp_bucket_' ~ (cool_related_daytime_bucket
-      | replace(':','_')) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      | replace(":","_")) }}\n{% else %}\n  {{ none }}\n{% endif %}"
     cool_effective_sp_delta: "{% if cool_setpoint is none or cool_effective_sp_entry
       is none %}\n  {{ none }}\n{% else %}\n  {{ ((cool_setpoint | float) - (cool_effective_sp_entry
       | float)) | abs | round(2) }}\n{% endif %}"
