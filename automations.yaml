@@ -5321,7 +5321,8 @@
       snapshot_recent: '{{ snapshot_ts_epoch is not none and (snapshot_age_min | float(99999)) >= 0 and (snapshot_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
       snapshot_structure_ok: '{{ manual_on_snapshot_raw | length > 0 and snapshot_trace_id != ''trace_missing'' and snapshot_event_type != ''event_missing'' and snapshot_final_mode != ''mode_missing'' and snapshot_ts != ''ts_missing'' }}'
       snapshot_trace_matches_confirmed: '{{ snapshot_structure_ok and trace_id != ''trace_missing'' and snapshot_trace_id == trace_id }}'
-      snapshot_event_type_ok: '{{ snapshot_event_type in [''manual_on_after_auto_stop'', ''manual_on_after_auto_stop''] }}'
+      snapshot_event_type_whitelist: ['manual_on_after_auto_stop']
+      snapshot_event_type_ok: '{{ snapshot_event_type in snapshot_event_type_whitelist }}'
       snapshot_ok: '{{ snapshot_structure_ok and snapshot_trace_matches_confirmed and snapshot_event_type_ok }}'
       mov_raw: '{{ states(''binary_sensor.presencia_movimiento_estable'') | lower }}'
       s24_raw: '{{ states(''device_tracker.samsung_s24'') | lower }}'
@@ -5453,6 +5454,16 @@
       ctxoff_notify: '{{ ''%.2f'' | format(context_after | float) if (apply_learning | default(false)) else ''n/a'' }}'
       hyson_notify: '{{ ''%.2f'' | format(contract_context_delta_on_after | float) if apply_learning_normal else ''n/a'' }}'
   - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ snapshot_structure_ok and not snapshot_event_type_ok }}'
+      sequence:
+      - continue_on_error: true
+        action: logbook.log
+        data:
+          name: AC Learning Manual ON
+          message: "{{ contract_version }} | hito=learning_on_snapshot_event_type_ignored | trace_id={{ trace_id }} | snapshot_event_type={{ snapshot_event_type }} | allowed={{ snapshot_event_type_whitelist | join(',') }} | snapshot_ok={{ 'true' if snapshot_ok else 'false' }}"
+          entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: '{{ learning_apply_with_fallback }}'
