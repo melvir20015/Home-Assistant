@@ -5225,25 +5225,34 @@
       - condition: template
         value_template: '{{ apply_learning | default(false) }}'
       sequence:
+      - variables:
+          notify_final_message: >-
+            Interior: Tin={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible (sin lectura interior)' }}.
+            Exterior: Tout={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible (sin lectura exterior)' }} / Hout={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'No disponible (sin humedad exterior)' }}.
+            Umbrales: On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'No disponible (contrato inválido)' }} / Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'No disponible (contrato inválido)' }}.
+            Resultado: {{ terminal_resultado | default('ignorado', true) }}.
+            Motivo: {{ 'aprendizaje aplicado' if (apply_learning | default(false)) else 'evento descartado por guardas de aprendizaje' }}.
       - service: script.ac_dda_notify_on_transaccional
         data:
           title: Cierre de aprendizaje (apagado)
-          message: >-
-            Interior: Tin={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible (sin lectura interior)' }}.
-            Exterior: Tout={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible (sin lectura exterior)' }} / Hout={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'No disponible (sin humedad exterior)' }}.
-            Umbrales: On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'No disponible (contrato inválido)' }} / Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'No disponible (contrato inválido)' }}.
-            Resultado: {{ terminal_resultado | default('ignorado', true) }}.
-            Motivo: {{ 'aprendizaje aplicado' if (apply_learning | default(false)) else 'sin ajuste por guardas de aprendizaje' }}.
+          message: '{{ notify_final_message }}'
     default:
+    - variables:
+        notify_final_message: >-
+          Interior: Tin={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible (sin lectura interior)' }}.
+          Exterior: Tout={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible (sin lectura exterior)' }} / Hout={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'No disponible (sin humedad exterior)' }}.
+          Umbrales: On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'No disponible (contrato inválido)' }} / Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'No disponible (contrato inválido)' }}.
+          Resultado: {{ terminal_resultado | default('ignorado', true) }}.
+          Motivo: {{ 'aprendizaje aplicado' if (apply_learning | default(false)) else 'evento descartado por guardas de aprendizaje' }}.
     - service: script.ac_dda_notify_on_transaccional
       data:
         title: Cierre de aprendizaje (apagado)
-        message: >-
-            Interior: Tin={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible (sin lectura interior)' }}.
-            Exterior: Tout={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible (sin lectura exterior)' }} / Hout={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'No disponible (sin humedad exterior)' }}.
-            Umbrales: On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'No disponible (contrato inválido)' }} / Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'No disponible (contrato inválido)' }}.
-            Resultado: {{ terminal_resultado | default('ignorado', true) }}.
-            Motivo: {{ 'aprendizaje aplicado' if (apply_learning | default(false)) else 'sin ajuste por guardas de aprendizaje' }}.
+        message: '{{ notify_final_message }}'
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_dda_last_notify_status
+    data:
+      value: "{{ 'trace_id=n/a|stage=learning_final|channel=mobile_or_persistent|result=' ~ (terminal_resultado | default('ignorado', true)) ~ '|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
   mode: restart
 - id: '1773895045305'
   alias: TEMP - AC Learning ON trigger diagnóstico (desactivada)
