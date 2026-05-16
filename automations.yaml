@@ -5379,9 +5379,9 @@
       last_manual_on_age_min: "{% if last_manual_on_ts_epoch is none %}99999{% else %}{{ ((as_timestamp(now()) - (last_manual_on_ts_epoch | float)) / 60) | round(1) }}{% endif %}"
       manual_on_ts_recent: '{{ last_manual_on_ts_epoch is not none and (last_manual_on_age_min | float(99999)) >= 0 and (last_manual_on_age_min | float(99999)) <= (manual_feedback_max_window_min | float(120)) }}'
       manual_recent_evidence: '{{ snapshot_recent or manual_on_ts_recent }}'
-      force_policy_active: '{{ origin_is_manual_on and learning_day_scope_ok and final_mode_cool_required and strict_session_trace_match }}'
+      force_policy_active: '{{ manual_recent_evidence and learning_day_scope_ok and final_mode_cool_required }}'
       strict_policy_ready: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
-      learning_gate_ok: '{{ (force_policy_active or strict_policy_ready or (eligibility_manual_event and eligibility_scope and eligibility_safety)) and session_trace_and_ttl_ok }}'
+      learning_gate_ok: '{{ force_policy_active or strict_policy_ready or (eligibility_manual_event and eligibility_scope and eligibility_safety) }}'
       manual_on_event_signature: '{{ snapshot_ts ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ trace_id }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       event_already_processed: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
