@@ -3742,7 +3742,7 @@
           - variables:
               sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none)
                 }}'
-              sp_target: '{{ cool_setpoint_effective_soft_resume }}'
+              sp_target: '{{ sp_obj_final | float(22) | round(2) }}'
               writer_id: auto_on
               manual_lock_state: '{{ manual_sp_lock_active }}'
               bucket: '{{ cool_context_bucket }}'
@@ -3797,7 +3797,7 @@
             - variables:
                 sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none)
                   }}'
-                sp_target: '{{ cool_setpoint_effective_soft_resume }}'
+                sp_target: '{{ sp_obj_final | float(22) | round(2) }}'
                 writer_id: auto_on
                 manual_lock_state: '{{ manual_sp_lock_active }}'
                 bucket: '{{ cool_context_bucket }}'
@@ -3816,7 +3816,7 @@
                 - target:
                     entity_id: climate.0200009211c7_climate
                   data:
-                    temperature: '{{ cool_setpoint_effective_soft_resume }}'
+                    temperature: '{{ sp_target if sp_target is not none else 22 }}'
                   service: climate.set_temperature
                   continue_on_error: true
               default:
@@ -3857,9 +3857,7 @@
             cool_setpoint }} | SPh(hist)={{ cool_effective_sp_entry if cool_effective_sp_entry
             is not none else 'none' }} | W={{ cool_effective_sp_hist_weight }} | SPe={{
             cool_setpoint_effective }} | SP_logic_c={{ cool_setpoint_effective_c }}
-            | SP_sent_f={{ cool_setpoint_sent_f }} | Calc={{ cool_off_learning_source
-            }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason
-            }} | Min={{ minutes_since_last_auto }}
+            | SP_sent_f={{ cool_setpoint_sent_f }} | SP_obj_raw={{ sp_obj_raw }} | SP_obj_final={{ sp_obj_final }} | FanT={{ fan_target }} | FanC={{ fan_current }} | Demand={{ cool_demand }} | Resultado={{ 'aplicado' if hvac_cool_confirmed else 'error_controlado' }} | Calc={{ cool_off_learning_source }} | Mot={{ cool_auto_reason }} | Sanity={{ cool_effective_sp_inconsistency_reason }} | Min={{ minutes_since_last_auto }}
           entity_id: climate.0200009211c7_climate
       - choose:
         - conditions:
@@ -3880,39 +3878,27 @@
       - choose:
         - conditions:
           - condition: template
-            value_template: "{{ hvac_cool_confirmed and state_attr(climate_ent,'fan_modes')
-              is not none\n   and 'Low' in state_attr(climate_ent,'fan_modes') }}"
+            value_template: '{{ hvac_cool_confirmed and fan_should_apply }}'
           sequence:
           - target:
               entity_id: climate.0200009211c7_climate
             data:
-              fan_mode: Low
+              fan_mode: "{{ fan_target if fan_target not in ['unknown','unavailable','none',''] else 'medium' }}"
             service: climate.set_fan_mode
             continue_on_error: true
-        - conditions:
-          - condition: template
-            value_template: "{{ hvac_cool_confirmed and state_attr(climate_ent,'fan_modes')
-              is not none\n   and 'Auto' in state_attr(climate_ent,'fan_modes') }}"
-          sequence:
           - target:
-              entity_id: climate.0200009211c7_climate
+              entity_id: input_datetime.ac_dda_last_fan_change_ts
             data:
-              fan_mode: Auto
-            service: climate.set_fan_mode
+              datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+            service: input_datetime.set_datetime
             continue_on_error: true
         default:
-        - choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ hvac_cool_confirmed }}'
-            sequence:
-            - service: logbook.log
-              data:
-                name: AC Auto Trace
-                message: fan_write | status=omit_invalid_fan_mode | fan_modes={{ state_attr(climate_ent,'fan_modes')
-                  if state_attr(climate_ent,'fan_modes') is not none else 'na' }}
-                entity_id: climate.0200009211c7_climate
-          default: []
+        - service: logbook.log
+          data:
+            name: AC Auto Trace
+            message: >-
+              fan_write | status=omit_or_debounce | target={{ fan_target }} | current={{ fan_current }} | elapsed_s={{ fan_change_elapsed_s }} | allowed={{ fan_change_allowed }}
+            entity_id: climate.0200009211c7_climate
       - variables:
           cool_push_kind: true
           cool_push_reason: Mot=auto umbral
@@ -4612,6 +4598,48 @@
       | round(0) %}\n  {{ [[sp_f, 75] | min, 68] | max | int }}\n{% endif %}"
     cool_setpoint_f: '{{ cool_setpoint_sent_f }}'
     cool_setpoint_effective: '{{ cool_setpoint_effective_c }}'
+    sp_base_cool: >-
+      {{ 22.0 | float(22.0) | round(2) }}
+    sp_humidity_adj: >-
+      {% if cool_humidity_bucket == 'humedad_muy_alta' %}{{ -0.5 }}{% elif cool_humidity_bucket == 'humedad_alta' %}{{ -0.3 }}{% else %}{{ 0.0 }}{% endif %}
+    sp_outdoor_adj: >-
+      {% if cool_outdoor_bucket == 'exterior_muy_caliente' %}{{ -0.5 }}{% elif cool_outdoor_bucket == 'exterior_caliente' %}{{ -0.3 }}{% else %}{{ 0.0 }}{% endif %}
+    sp_tod_adj: >-
+      {% if cool_tod_bucket == 'franja_1001_1500' %}{{ -0.5 }}{% elif cool_tod_bucket == 'franja_1501_1800' %}{{ -0.3 }}{% elif cool_tod_bucket == 'franja_0700_1000' %}{{ -0.1 }}{% else %}{{ 0.0 }}{% endif %}
+    sp_weather_adj: >-
+      {% if cool_weather_bucket == 'soleado' %}{{ -0.1 }}{% elif cool_weather_bucket == 'parcial' %}{{ -0.05 }}{% else %}{{ 0.0 }}{% endif %}
+    sp_pref_adj: >-
+      {% set pref = cool_effective_sp_entry | float(none) %}{% if pref is none %}{{ 0.0 }}{% else %}{{ [[((pref | float) - (sp_base_cool | float)), 1.0] | min, -1.0] | max | round(2) }}{% endif %}
+    sp_obj_raw: >-
+      {{ ((sp_base_cool | float(22.0)) + (sp_humidity_adj | float(0)) + (sp_outdoor_adj | float(0)) + (sp_tod_adj | float(0)) + (sp_weather_adj | float(0)) + (sp_pref_adj | float(0))) | round(2) }}
+    sp_obj_clamped: >-
+      {{ [[(sp_obj_raw | float(22.0)), 23.0] | min, 17.0] | max | round(2) }}
+    sp_current: >-
+      {% set current = state_attr(climate_ent, 'temperature') | float(none) %}{{ current if current is not none else (cool_setpoint_effective | float(22.0)) }}
+    sp_delta: >-
+      {{ ((sp_obj_clamped | float(22.0)) - (sp_current | float(22.0))) | abs | round(2) }}
+    sp_obj_limited_step: >-
+      {% set diff = (sp_obj_clamped | float(22.0)) - (sp_current | float(22.0)) %}{% set step = [diff, 1.0] | min %}{% set step = [step, -1.0] | max %}{{ ((sp_current | float(22.0)) + step) | round(2) }}
+    sp_obj_final: >-
+      {% if (sp_delta | float(0)) < 0.3 %}{{ (sp_current | float(22.0)) | round(2) }}{% else %}{{ (sp_obj_limited_step | float(22.0)) | round(2) }}{% endif %}
+    cool_demand: >-
+      {{ ((tin | float(0)) - (cool_off | float(0))) | round(2) }}
+    fan_base: >-
+      {% if (cool_demand | float(0)) >= 1.2 %}high{% elif (cool_demand | float(0)) >= 0.6 %}medium{% else %}low{% endif %}
+    fan_humidity_boost: >-
+      {{ (hin | float(0)) >= 66 or cool_humidity_bucket == 'humedad_muy_alta' }}
+    fan_current: >-
+      {{ state_attr(climate_ent,'fan_mode') | default('unknown', true) | lower }}
+    fan_target: >-
+      {% set modes = (state_attr(climate_ent,'fan_modes') | default([], true) | map('lower') | list) %}{% set base = fan_base | lower %}{% set boosted = 'high' if (fan_humidity_boost and base == 'medium') else ('medium' if (fan_humidity_boost and base == 'low') else base) %}{% if boosted in modes %}{{ boosted }}{% elif base in modes %}{{ base }}{% elif 'medium' in modes %}medium{% elif 'auto' in modes %}auto{% else %}{{ fan_current | default('medium', true) }}{% endif %}
+    last_fan_change_ts: >-
+      {{ states('input_datetime.ac_dda_last_fan_change_ts') | default('', true) | trim }}
+    fan_change_elapsed_s: >-
+      {% if last_fan_change_ts in ['unknown','unavailable','none',''] %}999999{% else %}{{ (as_timestamp(now()) - as_timestamp(last_fan_change_ts, default=0)) | round(1) }}{% endif %}
+    fan_change_allowed: >-
+      {{ (fan_change_elapsed_s | float(0)) >= 240 }}
+    fan_should_apply: >-
+      {{ (fan_target | default('unknown', true)) not in ['unknown','unavailable','none',''] and (fan_target | lower) != (fan_current | lower) and fan_change_allowed }}
     cool_cycle_contract_on: '{{ states(''input_number.ac_dda_cool_cycle_contract_on'')
       | float(none) }}'
     cool_cycle_contract_off: '{{ states(''input_number.ac_dda_cool_cycle_contract_off'')

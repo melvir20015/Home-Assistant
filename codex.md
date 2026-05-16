@@ -1748,3 +1748,40 @@ Objetivo: habilitar depuración y auditoría causal de por qué cambió cada ran
 - Si un evento manual no cumple precondiciones de los dos tipos permitidos, el resultado debe ser `ignorado` con razón explícita.
 - No se permiten reinterpretaciones automáticas de eventos ambiguos para forzar aprendizaje.
 - Toda decisión terminal de aprendizaje debe cerrar en `aplicado`, `ignorado` o `error_controlado`, con razón trazable.
+
+## 10. AC-DDA diurno: capa contextual de Setpoint y Fan
+
+### Separación de capas (contrato obligatorio)
+- **Capa 1 ON/OFF**: conserva el contrato térmico `cool_on/cool_off` con histéresis y guardas diurnas `07:01–21:59`.
+- **Capa 2 Setpoint COOL**: calcula `SP_obj` solo después de decidir que la rama ejecuta `cool`.
+- **Capa 3 Fan COOL**: determina `fan_target` por demanda térmica/humedad sin alterar umbrales ON/OFF.
+
+### Fórmula operativa de `SP_obj`
+- `sp_obj_raw = sp_base_cool + sp_humidity_adj + sp_outdoor_adj + sp_tod_adj + sp_weather_adj + sp_pref_adj`.
+- Clamp contractual: `sp_obj_clamped = clamp(sp_obj_raw, 17, 23)`.
+- Anti-serrucho setpoint:
+  - si `|sp_obj_clamped - sp_current| < 0.3` => conservar `sp_current`.
+  - si no => aplicar paso máximo `±1.0°C` por ciclo (`sp_obj_limited_step`).
+- Resultado operativo: `sp_obj_final` (numérico redondeado para `climate.set_temperature`).
+
+### Política Fan por demanda + humedad
+- `cool_demand = Tin - cool_off`.
+- Base fan:
+  - `>=1.2` => `high`
+  - `0.6..1.19` => `medium`
+  - `<0.6` => `low`
+- Boost por humedad alta/muy alta: subir un nivel sin superar `high`.
+- Antioscilación fan: debounce por helper `input_datetime.ac_dda_last_fan_change_ts` con ventana mínima 3–5 min (actual 240 s).
+
+### Integración con aprendizaje manual (sin contaminación cruzada)
+- Se mantiene aprendizaje ON/OFF (`±0.25`) independiente.
+- `sp_pref_adj` solo usa señal de preferencia de setpoint por bucket con límite suave (`±1.0`) respecto de la base.
+- No se reutiliza aprendizaje de umbrales ON/OFF para fan.
+- Si se aprende fan manual en el futuro, debe persistirse en helper separado por bucket.
+
+### Checklist previo a recarga/reinicio
+- Verificar que `cool_on/cool_off` no cambió semánticamente.
+- Validar `sp_obj_final` siempre en `[17,23]` y con paso máximo `±1.0`.
+- Verificar que delta `<0.3` no fuerza escritura de setpoint.
+- Validar debounce fan (`fan_should_apply`) y actualización de `ac_dda_last_fan_change_ts`.
+- Confirmar telemetría compacta (`Tin/Hin/Tout`, `On/Off`, `SP`, `Fan`, `Demand`, `Bucket`, `Reason`, `resultado_terminal`).
