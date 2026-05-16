@@ -178,88 +178,24 @@ ac_dda_notify_on_transaccional:
             entity_id: "{{ entity_local }}"
         - service: notify.mobile_app_samsung_s24
           continue_on_error: true
-          response_variable: notify_response
           data:
             title: "{{ title_local }}"
             message: "{{ message_local }}"
             data:
               ttl: 0
               priority: high
-        - variables:
-            notify_response_status:
-              "{{ notify_response if notify_response is mapping else
-              {} }}"
-            notify_explicit_success:
-              "{{ notify_response is mapping and (\n  notify_response_status.get('success')
-              == true\n  or notify_response_status.get('ok') == true\n  or (notify_response_status.get('status')
-              | default('') | string | lower) in ['ok', 'success', 'sent']\n) }}"
-            notify_explicit_error:
-              "{{ notify_response is mapping and (\n  'error' in notify_response_status\n
-              \ or 'exception' in notify_response_status\n  or 'failed' in notify_response_status\n
-              \ or (notify_response_status.get('status') | default('') | string | lower)
-              in ['error', 'failed', 'timeout']\n) }}"
-        - choose:
-            - conditions:
-                - condition: template
-                  value_template: "{{ notify_explicit_success }}"
-              sequence:
-                - service: logbook.log
-                  continue_on_error: true
-                  data:
-                    name: AC Auto Trace
-                    message:
-                      hito=notify_on_enviado | notify_stage=send_result | send_result=mobile_sent | reason=explicit_ack | trace_id={{ trace_local }} | src={{ src_local
-                      }} | branch={{ branch_local }}
-                    entity_id: "{{ entity_local }}"
-                - service: input_text.set_value
-                  continue_on_error: true
-                  target:
-                    entity_id: input_text.ac_dda_last_notify_status
-                  data:
-                    value: "{{ trace_local ~ '|kind=' ~ notify_kind_local ~ '|stage=terminal|channel=mobile|result=sent|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
-            - conditions:
-                - condition: template
-                  value_template: "{{ notify_explicit_error }}"
-              sequence:
-                - service: logbook.log
-                  continue_on_error: true
-                  data:
-                    name: AC Auto Trace
-                    message:
-                      hito=notify_on_fallido | notify_stage=send_result | send_result=mobile_failed | reason=explicit_error | trace_id={{ trace_local }} | src={{ src_local
-                      }} | branch={{ branch_local }} | resp={{ notify_response if notify_response is defined else 'no_response' }}
-                    entity_id: "{{ entity_local }}"
-                - service: persistent_notification.create
-                  continue_on_error: true
-                  data:
-                    title: "{{ title_local }}"
-                    message: "{{ message_local }}"
-                - service: logbook.log
-                  continue_on_error: true
-                  data:
-                    name: AC Auto Trace
-                    message:
-                      hito=notify_on_fallido | notify_stage=send_result | send_result=fallback | reason=mobile_failed_fallback | trace_id={{ trace_local }} | branch={{ branch_local
-                      }} | fallback=persistent_notification
-                    entity_id: "{{ entity_local }}"
-                - service: input_text.set_value
-                  continue_on_error: true
-                  target:
-                    entity_id: input_text.ac_dda_last_notify_status
-                  data:
-                    value: "{{ trace_local ~ '|kind=' ~ notify_kind_local ~ '|stage=terminal|channel=persistent|result=fallback|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
-          default:
-            - service: logbook.log
-              continue_on_error: true
-              data:
-                name: AC Auto Trace
-                message:
-                  hito=notify_on_enviado | notify_stage=send_result | send_result=unknown_but_attempted | reason=no_explicit_ack_response | trace_id={{ trace_local }} | src={{ src_local
-                  }} | branch={{ branch_local }} | resp={{ notify_response if notify_response is defined else 'no_response' }}
-                entity_id: "{{ entity_local }}"
-            - service: input_text.set_value
-              continue_on_error: true
-              target:
-                entity_id: input_text.ac_dda_last_notify_status
-              data:
-                value: "{{ trace_local ~ '|kind=' ~ notify_kind_local ~ '|stage=terminal|channel=mobile|result=attempted_unknown|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+        - service: logbook.log
+          continue_on_error: true
+          data:
+            name: AC Auto Trace
+            message: >-
+              hito=notify_on_intentado | notify_stage=send_result |
+              send_result=mobile_attempted_no_ack | trace_id={{ trace_local }} |
+              src={{ src_local }} | branch={{ branch_local }}
+            entity_id: "{{ entity_local }}"
+        - service: input_text.set_value
+          continue_on_error: true
+          target:
+            entity_id: input_text.ac_dda_last_notify_status
+          data:
+            value: "{{ trace_local ~ '|kind=' ~ notify_kind_local ~ '|stage=terminal|channel=mobile|result=attempted|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
