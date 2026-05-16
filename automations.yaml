@@ -2254,7 +2254,7 @@
           cool_notify_cycle_signature_v2: "{% set transition_token = states('input_text.ac_dda_transition_token') | default('', true) | trim %}{% set auto_ts_raw = states('input_datetime.ac_dda_last_auto_ts') | default('', true) | trim %}{% set transition_ts = states('input_datetime.ac_dda_transition_ts') | default('', true) | trim %}{% set cycle_started_raw = states('input_datetime.ac_dda_cool_cycle_contract_started_at') | default('', true) | trim %}{% set auto_on_ts = auto_ts_raw if auto_ts_raw not in ['', 'unknown', 'unavailable', 'none'] else (transition_ts if transition_ts not in ['', 'unknown', 'unavailable', 'none'] else (cycle_started_raw if cycle_started_raw not in ['', 'unknown', 'unavailable', 'none'] else now().isoformat())) %}{% set cycle_token = transition_token if transition_token not in ['', 'unknown', 'unavailable', 'none'] else 'no_token' %}token:{{ cycle_token }}|auto_on_ts:{{ auto_on_ts }}|branch:cool_emergency_on|src:auto_on_v2"
           cool_push_summary: SP={{ emergency_setpoint }} | Fan={{ emergency_fan_mode
             }} | Vent={{ emergency_window }}
-          cool_mobile_title_local: Cool↑
+          cool_mobile_title_local: Encendido automático
           cool_mobile_message_local: "{{ now().strftime('%I:%M %p') | regex_replace('^0','')\n
             }} Tin={{ '%.1f' | format(tin | float) if tin is not none else 'n/a'
             }} Tout={{ '%.1f' | format(tout | float) if tout is not none else 'n/a'
@@ -3923,19 +3923,13 @@
             cool_contract_off_source_label }} | Setpoint teórico={{ contract_setpoint if
             contract_setpoint is not none else ''n/a'' }} | Setpoint efectivo={{ contract_setpoint_effective
             if contract_setpoint_effective is not none else ''n/a'' }} | Fan=Low'
-          cool_mobile_title_local: Cool↑
-          cool_mobile_message_local: '{% set cool_on_local = cool_on_validated | default(none)
-            %} {% set cool_off_local = cool_off_validated | default(none) %} {% set tin_local
-            = tin | default(none) %} {% set tout_local = tout | default(none) %} {% set
-            hout_local = hout_owm | default(none) %} {% set sp_local = cool_setpoint_effective
-            | default(none) %} {{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''')
-            }} Tin={{ ''%.1f'' | format(tin_local | float) if tin_local is not none else
-            ''n/a'' }} Tout={{ ''%.1f'' | format(tout_local | float) if tout_local is
-            not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_local | float) if hout_local
-            is not none else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_local | float)
-            if cool_on_local is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_local
-            | float) if cool_off_local is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_local
-            | float) if sp_local is not none else ''n/a'' }} Fan=Low Src=AutoON'
+          cool_mobile_title_local: Encendido automático
+          cool_mobile_message_local: >-
+            Interior: Tin={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible (sin lectura interior)' }}.
+            Exterior: Tout={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible (sin lectura exterior)' }} / Hout={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'No disponible (sin humedad exterior)' }}.
+            Umbrales: On={{ '%.1f' | format(cool_on_validated | float) if cool_on_validated is not none else 'No disponible (contrato inválido)' }} / Off={{ '%.1f' | format(cool_off_validated | float) if cool_off_validated is not none else 'No disponible (contrato inválido)' }}.
+            Resultado: enfriamiento encendido.
+            Motivo: cruce de umbral automático.
       - choose:
         - conditions:
           - condition: template
@@ -5233,13 +5227,23 @@
       sequence:
       - service: script.ac_dda_notify_on_transaccional
         data:
-          title: AC Learning OFF
-          message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado={{ terminal_resultado }} Reason={{ terminal_reason_code }} Policy={{ policy_mode }} Trace=n/a'
+          title: Cierre de aprendizaje (apagado)
+          message: >-
+            Interior: Tin={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible (sin lectura interior)' }}.
+            Exterior: Tout={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible (sin lectura exterior)' }} / Hout={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'No disponible (sin humedad exterior)' }}.
+            Umbrales: On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'No disponible (contrato inválido)' }} / Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'No disponible (contrato inválido)' }}.
+            Resultado: {{ terminal_resultado | default('ignorado', true) }}.
+            Motivo: {{ 'aprendizaje aplicado' if (apply_learning | default(false)) else 'sin ajuste por guardas de aprendizaje' }}.
     default:
     - service: script.ac_dda_notify_on_transaccional
       data:
-        title: AC Learning OFF
-        message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado={{ terminal_resultado }} Reason={{ terminal_reason_code }} Policy={{ policy_mode }} Trace=n/a'
+        title: Cierre de aprendizaje (apagado)
+        message: >-
+            Interior: Tin={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible (sin lectura interior)' }}.
+            Exterior: Tout={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible (sin lectura exterior)' }} / Hout={{ '%.0f' | format(hout_owm | float) if hout_owm is not none else 'No disponible (sin humedad exterior)' }}.
+            Umbrales: On={{ '%.1f' | format(cool_on_final | float) if cool_on_final is not none else 'No disponible (contrato inválido)' }} / Off={{ '%.1f' | format(cool_off_final | float) if cool_off_final is not none else 'No disponible (contrato inválido)' }}.
+            Resultado: {{ terminal_resultado | default('ignorado', true) }}.
+            Motivo: {{ 'aprendizaje aplicado' if (apply_learning | default(false)) else 'sin ajuste por guardas de aprendizaje' }}.
   mode: restart
 - id: '1773895045305'
   alias: TEMP - AC Learning ON trigger diagnóstico (desactivada)
@@ -5254,7 +5258,7 @@
   actions:
   - service: script.ac_dda_notify_on_transaccional
     data:
-      title: AC Learning ON Trigger
+      title: Cierre de aprendizaje (encendido)
       message: "{% set raw = states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim %}{% set matches = raw | regex_findall('trace_id=([^|]+)') %}AC Learning ON Triggered Trace={{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
   mode: restart
 - id: '1773895045306'
@@ -6207,7 +6211,7 @@
           - continue_on_error: true
             service: script.ac_dda_notify_on_transaccional
             data:
-              title: AC Manual ON
+              title: Encendido manual detectado
               message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}'
           - action: logbook.log
             data:
@@ -6217,7 +6221,7 @@
         default:
         - action: script.ac_dda_notify_on_transaccional
           data:
-            title: 'AC Manual ON (fallback)'
+            title: Encendido manual detectado
             message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}'
         - action: logbook.log
           data:
@@ -6259,7 +6263,7 @@
           - continue_on_error: true
             service: script.ac_dda_notify_on_transaccional
             data:
-              title: AC Manual ON
+              title: Encendido manual detectado
               message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}'
           - action: logbook.log
             data:
@@ -6269,7 +6273,7 @@
         default:
         - action: script.ac_dda_notify_on_transaccional
           data:
-            title: 'AC Manual ON (fallback)'
+            title: Encendido manual detectado
             message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}'
         - action: logbook.log
           data:
@@ -6365,8 +6369,8 @@
       - continue_on_error: true
         service: script.ac_dda_notify_on_transaccional
         data:
-          title: AC Manual ON
-          message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}'
+          title: Encendido manual detectado
+          message: 'Interior: Tin=No disponible (evento inicial). Exterior: Tout=No disponible (evento inicial). Umbrales: On=No disponible (aún sin consolidar) / Off=No disponible (aún sin consolidar). Resultado: pendiente. Motivo: validando encendido manual.'
       - action: logbook.log
         data:
           name: AC Manual ON
@@ -6375,8 +6379,8 @@
     default:
     - action: script.ac_dda_notify_on_transaccional
       data:
-        title: 'AC Manual ON (fallback)'
-        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}'
+        title: Encendido manual detectado
+        message: 'Interior: Tin=No disponible (evento inicial). Exterior: Tout=No disponible (evento inicial). Umbrales: On=No disponible (aún sin consolidar) / Off=No disponible (aún sin consolidar). Resultado: pendiente. Motivo: validando encendido manual.'
     - action: logbook.log
       data:
         name: AC Manual ON
@@ -6498,7 +6502,7 @@
           - continue_on_error: true
             service: script.ac_dda_notify_on_transaccional
             data:
-              title: AC Manual ON
+              title: Encendido manual detectado
               message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
           - action: logbook.log
             data:
@@ -6508,7 +6512,7 @@
         default:
         - action: script.ac_dda_notify_on_transaccional
           data:
-            title: 'AC Manual ON (fallback)'
+            title: Encendido manual detectado
             message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
         - action: logbook.log
           data:
@@ -6780,7 +6784,7 @@
       - continue_on_error: true
         service: script.ac_dda_notify_on_transaccional
         data:
-          title: AC Manual ON
+          title: Encendido manual detectado
           message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
       - action: logbook.log
         data:
@@ -6790,7 +6794,7 @@
     default:
     - action: script.ac_dda_notify_on_transaccional
       data:
-        title: 'AC Manual ON (fallback)'
+        title: Encendido manual detectado
         message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
     - action: logbook.log
       data:
