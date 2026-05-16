@@ -5926,7 +5926,10 @@
   - service: script.ac_dda_notify_on_transaccional
     data:
       title: AC Manual OFF
-      message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP=n/a Fan={{ fan_final }} Src=ManualOFF Delta=+0.25 Resultado=pendiente Razón=esperando_learning_off'
+      message: >-
+        Detecté tu apagado manual.
+        El sistema respetará este apagado y aplicará el aprendizaje automáticamente en el cierre.
+        Contexto: interior={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible' }}°C, exterior={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible' }}°C, ventilación={{ fan_final if fan_final not in ['unknown','unavailable','none',''] else 'No disponible' }}.
   - choose:
     - conditions:
       - condition: template
@@ -6546,7 +6549,7 @@
       manual_presence_until: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_presence_override_until: '{{ (now() + timedelta(minutes=60)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_on_protection_until: '{{ (now() + timedelta(seconds=60)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
-      manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_after_auto_stop{% else %}manual_on_after_auto_stop{% endif %}"
+      manual_event_type_final: "{% if final_mode == 'cool' %}manual_on_after_auto_stop{% elif final_mode == 'heat' %}manual_on_out_of_scope_heat{% elif final_mode == 'fan_only' %}manual_on_ended_in_fan_only{% else %}manual_on_out_of_scope_mode{% endif %}"
   - target:
       entity_id: input_datetime.ac_dda_last_manual_final_ts
     data:
@@ -6759,7 +6762,11 @@
         service: script.ac_dda_notify_on_transaccional
         data:
           title: Encendido manual detectado
-          message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
+          message: >-
+            Detecté tu encendido manual y {{ 'quedó listo para aprendizaje' if persistence_ready_for_trigger else 'se registró con validación pendiente' }}.
+            Estado final: modo={{ final_mode if final_mode not in ['unknown','unavailable','none',''] else 'No disponible' }}, setpoint={{ '%.1f' | format(final_setpoint | float) if final_setpoint is not none else 'No disponible' }}°C, ventilación={{ final_fan if final_fan not in ['unknown','unavailable','none',''] else 'No disponible' }}.
+            Contexto: interior={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible' }}°C, exterior={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible' }}°C.
+            Siguiente paso: cierre de aprendizaje automático en los próximos segundos.
       - action: logbook.log
         data:
           name: AC Manual ON
@@ -6769,7 +6776,11 @@
     - action: script.ac_dda_notify_on_transaccional
       data:
         title: Encendido manual detectado
-        message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
+        message: >-
+            Detecté tu encendido manual y {{ 'quedó listo para aprendizaje' if persistence_ready_for_trigger else 'se registró con validación pendiente' }}.
+            Estado final: modo={{ final_mode if final_mode not in ['unknown','unavailable','none',''] else 'No disponible' }}, setpoint={{ '%.1f' | format(final_setpoint | float) if final_setpoint is not none else 'No disponible' }}°C, ventilación={{ final_fan if final_fan not in ['unknown','unavailable','none',''] else 'No disponible' }}.
+            Contexto: interior={{ '%.1f' | format(tin | float) if tin is not none else 'No disponible' }}°C, exterior={{ '%.1f' | format(tout | float) if tout is not none else 'No disponible' }}°C.
+            Siguiente paso: cierre de aprendizaje automático en los próximos segundos.
     - action: logbook.log
       data:
         name: AC Manual ON
