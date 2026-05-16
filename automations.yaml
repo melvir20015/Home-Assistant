@@ -5308,9 +5308,9 @@
       active_session_signature: "{% set matches = active_session_raw | regex_findall('signature=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'sig_missing' }}"
       active_session_started_ts: "{% set matches = active_session_raw | regex_findall('started_ts=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'ts_missing' }}"
       active_session_started_epoch: "{% if active_session_started_ts in ['ts_missing','unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(active_session_started_ts, default=none) }}{% endif %}"
-      manual_on_session_ttl_s: 110
+      manual_on_session_ttl_s: 240
       active_session_age_s: "{% if active_session_started_epoch is none %}99999{% else %}{{ (as_timestamp(now()) - (active_session_started_epoch | float)) | round(1) }}{% endif %}"
-      active_session_ttl_valid: '{{ active_session_age_s | float(99999) >= 0 and active_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(110)) }}'
+      active_session_ttl_valid: '{{ active_session_age_s | float(99999) >= 0 and active_session_age_s | float(99999) <= (manual_on_session_ttl_s | float(240)) }}'
       manual_on_snapshot_raw: '{{ states(''input_text.ac_dda_last_manual_on_snapshot'') | default('''', true) | trim }}'
       snapshot_trace_id: "{% set matches = manual_on_snapshot_raw | regex_findall('trace_id=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
       snapshot_event_type: "{% set matches = manual_on_snapshot_raw | regex_findall('event_type=([^|]+)') %}{{ matches[0] if (matches | count) > 0 else 'event_missing' }}"
@@ -5610,7 +5610,7 @@
     continue_on_error: true
     data:
       name: AC Learning Manual ON
-      message: '{{ contract_version }} | manual_on_feedback | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | ctx={{ contract_context_key }} | scope_day_main={{ learning_day_scope_ok }} | apply={{ ''yes'' if (apply_learning | default(false)) else ''no'' }} | learning_type={{ ''hard'' if apply_learning_hard else ''normal'' if apply_learning_normal else ''ignored'' }} | step={{ ''-0.25'' if apply_learning_normal else ''0.00'' }} | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | hys_on={{ ''%.2f'' | format(contract_context_delta_on | float) }}->{{ ''%.2f'' | format(contract_context_delta_on_after | float) }} | hard_clamp_reason={{ hard_clamp_reason }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ learning_reason_code }}'
+      message: '{{ contract_version }} | manual_on_feedback | trace_id={{ trace_id }} | event_type_snapshot={{ snapshot_event_type }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }} | ctx={{ contract_context_key }} | scope_day_main={{ learning_day_scope_ok }} | apply={{ ''yes'' if (apply_learning | default(false)) else ''no'' }} | learning_type={{ ''hard'' if apply_learning_hard else ''normal'' if apply_learning_normal else ''ignored'' }} | ttl_limit_s={{ manual_on_session_ttl_s | int(240) }} | session_age_s={{ active_session_age_s | float(99999) | round(1) }} | step={{ ''-0.25'' if apply_learning_normal else ''0.00'' }} | off={{ ''%.2f'' | format(context_prev | float) }}->{{ ''%.2f'' | format(context_after | float) }} | hys_on={{ ''%.2f'' | format(contract_context_delta_on | float) }}->{{ ''%.2f'' | format(contract_context_delta_on_after | float) }} | hard_clamp_reason={{ hard_clamp_reason }} | min={{ minutes_since_last_auto }} | presence_source={{ presence_source }} | type={{ learning_type }} | reason_code={{ learning_reason_code }}'
       entity_id: climate.0200009211c7_climate
   - action: logbook.log
     continue_on_error: true
@@ -5628,7 +5628,7 @@
     continue_on_error: true
     data:
       name: AC Learning Manual ON
-      message: '{{ contract_version }} | learning_on_diag | policy={{ policy_mode }} | gate={{ ''open'' if learning_gate_ok else ''closed'' }} | diag_snapshot_trace={{ diagnostic_snapshot_trace }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }} | confirmed_trace={{ manual_on_trace_confirmed_raw }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }}'
+      message: '{{ contract_version }} | learning_on_diag | policy={{ policy_mode }} | gate={{ ''open'' if learning_gate_ok else ''closed'' }} | ttl_limit_s={{ manual_on_session_ttl_s | int(240) }} | session_age_s={{ active_session_age_s | float(99999) | round(1) }} | diag_snapshot_trace={{ diagnostic_snapshot_trace }} | branch_scope={{ branch_scope_ok }} | daytime_scope={{ daytime_scope_ok }} | context_scope={{ context_scope_ok }} | origin={{ last_change_origin }} | manual_event={{ last_manual_event_type_raw }} | confirmed_trace={{ manual_on_trace_confirmed_raw }} | snapshot_ok={{ ''true'' if snapshot_ok else ''false'' }}'
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
