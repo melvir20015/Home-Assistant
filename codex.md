@@ -1805,3 +1805,35 @@ Objetivo: habilitar depuración y auditoría causal de por qué cambió cada ran
 - Orden estable por tipo de mensaje:
   1) acción, 2) motivo humano, 3) Tin/Tout si aplica, 4) objetivo o estado final.
 - Diagnóstico técnico completo únicamente en `logbook.log` y helpers internos.
+
+---
+
+## 7.2 Actualización AC-DDA (mayo 2026)
+
+### Protección explícita 60 s post Manual ON
+- Tras un `Manual ON` válido, se debe persistir `input_datetime.ac_dda_manual_on_protection_until = now + 60s`.
+- Mientras esta compuerta esté activa, ramas automáticas que intenten forzar `fan_only` u `off` por ausencia deben quedar bloqueadas.
+- Excepción contractual: si la intervención manual termina en `off` o `heat`, la protección se cancela de inmediato y prevalece la orden manual.
+
+### Precedencia de presencia temporal manual (60 min)
+- En el mismo `Manual ON` válido se renueva `input_datetime.ac_dda_manual_presence_override_until = now + 60m`.
+- En evaluación de presencia efectiva, el orden es:
+  1. override manual activo (`manual_presence_override_active`),
+  2. señales de movimiento/presencia telefónica,
+  3. ausencia sostenida.
+- Si el override manual está vigente, el apagado por ausencia sostenida se bloquea explícitamente.
+
+### Aprendizaje manual AC-DDA (alcance COOL/HEAT)
+- El aprendizaje manual está limitado a `cool` y `heat`.
+- Modos fuera de alcance (`fan_only`, `dry`, `auto`, etc.) deben cerrar con resultado terminal `ignorado` y razón explícita.
+- Delta fijo: `±0.25`.
+  - COOL:
+    - `manual_off_during_active_cycle => +0.25`
+    - `manual_on_after_auto_stop => -0.25`
+  - HEAT: semántica espejo de COOL.
+- Siempre preservar invariantes de banda (`on > off` y límites de contrato) con corrección determinística si se violan.
+
+### Cierre terminal y trazabilidad obligatoria
+- Todo flujo de learning debe cerrar en: `aplicado | ignorado | error_controlado`.
+- Cada cierre debe registrar `trace_id`, `policy`, `resultado_terminal`, `reason`, `modo_final`, estado de override y estado de compuerta 60 s.
+- No se permiten cierres silenciosos ante descartes por carrera o guardas transaccionales.

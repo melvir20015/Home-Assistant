@@ -127,3 +127,8 @@ ac_dda_manual_presence_override_until:
   name: "AC DDA Manual Presence Override Until"
   has_date: true
   has_time: true
+
+ac_dda_manual_on_protection_until:
+  name: AC DDA Manual ON Protection Until
+  has_date: true
+  has_time: true

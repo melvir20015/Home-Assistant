@@ -1808,13 +1808,13 @@
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ presence_away_30m and cur_mode != ''off'' and (not (manual_override_active | default(false)))
+        value_template: '{{ presence_away_30m and cur_mode != ''off'' and (not (manual_override_active | default(false))) and (not manual_on_protection_active)
           }}'
       sequence:
       - service: logbook.log
         data:
           name: AC DDA Audit
-          message: ac_dda_branch=presence_off | trigger={{ trig }} | mode={{ cur_mode }} | presence_source={{ presence_source }}
+          message: ac_dda_branch=presence_off | trigger={{ trig }} | mode={{ cur_mode }} | presence_source={{ presence_source }} | manual_override_60m={{ manual_presence_override_active }} | manual_protection_60s={{ manual_on_protection_active }}
           entity_id: climate.0200009211c7_climate
       - variables:
           cool_cycle_contract_snapshot: >-
@@ -4201,6 +4201,10 @@
     manual_presence_override_active: >-
       {% if manual_presence_override_until_raw in ['unknown','unavailable','none',''] %}false
       {% else %}{{ as_timestamp(now()) < as_timestamp(manual_presence_override_until_raw, 0) }}{% endif %}
+    manual_on_protection_until_raw: '{{ states(''input_datetime.ac_dda_manual_on_protection_until'') }}'
+    manual_on_protection_active: >-
+      {% if manual_on_protection_until_raw in ['unknown','unavailable','none',''] %}false
+      {% else %}{{ as_timestamp(now()) < as_timestamp(manual_on_protection_until_raw, 0) }}{% endif %}
     manual_presence_until_raw: '{{ states(''input_datetime.ac_dda_manual_presence_until'')
       }}'
     presence_temp_from_manual: "{% if manual_presence_until_raw in ['unknown','unavailable','none','']
@@ -4214,7 +4218,8 @@
       presence_phone_home %}\n  phone_home\n{% elif presence_temp_from_manual %}\n
       \ manual_presence_exception_blocked_for_auto_on\n{% else %}\n  sin_presencia\n{%
       endif %}"
-    presence_away_30m: "{{ (not manual_presence_override_active)\n   and is_state('binary_sensor.presencia_movimiento_estable','off')\n
+    presence_away_30m: "{{ (not manual_presence_override_active)
+   and (not manual_on_protection_active)\n   and is_state('binary_sensor.presencia_movimiento_estable','off')\n
       \  and (person_raw != 'home')\n   and (s24_raw not in ['home','on']) }}"
     away30_txt: '{{ ''YES'' if presence_away_30m else ''NO'' }}'
     learning_enabled: '{{ is_state(''input_boolean.ac_learning_enabled'',''on'') }}'
@@ -5884,6 +5889,16 @@
       datetime: '{{ ts }}'
     action: input_datetime.set_datetime
   - target:
+      entity_id: input_datetime.ac_dda_manual_on_protection_until
+    data:
+      datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+    action: input_datetime.set_datetime
+  - action: logbook.log
+    data:
+      name: AC Manual OFF
+      message: '{{ contract_version }} | protection_60s_cancelled | resultado_terminal=aplicado | reason=manual_off_user'
+      entity_id: climate.0200009211c7_climate
+  - target:
       entity_id: input_text.ac_dda_last_change_origin
     data:
       value: manual_off
@@ -6530,6 +6545,7 @@
         }}{% else %}{{ none }}{% endif %}'
       manual_presence_until: '{{ (now() + timedelta(minutes=90)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_presence_override_until: '{{ (now() + timedelta(minutes=60)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      manual_on_protection_until: '{{ (now() + timedelta(seconds=60)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       manual_event_type_final: "{% if not presence_effective_guard and final_mode in ['cool','heat','fan_only'] %}manual_on_after_auto_stop{% else %}manual_on_after_auto_stop{% endif %}"
   - target:
       entity_id: input_datetime.ac_dda_last_manual_final_ts
@@ -6550,6 +6566,16 @@
         data:
           name: AC Manual ON
           message: '{{ contract_version }} | override_60m_set | until={{ manual_presence_override_until }} | trace_id={{ trace_id_effective }}'
+          entity_id: climate.0200009211c7_climate
+      - target:
+          entity_id: input_datetime.ac_dda_manual_on_protection_until
+        data:
+          datetime: '{{ manual_on_protection_until }}'
+        action: input_datetime.set_datetime
+      - action: logbook.log
+        data:
+          name: AC Manual ON
+          message: '{{ contract_version }} | protection_60s_set | until={{ manual_on_protection_until }} | trace_id={{ trace_id_effective }} | resultado_terminal=aplicado | reason=manual_on_validado'
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
