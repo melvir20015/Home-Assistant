@@ -1459,7 +1459,7 @@
   mode: restart
   variables:
     climate_ent: climate.0200009211c7_climate
-    notify_service: notify.mobile_app_samsung_s24
+    notify_service: script.ac_dda_notify_on_transaccional
     t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(none) }}'
     t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(none) }}'
     h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'')|float(none) }}'
@@ -1780,7 +1780,7 @@
           data:
             ttl: 0
             priority: high
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
     - conditions:
       - condition: template
         value_template: '{{ cool_main_control_blocked }}'
@@ -2001,7 +2001,7 @@
           data:
             ttl: 0
             priority: high
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -2305,7 +2305,7 @@
                   name: AC Auto Trace
                   message: "hito=script_error | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
                   entity_id: climate.0200009211c7_climate
-              - service: persistent_notification.create
+              - service: script.ac_dda_notify_on_transaccional
                 continue_on_error: true
                 data:
                   title: "AC Auto ON script_error"
@@ -2558,7 +2558,7 @@
           data:
             ttl: 0
             priority: high
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -2767,7 +2767,7 @@
           data:
             ttl: 0
             priority: high
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
@@ -2904,7 +2904,7 @@
           data:
             ttl: 0
             priority: high
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''off'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
@@ -3193,7 +3193,7 @@
           data:
             ttl: 0
             priority: high
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
       - service: logbook.log
         data:
           name: AC Auto Trace
@@ -3412,7 +3412,7 @@
           data:
             ttl: 0
             priority: high
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
       - wait_template: '{{ is_state(''climate.0200009211c7_climate'', ''cool'') }}'
         timeout: 00:00:30
         continue_on_timeout: true
@@ -3975,7 +3975,7 @@
                   name: AC Auto Trace
                   message: "hito=script_error | trace_id={{ cool_notify_trace_id }} | branch={{ cool_notify_branch }} | service=script.ac_dda_notify_on_transaccional | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
                   entity_id: climate.0200009211c7_climate
-              - service: persistent_notification.create
+              - service: script.ac_dda_notify_on_transaccional
                 continue_on_error: true
                 data:
                   title: "AC Auto ON script_error"
@@ -4205,7 +4205,7 @@
               data:
                 ttl: 0
                 priority: high
-            service: notify.mobile_app_samsung_s24
+            service: script.ac_dda_notify_on_transaccional
         default: []
     default: []
   variables:
@@ -4979,7 +4979,7 @@
           name: AC Auto Trace
           message: "hito=script_error | trace_id={{ trace_id }} | branch={{ branch_on }} | service=script.ac_dda_notify_on_transaccional | source=confirmacion_desacoplada | resp={{ notify_on_script_response if notify_on_script_response is defined else 'no_response' }}"
           entity_id: climate.0200009211c7_climate
-      - service: persistent_notification.create
+      - service: script.ac_dda_notify_on_transaccional
         continue_on_error: true
         data:
           title: "AC Auto ON script_error"
@@ -5231,12 +5231,12 @@
       - condition: template
         value_template: '{{ apply_learning | default(false) }}'
       sequence:
-      - service: notify.mobile_app_samsung_s24
+      - service: script.ac_dda_notify_on_transaccional
         data:
           title: AC Learning OFF
           message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado={{ terminal_resultado }} Reason={{ terminal_reason_code }} Policy={{ policy_mode }} Trace=n/a'
     default:
-    - service: notify.mobile_app_samsung_s24
+    - service: script.ac_dda_notify_on_transaccional
       data:
         title: AC Learning OFF
         message: '{{ hhmm }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(sp_final | float) if sp_final is not none else ''n/a'' }} Fan={{ fan_final }} Src=ManualOFF Delta={{ ''%+.2f'' | format(delta_learning | float) }} Resultado={{ terminal_resultado }} Reason={{ terminal_reason_code }} Policy={{ policy_mode }} Trace=n/a'
@@ -5252,7 +5252,7 @@
   - trigger: state
     entity_id: input_datetime.ac_dda_last_manual_on_ts
   actions:
-  - service: notify.mobile_app_samsung_s24
+  - service: script.ac_dda_notify_on_transaccional
     data:
       title: AC Learning ON Trigger
       message: "{% set raw = states('input_text.ac_dda_last_manual_on_trace_confirmed') | default('', true) | trim %}{% set matches = raw | regex_findall('trace_id=([^|]+)') %}AC Learning ON Triggered Trace={{ matches[0] if (matches | count) > 0 else 'trace_missing' }}"
@@ -5715,7 +5715,7 @@
         value_template: '{{ mobile_channel_ok }}'
       sequence:
       - continue_on_error: true
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
         data:
           title: AC Learning ON
           message: '{{ notify_mobile_message }}'
@@ -5727,7 +5727,7 @@
           entity_id: climate.0200009211c7_climate
     default:
     - continue_on_error: true
-      action: persistent_notification.create
+      action: script.ac_dda_notify_on_transaccional
       data:
         title: 'AC Learning ON (fallback)'
         message: '{{ notify_mobile_message }}'
@@ -5957,7 +5957,7 @@
       name: AC Manual OFF
       message: '{{ contract_version }} | off_classification=manual | classification_reason=manual_off_guard_validated | off_nonce={{ auto_off_marker_nonce_raw if auto_off_marker_nonce_raw | length > 0 else ''n/a'' }} | manual_off_guard_discard_reason=none | ctx={{ contract_context_key }} | pause=5m | prev={{ prev_mode }} | learning=pending(+0.25)'
       entity_id: climate.0200009211c7_climate
-  - service: notify.mobile_app_samsung_s24
+  - service: script.ac_dda_notify_on_transaccional
     data:
       title: AC Manual OFF
       message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP=n/a Fan={{ fan_final }} Src=ManualOFF Delta=+0.25 Resultado=pendiente Razón=esperando_learning_off'
@@ -6205,7 +6205,7 @@
             value_template: '{{ mobile_channel_ok }}'
           sequence:
           - continue_on_error: true
-            service: notify.mobile_app_samsung_s24
+            service: script.ac_dda_notify_on_transaccional
             data:
               title: AC Manual ON
               message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}'
@@ -6215,7 +6215,7 @@
               message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard'
               entity_id: climate.0200009211c7_climate
         default:
-        - action: persistent_notification.create
+        - action: script.ac_dda_notify_on_transaccional
           data:
             title: 'AC Manual ON (fallback)'
             message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id_effective }}'
@@ -6257,7 +6257,7 @@
             value_template: '{{ mobile_channel_ok }}'
           sequence:
           - continue_on_error: true
-            service: notify.mobile_app_samsung_s24
+            service: script.ac_dda_notify_on_transaccional
             data:
               title: AC Manual ON
               message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}'
@@ -6267,7 +6267,7 @@
               message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard'
               entity_id: climate.0200009211c7_climate
         default:
-        - action: persistent_notification.create
+        - action: script.ac_dda_notify_on_transaccional
           data:
             title: 'AC Manual ON (fallback)'
             message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón={{ manual_startup_discard_reason }} Trace={{ trace_id }}'
@@ -6363,7 +6363,7 @@
         value_template: '{{ mobile_channel_ok }}'
       sequence:
       - continue_on_error: true
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
         data:
           title: AC Manual ON
           message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}'
@@ -6373,7 +6373,7 @@
           message: '{{ contract_version }} | trace_id={{ trace_id_effective }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard | stage=pendiente'
           entity_id: climate.0200009211c7_climate
     default:
-    - action: persistent_notification.create
+    - action: script.ac_dda_notify_on_transaccional
       data:
         title: 'AC Manual ON (fallback)'
         message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Src=ManualON Resultado=pendiente Razón=validando Trace={{ trace_id_effective }}'
@@ -6496,7 +6496,7 @@
             value_template: '{{ mobile_channel_ok }}'
           sequence:
           - continue_on_error: true
-            service: notify.mobile_app_samsung_s24
+            service: script.ac_dda_notify_on_transaccional
             data:
               title: AC Manual ON
               message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
@@ -6506,7 +6506,7 @@
               message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard'
               entity_id: climate.0200009211c7_climate
         default:
-        - action: persistent_notification.create
+        - action: script.ac_dda_notify_on_transaccional
           data:
             title: 'AC Manual ON (fallback)'
             message: '{{ hhmm }} Src=ManualON Resultado=ignorado Razón=out_of_scope_daytime_main Trace={{ trace_id }}'
@@ -6778,7 +6778,7 @@
         value_template: '{{ mobile_channel_ok }}'
       sequence:
       - continue_on_error: true
-        service: notify.mobile_app_samsung_s24
+        service: script.ac_dda_notify_on_transaccional
         data:
           title: AC Manual ON
           message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
@@ -6788,7 +6788,7 @@
           message: '{{ contract_version }} | trace_id={{ trace_id }} | notify_stage=send_result | notify_channel=mobile | notify_result=mobile_sent | flow=manual_on_guard | stage=capturado'
           entity_id: climate.0200009211c7_climate
     default:
-    - action: persistent_notification.create
+    - action: script.ac_dda_notify_on_transaccional
       data:
         title: 'AC Manual ON (fallback)'
         message: '{{ now().strftime(''%I:%M %p'') | regex_replace(''^0'','''') }} Tin={{ ''%.1f'' | format(tin | float) if tin is not none else ''n/a'' }} Tout={{ ''%.1f'' | format(tout | float) if tout is not none else ''n/a'' }} H={{ ''%.0f'' | format(hout_owm | float) if hout_owm is not none else ''n/a'' }} W={{ cond_owm if cond_owm not in ['''', ''unknown'', ''unavailable'', ''none''] else ''n/a'' }} On={{ ''%.1f'' | format(cool_on_final | float) if cool_on_final is not none else ''n/a'' }} Off={{ ''%.1f'' | format(cool_off_final | float) if cool_off_final is not none else ''n/a'' }} SP={{ ''%.1f'' | format(final_setpoint | float) if final_setpoint is not none else ''n/a'' }} Fan={{ final_fan }} Src=ManualON Resultado={{ ''capturado'' if persistence_ready_for_trigger else ''error_controlado'' }} Razón={{ persistence_gate_reason }} Stage1Diag={{ persistence_stage_1_diag }} Trace={{ trace_id }}'
@@ -7333,7 +7333,7 @@
               data:
                 ttl: 0
                 priority: high
-            action: notify.mobile_app_samsung_s24
+            action: script.ac_dda_notify_on_transaccional
         default: []
     default:
     - choose:
@@ -7378,7 +7378,7 @@
         data:
           ttl: 0
           priority: high
-      action: notify.mobile_app_samsung_s24
+      action: script.ac_dda_notify_on_transaccional
   mode: restart
 - id: ac_cool_adaptive_setpoint_runtime
   alias: AC - Cool setpoint adaptativo en ciclo activo
@@ -7936,7 +7936,7 @@
       name: AC Reset Manual
       message: "hito=reset_end | resultado={{ result_status if (dry_run | default(false)) else 'aplicado' }} | trace_id={{ trace_id | default('n/a', true) }} | helpers_reset={{ helpers_reset_count | default(0) }} | nota=preserva_flags_operativos"
       entity_id: climate.0200009211c7_climate
-  - service: notify.mobile_app_samsung_s24
+  - service: script.ac_dda_notify_on_transaccional
     continue_on_error: true
     data:
       message: "AC Reset DDA Resultado={{ result_status if (dry_run | default(false)) else 'aplicado' }} Helpers_reset={{ helpers_reset_count | default(0) }} Trace={{ trace_id | default('n/a', true) }}"
