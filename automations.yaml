@@ -5396,7 +5396,8 @@
       force_policy_active: '{{ manual_recent_evidence and learning_day_scope_ok and final_mode_cool_required }}'
       strict_policy_ready: '{{ manual_event_confirmed and learning_day_scope_ok and final_mode_cool_required }}'
       learning_gate_ok: '{{ force_policy_active or strict_policy_ready or (eligibility_manual_event and eligibility_scope and eligibility_safety) }}'
-      manual_on_event_signature: '{{ snapshot_ts ~ ''|'' ~ contract_context_key ~ ''|'' ~ final_mode ~ ''|'' ~ trace_id }}'
+      manual_on_event_time_window_5m: "{% if snapshot_ts in ['', 'unknown', 'unavailable', 'none'] %}window_unknown{% else %}{{ ((as_timestamp(snapshot_ts, default=as_timestamp(now())) | int(0)) // 300) }}{% endif %}"
+      manual_on_event_signature: '{{ ''alias=ac_learning_manual_on|tipo=learning_on|hito=cierre_terminal|ventana5m='' ~ manual_on_event_time_window_5m ~ ''|ctx='' ~ contract_context_key ~ ''|mode='' ~ final_mode ~ ''|trace='' ~ trace_id }}'
       last_manual_on_event_signature: '{{ states(''input_text.ac_dda_learning_last_manual_on_signature'') | default('''', true) | trim }}'
       event_already_processed: '{{ manual_on_event_signature == last_manual_on_event_signature }}'
       contract_context_delta_on_helper: '{{ ''input_number.ac_dda_cool_delta_on_bucket_'' ~ (contract_context_key | replace('':'',''_'') ) }}'
@@ -6138,7 +6139,8 @@
       manual_startup_window_ok: '{{ startup_trigger_bridge_ok and (startup_from_off_recent or startup_from_fan_only_bridge) }}'
       dedupe_pending_ttl_s: 8
       manual_on_session_ttl_s: 110
-      manual_on_pending_signature_core: '{{ ''ctx='' ~ trigger_to_context_id }}'
+      manual_on_pending_window_10s: '{{ (as_timestamp(now()) | int(0)) // 10 }}'
+      manual_on_pending_signature_core: '{{ ''alias=ac_manual_on_guard|tipo=manual_on_guard|hito=pendiente_preconsolidacion|ventana10s='' ~ manual_on_pending_window_10s ~ ''|ctx='' ~ trigger_to_context_id ~ ''|mode='' ~ detected_mode }}'
       manual_on_pending_signature_ts_epoch: '{{ as_timestamp(now()) | int(0) }}'
       manual_on_pending_signature: '{{ ''sig='' ~ manual_on_pending_signature_core ~ ''|saved_ts='' ~ manual_on_pending_signature_ts_epoch ~ ''|trace_id='' ~ trace_id ~ ''|trigger_id='' ~ trigger_id }}'
       last_manual_on_pending_signature: '{{ states(''input_text.ac_dda_last_manual_on_pending_signature'') | default('''', true) | trim }}'
