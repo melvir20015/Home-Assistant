@@ -1,8 +1,8 @@
 ac_dda_notify_on_transaccional:
-  alias: AC DDA - Notificación ON transaccional
+  alias: AC DDA - Notificación móvil transaccional unificada
   description: >-
-    Envía notificación ON con payload contractual ya validado, conserva hitos de
-    traza, anti-duplicado por ciclo y aplica fallback consistente a
+    Envía notificación móvil contractual en español para cualquier hito AC-DDA,
+    conserva hitos de traza, anti-duplicado por ciclo y aplica fallback consistente a
     persistent_notification/logbook.
   mode: parallel
   fields:
@@ -29,6 +29,11 @@ ac_dda_notify_on_transaccional:
     cycle_signature_v2:
       description: Firma anti-duplicado v2 con identificador único real de ciclo.
       example: token:20260409143500999123|auto_ts:2026-04-09T14:35:00.999123+00:00|cool_normal_on|25.4|24.8|auto_on
+    log_detail:
+      description: Detalle técnico para logbook (no visible al usuario móvil).
+    notify_kind:
+      description: Tipo humano de evento (encendido_auto, apagado_auto, manual_on, manual_off, cierre_learning_on, cierre_learning_off, vinculado).
+      example: encendido_auto
   sequence:
     - variables:
         trace_local: "{{ trace_id | default('trace_missing', true) }}"
@@ -37,6 +42,8 @@ ac_dda_notify_on_transaccional:
         entity_local: "{{ entity_id | default('climate.0200009211c7_climate', true) }}"
         src_local: "{{ src | default('AutoON', true) }}"
         branch_local: "{{ branch | default('n/a', true) }}"
+        log_detail_local: "{{ log_detail | default('sin_detalle', true) }}"
+        notify_kind_local: "{{ notify_kind | default('vinculado', true) }}"
         role_local:
           "{{ notify_role if notify_role is defined and (notify_role | string | trim | lower) in ['primary', 'confirm']
           else 'primary' }}"
@@ -86,9 +93,9 @@ ac_dda_notify_on_transaccional:
       data:
         name: AC Auto Trace
         message:
-          hito=notify_payload_ready | notify_stage=payload_ready | trace_id={{ trace_local
+          hito=notify_payload_ready | notify_kind={{ notify_kind_local }} | notify_stage=payload_ready | trace_id={{ trace_local
           }} | src={{ src_local }} | branch={{ branch_local }} | cycle_signature_v2={{ cycle_signature_local
-          }} | mode_now={{ entity_mode_now }}
+          }} | mode_now={{ entity_mode_now }} | detail={{ log_detail_local }}
         entity_id: "{{ entity_local }}"
     - service: logbook.log
       continue_on_error: true
@@ -204,6 +211,12 @@ ac_dda_notify_on_transaccional:
                       hito=notify_on_enviado | notify_stage=send_result | send_result=mobile_sent | reason=explicit_ack | trace_id={{ trace_local }} | src={{ src_local
                       }} | branch={{ branch_local }}
                     entity_id: "{{ entity_local }}"
+                - service: input_text.set_value
+                  continue_on_error: true
+                  target:
+                    entity_id: input_text.ac_dda_last_notify_status
+                  data:
+                    value: "{{ trace_local ~ '|kind=' ~ notify_kind_local ~ '|stage=terminal|channel=mobile|result=sent|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
             - conditions:
                 - condition: template
                   value_template: "{{ notify_explicit_error }}"
@@ -229,6 +242,12 @@ ac_dda_notify_on_transaccional:
                       hito=notify_on_fallido | notify_stage=send_result | send_result=fallback | reason=mobile_failed_fallback | trace_id={{ trace_local }} | branch={{ branch_local
                       }} | fallback=persistent_notification
                     entity_id: "{{ entity_local }}"
+                - service: input_text.set_value
+                  continue_on_error: true
+                  target:
+                    entity_id: input_text.ac_dda_last_notify_status
+                  data:
+                    value: "{{ trace_local ~ '|kind=' ~ notify_kind_local ~ '|stage=terminal|channel=persistent|result=fallback|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"
           default:
             - service: logbook.log
               continue_on_error: true
@@ -238,3 +257,9 @@ ac_dda_notify_on_transaccional:
                   hito=notify_on_enviado | notify_stage=send_result | send_result=unknown_but_attempted | reason=no_explicit_ack_response | trace_id={{ trace_local }} | src={{ src_local
                   }} | branch={{ branch_local }} | resp={{ notify_response if notify_response is defined else 'no_response' }}
                 entity_id: "{{ entity_local }}"
+            - service: input_text.set_value
+              continue_on_error: true
+              target:
+                entity_id: input_text.ac_dda_last_notify_status
+              data:
+                value: "{{ trace_local ~ '|kind=' ~ notify_kind_local ~ '|stage=terminal|channel=mobile|result=attempted_unknown|ts=' ~ now().strftime('%Y-%m-%d %H:%M:%S') }}"

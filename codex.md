@@ -1785,3 +1785,23 @@ Objetivo: habilitar depuración y auditoría causal de por qué cambió cada ran
 - Verificar que delta `<0.3` no fuerza escritura de setpoint.
 - Validar debounce fan (`fan_should_apply`) y actualización de `ac_dda_last_fan_change_ts`.
 - Confirmar telemetría compacta (`Tin/Hin/Tout`, `On/Off`, `SP`, `Fan`, `Demand`, `Bucket`, `Reason`, `resultado_terminal`).
+
+## Contrato de notificaciones móvil AC-DDA (matriz operativa)
+
+| Alias de automatización | Evento | Título final | Mensaje push final (humano) | Detalle de logbook (técnico) | Fallback esperado |
+|---|---|---|---|---|---|
+| AC - Día dinámico aprendido (principal) | Encendido automático | AC encendido automático | Se encendió el aire automáticamente. Tin: {{ tin }}°C. Objetivo: {{ sp }}°C. | `reason`, `branch`, `trace_id`, validaciones de contrato/fan/setpoint. | `persistent_notification.create` + `input_text.ac_dda_last_notify_status` + `logbook.log` |
+| AC - Día dinámico aprendido (principal) | Apagado automático | AC apagado automático | Se apagó el aire automáticamente. Motivo: {{ motivo_humano }}. | Flags internos de presencia/contrato/clima y razón técnica completa. | Igual al patrón transaccional unificado |
+| AC - Día dinámico aprendido (confirmación notify AUTO ON) | Confirmación de ON | Confirmación de encendido | Confirmado: el aire sigue encendido en modo frío. | Correlación con firma de ciclo, deduplicación y traza de confirmación. | Igual al patrón transaccional unificado |
+| AC - Learning - Manual OFF feedback | Cierre de aprendizaje (apagado) | Aprendizaje por apagado manual | Se registró tu apagado manual y el sistema ajustó el criterio para próximas decisiones. | Resultado terminal (`aplicado/ignorado/error_controlado`), policy y `trace_id`. | Igual al patrón transaccional unificado |
+| AC - Learning - Manual ON feedback | Cierre de aprendizaje (encendido) | Aprendizaje por encendido manual | Se registró tu encendido manual y el sistema ajustó el criterio para próximas decisiones. | Resultado terminal (`aplicado/ignorado/error_controlado`), policy y `trace_id`. | Igual al patrón transaccional unificado |
+| AC - Manual OFF guard + pausa 5 min | Apagado manual detectado | Apagado manual detectado | Detecté un apagado manual. Se respetará una pausa antes de nuevas acciones automáticas. | Firma de deduplicación, ventana de pausa y estado de guardas. | Igual al patrón transaccional unificado |
+| AC - Manual ON guard + presencia temporal | Encendido manual detectado | Encendido manual detectado | Detecté un encendido manual. Mantendré presencia temporal para evitar cortes prematuros. | Snapshot/trace, persistencia por etapas y estado de guardas. | Igual al patrón transaccional unificado |
+| AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones | Evento vinculado (sin presencia / bloqueo clima / calefacción automática) | Ajuste nocturno de climatización | Se ajustó la climatización nocturna por {{ causa_humana }}. | Variables nocturnas completas (Tin/Tout/Hin/condición/lock/presencia). | Igual al patrón transaccional unificado |
+
+### Reglas de contrato UX (obligatorias)
+- Push móvil: solo español humano, sin `reason_code`, `ctx`, `trace`, `signature`, ni claves internas.
+- Si falta un dato confiable: usar `No disponible` y motivo breve legible.
+- Orden estable por tipo de mensaje:
+  1) acción, 2) motivo humano, 3) Tin/Tout si aplica, 4) objetivo o estado final.
+- Diagnóstico técnico completo únicamente en `logbook.log` y helpers internos.
