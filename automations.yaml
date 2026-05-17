@@ -1641,6 +1641,7 @@
       Last={{ last_mode_no_fan }}'
 - id: '1768159303322'
   alias: AC - Día dinámico aprendido (principal)
+  enabled: false
   trace:
     stored_traces: 50
   description: 'Automatización principal diurna 07:01–21:59. Usa fórmula base + sesgos
@@ -4948,6 +4949,7 @@
   mode: restart
 - id: '1773894905330'
   alias: AC - Learning - Manual OFF feedback
+  enabled: false
   trace:
     stored_traces: 50
   description: 'Contrato v1: aprendizaje manual OFF unificado. Usa una sola definición
@@ -5214,6 +5216,7 @@
   mode: restart
 - id: '1773895045306'
   alias: AC - Learning - Manual ON feedback
+  enabled: false
   trace:
     stored_traces: 50
   description: 'Contrato v1: aprendizaje manual ON unificado. Espera 25s para consolidación,
@@ -5763,6 +5766,7 @@
   max: 2
 - id: '1773939304415'
   alias: AC - Manual OFF guard + pausa 5 min
+  enabled: false
   trace:
     stored_traces: 50
   description: 'Contrato v1: guard de apagado manual con pausa de 5 min y secado post-cool
@@ -6002,6 +6006,7 @@
   mode: restart
 - id: '1773947560399'
   alias: AC - Manual ON guard + presencia temporal
+  enabled: false
   trace:
     stored_traces: 50
   description: 'Contrato v1: guard de encendido manual con consolidación a 30s, flujo
@@ -7929,3 +7934,139 @@
     continue_on_error: true
     data:
       message: "AC Reset DDA Resultado={{ result_status if (dry_run | default(false)) else 'aplicado' }} Helpers_reset={{ helpers_reset_count | default(0) }} Trace={{ trace_id | default('n/a', true) }}"
+- id: 'ac_matriz_160_main_v1'
+  alias: AC-Matriz 160
+  description: 'Control HVAC contextual 8x4x5 con trazabilidad y notificación humana.'
+  mode: single
+  triggers:
+  - trigger: time_pattern
+    minutes: /5
+  - trigger: state
+    entity_id:
+    - sensor.lumi_lumi_weather_cuarto_temperatura
+    - sensor.lumi_lumi_weather_coco_temperatura
+    - sensor.lumi_lumi_weather_cuarto_humedad
+    - sensor.lumi_lumi_weather_coco_humedad
+    - weather.openweathermap
+    - binary_sensor.presencia_movimiento_estable
+    - device_tracker.samsung_s24
+    - person.ivan
+    - climate.0200009211c7_climate
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '21:59:00'
+  actions:
+  - action: variables
+    variables:
+      tin: "{{ [states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average | round(2) }}"
+      hin: "{{ [states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average | round(2) }}"
+      tout: "{{ state_attr('weather.openweathermap','temperature') | float(none) }}"
+      hout: "{{ state_attr('weather.openweathermap','humidity') | float(50) }}"
+      wx_raw: "{{ states('weather.openweathermap') | lower }}"
+      presence_motion: "{{ is_state('binary_sensor.presencia_movimiento_estable','on') }}"
+      presence_s24: "{{ is_state('device_tracker.samsung_s24','home') or is_state('person.ivan','home') }}"
+      presence_ok: "{{ presence_motion or presence_s24 }}"
+      presence_origin: "{% if presence_motion and presence_s24 %}ambos{% elif presence_motion %}movimiento{% elif presence_s24 %}s24{% else %}sin_presencia{% endif %}"
+      slot_name: "{% set t = now().strftime('%H:%M') %}{% if '07:01' <= t <= '10:00' %}07:01 am - 10:00 am{% elif '10:01' <= t <= '13:00' %}10:01 am - 01:00 pm{% elif '13:01' <= t <= '16:00' %}01:01 pm - 04:00 pm{% elif '16:01' <= t <= '19:00' %}04:01 pm - 07:00 pm{% else %}07:01 pm - 09:59 pm{% endif %}"
+      slot_idx: "{% set t = now().strftime('%H:%M') %}{% if '07:01' <= t <= '10:00' %}0{% elif '10:01' <= t <= '13:00' %}1{% elif '13:01' <= t <= '16:00' %}2{% elif '16:01' <= t <= '19:00' %}3{% else %}4{% endif %}"
+      season_name: "{% set m = now().month %}{% if m in [12,1,2] %}Invierno{% elif m in [3,4,5] %}Primavera{% elif m in [6,7,8] %}Verano{% else %}Otoño{% endif %}"
+      season_idx: "{% set m = now().month %}{% if m in [12,1,2] %}0{% elif m in [3,4,5] %}1{% elif m in [6,7,8] %}2{% else %}3{% endif %}"
+      weather_cat: "{% set s = wx_raw %}{% if 'thunder' in s %}Tormenta{% elif 'snow' in s or 'sleet' in s or 'ice' in s %}Nieve - Hielo{% elif 'fog' in s or 'mist' in s or 'haze' in s %}Niebla - Neblina{% elif 'heavy' in s and 'rain' in s %}Lluvia fuerte{% elif 'rain' in s or 'drizzle' in s %}Lluvia suave{% elif 'cloud' in s and ('few' in s or 'scattered' in s or 'partly' in s) %}Parcialmente nublado{% elif 'cloud' in s %}Nublado{% else %}Soleado - Despejado{% endif %}"
+      weather_idx: "{% set c = weather_cat %}{% if c == 'Soleado - Despejado' %}0{% elif c == 'Parcialmente nublado' %}1{% elif c == 'Nublado' %}2{% elif c == 'Lluvia suave' %}3{% elif c == 'Lluvia fuerte' %}4{% elif c == 'Tormenta' %}5{% elif c == 'Niebla - Neblina' %}6{% else %}7{% endif %}"
+      col_idx: "{{ (weather_idx|int * 20) + (season_idx|int * 5) + (slot_idx|int) + 1 }}"
+      col_humana: "{{ weather_cat }} | {{ season_name }} | Horario {{ slot_name }}"
+      invalid_data: "{{ tin is none or hin is none or tout is none }}"
+      base_cool: "{{ 23 + (weather_idx|int * 0.15) + (season_idx|int * 0.10) + (slot_idx|int * 0.05) + ((hin|float(50)-50)*0.01) + ((tout|float(25)-25)*0.02) }}"
+      base_heat: "{{ 20 - (weather_idx|int * 0.08) - (season_idx|int * 0.05) - (slot_idx|int * 0.03) - ((hin|float(50)-50)*0.005) - ((tout|float(18)-18)*0.015) }}"
+      t_off_cool: "{{ [26.0, [22.0, (base_cool|float(24))] | max] | min | round(2) }}"
+      t_on_cool: "{{ (t_off_cool|float + 1.0) | round(2) }}"
+      t_off_heat: "{{ [22.0, [17.0, (base_heat|float(20))] | max] | min | round(2) }}"
+      t_on_heat: "{{ (t_off_heat|float - 1.0) | round(2) }}"
+      climate_mode: "{{ states('climate.0200009211c7_climate') }}"
+      reason_invalid: "{% if invalid_data %}fallback_datos_externos_o_sensores{% elif not presence_ok %}sin_presencia_en_disparo{% else %}ok{% endif %}"
+      action_target: "{% if reason_invalid != 'ok' %}none{% elif climate_mode == 'off' and tin|float >= t_on_cool|float %}turn_on_cool{% elif climate_mode == 'off' and tin|float <= t_on_heat|float %}turn_on_heat{% elif climate_mode == 'cool' and tin|float <= t_off_cool|float %}turn_off{% elif climate_mode == 'heat' and tin|float >= t_off_heat|float %}turn_off{% else %}none{% endif %}"
+      event_signature: "{{ action_target }}|{{ climate_mode }}|{{ col_humana }}|{{ now().strftime('%Y-%m-%d %H:%M') }}"
+      dedup_ok: "{{ event_signature != states('input_text.ac_matriz_160_ultima_firma_notificacion') }}"
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_columna_activa_humana
+    data:
+      value: "{{ col_humana }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ presence_ok }}"
+      sequence:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ac_matriz_160_presencia_valida_disparo
+    default:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.ac_matriz_160_presencia_valida_disparo
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_origen_presencia_disparo
+    data:
+      value: "{{ presence_origin }}"
+  - action: logbook.log
+    data:
+      name: AC-Matriz 160
+      message: "hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales=cool_on {{ t_on_cool }},cool_off {{ t_off_cool }},heat_on {{ t_on_heat }},heat_off {{ t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }}"
+      entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ reason_invalid != 'ok' }}"
+      sequence:
+      - action: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: "hito=fallback_seguro | razon={{ reason_invalid }}"
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: "{{ action_target == 'turn_on_cool' }}"
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: cool
+    - conditions:
+      - condition: template
+        value_template: "{{ action_target == 'turn_on_heat' }}"
+      sequence:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: heat
+    - conditions:
+      - condition: template
+        value_template: "{{ action_target == 'turn_off' }}"
+      sequence:
+      - action: climate.turn_off
+        target:
+          entity_id: climate.0200009211c7_climate
+    default: []
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ action_target in ['turn_on_cool','turn_on_heat','turn_off'] and dedup_ok }}"
+      sequence:
+      - action: notify.mobile_app_samsung_s24
+        data:
+          title: AC-Matriz 160
+          message: "{{ now().strftime('%H:%M') }} | Evento: {{ 'Encendido' if action_target in ['turn_on_cool','turn_on_heat'] else 'Apagado' }} | Modo final: {{ 'cool' if action_target == 'turn_on_cool' else 'heat' if action_target == 'turn_on_heat' else 'off' }} | Interior {{ tin }}°C/{{ hin }}% | Exterior {{ tout if tout is not none else 'No disponible' }}°C/{{ hout }}% | Umbral aplicado: {{ t_on_cool if action_target == 'turn_on_cool' else t_on_heat if action_target == 'turn_on_heat' else t_off_cool if climate_mode == 'cool' else t_off_heat }} | {{ col_humana }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_ultima_firma_notificacion
+        data:
+          value: "{{ event_signature }}"
+  - action: logbook.log
+    data:
+      name: AC-Matriz 160
+      message: hito=migracion_control_exclusivo | ac_dda_desactivado=true | controlador_activo=AC-Matriz 160
+      entity_id: climate.0200009211c7_climate
