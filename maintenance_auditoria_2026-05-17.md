@@ -1,0 +1,315 @@
+# Auditoría de mantenimiento HVAC/TV (2026-05-17)
+
+## Automatizaciones conservadas
+- AC-Matriz 160
+- AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones
+- AC - Apaga a las 07:00 am
+- Notificación - Movimiento después de 1h sin actividad
+- TV Dormitorio - Programar apagado 30 min
+- TV Dormitorio - Apaga SHIELD al terminar timer
+
+## Automatizaciones eliminadas
+- AC - Normaliza helper último modo no fan
+- AC - Saneamiento defensivo banderas auto
+- AC - Audita helpers de telemetría en runtime
+- AC - Memoria último modo + Bloqueo 2h Cool/Heat (rolling, a prueba de fan_only)
+- AC - Bloqueo cambio modo 2h (expira por timestamp, rolling)
+- AC - Modo dinámico por tendencia con AC OFF (23:00-07:00) + cooldown afinado
+- Helper - Ausencia prolongada calefacción
+- Helper - Resetea ausencia prolongada calefacción
+- Helper - Marca calefaccion reciente 2 horas
+- AC - Noche Reset tendencia OFF (19:00)
+- AC - Noche Muestreo tendencia solo AC OFF
+- AC - Noche Decide tendencia OFF (21:59)
+- AC - Noche Decide modo final (22:00) con bloqueo (no cae a none si AC estaba ON)
+- AC - Noche Desbloquea modo (07:00)
+- Aviso - Afuera más fresco que adentro (AC en cool, OWM)
+- AC - Guardar último apagado (solo OFF)
+- AC - Día dinámico aprendido (principal)
+- AC - Día dinámico aprendido (confirmación notify AUTO ON)
+- AC - Iniciar bloqueo 2h al apagarse
+- AC - Learning - Manual OFF feedback
+- TEMP - AC Learning ON trigger diagnóstico (desactivada)
+- AC - Learning - Manual ON feedback
+- AC - Manual OFF guard + pausa 5 min
+- AC - Manual ON guard + presencia temporal
+- AC - Feedback manual de setpoint en cool activo
+- AC - Cool setpoint adaptativo en ciclo activo
+- AC - Watchdog recuperación de lock rancio
+- Enciende Ventilador por deteccion de Gas
+- AC - DDA Integridad - owner mismatch Manual ON TS
+- AC - DDA Integridad - owner mismatch Manual OFF TS
+- AC - DDA Watchdog integridad periódica
+- AC - Mantenimiento - Reset manual aprendizaje AC-DDA
+
+## Dependencias intocables detectadas
+
+- `binary_sensor.presencia_movimiento_estable`
+- `binary_sensor.presencia_ok_estable`
+- `binary_sensor.presencia_s24_estable`
+- `binary_sensor.tze204_gkfbdvyx_ts0601`
+- `climate.0200009211c7_climate`
+- `climate.set_fan_mode`
+- `climate.set_hvac_mode`
+- `climate.set_temperature`
+- `climate.turn_off`
+- `device_tracker.samsung_s24`
+- `input_boolean.ac_bloqueo_cambio_modo_2h`
+- `input_boolean.ac_dda_on_por_automatizacion`
+- `input_boolean.ac_matriz_160_auto_habilitado`
+- `input_boolean.ac_matriz_160_presencia_valida_disparo`
+- `input_boolean.ac_matriz_160_turbo_reentrada_bloqueada`
+- `input_boolean.ac_night_cool_bootstrap_in_progress`
+- `input_boolean.apagar_shield_en_30_min`
+- `input_boolean.turn_off`
+- `input_boolean.turn_on`
+- `input_datetime.ac_dda_last_auto_ts`
+- `input_datetime.ac_matriz_160_contexto_ts`
+- `input_datetime.ac_matriz_160_ultima_accion_ts`
+- `input_datetime.ac_matriz_160_ultima_notificacion_ts`
+- `input_datetime.ac_night_cool_last_bootstrap_ts`
+- `input_datetime.ac_night_cool_last_effective_ts`
+- `input_datetime.ac_ultimo_apagado`
+- `input_datetime.ac_ultimo_cambio_modo`
+- `input_datetime.set_datetime`
+- `input_number.ac_dda_last_auto_setpoint`
+- `input_number.ac_matriz_160_t_off_cool`
+- `input_number.ac_matriz_160_t_off_heat`
+- `input_number.ac_matriz_160_t_on_cool`
+- `input_number.ac_matriz_160_t_on_heat`
+- `input_number.ac_night_cool_last_effective_setpoint`
+- `input_number.set_value`
+- `input_select.ac_ultimo_modo_no_fan`
+- `input_select.select_option`
+- `input_text.ac_dda_last_auto_action`
+- `input_text.ac_dda_last_auto_branch`
+- `input_text.ac_dda_last_auto_fan`
+- `input_text.ac_dda_last_auto_mode`
+- `input_text.ac_dda_last_change_origin`
+- `input_text.ac_dda_manual_on_active_session`
+- `input_text.ac_matriz_160_columna_activa_humana`
+- `input_text.ac_matriz_160_contexto_firma_activa`
+- `input_text.ac_matriz_160_fase_ciclo`
+- `input_text.ac_matriz_160_origen_presencia_disparo`
+- `input_text.ac_matriz_160_ultima_accion`
+- `input_text.ac_matriz_160_ultima_firma_notificacion`
+- `input_text.ac_matriz_160_ultimo_estado_notificacion`
+- `input_text.ac_matriz_160_ultimo_resultado_validacion`
+- `input_text.ac_night_cool_last_effective_bucket`
+- `input_text.set_value`
+- `media_player.shield_android_tv_2`
+- `media_player.turn_off`
+- `notify.mobile_app_samsung_s24`
+- `person.ivan`
+- `script.ac_dda_notify_on_transaccional`
+- `sensor.lumi_lumi_weather_coco_humedad`
+- `sensor.lumi_lumi_weather_coco_temperatura`
+- `sensor.lumi_lumi_weather_cuarto_humedad`
+- `sensor.lumi_lumi_weather_cuarto_temperatura`
+- `timer.cancel`
+- `timer.finished`
+- `timer.start`
+- `timer.timer_apagado_tv_dormitorio`
+- `weather.openweathermap`
+
+## Scripts conservados
+
+- _(ninguno)_
+
+## Helpers eliminados por huérfano/no referenciado
+
+- `input_boolean.ac_bloqueo_modo_noche`
+- `input_boolean.ac_cool_adaptive_cycle_active`
+- `input_boolean.ac_cool_sync_push_enabled`
+- `input_boolean.ac_dda_cycle_lock`
+- `input_boolean.ac_dda_off_por_automatizacion`
+- `input_boolean.ac_dda_presence_gate_open`
+- `input_boolean.ac_learning_debug`
+- `input_boolean.ac_learning_enabled`
+- `input_boolean.ac_manual_setpoint_override_active`
+- `input_boolean.ac_off_por_automatizacion`
+- `input_boolean.ac_on_por_automatizacion`
+- `input_boolean.ac_tendencia_subiendo_con_ac_off`
+- `input_boolean.ausencia_prolongada_calefaccion`
+- `input_boolean.calefaccion_reciente`
+- `input_datetime.ac_cool_cycle_contract_started_at`
+- `input_datetime.ac_cool_cycle_last_step_at`
+- `input_datetime.ac_cool_cycle_started_at`
+- `input_datetime.ac_dda_cool_cycle_contract_started_at`
+- `input_datetime.ac_dda_cycle_lock_since`
+- `input_datetime.ac_dda_cycle_lock_started_at`
+- `input_datetime.ac_dda_last_manual_feedback_ts`
+- `input_datetime.ac_dda_last_manual_final_ts`
+- `input_datetime.ac_dda_last_manual_off_ts`
+- `input_datetime.ac_dda_last_manual_on_ts`
+- `input_datetime.ac_dda_manual_on_protection_until`
+- `input_datetime.ac_dda_manual_presence_override_until`
+- `input_datetime.ac_dda_manual_presence_until`
+- `input_datetime.ac_dda_presence_gate_checked_at`
+- `input_datetime.ac_last_auto_off_marker_ts`
+- `input_datetime.ac_last_auto_ts`
+- `input_datetime.ac_last_cool_sp_sync_notify_ts`
+- `input_datetime.ac_last_manual_feedback_ts`
+- `input_datetime.ac_last_manual_final_ts`
+- `input_datetime.ac_last_manual_off_ts`
+- `input_datetime.ac_last_manual_on_ts`
+- `input_datetime.ac_manual_presence_until`
+- `input_datetime.ac_manual_setpoint_override_until`
+- `input_number.ac_bias_cool_off`
+- `input_number.ac_bias_cool_on`
+- `input_number.ac_bias_cool_setpoint`
+- `input_number.ac_bias_heat_off`
+- `input_number.ac_bias_heat_on`
+- `input_number.ac_bias_heat_setpoint`
+- `input_number.ac_cool_adaptive_close_enough_delta`
+- `input_number.ac_cool_adaptive_initial_delay_minutes`
+- `input_number.ac_cool_adaptive_min_progress_per_window`
+- `input_number.ac_cool_adaptive_min_setpoint`
+- `input_number.ac_cool_adaptive_step`
+- `input_number.ac_cool_adaptive_window_minutes`
+- `input_number.ac_cool_cycle_contract_off`
+- `input_number.ac_cool_cycle_contract_on`
+- `input_number.ac_cool_cycle_contract_sensor_off`
+- `input_number.ac_cool_cycle_contract_setpoint`
+- `input_number.ac_cool_cycle_contract_setpoint_effective`
+- `input_number.ac_cool_cycle_last_applied_setpoint`
+- `input_number.ac_cool_cycle_start_tin`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_day_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_day_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_noche_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_noche_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_tarde_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_alta_tarde_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_day_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_day_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_noche_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_noche_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_tarde_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_caliente_humedad_normal_tarde_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_day_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_day_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_noche_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_noche_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_tarde_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_alta_tarde_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_day_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_day_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_noche_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_noche_presencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_tarde_ausencia`
+- `input_number.ac_cool_effective_sp_bucket_exterior_templado_humedad_normal_tarde_presencia`
+- `input_number.ac_cool_effective_sp_hard_gap`
+- `input_number.ac_cool_effective_sp_inconsistency_hits`
+- `input_number.ac_cool_effective_sp_recent_guard_minutes`
+- `input_number.ac_cool_effective_sp_reset_repeat_limit`
+- `input_number.ac_cool_effective_sp_soft_gap`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_alta_day_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_alta_day_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_alta_noche_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_alta_noche_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_alta_tarde_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_alta_tarde_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_normal_day_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_normal_day_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_normal_noche_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_normal_noche_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_normal_tarde_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_caliente_humedad_normal_tarde_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_alta_day_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_alta_day_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_alta_noche_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_alta_noche_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_alta_tarde_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_alta_tarde_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_normal_day_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_normal_day_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_normal_noche_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_normal_noche_presencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_normal_tarde_ausencia`
+- `input_number.ac_cool_learning_bucket_exterior_templado_humedad_normal_tarde_presencia`
+- `input_number.ac_cool_off_learned`
+- `input_number.ac_dda_cool_cycle_contract_off`
+- `input_number.ac_dda_cool_cycle_contract_on`
+- `input_number.ac_dda_cool_cycle_contract_sensor_off`
+- `input_number.ac_dda_cool_cycle_contract_setpoint`
+- `input_number.ac_dda_cool_cycle_contract_setpoint_effective`
+- `input_number.ac_dda_cool_off_learned`
+- `input_number.ac_dda_cycle_lock_ttl_s`
+- `input_number.ac_dda_feedback_window_minutes`
+- `input_number.ac_dda_last_manual_setpoint`
+- `input_number.ac_dda_manual_on_min_off_window_minutes`
+- `input_number.ac_feedback_window_minutes`
+- `input_number.ac_last_auto_hin`
+- `input_number.ac_last_auto_sensor_delta`
+- `input_number.ac_last_auto_setpoint`
+- `input_number.ac_last_auto_t1`
+- `input_number.ac_last_auto_t2`
+- `input_number.ac_last_auto_tin`
+- `input_number.ac_last_auto_tout`
+- `input_number.ac_last_cool_sp_sync_notified`
+- `input_number.ac_last_manual_final_setpoint`
+- `input_number.ac_last_manual_hin`
+- `input_number.ac_last_manual_sensor_delta`
+- `input_number.ac_last_manual_setpoint`
+- `input_number.ac_last_manual_t1`
+- `input_number.ac_last_manual_t2`
+- `input_number.ac_last_manual_tin`
+- `input_number.ac_last_manual_tout`
+- `input_number.ac_learning_rate_large`
+- `input_number.ac_learning_rate_small`
+- `input_number.ac_manual_on_min_off_window_minutes`
+- `input_number.ac_manual_setpoint_override_hold_minutes`
+- `input_number.ac_off_avg_final_19_00_21_59`
+- `input_number.ac_off_avg_inicio_19_00_21_59`
+- `input_number.ac_off_avg_previo_dinamico`
+- `input_number.ac_off_muestras_19_00_21_59`
+- `input_number.tarifa_kwh_usd`
+- `input_number.temp_snapshot_coco_calef`
+- `input_number.temp_snapshot_cuarto_calef`
+- `input_select.ac_modo_dinamico`
+- `input_select.ac_modo_noche_2200`
+- `input_text.ac_cool_contextual_learning_map`
+- `input_text.ac_cool_cycle_contract_bucket`
+- `input_text.ac_cool_cycle_contract_reason`
+- `input_text.ac_cool_effective_setpoint_map`
+- `input_text.ac_cool_effective_sp_last_inconsistent_bucket`
+- `input_text.ac_dda_context_key_v2_active`
+- `input_text.ac_dda_context_key_v2_last_applied`
+- `input_text.ac_dda_cool_contextual_learning_map`
+- `input_text.ac_dda_cool_cycle_contract_bucket`
+- `input_text.ac_dda_cool_cycle_contract_reason`
+- `input_text.ac_dda_cool_effective_setpoint_map`
+- `input_text.ac_dda_last_context_bucket`
+- `input_text.ac_dda_last_manual_event_type`
+- `input_text.ac_dda_last_manual_final_fan`
+- `input_text.ac_dda_last_manual_final_mode`
+- `input_text.ac_dda_last_manual_learning_type`
+- `input_text.ac_dda_last_manual_on_pending_signature`
+- `input_text.ac_dda_last_manual_on_snapshot`
+- `input_text.ac_dda_last_manual_on_trace_confirmed`
+- `input_text.ac_dda_last_notify_on_cycle_signature`
+- `input_text.ac_dda_last_notify_status`
+- `input_text.ac_dda_learning_last_manual_off_signature`
+- `input_text.ac_dda_learning_last_manual_on_signature`
+- `input_text.ac_dda_legacy_helper_map`
+- `input_text.ac_last_auto_action`
+- `input_text.ac_last_auto_branch`
+- `input_text.ac_last_auto_context_bucket`
+- `input_text.ac_last_auto_fan`
+- `input_text.ac_last_auto_mode`
+- `input_text.ac_last_auto_off_marker_nonce`
+- `input_text.ac_last_change_origin`
+- `input_text.ac_last_learning_context_key`
+- `input_text.ac_last_learning_metadata`
+- `input_text.ac_last_manual_event_type`
+- `input_text.ac_last_manual_feedback_fan`
+- `input_text.ac_last_manual_feedback_mode`
+- `input_text.ac_last_manual_feedback_type`
+- `input_text.ac_last_manual_final_fan`
+- `input_text.ac_last_manual_final_mode`
+- `input_text.ac_last_manual_learning_summary`
+- `input_text.ac_last_manual_learning_type`
+- `input_text.ac_last_manual_sp_result_summary`
+- `input_text.ac_learning_last_manual_off_signature`
+- `input_text.ac_learning_last_manual_on_signature`
+- `timer.ac_dda_presence_confirm_3m`

@@ -1,30 +1,8 @@
-ac_modo_dinamico:
-  name: "AC - Modo dinámico (23:00-07:00)"
-  options:
-    - cool
-    - heat
-    - none
-  initial: none
-
-ac_modo_noche_2200:
-  name: "AC modo noche 22:00"
-  options:
-    - none
-    - cool
-    - heat
-  initial: none
-
 ac_ultimo_modo_no_fan:
-  name: "AC - Último modo no fan"
-  # Semántica: `off` es el estado de reposo del helper cuando no se desea
-  # conservar un modo operativo recordado.
-  # Este helper acepta texto exacto; el valor legacy `False` no es válido y se
-  # reemplaza explícitamente por `off` para no romper secuencias de apagado.
-  # Nunca usar booleanos (`False`/`false`) ni `idle` en este helper; cuando el AC
-  # está apagado o se limpia un latch, la lógica actual lo normaliza a `off`.
+  name: AC - Último modo no fan
   options:
-    - off
-    - cool
-    - heat
-    - emergency_cool
-  initial: off
+  - false
+  - cool
+  - heat
+  - emergency_cool
+  initial: false

@@ -1,230 +1,41 @@
-ac_last_auto_branch:
-  name: "AC Last Auto Branch"
-  max: 100
-
-ac_last_auto_action:
-  name: "AC Last Auto Action"
-  max: 50
-
-ac_last_auto_mode:
-  name: "AC Last Auto Mode"
-  max: 50
-
-ac_last_auto_fan:
-  name: "AC Last Auto Fan"
-  max: 50
-
-ac_last_auto_off_marker_nonce:
-  name: "AC Last AUTO OFF Marker Nonce"
-  max: 80
-
-ac_last_manual_event_type:
-  name: "AC Last Manual Detection Type"
-  max: 60
-
-ac_last_manual_learning_type:
-  name: "AC Last Manual Learning Result"
-  max: 60
-
-ac_last_manual_learning_summary:
-  name: "AC Last Manual Learning Summary"
-  max: 255
-
-ac_last_manual_sp_result_summary:
-  name: "AC Last Manual SP Result Summary"
-  max: 255
-
-ac_last_manual_feedback_type:
-  name: "AC Last Manual Feedback Type (legacy)"
-  max: 60
-
-ac_last_manual_feedback_mode:
-  name: "AC Last Manual Feedback Mode"
-  max: 50
-
-ac_last_manual_feedback_fan:
-  name: "AC Last Manual Feedback Fan"
-  max: 50
-
-ac_last_manual_final_mode:
-  name: "AC Last Manual Final Mode"
-  max: 50
-
-ac_last_manual_final_fan:
-  name: "AC Last Manual Final Fan"
-  max: 50
-
-ac_last_change_origin:
-  name: "AC Last Change Origin"
-  max: 40
-
-ac_learning_last_manual_off_signature:
-  name: "AC Learning Last Manual OFF Signature"
-  max: 140
-
-ac_learning_last_manual_on_signature:
-  name: "AC Learning Last Manual ON Signature"
-  max: 140
-
-ac_last_learning_context_key:
-  name: "AC Last Learning Context Key"
-  max: 180
-
-ac_last_learning_metadata:
-  name: "AC Last Learning Metadata"
-  max: 255
-
-ac_cool_contextual_learning_map:
-  # `input_text` solo conserva un resumen corto del último bucket persistido.
-  # El estado contextual completo vive en helpers numéricos por bucket.
-  name: "AC Cool Contextual Learning Summary"
-  max: 255
-
-ac_last_auto_context_bucket:
-  name: "AC Last Auto Context Bucket"
-  max: 120
-
-ac_cool_effective_setpoint_map:
-  # `input_text` no debe guardar mapas JSON largos; aquí solo queda un resumen compacto.
-  name: "AC Cool Effective Setpoint Summary"
-  max: 255
-
-ac_cool_effective_sp_last_inconsistent_bucket:
-  name: "AC Cool Effective SP Last Inconsistent Bucket"
-  max: 120
-
 ac_night_cool_last_effective_bucket:
-  name: "AC Night Cool Last Effective Bucket"
+  name: AC Night Cool Last Effective Bucket
   max: 120
-
-ac_cool_cycle_contract_bucket:
-  name: "AC Cool Cycle Contract Bucket"
-  max: 120
-
-ac_cool_cycle_contract_reason:
-  name: "AC Cool Cycle Contract Reason"
-  max: 80
-
-ac_dda_last_manual_event_type:
-  name: "AC DDA Last Manual Detection Type"
-  max: 60
-
-ac_dda_last_manual_learning_type:
-  name: "AC DDA Last Manual Learning Result"
-  max: 60
-
-ac_dda_last_manual_final_mode:
-  name: "AC DDA Last Manual Final Mode"
-  max: 50
-
-ac_dda_last_manual_final_fan:
-  name: "AC DDA Last Manual Final Fan"
-  max: 50
-
-ac_dda_learning_last_manual_off_signature:
-  name: "AC DDA Learning Last Manual OFF Signature"
-  max: 140
-
-ac_dda_learning_last_manual_on_signature:
-  name: "AC DDA Learning Last Manual ON Signature"
-  max: 140
-
-ac_dda_last_manual_on_pending_signature:
-  name: "AC DDA Last Manual ON Pending Signature"
-  max: 120
-
-ac_dda_last_manual_on_trace_confirmed:
-  name: "AC DDA Last Manual ON Trace Confirmed"
-  max: 80
-
-ac_dda_last_manual_on_snapshot:
-  name: "AC DDA Last Manual ON Snapshot"
-  max: 255
-
 ac_dda_manual_on_active_session:
-  name: "AC DDA Manual ON Active Session"
+  name: AC DDA Manual ON Active Session
   max: 255
-
-ac_dda_legacy_helper_map:
-  name: "AC DDA Legacy Compatibility Map"
-  max: 255
-
 ac_dda_last_change_origin:
-  name: "AC DDA Last Change Origin"
+  name: AC DDA Last Change Origin
   max: 40
-
-ac_dda_last_context_bucket:
-  name: "AC DDA Last Context Bucket"
-  max: 120
-
-ac_dda_cool_contextual_learning_map:
-  name: "AC DDA Cool Contextual Learning Summary"
-  max: 255
-
-ac_dda_cool_effective_setpoint_map:
-  name: "AC DDA Cool Effective Setpoint Summary"
-  max: 255
-
-ac_dda_cool_cycle_contract_bucket:
-  name: "AC DDA Cool Cycle Contract Bucket"
-  max: 120
-
-ac_dda_cool_cycle_contract_reason:
-  name: "AC DDA Cool Cycle Contract Reason"
-  max: 80
-
-ac_dda_last_notify_on_cycle_signature:
-  name: "AC DDA Last Notify ON Cycle Signature"
-  max: 255
-
-ac_dda_last_notify_status:
-  name: "AC DDA Last Notify Status"
-  max: 255
-
-ac_dda_context_key_v2_active:
-  name: "AC DDA Context Key V2 Active"
-  max: 255
-
-ac_dda_context_key_v2_last_applied:
-  name: "AC DDA Context Key V2 Last Applied"
-  max: 255
-
 ac_matriz_160_contexto_firma_activa:
-  name: "AC Matriz 160 Contexto Firma Activa"
+  name: AC Matriz 160 Contexto Firma Activa
   max: 255
-  initial: "pendiente"
-
+  initial: pendiente
 ac_matriz_160_columna_activa_humana:
-  name: "AC Matriz 160 Columna Activa Humana"
+  name: AC Matriz 160 Columna Activa Humana
   max: 255
-  initial: "Sin contexto"
-
+  initial: Sin contexto
 ac_matriz_160_ultima_accion:
-  name: "AC Matriz 160 Última Acción"
+  name: AC Matriz 160 Última Acción
   max: 80
-  initial: "sin_accion"
-
+  initial: sin_accion
 ac_matriz_160_ultimo_resultado_validacion:
-  name: "AC Matriz 160 Último Resultado Validación"
+  name: AC Matriz 160 Último Resultado Validación
   max: 255
-  initial: "pendiente_validacion"
-
+  initial: pendiente_validacion
 ac_matriz_160_ultima_firma_notificacion:
-  name: "AC Matriz 160 Última Firma Notificación"
+  name: AC Matriz 160 Última Firma Notificación
   max: 255
-  initial: "sin_firma"
-
+  initial: sin_firma
 ac_matriz_160_ultimo_estado_notificacion:
-  name: "AC Matriz 160 Último Estado Notificación"
+  name: AC Matriz 160 Último Estado Notificación
   max: 255
-  initial: "sin_evento"
-
+  initial: sin_evento
 ac_matriz_160_origen_presencia_disparo:
-  name: "AC Matriz 160 Origen Presencia Disparo"
+  name: AC Matriz 160 Origen Presencia Disparo
   max: 80
-  initial: "sin_presencia"
-
+  initial: sin_presencia
 ac_matriz_160_fase_ciclo:
-  name: "AC Matriz 160 Fase Ciclo"
+  name: AC Matriz 160 Fase Ciclo
   max: 40
-  initial: "idle"
+  initial: idle

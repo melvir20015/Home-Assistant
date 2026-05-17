@@ -1980,3 +1980,26 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 #### Decisión tomada
 - **Fecha:** 2026-05-17.
 - **Motivo operativo:** mejorar confort rápido al llegar con desvío térmico marcado y mitigar ciclos cortos inducidos por sensor interno del HVAC.
+
+
+## Mantenimiento y depuración operativa (2026-05-17)
+
+### Convención oficial de nomenclatura
+- `ac_matriz_160_*`: helpers dedicados exclusivamente a `AC-Matriz 160`.
+- `ac_night_*`: helpers de estado efectivo para la automatización nocturna.
+- `tv_dormitorio_*`: temporizadores/helpers de TV dormitorio.
+- `notify_mov_*`: reservado para notificaciones de movimiento (crear solo cuando exista dependencia real).
+- Compatibilidad heredada permitida: entidades `ac_dda_*` se mantienen si están referenciadas por automatizaciones protegidas; no se eliminan por nombre.
+
+### Mapa de ownership por automatización conservada
+- `AC-Matriz 160`: ownership de `ac_matriz_160_*`.
+- `AC - Noche dinámico (OpenWeather) + Presencia estable + Fan Low + Notificaciones`: ownership de `ac_night_*` y dependencias heredadas `ac_dda_*` que aún consume.
+- `AC - Apaga a las 07:00 am`: sin helpers dedicados; actúa sobre `climate`.
+- `Notificación - Movimiento después de 1h sin actividad`: ownership funcional de notificación móvil por movimiento.
+- `TV Dormitorio - Programar apagado 30 min` y `TV Dormitorio - Apaga SHIELD al terminar timer`: ownership de `input_boolean.apagar_shield_en_30_min` y `timer.timer_apagado_tv_dormitorio`.
+
+### Política de depuración futura
+- Regla obligatoria: **no borrar por prefijo/nombre**.
+- Solo eliminar automatizaciones/helpers/scripts cuando sean `no referenciados` por el conjunto de automatizaciones protegidas/activas.
+- Antes de borrar: generar inventario de referencias (entity_id, target.entity_id, services, plantillas).
+- Después de borrar: validar que no existan referencias colgantes y ejecutar validación de configuración YAML/Home Assistant.

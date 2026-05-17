@@ -1,84 +1,20 @@
 ac_bloqueo_cambio_modo_2h:
-  name: "AC - Bloqueo cambio modo 2h"
-
-ac_bloqueo_modo_noche:
-  name: "AC bloqueo modo noche"
-
-ac_tendencia_subiendo_con_ac_off:
-  name: "AC Tendencia subiendo (con AC OFF)"
-  icon: mdi:thermometer
-
+  name: AC - Bloqueo cambio modo 2h
 apagar_shield_en_30_min:
-  name: "Apagar SHIELD en 30 min"
+  name: Apagar SHIELD en 30 min
   icon: mdi:toggle-switch-variant-off
-
-ausencia_prolongada_calefaccion:
-  name: "Ausencia Prolongada Calefaccion"
-  icon: mdi:motion-sensor
-
-calefaccion_reciente:
-  name: "Calefacción reciente"
-  icon: mdi:fire-circle
-
-ac_off_por_automatizacion:
-  name: AC OFF por automatización (flag)
-  icon: mdi:robot
-
-ac_on_por_automatizacion:
-  name: AC ON por automatización (flag)
-  icon: mdi:robot
-
-ac_learning_enabled:
-  name: "AC Learning Enabled (maestro)"
-  icon: mdi:brain
-  initial: true
-
-ac_learning_debug:
-  name: "AC Learning Debug"
-  icon: mdi:bug
-  initial: true
-
 ac_night_cool_bootstrap_in_progress:
-  name: "AC Night Cool Bootstrap In Progress"
+  name: AC Night Cool Bootstrap In Progress
   icon: mdi:snowflake-thermometer
-
-ac_cool_sync_push_enabled:
-  name: "AC Cool Sync Push Enabled"
-  icon: mdi:bell-sync
-  initial: false
-
-ac_cool_adaptive_cycle_active:
-  name: "AC Cool Adaptive Cycle Active"
-  icon: mdi:snowflake-alert
-
-ac_manual_setpoint_override_active:
-  name: "AC Manual Setpoint Override Activo"
-  icon: mdi:hand-back-right
-
-ac_dda_off_por_automatizacion:
-  name: AC DDA OFF por automatización (flag)
-  icon: mdi:robot
-
 ac_dda_on_por_automatizacion:
   name: AC DDA ON por automatización (flag)
   icon: mdi:robot
-
-ac_dda_cycle_lock:
-  name: AC DDA candado transaccional de ciclo
-  icon: mdi:lock-clock
-
-ac_dda_presence_gate_open:
-  name: AC DDA Presence Gate Open
-  icon: mdi:door-open
-
 ac_matriz_160_auto_habilitado:
   name: AC Matriz 160 Auto Habilitado
   icon: mdi:hvac
-
 ac_matriz_160_presencia_valida_disparo:
   name: AC Matriz 160 Presencia Válida Disparo
   icon: mdi:home-account
-
 ac_matriz_160_turbo_reentrada_bloqueada:
   name: AC Matriz 160 Turbo Reentrada Bloqueada
   icon: mdi:lock
