@@ -1846,14 +1846,15 @@ Objetivo: habilitar depuración y auditoría causal de por qué cambió cada ran
 `AC-Matriz 160`.
 
 ### 2) Objetivo funcional
-Implementar un control inteligente HVAC contextual para `cool` y `heat`, sin basarse en un umbral fijo único.
+Implementar control HVAC contextual para `cool` y `heat` con validación dura de contexto, rango y trazabilidad en cada ciclo, sin reutilizar helpers críticos legacy de AC-DDA para decisiones de encendido/apagado.
 
 ### 3) Ventana operativa obligatoria
 `07:01 am - 09:59 pm`.
 
 ### 4) Condiciones iniciales de evaluación
-1. Primera condicional: horario maestro.
-2. Segunda condicional: presencia válida al disparo.
+1. Horario maestro válido.
+2. Presencia válida al disparo.
+3. `input_boolean.ac_matriz_160_auto_habilitado = on`.
 
 ### 5) Definición de presencia válida al disparo
 Se considera presencia válida al disparo cuando se cumple al menos una de estas condiciones:
@@ -1890,9 +1891,9 @@ La matriz contextual se define como:
 - temperatura interior,
 - humedad interior,
 - temperatura exterior (y humedad exterior si está disponible),
-- estado exterior,
+- estado exterior normalizado,
 - estación,
-- franja.
+- franja horaria.
 
 ### 11) Histéresis fija de 1.0
 - cool: `T_on = T_off + 1.0`
@@ -1912,17 +1913,100 @@ La humedad participa siempre de forma activa en el cálculo.
 - cambios de presencia,
 - cambios de estado HVAC.
 
-### 15) Contrato de notificaciones obligatorias
+### 15) Contrato de helpers críticos AC-Matriz 160 (prefijo obligatorio)
+Todos los helpers críticos de esta automatización deben usar el prefijo `ac_matriz_160_*` y son exclusivos de AC-Matriz 160.
+
+#### 15.1 Inventario obligatorio por categoría
+
+| Categoría | Helper | Tipo | Rango / formato | Valor por defecto seguro | Regla lectura/escritura crítica |
+|---|---|---|---|---|---|
+| Control maestro | `input_boolean.ac_matriz_160_auto_habilitado` | `input_boolean` | `on/off` | `off` | Solo habilita/deshabilita automatismo; no guarda umbrales. |
+| Contexto activo | `input_text.ac_matriz_160_contexto_firma_activa` | `input_text` | `categoria\|estacion\|franja\|YYYY-MM-DD HH:MM:SS` | `pendiente` | Se sobrescribe en cada evaluación válida antes de usar umbrales. |
+| Contexto activo | `input_text.ac_matriz_160_columna_activa_humana` | `input_text` | texto humano de columna | `Sin contexto` | Debe corresponder exactamente a la firma activa. |
+| Contexto activo | `input_datetime.ac_matriz_160_contexto_ts` | `input_datetime` | timestamp local ISO | `1970-01-01 00:00:00` | Se actualiza en cada recálculo/escritura de umbrales. |
+| Umbrales vigentes | `input_number.ac_matriz_160_t_off_cool` | `input_number` | `[22.0, 26.0]` | `24.0` | Siempre write-through en disparo válido; nunca usar sin validar firma+rango. |
+| Umbrales vigentes | `input_number.ac_matriz_160_t_on_cool` | `input_number` | derivado `T_off_cool + 1.0` | `25.0` | Valor derivado; si no cumple histéresis, invalidar y recalcular. |
+| Umbrales vigentes | `input_number.ac_matriz_160_t_off_heat` | `input_number` | `[17.0, 22.0]` | `20.0` | Siempre write-through en disparo válido; nunca usar sin validar firma+rango. |
+| Umbrales vigentes | `input_number.ac_matriz_160_t_on_heat` | `input_number` | derivado `T_off_heat - 1.0` | `19.0` | Valor derivado; si no cumple histéresis, invalidar y recalcular. |
+| Estado ejecución | `input_text.ac_matriz_160_ultima_accion` | `input_text` | `encendido/ apagado/ sin_accion` | `sin_accion` | Registrar salida de control por ciclo. |
+| Estado ejecución | `input_datetime.ac_matriz_160_ultima_accion_ts` | `input_datetime` | timestamp local ISO | `1970-01-01 00:00:00` | Escribir en cada acción de control o supresión explícita. |
+| Estado ejecución | `input_text.ac_matriz_160_ultimo_resultado_validacion` | `input_text` | código legible | `pendiente_validacion` | Debe registrar motivo de invalidez/recálculo en lenguaje claro. |
+| Notificaciones | `input_text.ac_matriz_160_ultima_firma_notificacion` | `input_text` | `evento\|modo\|columna\|ts_accion` | `sin_firma` | Comparar para deduplicar antes de enviar push. |
+| Notificaciones | `input_datetime.ac_matriz_160_ultima_notificacion_ts` | `input_datetime` | timestamp local ISO | `1970-01-01 00:00:00` | Usar para ventana corta configurable de deduplicación. |
+| Presencia evaluada | `input_boolean.ac_matriz_160_presencia_valida_disparo` | `input_boolean` | `on/off` | `off` | Refleja evaluación de presencia del ciclo actual. |
+| Presencia evaluada | `input_text.ac_matriz_160_origen_presencia_disparo` | `input_text` | `movimiento/s24/ambos/sin_presencia` | `sin_presencia` | Guardar fuente ganadora de presencia al disparo. |
+
+### 16) Regla obligatoria de firma de contexto
+La firma de contexto es inmutable por evaluación y debe contener, en este orden:
+1. categoría exterior normalizada,
+2. estación,
+3. franja horaria (texto humano),
+4. fecha/hora exacta de evaluación.
+
+Reglas:
+- Se guarda en `input_text.ac_matriz_160_contexto_firma_activa`.
+- Toda lectura de umbral persistido exige coincidencia exacta de firma antes de usar.
+- Si no coincide, queda prohibido usar esos umbrales para decisiones HVAC.
+
+### 17) Política anti-contaminación entre columnas
+Si cambia la columna activa o no coincide la firma:
+1. invalidar uso de umbrales persistidos anteriores,
+2. recalcular umbrales desde la fórmula de la columna activa,
+3. sobrescribir helpers de umbrales con valores nuevos,
+4. registrar `resultado_validacion=contexto_recalculado_por_cambio_columna`.
+
+Queda prohibido ejecutar encendido/apagado con umbrales ligados a firma distinta del contexto activo.
+
+### 18) Guardas duras previas al uso de helpers
+Antes de cualquier decisión HVAC, validar:
+1. **Disponibilidad**: helper no esté en `unknown`, `unavailable` o `none`.
+2. **Rango**:
+   - `T_off_cool` en `[22.0, 26.0]`.
+   - `T_off_heat` en `[17.0, 22.0]`.
+   - Histéresis fija:
+     - `T_on_cool = T_off_cool + 1.0`.
+     - `T_on_heat = T_off_heat - 1.0`.
+3. **Coherencia contextual**: columna humana + firma + timestamp vigentes y consistentes.
+
+Si falla cualquier validación:
+- marcar inválido,
+- recalcular,
+- registrar motivo explícito en `input_text.ac_matriz_160_ultimo_resultado_validacion`.
+
+### 19) Política de persistencia segura
+- Umbrales en modo **write-through**: recalcular y escribir en cada disparo válido.
+- Nunca reutilizar “último valor” sin validar firma y rango.
+- Usar timestamps para trazabilidad y auditoría del ciclo.
+
+### 20) Política de deduplicación de notificaciones
+Construir firma de notificación con:
+1. evento (`encendido`/`apagado`),
+2. modo (`cool`/`heat`),
+3. contexto humano de columna,
+4. timestamp de acción.
+
+Regla:
+- Si la firma coincide con `input_text.ac_matriz_160_ultima_firma_notificacion` dentro de una ventana corta configurable, suprimir duplicado.
+- Registrar el resultado (emitida/suprimida) en helper de estado de notificación.
+
+### 21) Contrato de notificaciones obligatorias
 - Notificar todo encendido y todo apagado.
 - Usar lenguaje humano no técnico.
 - Incluir hora de ejecución.
 - Incluir evento ejecutado.
-- Incluir contexto de columna en formato legible (ejemplo: `Soleado - Despejado | Primavera | Horario 10:01 am - 01:00 pm`).
+- Incluir contexto de columna legible.
 - Incluir umbrales aplicados de encendido y apagado.
 
-### 16) Gobernanza documental (obligatoria)
-- Cualquier cambio funcional o técnico de AC-Matriz 160 debe actualizar esta sección en `codex.md`.
-- Un cambio no se considera completo si no actualiza la documentación correspondiente.
+### 22) Norma obligatoria de gobernanza documental
+- **Todo helper crítico de AC-Matriz 160 debe validar firma de contexto y rango antes de participar en decisiones HVAC.**
+- **Ningún cambio funcional se considera completo si no actualiza esta política en documentación.**
+
+### 23) Checklist operativo de QA (obligatorio)
+1. **Caso 1**: cambio de columna entre disparos fuerza recálculo.
+2. **Caso 2**: helper con valor fuera de rango se corrige y no gobierna decisión.
+3. **Caso 3**: firma de contexto distinta invalida umbral previo.
+4. **Caso 4**: notificación duplicada es suprimida correctamente.
+5. **Caso 5**: logs reflejan motivo de recálculo/invalidación en lenguaje claro.
 
 ### Decisiones tomadas
 **Fecha:** 2026-05-17  
