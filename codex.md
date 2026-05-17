@@ -1837,3 +1837,93 @@ Objetivo: habilitar depuración y auditoría causal de por qué cambió cada ran
 - Todo flujo de learning debe cerrar en: `aplicado | ignorado | error_controlado`.
 - Cada cierre debe registrar `trace_id`, `policy`, `resultado_terminal`, `reason`, `modo_final`, estado de override y estado de compuerta 60 s.
 - No se permiten cierres silenciosos ante descartes por carrera o guardas transaccionales.
+
+---
+
+## Contrato base AC-Matriz 160
+
+### 1) Nombre oficial de la automatización
+`AC-Matriz 160`.
+
+### 2) Objetivo funcional
+Implementar un control inteligente HVAC contextual para `cool` y `heat`, sin basarse en un umbral fijo único.
+
+### 3) Ventana operativa obligatoria
+`07:01 am - 09:59 pm`.
+
+### 4) Condiciones iniciales de evaluación
+1. Primera condicional: horario maestro.
+2. Segunda condicional: presencia válida al disparo.
+
+### 5) Definición de presencia válida al disparo
+Se considera presencia válida al disparo cuando se cumple al menos una de estas condiciones:
+- `movimiento en ON`, o
+- `S24 en casa`.
+
+### 6) Estructura de segmentación contextual
+La matriz contextual se define como:
+`8 estados exteriores` x `4 estaciones` x `5 franjas` = `160 columnas`.
+
+### 7) Estados exteriores normalizados (8)
+- Soleado - Despejado
+- Parcialmente nublado
+- Nublado
+- Lluvia suave
+- Lluvia fuerte
+- Tormenta
+- Niebla - Neblina
+- Nieve - Hielo
+
+### 8) Franjas horarias (5)
+- 07:01 am - 10:00 am
+- 10:01 am - 01:00 pm
+- 01:01 pm - 04:00 pm
+- 04:01 pm - 07:00 pm
+- 07:01 pm - 09:59 pm
+
+### 9) Regla de cálculo por columna
+- Se utiliza la misma estructura de fórmula en todas las columnas.
+- Cada columna tiene parámetros propios.
+- El cálculo es independiente para el contexto activo.
+
+### 10) Variables de entrada del cálculo
+- temperatura interior,
+- humedad interior,
+- temperatura exterior (y humedad exterior si está disponible),
+- estado exterior,
+- estación,
+- franja.
+
+### 11) Histéresis fija de 1.0
+- cool: `T_on = T_off + 1.0`
+- heat: `T_on = T_off - 1.0`
+
+### 12) Límites de seguridad acordados
+- `T_off_cool` en `[22.0, 26.0]`
+- `T_off_heat` en `[17.0, 22.0]`
+
+### 13) Política de humedad
+La humedad participa siempre de forma activa en el cálculo.
+
+### 14) Disparadores base esperados (intención)
+- tiempo cada 5 minutos,
+- cambios de sensores térmicos/humedad interior,
+- cambios exteriores relevantes,
+- cambios de presencia,
+- cambios de estado HVAC.
+
+### 15) Contrato de notificaciones obligatorias
+- Notificar todo encendido y todo apagado.
+- Usar lenguaje humano no técnico.
+- Incluir hora de ejecución.
+- Incluir evento ejecutado.
+- Incluir contexto de columna en formato legible (ejemplo: `Soleado - Despejado | Primavera | Horario 10:01 am - 01:00 pm`).
+- Incluir umbrales aplicados de encendido y apagado.
+
+### 16) Gobernanza documental (obligatoria)
+- Cualquier cambio funcional o técnico de AC-Matriz 160 debe actualizar esta sección en `codex.md`.
+- Un cambio no se considera completo si no actualiza la documentación correspondiente.
+
+### Decisiones tomadas
+**Fecha:** 2026-05-17  
+Se establece esta definición base como contrato inicial de `AC-Matriz 160`, incluyendo alcance funcional, ventana operativa, presencia válida, segmentación contextual 8x4x5 (160 columnas), variables de cálculo, histéresis fija, límites de seguridad, política de humedad, disparadores esperados, notificaciones obligatorias y regla de gobernanza documental. Este bloque es la referencia oficial de contrato inicial de AC-Matriz 160.
