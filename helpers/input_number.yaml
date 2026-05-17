@@ -254,9 +254,6 @@ ac_matriz_160_t_on_heat:
   mode: box
   unit_of_measurement: "°C"
   initial: 19
-  unit_of_measurement: "°C"
-  icon: mdi:thermometer-off
-  initial: 1.4
 
 ac_cool_effective_sp_recent_guard_minutes:
   name: "AC Cool Effective SP Recent Guard Minutes"

@@ -419,6 +419,30 @@
       avg: '{{ ((t_cuarto + (t_coco_filtrado | float)) / 2) | round(2) if sensores_validos
         else none }}'
       n: '{{ states(''input_number.ac_off_muestras_19_00_21_59'') | int(0) }}'
+      avg_inicio_ent: input_number.ac_off_avg_inicio_19_00_21_59
+      avg_final_ent: input_number.ac_off_avg_final_19_00_21_59
+      muestras_ent: input_number.ac_off_muestras_19_00_21_59
+      avg_inicio_min: '{{ state_attr(avg_inicio_ent, ''min'') | float(none) }}'
+      avg_inicio_max: '{{ state_attr(avg_inicio_ent, ''max'') | float(none) }}'
+      avg_final_min: '{{ state_attr(avg_final_ent, ''min'') | float(none) }}'
+      avg_final_max: '{{ state_attr(avg_final_ent, ''max'') | float(none) }}'
+      muestras_min: '{{ state_attr(muestras_ent, ''min'') | float(none) }}'
+      muestras_max: '{{ state_attr(muestras_ent, ''max'') | float(none) }}'
+      avg_inicio_exists: '{{ states(avg_inicio_ent) not in [''unknown'', ''unavailable'', ''none''] }}'
+      avg_final_exists: '{{ states(avg_final_ent) not in [''unknown'', ''unavailable'', ''none''] }}'
+      muestras_exists: '{{ states(muestras_ent) not in [''unknown'', ''unavailable'', ''none''] }}'
+      avg_inicio_target: '{{ avg | float(none) }}'
+      avg_final_target: '{{ avg | float(none) }}'
+      muestras_target: '{{ (n + 1) | float(none) }}'
+      avg_inicio_clamped: '{{ [avg_inicio_min, [avg_inicio_target, avg_inicio_max] |
+        min] | max if avg_inicio_target is not none and avg_inicio_min is not none
+        and avg_inicio_max is not none else avg_inicio_target }}'
+      avg_final_clamped: '{{ [avg_final_min, [avg_final_target, avg_final_max] | min]
+        | max if avg_final_target is not none and avg_final_min is not none and avg_final_max
+        is not none else avg_final_target }}'
+      muestras_clamped: '{{ [muestras_min, [muestras_target, muestras_max] | min] |
+        max if muestras_target is not none and muestras_min is not none and muestras_max
+        is not none else muestras_target }}'
   - choose:
     - conditions: '{{ not sensores_validos }}'
       sequence:
@@ -430,33 +454,98 @@
           entity_id: climate.0200009211c7_climate
     - conditions: '{{ n == 0 }}'
       sequence:
-      - service: input_number.set_value
-        target:
-          entity_id: input_number.ac_off_avg_inicio_19_00_21_59
-        data:
-          value: '{{ avg }}'
-      - service: input_number.set_value
-        target:
-          entity_id: input_number.ac_off_avg_final_19_00_21_59
-        data:
-          value: '{{ avg }}'
-      - service: input_number.set_value
-        target:
-          entity_id: input_number.ac_off_muestras_19_00_21_59
-        data:
-          value: '{{ n + 1 }}'
+      - choose:
+        - conditions: '{{ avg_inicio_exists and avg_inicio_clamped is not none }}'
+          sequence:
+          - service: input_number.set_value
+            target:
+              entity_id: '{{ avg_inicio_ent }}'
+            data:
+              value: '{{ avg_inicio_clamped }}'
+          - choose:
+            - conditions: '{{ avg_inicio_target != avg_inicio_clamped }}'
+              sequence:
+              - service: logbook.log
+                data:
+                  name: AC Noche Safety
+                  message: 'clamp_runtime_safety | entidad={{ avg_inicio_ent }} | original={{
+                    avg_inicio_target }} | aplicado={{ avg_inicio_clamped }} | rango=[{{ avg_inicio_min
+                    }},{{ avg_inicio_max }}]'
+                  entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Noche Safety
+            message: 'helper_no_disponible | entidad={{ avg_inicio_ent }} | razon=helper_objetivo_no_existente_o_no_numerico'
+            entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions: '{{ avg_final_exists and avg_final_clamped is not none }}'
+          sequence:
+          - service: input_number.set_value
+            target:
+              entity_id: '{{ avg_final_ent }}'
+            data:
+              value: '{{ avg_final_clamped }}'
+        default:
+        - service: logbook.log
+          data:
+            name: AC Noche Safety
+            message: 'helper_no_disponible | entidad={{ avg_final_ent }} | razon=helper_objetivo_no_existente_o_no_numerico'
+            entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions: '{{ muestras_exists and muestras_clamped is not none }}'
+          sequence:
+          - service: input_number.set_value
+            target:
+              entity_id: '{{ muestras_ent }}'
+            data:
+              value: '{{ muestras_clamped }}'
+        default:
+        - service: logbook.log
+          data:
+            name: AC Noche Safety
+            message: 'helper_no_disponible | entidad={{ muestras_ent }} | razon=helper_objetivo_no_existente_o_no_numerico'
+            entity_id: climate.0200009211c7_climate
     - conditions: '{{ n > 0 and avg is not none }}'
       sequence:
-      - service: input_number.set_value
-        target:
-          entity_id: input_number.ac_off_avg_final_19_00_21_59
-        data:
-          value: '{{ avg }}'
-      - service: input_number.set_value
-        target:
-          entity_id: input_number.ac_off_muestras_19_00_21_59
-        data:
-          value: '{{ n + 1 }}'
+      - choose:
+        - conditions: '{{ avg_final_exists and avg_final_clamped is not none }}'
+          sequence:
+          - service: input_number.set_value
+            target:
+              entity_id: '{{ avg_final_ent }}'
+            data:
+              value: '{{ avg_final_clamped }}'
+        default:
+        - service: logbook.log
+          data:
+            name: AC Noche Safety
+            message: 'helper_no_disponible | entidad={{ avg_final_ent }} | razon=helper_objetivo_no_existente_o_no_numerico'
+            entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions: '{{ muestras_exists and muestras_clamped is not none }}'
+          sequence:
+          - service: input_number.set_value
+            target:
+              entity_id: '{{ muestras_ent }}'
+            data:
+              value: '{{ muestras_clamped }}'
+          - choose:
+            - conditions: '{{ muestras_target != muestras_clamped }}'
+              sequence:
+              - service: logbook.log
+                data:
+                  name: AC Noche Safety
+                  message: 'clamp_runtime_safety | entidad={{ muestras_ent }} | original={{
+                    muestras_target }} | aplicado={{ muestras_clamped }} | rango=[{{ muestras_min
+                    }},{{ muestras_max }}]'
+                  entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC Noche Safety
+            message: 'helper_no_disponible | entidad={{ muestras_ent }} | razon=helper_objetivo_no_existente_o_no_numerico'
+            entity_id: climate.0200009211c7_climate
 - id: ac_noche_decide_tendencia_off_2159
   alias: AC - Noche Decide tendencia OFF (21:59)
   trace:

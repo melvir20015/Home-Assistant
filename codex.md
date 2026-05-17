@@ -1869,6 +1869,10 @@ Objetivo: habilitar depuración y auditoría causal de por qué cambió cada ran
 - **Límites de seguridad:**
   - `T_off_cool` en `[22.0, 26.0]`
   - `T_off_heat` en `[17.0, 22.0]`
+- **Arranque seguro de helpers (`input_number`):**
+  - Todo helper `input_number` debe iniciar con valor (`initial`) dentro de su rango `min/max`.
+  - Si un `initial` queda fuera de rango, Home Assistant puede fallar la carga de la integración completa `input_number` y romper servicios dependientes (por ejemplo `input_number.set_value` en automatizaciones).
+  - En `heat`, mantener coherencia de histéresis lógica: `T_on_heat = T_off_heat - 1.0`. Si un helper de arranque no puede reflejar exactamente la relación por límites de entidad, iniciar con valor válido y permitir recálculo automático en el primer ciclo de la automatización.
 - **Humedad siempre activa:** la humedad participa siempre en el cálculo.
 
 ### 4) Contrato de notificaciones
@@ -1905,6 +1909,11 @@ La automatización `AC-Matriz 160` valida en cada ciclo:
 - coherencia de firma de contexto activa.
 
 Si falla alguna guarda, recalcula y sobrescribe helpers críticos, dejando motivo en `input_text.ac_matriz_160_ultimo_resultado_validacion`.
+
+### Checklist post-cambio (operación segura)
+- Validar que todos los `initial` de `helpers/input_number.yaml` estén dentro de `min/max`.
+- Recargar configuración y confirmar que la integración `input_number` carga sin `Setup failed for 'input_number'`.
+- Probar `input_number.set_value` en automatizaciones críticas (incluyendo rutas nocturnas) y validar ausencia de `Action input_number.set_value not found`.
 
 ### Anti-contaminación por cambio de columna
 Cuando la firma persistida no coincide con la firma del ciclo, se fuerza recálculo y se registra `contexto_recalculado_por_cambio_columna` en validación y log de evaluación.
