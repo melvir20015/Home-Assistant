@@ -1920,3 +1920,16 @@ Cuando la firma persistida no coincide con la firma del ciclo, se fuerza recálc
 
 ### Deduplicación segura de notificaciones
 La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventana de supresión corta (180 s). Se persiste resultado en `input_text.ac_matriz_160_ultimo_estado_notificacion` (`emitida/suprimida/sin_evento`).
+
+### Mantenimiento AC-Matriz 160 (regla sintáctica obligatoria)
+- En automatizaciones YAML de este proyecto, usar `service:` para llamadas de servicio; **no usar `action:` como clave de servicio**.
+- `action:` puede existir solo como clave raíz de automatización (`action:`/`actions:`), pero no como paso de servicio dentro de la lista.
+
+#### Mini-checklist sintáctico previo a reinicio
+1. En el alias `AC-Matriz 160`, confirmar que el primer ítem de `actions:` sea un bloque válido (`variables:`) o un paso con `service:`.
+2. Verificar que cada rama `choose` use exactamente:
+   - `- conditions:`
+   - `  sequence:`
+3. Confirmar que dentro de `sequence` cada paso sea válido (`service`, `delay`, `wait_template`, `variables`, `choose`, `stop`).
+4. Revisar indentación: `default:` al mismo nivel que ramas `- conditions:` y sin claves huérfanas (`service`, `data`, `target`).
+5. Ejecutar validación de configuración antes de reinicio para evitar errores tipo `extra keys not allowed @ data[0]['action']`.
