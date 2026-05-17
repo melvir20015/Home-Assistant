@@ -1842,176 +1842,55 @@ Objetivo: habilitar depuración y auditoría causal de por qué cambió cada ran
 
 ## Contrato base AC-Matriz 160
 
-### 1) Nombre oficial de la automatización
-`AC-Matriz 160`.
+### 1) Alcance y operación
+- **Nombre oficial:** `AC-Matriz 160`.
+- **Ventana horaria obligatoria:** `07:01 am - 09:59 pm`.
+- **Presencia válida al disparo:** `movimiento en ON` o `S24 en casa`.
+- **Disparadores base:**
+  - tiempo cada 5 minutos,
+  - cambios de sensores térmicos/humedad interior,
+  - cambios exteriores relevantes,
+  - cambios de presencia,
+  - cambios de estado HVAC.
+- **Decisión por contexto:** toda decisión de encendido/apagado se toma con base en el contexto activo de la matriz y su columna vigente.
 
-### 2) Objetivo funcional
-Implementar control HVAC contextual para `cool` y `heat` con validación dura de contexto, rango y trazabilidad en cada ciclo, sin reutilizar helpers críticos legacy de AC-DDA para decisiones de encendido/apagado.
+### 2) Arquitectura contextual
+- **Estados exteriores:** 8.
+- **Estaciones:** 4.
+- **Franjas horarias:** 5.
+- **Total contractual:** `8 x 4 x 5 = 160 columnas`.
 
-### 3) Ventana operativa obligatoria
-`07:01 am - 09:59 pm`.
+### 3) Contrato matemático
+- **Estructura única de fórmula repetida:** la misma estructura base se replica en todas las columnas.
+- **Parámetros propios por columna:** cada columna mantiene sus propios parámetros sin compartir valores entre columnas.
+- **Histéresis fija por modo (1.0):**
+  - `cool: T_on = T_off_cool + 1.0`
+  - `heat: T_on = T_off_heat - 1.0`
+- **Límites de seguridad:**
+  - `T_off_cool` en `[22.0, 26.0]`
+  - `T_off_heat` en `[17.0, 22.0]`
+- **Humedad siempre activa:** la humedad participa siempre en el cálculo.
 
-### 4) Condiciones iniciales de evaluación
-1. Horario maestro válido.
-2. Presencia válida al disparo.
-3. `input_boolean.ac_matriz_160_auto_habilitado = on`.
+### 4) Contrato de notificaciones
+- **Envío obligatorio:** notificar en cada encendido y en cada apagado.
+- **Lenguaje del mensaje:** humano y no técnico.
+- **Campos mínimos visibles obligatorios:**
+  - hora,
+  - evento,
+  - contexto humano,
+  - umbrales,
+  - datos térmicos.
 
-### 5) Definición de presencia válida al disparo
-Se considera presencia válida al disparo cuando se cumple al menos una de estas condiciones:
-- `movimiento en ON`, o
-- `S24 en casa`.
-
-### 6) Estructura de segmentación contextual
-La matriz contextual se define como:
-`8 estados exteriores` x `4 estaciones` x `5 franjas` = `160 columnas`.
-
-### 7) Estados exteriores normalizados (8)
-- Soleado - Despejado
-- Parcialmente nublado
-- Nublado
-- Lluvia suave
-- Lluvia fuerte
-- Tormenta
-- Niebla - Neblina
-- Nieve - Hielo
-
-### 8) Franjas horarias (5)
-- 07:01 am - 10:00 am
-- 10:01 am - 01:00 pm
-- 01:01 pm - 04:00 pm
-- 04:01 pm - 07:00 pm
-- 07:01 pm - 09:59 pm
-
-### 9) Regla de cálculo por columna
-- Se utiliza la misma estructura de fórmula en todas las columnas.
-- Cada columna tiene parámetros propios.
-- El cálculo es independiente para el contexto activo.
-
-### 10) Variables de entrada del cálculo
-- temperatura interior,
-- humedad interior,
-- temperatura exterior (y humedad exterior si está disponible),
-- estado exterior normalizado,
-- estación,
-- franja horaria.
-
-### 11) Histéresis fija de 1.0
-- cool: `T_on = T_off + 1.0`
-- heat: `T_on = T_off - 1.0`
-
-### 12) Límites de seguridad acordados
-- `T_off_cool` en `[22.0, 26.0]`
-- `T_off_heat` en `[17.0, 22.0]`
-
-### 13) Política de humedad
-La humedad participa siempre de forma activa en el cálculo.
-
-### 14) Disparadores base esperados (intención)
-- tiempo cada 5 minutos,
-- cambios de sensores térmicos/humedad interior,
-- cambios exteriores relevantes,
-- cambios de presencia,
-- cambios de estado HVAC.
-
-### 15) Contrato de helpers críticos AC-Matriz 160 (prefijo obligatorio)
-Todos los helpers críticos de esta automatización deben usar el prefijo `ac_matriz_160_*` y son exclusivos de AC-Matriz 160.
-
-#### 15.1 Inventario obligatorio por categoría
-
-| Categoría | Helper | Tipo | Rango / formato | Valor por defecto seguro | Regla lectura/escritura crítica |
-|---|---|---|---|---|---|
-| Control maestro | `input_boolean.ac_matriz_160_auto_habilitado` | `input_boolean` | `on/off` | `off` | Solo habilita/deshabilita automatismo; no guarda umbrales. |
-| Contexto activo | `input_text.ac_matriz_160_contexto_firma_activa` | `input_text` | `categoria\|estacion\|franja\|YYYY-MM-DD HH:MM:SS` | `pendiente` | Se sobrescribe en cada evaluación válida antes de usar umbrales. |
-| Contexto activo | `input_text.ac_matriz_160_columna_activa_humana` | `input_text` | texto humano de columna | `Sin contexto` | Debe corresponder exactamente a la firma activa. |
-| Contexto activo | `input_datetime.ac_matriz_160_contexto_ts` | `input_datetime` | timestamp local ISO | `1970-01-01 00:00:00` | Se actualiza en cada recálculo/escritura de umbrales. |
-| Umbrales vigentes | `input_number.ac_matriz_160_t_off_cool` | `input_number` | `[22.0, 26.0]` | `24.0` | Siempre write-through en disparo válido; nunca usar sin validar firma+rango. |
-| Umbrales vigentes | `input_number.ac_matriz_160_t_on_cool` | `input_number` | derivado `T_off_cool + 1.0` | `25.0` | Valor derivado; si no cumple histéresis, invalidar y recalcular. |
-| Umbrales vigentes | `input_number.ac_matriz_160_t_off_heat` | `input_number` | `[17.0, 22.0]` | `20.0` | Siempre write-through en disparo válido; nunca usar sin validar firma+rango. |
-| Umbrales vigentes | `input_number.ac_matriz_160_t_on_heat` | `input_number` | derivado `T_off_heat - 1.0` | `19.0` | Valor derivado; si no cumple histéresis, invalidar y recalcular. |
-| Estado ejecución | `input_text.ac_matriz_160_ultima_accion` | `input_text` | `encendido/ apagado/ sin_accion` | `sin_accion` | Registrar salida de control por ciclo. |
-| Estado ejecución | `input_datetime.ac_matriz_160_ultima_accion_ts` | `input_datetime` | timestamp local ISO | `1970-01-01 00:00:00` | Escribir en cada acción de control o supresión explícita. |
-| Estado ejecución | `input_text.ac_matriz_160_ultimo_resultado_validacion` | `input_text` | código legible | `pendiente_validacion` | Debe registrar motivo de invalidez/recálculo en lenguaje claro. |
-| Notificaciones | `input_text.ac_matriz_160_ultima_firma_notificacion` | `input_text` | `evento\|modo\|columna\|ts_accion` | `sin_firma` | Comparar para deduplicar antes de enviar push. |
-| Notificaciones | `input_datetime.ac_matriz_160_ultima_notificacion_ts` | `input_datetime` | timestamp local ISO | `1970-01-01 00:00:00` | Usar para ventana corta configurable de deduplicación. |
-| Presencia evaluada | `input_boolean.ac_matriz_160_presencia_valida_disparo` | `input_boolean` | `on/off` | `off` | Refleja evaluación de presencia del ciclo actual. |
-| Presencia evaluada | `input_text.ac_matriz_160_origen_presencia_disparo` | `input_text` | `movimiento/s24/ambos/sin_presencia` | `sin_presencia` | Guardar fuente ganadora de presencia al disparo. |
-
-### 16) Regla obligatoria de firma de contexto
-La firma de contexto es inmutable por evaluación y debe contener, en este orden:
-1. categoría exterior normalizada,
-2. estación,
-3. franja horaria (texto humano),
-4. fecha/hora exacta de evaluación.
-
-Reglas:
-- Se guarda en `input_text.ac_matriz_160_contexto_firma_activa`.
-- Toda lectura de umbral persistido exige coincidencia exacta de firma antes de usar.
-- Si no coincide, queda prohibido usar esos umbrales para decisiones HVAC.
-
-### 17) Política anti-contaminación entre columnas
-Si cambia la columna activa o no coincide la firma:
-1. invalidar uso de umbrales persistidos anteriores,
-2. recalcular umbrales desde la fórmula de la columna activa,
-3. sobrescribir helpers de umbrales con valores nuevos,
-4. registrar `resultado_validacion=contexto_recalculado_por_cambio_columna`.
-
-Queda prohibido ejecutar encendido/apagado con umbrales ligados a firma distinta del contexto activo.
-
-### 18) Guardas duras previas al uso de helpers
-Antes de cualquier decisión HVAC, validar:
-1. **Disponibilidad**: helper no esté en `unknown`, `unavailable` o `none`.
-2. **Rango**:
-   - `T_off_cool` en `[22.0, 26.0]`.
-   - `T_off_heat` en `[17.0, 22.0]`.
-   - Histéresis fija:
-     - `T_on_cool = T_off_cool + 1.0`.
-     - `T_on_heat = T_off_heat - 1.0`.
-3. **Coherencia contextual**: columna humana + firma + timestamp vigentes y consistentes.
-
-Si falla cualquier validación:
-- marcar inválido,
-- recalcular,
-- registrar motivo explícito en `input_text.ac_matriz_160_ultimo_resultado_validacion`.
-
-### 19) Política de persistencia segura
-- Umbrales en modo **write-through**: recalcular y escribir en cada disparo válido.
-- Nunca reutilizar “último valor” sin validar firma y rango.
-- Usar timestamps para trazabilidad y auditoría del ciclo.
-
-### 20) Política de deduplicación de notificaciones
-Construir firma de notificación con:
-1. evento (`encendido`/`apagado`),
-2. modo (`cool`/`heat`),
-3. contexto humano de columna,
-4. timestamp de acción.
-
-Regla:
-- Si la firma coincide con `input_text.ac_matriz_160_ultima_firma_notificacion` dentro de una ventana corta configurable, suprimir duplicado.
-- Registrar el resultado (emitida/suprimida) en helper de estado de notificación.
-
-### 21) Contrato de notificaciones obligatorias
-- Notificar todo encendido y todo apagado.
-- Usar lenguaje humano no técnico.
-- Incluir hora de ejecución.
-- Incluir evento ejecutado.
-- Incluir contexto de columna legible.
-- Incluir umbrales aplicados de encendido y apagado.
-
-### 22) Norma obligatoria de gobernanza documental
-- **Todo helper crítico de AC-Matriz 160 debe validar firma de contexto y rango antes de participar en decisiones HVAC.**
-- **Ningún cambio funcional se considera completo si no actualiza esta política en documentación.**
-
-### 23) Checklist operativo de QA (obligatorio)
-1. **Caso 1**: cambio de columna entre disparos fuerza recálculo.
-2. **Caso 2**: helper con valor fuera de rango se corrige y no gobierna decisión.
-3. **Caso 3**: firma de contexto distinta invalida umbral previo.
-4. **Caso 4**: notificación duplicada es suprimida correctamente.
-5. **Caso 5**: logs reflejan motivo de recálculo/invalidación en lenguaje claro.
+### 5) Gobernanza obligatoria (crítico)
+- Si se cambia la **fórmula base repetida**, el cambio debe aplicarse en las **160 columnas**.
+- Si se cambia la **estructura de notificación repetida**, el cambio debe aplicarse en las **160 columnas**.
+- Ningún cambio funcional se considera completo sin actualización de esta sección y trazabilidad de réplica total.
 
 ### Decisiones tomadas
-**Fecha:** 2026-05-17  
-Se establece esta definición base como contrato inicial de `AC-Matriz 160`, incluyendo alcance funcional, ventana operativa, presencia válida, segmentación contextual 8x4x5 (160 columnas), variables de cálculo, histéresis fija, límites de seguridad, política de humedad, disparadores esperados, notificaciones obligatorias y regla de gobernanza documental. Este bloque es la referencia oficial de contrato inicial de AC-Matriz 160.
-
+**Fecha:** 2026-05-17
+- Desactivación recomendada de **AC-DDA** al migrar.
+- Despliegue completo en primer release con **160 columnas**.
+- Política de sincronización masiva obligatoria.
 
 ## 24) Implementación operativa aplicada en repositorio (2026-05-17)
 
