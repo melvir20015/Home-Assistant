@@ -218,6 +218,42 @@ ac_cool_effective_sp_hard_gap:
   max: 4
   step: 0.05
   mode: box
+
+ac_matriz_160_t_off_cool:
+  name: "AC Matriz 160 T OFF Cool"
+  min: 22
+  max: 26
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+  initial: 24
+
+ac_matriz_160_t_on_cool:
+  name: "AC Matriz 160 T ON Cool"
+  min: 23
+  max: 27
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+  initial: 25
+
+ac_matriz_160_t_off_heat:
+  name: "AC Matriz 160 T OFF Heat"
+  min: 17
+  max: 22
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+  initial: 20
+
+ac_matriz_160_t_on_heat:
+  name: "AC Matriz 160 T ON Heat"
+  min: 16
+  max: 21
+  step: 0.1
+  mode: box
+  unit_of_measurement: "°C"
+  initial: 19
   unit_of_measurement: "°C"
   icon: mdi:thermometer-off
   initial: 1.4

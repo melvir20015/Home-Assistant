@@ -188,3 +188,38 @@ ac_dda_context_key_v2_active:
 ac_dda_context_key_v2_last_applied:
   name: "AC DDA Context Key V2 Last Applied"
   max: 255
+
+ac_matriz_160_contexto_firma_activa:
+  name: "AC Matriz 160 Contexto Firma Activa"
+  max: 255
+  initial: "pendiente"
+
+ac_matriz_160_columna_activa_humana:
+  name: "AC Matriz 160 Columna Activa Humana"
+  max: 255
+  initial: "Sin contexto"
+
+ac_matriz_160_ultima_accion:
+  name: "AC Matriz 160 Última Acción"
+  max: 80
+  initial: "sin_accion"
+
+ac_matriz_160_ultimo_resultado_validacion:
+  name: "AC Matriz 160 Último Resultado Validación"
+  max: 255
+  initial: "pendiente_validacion"
+
+ac_matriz_160_ultima_firma_notificacion:
+  name: "AC Matriz 160 Última Firma Notificación"
+  max: 255
+  initial: "sin_firma"
+
+ac_matriz_160_ultimo_estado_notificacion:
+  name: "AC Matriz 160 Último Estado Notificación"
+  max: 255
+  initial: "sin_evento"
+
+ac_matriz_160_origen_presencia_disparo:
+  name: "AC Matriz 160 Origen Presencia Disparo"
+  max: 80
+  initial: "sin_presencia"

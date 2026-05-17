@@ -7956,9 +7956,13 @@
   - condition: time
     after: 07:01:00
     before: '21:59:00'
+  - condition: state
+    entity_id: input_boolean.ac_matriz_160_auto_habilitado
+    state: 'on'
   actions:
   - action: variables
     variables:
+      eval_ts: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
       tin: "{{ [states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average | round(2) }}"
       hin: "{{ [states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average | round(2) }}"
       tout: "{{ state_attr('weather.openweathermap','temperature') | float(none) }}"
@@ -7976,6 +7980,7 @@
       weather_idx: "{% set c = weather_cat %}{% if c == 'Soleado - Despejado' %}0{% elif c == 'Parcialmente nublado' %}1{% elif c == 'Nublado' %}2{% elif c == 'Lluvia suave' %}3{% elif c == 'Lluvia fuerte' %}4{% elif c == 'Tormenta' %}5{% elif c == 'Niebla - Neblina' %}6{% else %}7{% endif %}"
       col_idx: "{{ (weather_idx|int * 20) + (season_idx|int * 5) + (slot_idx|int) + 1 }}"
       col_humana: "{{ weather_cat }} | {{ season_name }} | Horario {{ slot_name }}"
+      contexto_firma: "{{ weather_cat }}|{{ season_name }}|{{ slot_name }}|{{ eval_ts }}"
       invalid_data: "{{ tin is none or hin is none or tout is none }}"
       base_cool: "{{ 23 + (weather_idx|int * 0.15) + (season_idx|int * 0.10) + (slot_idx|int * 0.05) + ((hin|float(50)-50)*0.01) + ((tout|float(25)-25)*0.02) }}"
       base_heat: "{{ 20 - (weather_idx|int * 0.08) - (season_idx|int * 0.05) - (slot_idx|int * 0.03) - ((hin|float(50)-50)*0.005) - ((tout|float(18)-18)*0.015) }}"
@@ -7984,15 +7989,74 @@
       t_off_heat: "{{ [22.0, [17.0, (base_heat|float(20))] | max] | min | round(2) }}"
       t_on_heat: "{{ (t_off_heat|float - 1.0) | round(2) }}"
       climate_mode: "{{ states('climate.0200009211c7_climate') }}"
+      helper_firma: "{{ states('input_text.ac_matriz_160_contexto_firma_activa') | trim }}"
+      helper_off_cool_raw: "{{ states('input_number.ac_matriz_160_t_off_cool') }}"
+      helper_on_cool_raw: "{{ states('input_number.ac_matriz_160_t_on_cool') }}"
+      helper_off_heat_raw: "{{ states('input_number.ac_matriz_160_t_off_heat') }}"
+      helper_on_heat_raw: "{{ states('input_number.ac_matriz_160_t_on_heat') }}"
+      helper_invalid_state: "{{ helper_off_cool_raw in ['unknown','unavailable','none',''] or helper_on_cool_raw in ['unknown','unavailable','none',''] or helper_off_heat_raw in ['unknown','unavailable','none',''] or helper_on_heat_raw in ['unknown','unavailable','none',''] }}"
+      helper_off_cool: "{{ helper_off_cool_raw | float(none) }}"
+      helper_on_cool: "{{ helper_on_cool_raw | float(none) }}"
+      helper_off_heat: "{{ helper_off_heat_raw | float(none) }}"
+      helper_on_heat: "{{ helper_on_heat_raw | float(none) }}"
+      firma_match: "{{ helper_firma == contexto_firma }}"
+      rango_ok: "{{ helper_off_cool is not none and helper_on_cool is not none and helper_off_heat is not none and helper_on_heat is not none and 22 <= helper_off_cool <= 26 and 17 <= helper_off_heat <= 22 }}"
+      histeresis_ok: "{{ helper_on_cool is not none and helper_on_heat is not none and (helper_on_cool - helper_off_cool) | round(2) == 1.0 and (helper_off_heat - helper_on_heat) | round(2) == 1.0 }}"
+      use_persisted_thresholds: "{{ (not helper_invalid_state) and firma_match and rango_ok and histeresis_ok }}"
+      eff_t_off_cool: "{{ helper_off_cool if use_persisted_thresholds else t_off_cool }}"
+      eff_t_on_cool: "{{ helper_on_cool if use_persisted_thresholds else t_on_cool }}"
+      eff_t_off_heat: "{{ helper_off_heat if use_persisted_thresholds else t_off_heat }}"
+      eff_t_on_heat: "{{ helper_on_heat if use_persisted_thresholds else t_on_heat }}"
+      validation_reason: "{% if helper_invalid_state %}recalculado_helper_no_disponible{% elif not firma_match %}contexto_recalculado_por_cambio_columna{% elif not rango_ok %}recalculado_rango_contractual_invalido{% elif not histeresis_ok %}recalculado_histeresis_invalida{% else %}ok_lectura_helper_valida{% endif %}"
       reason_invalid: "{% if invalid_data %}fallback_datos_externos_o_sensores{% elif not presence_ok %}sin_presencia_en_disparo{% else %}ok{% endif %}"
-      action_target: "{% if reason_invalid != 'ok' %}none{% elif climate_mode == 'off' and tin|float >= t_on_cool|float %}turn_on_cool{% elif climate_mode == 'off' and tin|float <= t_on_heat|float %}turn_on_heat{% elif climate_mode == 'cool' and tin|float <= t_off_cool|float %}turn_off{% elif climate_mode == 'heat' and tin|float >= t_off_heat|float %}turn_off{% else %}none{% endif %}"
-      event_signature: "{{ action_target }}|{{ climate_mode }}|{{ col_humana }}|{{ now().strftime('%Y-%m-%d %H:%M') }}"
-      dedup_ok: "{{ event_signature != states('input_text.ac_matriz_160_ultima_firma_notificacion') }}"
+      action_target: "{% if reason_invalid != 'ok' %}none{% elif climate_mode == 'off' and tin|float >= eff_t_on_cool|float %}turn_on_cool{% elif climate_mode == 'off' and tin|float <= eff_t_on_heat|float %}turn_on_heat{% elif climate_mode == 'cool' and tin|float <= eff_t_off_cool|float %}turn_off{% elif climate_mode == 'heat' and tin|float >= eff_t_off_heat|float %}turn_off{% else %}none{% endif %}"
+      event_mode: "{{ 'cool' if action_target == 'turn_on_cool' else 'heat' if action_target == 'turn_on_heat' else climate_mode }}"
+      event_signature: "{{ action_target }}|{{ event_mode }}|{{ col_humana }}|{{ now().strftime('%Y-%m-%d %H:%M') }}"
+      last_notify_ts_raw: "{{ states('input_datetime.ac_matriz_160_ultima_notificacion_ts') }}"
+      last_notify_ts: "{% set raw = last_notify_ts_raw %}{% if raw in ['unknown','unavailable','none',''] %}{{ none }}{% else %}{{ as_timestamp(raw, default=0) }}{% endif %}"
+      dedup_window_s: 180
+      dedup_in_window: "{{ last_notify_ts is not none and (as_timestamp(now()) - (last_notify_ts | float(0))) < dedup_window_s }}"
+      dedup_ok: "{{ event_signature != states('input_text.ac_matriz_160_ultima_firma_notificacion') or not dedup_in_window }}"
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_contexto_firma_activa
+    data:
+      value: "{{ contexto_firma }}"
   - action: input_text.set_value
     target:
       entity_id: input_text.ac_matriz_160_columna_activa_humana
     data:
       value: "{{ col_humana }}"
+  - action: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.ac_matriz_160_contexto_ts
+    data:
+      datetime: "{{ eval_ts }}"
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.ac_matriz_160_t_off_cool
+    data:
+      value: "{{ t_off_cool }}"
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.ac_matriz_160_t_on_cool
+    data:
+      value: "{{ t_on_cool }}"
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.ac_matriz_160_t_off_heat
+    data:
+      value: "{{ t_off_heat }}"
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.ac_matriz_160_t_on_heat
+    data:
+      value: "{{ t_on_heat }}"
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_ultimo_resultado_validacion
+    data:
+      value: "{{ validation_reason }}"
   - choose:
     - conditions:
       - condition: template
@@ -8013,7 +8077,7 @@
   - action: logbook.log
     data:
       name: AC-Matriz 160
-      message: "hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales=cool_on {{ t_on_cool }},cool_off {{ t_off_cool }},heat_on {{ t_on_heat }},heat_off {{ t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }}"
+      message: "hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}"
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -8059,12 +8123,38 @@
       - action: notify.mobile_app_samsung_s24
         data:
           title: AC-Matriz 160
-          message: "{{ now().strftime('%H:%M') }} | Evento: {{ 'Encendido' if action_target in ['turn_on_cool','turn_on_heat'] else 'Apagado' }} | Modo final: {{ 'cool' if action_target == 'turn_on_cool' else 'heat' if action_target == 'turn_on_heat' else 'off' }} | Interior {{ tin }}°C/{{ hin }}% | Exterior {{ tout if tout is not none else 'No disponible' }}°C/{{ hout }}% | Umbral aplicado: {{ t_on_cool if action_target == 'turn_on_cool' else t_on_heat if action_target == 'turn_on_heat' else t_off_cool if climate_mode == 'cool' else t_off_heat }} | {{ col_humana }}"
+          message: "{{ now().strftime('%H:%M') }} | Evento: {{ 'Encendido' if action_target in ['turn_on_cool','turn_on_heat'] else 'Apagado' }} | Modo final: {{ 'cool' if action_target == 'turn_on_cool' else 'heat' if action_target == 'turn_on_heat' else 'off' }} | Interior {{ tin }}°C/{{ hin }}% | Exterior {{ tout if tout is not none else 'No disponible' }}°C/{{ hout }}% | Umbral aplicado: {{ eff_t_on_cool if action_target == 'turn_on_cool' else eff_t_on_heat if action_target == 'turn_on_heat' else eff_t_off_cool if climate_mode == 'cool' else eff_t_off_heat }} | {{ col_humana }}"
       - action: input_text.set_value
         target:
           entity_id: input_text.ac_matriz_160_ultima_firma_notificacion
         data:
           value: "{{ event_signature }}"
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_ultima_notificacion_ts
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_ultimo_estado_notificacion
+        data:
+          value: "emitida|{{ event_signature }}"
+    default:
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.ac_matriz_160_ultimo_estado_notificacion
+      data:
+        value: "{% if action_target in ['turn_on_cool','turn_on_heat','turn_off'] %}suprimida|{{ event_signature }}{% else %}sin_evento|{{ col_humana }}{% endif %}"
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_ultima_accion
+    data:
+      value: "{{ action_target if action_target != 'none' else 'sin_accion' }}"
+  - action: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.ac_matriz_160_ultima_accion_ts
+    data:
+      datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
   - action: logbook.log
     data:
       name: AC-Matriz 160

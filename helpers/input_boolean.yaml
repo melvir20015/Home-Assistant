@@ -70,3 +70,11 @@ ac_dda_cycle_lock:
 ac_dda_presence_gate_open:
   name: AC DDA Presence Gate Open
   icon: mdi:door-open
+
+ac_matriz_160_auto_habilitado:
+  name: AC Matriz 160 Auto Habilitado
+  icon: mdi:hvac
+
+ac_matriz_160_presencia_valida_disparo:
+  name: AC Matriz 160 Presencia Válida Disparo
+  icon: mdi:home-account

@@ -2011,3 +2011,24 @@ Regla:
 ### Decisiones tomadas
 **Fecha:** 2026-05-17  
 Se establece esta definición base como contrato inicial de `AC-Matriz 160`, incluyendo alcance funcional, ventana operativa, presencia válida, segmentación contextual 8x4x5 (160 columnas), variables de cálculo, histéresis fija, límites de seguridad, política de humedad, disparadores esperados, notificaciones obligatorias y regla de gobernanza documental. Este bloque es la referencia oficial de contrato inicial de AC-Matriz 160.
+
+
+## 24) Implementación operativa aplicada en repositorio (2026-05-17)
+
+### Helpers dedicados `ac_matriz_160_*` creados
+Se crean y registran helpers dedicados para AC-Matriz 160 en `helpers/input_boolean.yaml`, `helpers/input_text.yaml`, `helpers/input_number.yaml` y `helpers/input_datetime.yaml`, incluyendo compuerta maestra, firma de contexto activa, umbrales vigentes, última acción, estado de validación, deduplicación de notificación y presencia al disparo.
+
+### Guardas activas antes de decisiones HVAC
+La automatización `AC-Matriz 160` valida en cada ciclo:
+- disponibilidad de helpers (`unknown/unavailable/none` invalida),
+- rango contractual de umbrales,
+- histéresis fija por modo,
+- coherencia de firma de contexto activa.
+
+Si falla alguna guarda, recalcula y sobrescribe helpers críticos, dejando motivo en `input_text.ac_matriz_160_ultimo_resultado_validacion`.
+
+### Anti-contaminación por cambio de columna
+Cuando la firma persistida no coincide con la firma del ciclo, se fuerza recálculo y se registra `contexto_recalculado_por_cambio_columna` en validación y log de evaluación.
+
+### Deduplicación segura de notificaciones
+La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventana de supresión corta (180 s). Se persiste resultado en `input_text.ac_matriz_160_ultimo_estado_notificacion` (`emitida/suprimida/sin_evento`).
