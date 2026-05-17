@@ -819,10 +819,20 @@
       invalid_data: '{{ tin is none or hin is none or tout is none }}'
       base_cool: '{{ 23 + (weather_idx|int * 0.15) + (season_idx|int * 0.10) + (slot_idx|int * 0.05) + ((hin|float(50)-50)*0.01) + ((tout|float(25)-25)*0.02) }}'
       base_heat: '{{ 20 - (weather_idx|int * 0.08) - (season_idx|int * 0.05) - (slot_idx|int * 0.03) - ((hin|float(50)-50)*0.005) - ((tout|float(18)-18)*0.015) }}'
-      t_off_cool: '{{ [26.0, [22.0, (base_cool|float(24))] | max] | min | round(2) }}'
-      t_on_cool: '{{ (t_off_cool|float + 1.0) | round(2) }}'
-      t_off_heat: '{{ [22.0, [17.0, (base_heat|float(20))] | max] | min | round(2) }}'
-      t_on_heat: '{{ (t_off_heat|float - 1.0) | round(2) }}'
+      t_off_cool_base: '{{ [26.0, [22.0, (base_cool|float(24))] | max] | min | round(2) }}'
+      t_on_cool_base: '{{ (t_off_cool_base|float + 1.0) | round(2) }}'
+      t_off_heat_base: '{{ [22.0, [17.0, (base_heat|float(20))] | max] | min | round(2) }}'
+      t_on_heat_base: '{{ (t_off_heat_base|float - 1.0) | round(2) }}'
+      offset_cool_helper: '{{ states(''input_number.ac_matriz_160_offset_cool_col_'' ~ col_idx) | float(0) }}'
+      offset_heat_helper: '{{ states(''input_number.ac_matriz_160_offset_heat_col_'' ~ col_idx) | float(0) }}'
+      t_off_cool_shifted: '{{ (t_off_cool_base|float + offset_cool_helper|float) | round(2) }}'
+      t_on_cool_shifted: '{{ (t_on_cool_base|float + offset_cool_helper|float) | round(2) }}'
+      t_off_heat_shifted: '{{ (t_off_heat_base|float + offset_heat_helper|float) | round(2) }}'
+      t_on_heat_shifted: '{{ (t_on_heat_base|float + offset_heat_helper|float) | round(2) }}'
+      t_off_cool: '{{ [26.0, [22.0, (t_off_cool_shifted|float)] | max] | min | round(2) }}'
+      t_on_cool: '{{ ([27.0, [23.0, (t_on_cool_shifted|float)] | max] | min) | round(2) }}'
+      t_off_heat: '{{ [22.0, [17.0, (t_off_heat_shifted|float)] | max] | min | round(2) }}'
+      t_on_heat: '{{ ([21.0, [16.0, (t_on_heat_shifted|float)] | max] | min) | round(2) }}'
       climate_mode: '{{ states(''climate.0200009211c7_climate'') }}'
       helper_firma: '{{ states(''input_text.ac_matriz_160_contexto_firma_activa'') | trim }}'
       helper_off_cool_raw: '{{ states(''input_number.ac_matriz_160_t_off_cool'') }}'
@@ -872,6 +882,11 @@
       entity_id: input_text.ac_matriz_160_columna_activa_humana
     data:
       value: '{{ col_humana }}'
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_columna_activa_idx
+    data:
+      value: '{{ col_idx }}'
   - service: input_datetime.set_datetime
     target:
       entity_id: input_datetime.ac_matriz_160_contexto_ts
@@ -922,7 +937,7 @@
   - service: logbook.log
     data:
       name: AC-Matriz 160
-      message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}
+      message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base }},heat_on {{ t_on_heat_base }},heat_off {{ t_off_heat_base }} | offset_columna=cool {{ offset_cool_helper }},heat {{ offset_heat_helper }} | umbrales_efectivos=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -1135,3 +1150,70 @@
       name: AC-Matriz 160
       message: hito=migracion_control_exclusivo | ac_dda_desactivado=true | controlador_activo=AC-Matriz 160
       entity_id: climate.0200009211c7_climate
+
+- id: ac_matriz_160_learning_manual_v1
+  alias: AC-Matriz 160 - Aprendizaje manual por columna
+  description: Aprende offset por columna y modo desde ON/OFF manual con deduplicación y notificación humana.
+  mode: queued
+  max: 20
+  triggers:
+  - trigger: state
+    entity_id: climate.0200009211c7_climate
+  conditions:
+  - condition: template
+    value_template: '{{ trigger.to_state is not none and trigger.from_state is not none and trigger.to_state.state != trigger.from_state.state }}'
+  - condition: template
+    value_template: '{{ trigger.to_state.context.user_id is not none }}'
+  actions:
+  - variables:
+      ts_evento: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      hora_evento: '{{ now().strftime(''%H:%M:%S'') }}'
+      modo_anterior: '{{ trigger.from_state.state | lower }}'
+      modo_nuevo: '{{ trigger.to_state.state | lower }}'
+      modo_aprendizaje: '{% if modo_nuevo in [''cool'',''heat''] %}{{ modo_nuevo }}{% elif modo_anterior in [''cool'',''heat''] %}{{ modo_anterior }}{% else %}fuera_alcance{% endif %}'
+      evento_manual_tipo: '{% if modo_nuevo in [''cool'',''heat''] and modo_anterior == ''off'' %}encendido_manual{% elif modo_nuevo == ''off'' and modo_anterior in [''cool'',''heat''] %}apagado_manual{% else %}ignorado{% endif %}'
+      contexto: '{{ states(''input_text.ac_matriz_160_columna_activa_humana'') | default(''Contexto no disponible'', true) }}'
+      col_idx: '{{ states(''input_text.ac_matriz_160_columna_activa_idx'') | int(0) }}'
+      firma_evento: '{{ ts_evento[0:16] ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo }}'
+      firma_previa: '{{ states(''input_text.ac_matriz_160_ultima_accion'') }}'
+      dedup_ok: '{{ firma_previa != (''learn|'' ~ firma_evento) }}'
+      helper_offset: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje ~ ''_col_'' ~ col_idx }}'
+      offset_actual: '{{ states(helper_offset) | float(0) if modo_aprendizaje in [''cool'',''heat''] else 0 }}'
+      delta: >-
+        {% if modo_aprendizaje == 'cool' and evento_manual_tipo == 'encendido_manual' %}-0.25
+        {% elif modo_aprendizaje == 'cool' and evento_manual_tipo == 'apagado_manual' %}0.25
+        {% elif modo_aprendizaje == 'heat' and evento_manual_tipo == 'encendido_manual' %}0.25
+        {% elif modo_aprendizaje == 'heat' and evento_manual_tipo == 'apagado_manual' %}-0.25
+        {% else %}0
+        {% endif %}
+      offset_nuevo: '{{ [3.0, [-3.0, (offset_actual|float + delta|float)] | max] | min | round(2) }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ modo_aprendizaje in [''cool'',''heat''] and evento_manual_tipo != ''ignorado'' and dedup_ok }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: '{{ helper_offset }}'
+        data:
+          value: '{{ offset_nuevo }}'
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC-Matriz 160
+          message: '{{ hora_evento }} | Aprendizaje por {{ ''encendido manual'' if evento_manual_tipo == ''encendido_manual'' else ''apagado manual'' }} | Modo {{ modo_aprendizaje }} | Columna {{ col_idx }} ({{ contexto }}) | Delta {{ ''+0.25'' if delta|float > 0 else ''-0.25'' }} | Offset acumulado {{ offset_nuevo }}'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: 'hito=learning_manual_columna | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje }} | columna={{ col_idx }} | contexto={{ contexto }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo }} | ts={{ ts_evento }} | helper={{ helper_offset }}'
+          entity_id: climate.0200009211c7_climate
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_ultima_accion
+        data:
+          value: '{{ ''learn|'' ~ firma_evento }}'
+    default:
+    - service: logbook.log
+      data:
+        name: AC-Matriz 160
+        message: 'hito=learning_manual_ignorado | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo={{ modo_aprendizaje }} | evento={{ evento_manual_tipo }} | dedup_ok={{ dedup_ok }}'
+        entity_id: climate.0200009211c7_climate

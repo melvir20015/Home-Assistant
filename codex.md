@@ -2003,3 +2003,44 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - Solo eliminar automatizaciones/helpers/scripts cuando sean `no referenciados` por el conjunto de automatizaciones protegidas/activas.
 - Antes de borrar: generar inventario de referencias (entity_id, target.entity_id, services, plantillas).
 - Después de borrar: validar que no existan referencias colgantes y ejecutar validación de configuración YAML/Home Assistant.
+
+## 25) Política de aprendizaje por columna AC-Matriz 160 (2026-05-17)
+
+### Contrato de persistencia por columna (sin mapa JSON)
+- Se definen helpers dedicados por columna y modo con prefijo `ac_matriz_160_`:
+  - `input_number.ac_matriz_160_offset_cool_col_1..160`
+  - `input_number.ac_matriz_160_offset_heat_col_1..160`
+- Parámetros de cada helper:
+  - `min: -3.0`
+  - `max: 3.0`
+  - `step: 0.25`
+  - `initial: 0.0`
+
+### Orden de cálculo obligatorio
+1. Calcular fórmula base contractual por columna (`*_base`).
+2. Aplicar offset aprendido de helper por columna/modo activo.
+3. Revalidar límites e histéresis contractuales.
+4. Decidir ON/OFF con umbrales efectivos resultantes.
+
+### Semántica definitiva de aprendizaje
+- COOL:
+  - Encendido manual: `delta = -0.25`
+  - Apagado manual: `delta = +0.25`
+- HEAT (espejo):
+  - Encendido manual: `delta = +0.25`
+  - Apagado manual: `delta = -0.25`
+- Clamp obligatorio de acumulado: `[-3.0, +3.0]`.
+
+### Notificación humana obligatoria
+- En cada aprendizaje aplicado se envía push simple en español con:
+  - tipo de aprendizaje (encendido/apagado manual),
+  - modo,
+  - columna/contexto,
+  - delta aplicado,
+  - offset acumulado,
+  - hora del evento.
+- El detalle técnico completo se conserva en `logbook.log`.
+
+### Ejemplos de acumulación
+- `-0.25 + (+0.25) => 0.00`
+- `-0.25 + (-0.25) => -0.50`
