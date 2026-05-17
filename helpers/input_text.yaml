@@ -223,3 +223,8 @@ ac_matriz_160_origen_presencia_disparo:
   name: "AC Matriz 160 Origen Presencia Disparo"
   max: 80
   initial: "sin_presencia"
+
+ac_matriz_160_fase_ciclo:
+  name: "AC Matriz 160 Fase Ciclo"
+  max: 40
+  initial: "idle"

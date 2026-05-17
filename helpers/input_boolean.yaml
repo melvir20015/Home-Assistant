@@ -78,3 +78,7 @@ ac_matriz_160_auto_habilitado:
 ac_matriz_160_presencia_valida_disparo:
   name: AC Matriz 160 Presencia Válida Disparo
   icon: mdi:home-account
+
+ac_matriz_160_turbo_reentrada_bloqueada:
+  name: AC Matriz 160 Turbo Reentrada Bloqueada
+  icon: mdi:lock

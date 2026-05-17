@@ -1933,3 +1933,50 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 3. Confirmar que dentro de `sequence` cada paso sea válido (`service`, `delay`, `wait_template`, `variables`, `choose`, `stop`).
 4. Revisar indentación: `default:` al mismo nivel que ramas `- conditions:` y sin claves huérfanas (`service`, `data`, `target`).
 5. Ejecutar validación de configuración antes de reinicio para evitar errores tipo `extra keys not allowed @ data[0]['action']`.
+
+### Capa Turbo por presencia y Setpoint HEAT fijo
+
+- **Entrada a turbo (solo en detección inicial de presencia válida):** la evaluación se ejecuta únicamente cuando ocurre una nueva detección (`movimiento ON` o `S24/home`) en el inicio de permanencia.
+- **Gatillos turbo COOL (detección inicial):**
+  - `Tin >= T_on_cool_columna + 1.0°C`, o
+  - `Hin >= 55%`.
+- **Gatillo turbo HEAT (detección inicial):**
+  - `Tin <= T_on_heat_columna - 1.0°C`.
+- **Si no hay gatillo turbo en esa detección inicial:** el ciclo inicia en `normal` (`normal_without_turbo`).
+
+#### Setpoints y fan en turbo
+- **COOL turbo:** `hvac_mode=cool`, `setpoint=18°C`, `fan=high`.
+- **HEAT turbo:** `hvac_mode=heat`, `setpoint=30°C`, `fan=high`.
+
+#### Salida de turbo por punto medio de histéresis
+- `mid_cool = (T_on_cool + T_off_cool) / 2`.
+- `mid_heat = (T_on_heat + T_off_heat) / 2`.
+- Salida turbo COOL cuando `Tin <= mid_cool`.
+- Salida turbo HEAT cuando `Tin >= mid_heat`.
+- En la transición se registra `turbo_exit_to_normal` y se bloquea reentrada dentro de la misma permanencia.
+
+#### Régimen normal posterior
+- **HEAT normal fijo global:** `setpoint_heat_normal = 28°C` (todas las columnas).
+- **COOL normal:** conserva reglas por columna (setpoint/fan existentes).
+- **Fan en normal:** mantiene cálculo dinámico vigente con antioscilación del contrato.
+
+#### Bloqueo de reentrada turbo
+- Una vez se sale de turbo, se activa bloqueo de reentrada durante la permanencia actual.
+- Solo se habilita nueva entrada a turbo cuando hay nueva detección inicial completa de presencia válida en un nuevo ciclo.
+
+#### Telemetría (logbook)
+- Hitos obligatorios:
+  - `turbo_enter_cool`
+  - `turbo_enter_heat`
+  - `turbo_exit_to_normal`
+  - `turbo_blocked_reentry`
+  - `normal_without_turbo`
+- Trazas mínimas: `Tin`, `Hin`, `T_on`, `T_off`, `mid`, columna activa y motivo.
+
+#### Ejemplos numéricos
+- **COOL:** si `T_on_cool=24.6` y `T_off_cool=23.6`, entonces `mid_cool=24.1`. Con llegada `Tin=25.8` entra turbo cool; sale a normal al bajar `Tin<=24.1`.
+- **HEAT:** si `T_on_heat=19.2` y `T_off_heat=20.2`, entonces `mid_heat=19.7`. Con llegada `Tin=18.0` entra turbo heat; sale a normal al subir `Tin>=19.7`.
+
+#### Decisión tomada
+- **Fecha:** 2026-05-17.
+- **Motivo operativo:** mejorar confort rápido al llegar con desvío térmico marcado y mitigar ciclos cortos inducidos por sensor interno del HVAC.
