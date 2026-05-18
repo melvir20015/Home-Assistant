@@ -2084,3 +2084,35 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 ### Ejemplos de acumulación
 - `-0.25 + (+0.25) => 0.00`
 - `-0.25 + (-0.25) => -0.50`
+
+## 26) Ajuste operativo COOL con setpoint entero por OFF (2026-05-18)
+
+### Regla de encendido (cool)
+- Solo se habilita cálculo/aplicación de enfriamiento cuando `Tin >= ON`.
+- Si `Tin < ON`, se conserva el comportamiento de no encender `cool`.
+- La automatización mantiene la guarda horaria real `07:01–21:59` y no calcula/aplica `SP/Fan` fuera de esa ventana.
+
+### Regla de setpoint entero para HVAC
+- Como el HVAC acepta enteros, en `cool` se usa:
+  - `off_entero = floor(OFF)`
+  - `sp_objetivo = off_entero - 1`
+  - `SP_final = clamp(sp_objetivo, min_sp_hvac, max_sp_hvac)`
+- `SP_final` siempre se envía como entero.
+
+### Ejemplo contractual acordado
+- `ON=24`, `OFF=23.45`:
+  - `off_entero=23`
+  - `SP=22`
+
+### Regla de fan por delta térmica real
+- `delta = Tin - OFF`.
+- Base:
+  - `delta >= 2.0` => `HIGH`
+  - `1.0 <= delta < 2.0` => `MED`
+  - `delta < 1.0` => `LOW`
+- Humedad alta:
+  - si `Hin >= 65%`, bajar un nivel de fan respecto al base (`HIGH→MED`, `MED→LOW`, `LOW→LOW`).
+
+### Trazabilidad diagnóstica mínima
+- Registrar entrada: `Tin`, `Hin`, `ON`, `OFF`, `horario_habilitado`.
+- Registrar salida: `off_entero`, `SP final`, `FAN final`, `delta`, `motivo`.
