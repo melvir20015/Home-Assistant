@@ -676,7 +676,7 @@
   mode: restart
   variables:
     climate_ent: climate.0200009211c7_climate
-    notify_service: script.ac_dda_notify_on_transaccional
+    notify_service: notify.mobile_app_samsung_s24
     t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(none) }}'
     t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(none) }}'
     h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'')|float(none) }}'
