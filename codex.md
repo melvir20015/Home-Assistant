@@ -2070,7 +2070,8 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - `min: -3.0`
   - `max: 3.0`
   - `step: 0.25`
-  - `initial: 0.0`
+- Regla operativa de restauración:
+  - “Los offsets `ac_matriz_160_offset_*` no usan `initial` para permitir restauración de estado tras reinicio.”
 
 ### Orden de cálculo obligatorio
 1. Calcular fórmula base contractual por columna (`*_base`).

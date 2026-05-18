@@ -46,7 +46,6 @@ ac_matriz_160_offset_cool_col_1:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_2:
   name: AC Matriz 160 Offset COOL Columna 2
   min: -3.0
@@ -54,7 +53,6 @@ ac_matriz_160_offset_cool_col_2:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_3:
   name: AC Matriz 160 Offset COOL Columna 3
   min: -3.0
@@ -62,7 +60,6 @@ ac_matriz_160_offset_cool_col_3:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_4:
   name: AC Matriz 160 Offset COOL Columna 4
   min: -3.0
@@ -70,7 +67,6 @@ ac_matriz_160_offset_cool_col_4:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_5:
   name: AC Matriz 160 Offset COOL Columna 5
   min: -3.0
@@ -78,7 +74,6 @@ ac_matriz_160_offset_cool_col_5:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_6:
   name: AC Matriz 160 Offset COOL Columna 6
   min: -3.0
@@ -86,7 +81,6 @@ ac_matriz_160_offset_cool_col_6:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_7:
   name: AC Matriz 160 Offset COOL Columna 7
   min: -3.0
@@ -94,7 +88,6 @@ ac_matriz_160_offset_cool_col_7:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_8:
   name: AC Matriz 160 Offset COOL Columna 8
   min: -3.0
@@ -102,7 +95,6 @@ ac_matriz_160_offset_cool_col_8:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_9:
   name: AC Matriz 160 Offset COOL Columna 9
   min: -3.0
@@ -110,7 +102,6 @@ ac_matriz_160_offset_cool_col_9:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_10:
   name: AC Matriz 160 Offset COOL Columna 10
   min: -3.0
@@ -118,7 +109,6 @@ ac_matriz_160_offset_cool_col_10:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_11:
   name: AC Matriz 160 Offset COOL Columna 11
   min: -3.0
@@ -126,7 +116,6 @@ ac_matriz_160_offset_cool_col_11:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_12:
   name: AC Matriz 160 Offset COOL Columna 12
   min: -3.0
@@ -134,7 +123,6 @@ ac_matriz_160_offset_cool_col_12:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_13:
   name: AC Matriz 160 Offset COOL Columna 13
   min: -3.0
@@ -142,7 +130,6 @@ ac_matriz_160_offset_cool_col_13:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_14:
   name: AC Matriz 160 Offset COOL Columna 14
   min: -3.0
@@ -150,7 +137,6 @@ ac_matriz_160_offset_cool_col_14:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_15:
   name: AC Matriz 160 Offset COOL Columna 15
   min: -3.0
@@ -158,7 +144,6 @@ ac_matriz_160_offset_cool_col_15:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_16:
   name: AC Matriz 160 Offset COOL Columna 16
   min: -3.0
@@ -166,7 +151,6 @@ ac_matriz_160_offset_cool_col_16:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_17:
   name: AC Matriz 160 Offset COOL Columna 17
   min: -3.0
@@ -174,7 +158,6 @@ ac_matriz_160_offset_cool_col_17:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_18:
   name: AC Matriz 160 Offset COOL Columna 18
   min: -3.0
@@ -182,7 +165,6 @@ ac_matriz_160_offset_cool_col_18:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_19:
   name: AC Matriz 160 Offset COOL Columna 19
   min: -3.0
@@ -190,7 +172,6 @@ ac_matriz_160_offset_cool_col_19:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_20:
   name: AC Matriz 160 Offset COOL Columna 20
   min: -3.0
@@ -198,7 +179,6 @@ ac_matriz_160_offset_cool_col_20:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_21:
   name: AC Matriz 160 Offset COOL Columna 21
   min: -3.0
@@ -206,7 +186,6 @@ ac_matriz_160_offset_cool_col_21:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_22:
   name: AC Matriz 160 Offset COOL Columna 22
   min: -3.0
@@ -214,7 +193,6 @@ ac_matriz_160_offset_cool_col_22:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_23:
   name: AC Matriz 160 Offset COOL Columna 23
   min: -3.0
@@ -222,7 +200,6 @@ ac_matriz_160_offset_cool_col_23:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_24:
   name: AC Matriz 160 Offset COOL Columna 24
   min: -3.0
@@ -230,7 +207,6 @@ ac_matriz_160_offset_cool_col_24:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_25:
   name: AC Matriz 160 Offset COOL Columna 25
   min: -3.0
@@ -238,7 +214,6 @@ ac_matriz_160_offset_cool_col_25:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_26:
   name: AC Matriz 160 Offset COOL Columna 26
   min: -3.0
@@ -246,7 +221,6 @@ ac_matriz_160_offset_cool_col_26:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_27:
   name: AC Matriz 160 Offset COOL Columna 27
   min: -3.0
@@ -254,7 +228,6 @@ ac_matriz_160_offset_cool_col_27:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_28:
   name: AC Matriz 160 Offset COOL Columna 28
   min: -3.0
@@ -262,7 +235,6 @@ ac_matriz_160_offset_cool_col_28:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_29:
   name: AC Matriz 160 Offset COOL Columna 29
   min: -3.0
@@ -270,7 +242,6 @@ ac_matriz_160_offset_cool_col_29:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_30:
   name: AC Matriz 160 Offset COOL Columna 30
   min: -3.0
@@ -278,7 +249,6 @@ ac_matriz_160_offset_cool_col_30:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_31:
   name: AC Matriz 160 Offset COOL Columna 31
   min: -3.0
@@ -286,7 +256,6 @@ ac_matriz_160_offset_cool_col_31:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_32:
   name: AC Matriz 160 Offset COOL Columna 32
   min: -3.0
@@ -294,7 +263,6 @@ ac_matriz_160_offset_cool_col_32:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_33:
   name: AC Matriz 160 Offset COOL Columna 33
   min: -3.0
@@ -302,7 +270,6 @@ ac_matriz_160_offset_cool_col_33:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_34:
   name: AC Matriz 160 Offset COOL Columna 34
   min: -3.0
@@ -310,7 +277,6 @@ ac_matriz_160_offset_cool_col_34:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_35:
   name: AC Matriz 160 Offset COOL Columna 35
   min: -3.0
@@ -318,7 +284,6 @@ ac_matriz_160_offset_cool_col_35:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_36:
   name: AC Matriz 160 Offset COOL Columna 36
   min: -3.0
@@ -326,7 +291,6 @@ ac_matriz_160_offset_cool_col_36:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_37:
   name: AC Matriz 160 Offset COOL Columna 37
   min: -3.0
@@ -334,7 +298,6 @@ ac_matriz_160_offset_cool_col_37:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_38:
   name: AC Matriz 160 Offset COOL Columna 38
   min: -3.0
@@ -342,7 +305,6 @@ ac_matriz_160_offset_cool_col_38:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_39:
   name: AC Matriz 160 Offset COOL Columna 39
   min: -3.0
@@ -350,7 +312,6 @@ ac_matriz_160_offset_cool_col_39:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_40:
   name: AC Matriz 160 Offset COOL Columna 40
   min: -3.0
@@ -358,7 +319,6 @@ ac_matriz_160_offset_cool_col_40:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_41:
   name: AC Matriz 160 Offset COOL Columna 41
   min: -3.0
@@ -366,7 +326,6 @@ ac_matriz_160_offset_cool_col_41:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_42:
   name: AC Matriz 160 Offset COOL Columna 42
   min: -3.0
@@ -374,7 +333,6 @@ ac_matriz_160_offset_cool_col_42:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_43:
   name: AC Matriz 160 Offset COOL Columna 43
   min: -3.0
@@ -382,7 +340,6 @@ ac_matriz_160_offset_cool_col_43:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_44:
   name: AC Matriz 160 Offset COOL Columna 44
   min: -3.0
@@ -390,7 +347,6 @@ ac_matriz_160_offset_cool_col_44:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_45:
   name: AC Matriz 160 Offset COOL Columna 45
   min: -3.0
@@ -398,7 +354,6 @@ ac_matriz_160_offset_cool_col_45:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_46:
   name: AC Matriz 160 Offset COOL Columna 46
   min: -3.0
@@ -406,7 +361,6 @@ ac_matriz_160_offset_cool_col_46:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_47:
   name: AC Matriz 160 Offset COOL Columna 47
   min: -3.0
@@ -414,7 +368,6 @@ ac_matriz_160_offset_cool_col_47:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_48:
   name: AC Matriz 160 Offset COOL Columna 48
   min: -3.0
@@ -422,7 +375,6 @@ ac_matriz_160_offset_cool_col_48:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_49:
   name: AC Matriz 160 Offset COOL Columna 49
   min: -3.0
@@ -430,7 +382,6 @@ ac_matriz_160_offset_cool_col_49:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_50:
   name: AC Matriz 160 Offset COOL Columna 50
   min: -3.0
@@ -438,7 +389,6 @@ ac_matriz_160_offset_cool_col_50:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_51:
   name: AC Matriz 160 Offset COOL Columna 51
   min: -3.0
@@ -446,7 +396,6 @@ ac_matriz_160_offset_cool_col_51:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_52:
   name: AC Matriz 160 Offset COOL Columna 52
   min: -3.0
@@ -454,7 +403,6 @@ ac_matriz_160_offset_cool_col_52:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_53:
   name: AC Matriz 160 Offset COOL Columna 53
   min: -3.0
@@ -462,7 +410,6 @@ ac_matriz_160_offset_cool_col_53:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_54:
   name: AC Matriz 160 Offset COOL Columna 54
   min: -3.0
@@ -470,7 +417,6 @@ ac_matriz_160_offset_cool_col_54:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_55:
   name: AC Matriz 160 Offset COOL Columna 55
   min: -3.0
@@ -478,7 +424,6 @@ ac_matriz_160_offset_cool_col_55:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_56:
   name: AC Matriz 160 Offset COOL Columna 56
   min: -3.0
@@ -486,7 +431,6 @@ ac_matriz_160_offset_cool_col_56:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_57:
   name: AC Matriz 160 Offset COOL Columna 57
   min: -3.0
@@ -494,7 +438,6 @@ ac_matriz_160_offset_cool_col_57:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_58:
   name: AC Matriz 160 Offset COOL Columna 58
   min: -3.0
@@ -502,7 +445,6 @@ ac_matriz_160_offset_cool_col_58:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_59:
   name: AC Matriz 160 Offset COOL Columna 59
   min: -3.0
@@ -510,7 +452,6 @@ ac_matriz_160_offset_cool_col_59:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_60:
   name: AC Matriz 160 Offset COOL Columna 60
   min: -3.0
@@ -518,7 +459,6 @@ ac_matriz_160_offset_cool_col_60:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_61:
   name: AC Matriz 160 Offset COOL Columna 61
   min: -3.0
@@ -526,7 +466,6 @@ ac_matriz_160_offset_cool_col_61:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_62:
   name: AC Matriz 160 Offset COOL Columna 62
   min: -3.0
@@ -534,7 +473,6 @@ ac_matriz_160_offset_cool_col_62:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_63:
   name: AC Matriz 160 Offset COOL Columna 63
   min: -3.0
@@ -542,7 +480,6 @@ ac_matriz_160_offset_cool_col_63:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_64:
   name: AC Matriz 160 Offset COOL Columna 64
   min: -3.0
@@ -550,7 +487,6 @@ ac_matriz_160_offset_cool_col_64:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_65:
   name: AC Matriz 160 Offset COOL Columna 65
   min: -3.0
@@ -558,7 +494,6 @@ ac_matriz_160_offset_cool_col_65:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_66:
   name: AC Matriz 160 Offset COOL Columna 66
   min: -3.0
@@ -566,7 +501,6 @@ ac_matriz_160_offset_cool_col_66:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_67:
   name: AC Matriz 160 Offset COOL Columna 67
   min: -3.0
@@ -574,7 +508,6 @@ ac_matriz_160_offset_cool_col_67:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_68:
   name: AC Matriz 160 Offset COOL Columna 68
   min: -3.0
@@ -582,7 +515,6 @@ ac_matriz_160_offset_cool_col_68:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_69:
   name: AC Matriz 160 Offset COOL Columna 69
   min: -3.0
@@ -590,7 +522,6 @@ ac_matriz_160_offset_cool_col_69:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_70:
   name: AC Matriz 160 Offset COOL Columna 70
   min: -3.0
@@ -598,7 +529,6 @@ ac_matriz_160_offset_cool_col_70:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_71:
   name: AC Matriz 160 Offset COOL Columna 71
   min: -3.0
@@ -606,7 +536,6 @@ ac_matriz_160_offset_cool_col_71:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_72:
   name: AC Matriz 160 Offset COOL Columna 72
   min: -3.0
@@ -614,7 +543,6 @@ ac_matriz_160_offset_cool_col_72:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_73:
   name: AC Matriz 160 Offset COOL Columna 73
   min: -3.0
@@ -622,7 +550,6 @@ ac_matriz_160_offset_cool_col_73:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_74:
   name: AC Matriz 160 Offset COOL Columna 74
   min: -3.0
@@ -630,7 +557,6 @@ ac_matriz_160_offset_cool_col_74:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_75:
   name: AC Matriz 160 Offset COOL Columna 75
   min: -3.0
@@ -638,7 +564,6 @@ ac_matriz_160_offset_cool_col_75:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_76:
   name: AC Matriz 160 Offset COOL Columna 76
   min: -3.0
@@ -646,7 +571,6 @@ ac_matriz_160_offset_cool_col_76:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_77:
   name: AC Matriz 160 Offset COOL Columna 77
   min: -3.0
@@ -654,7 +578,6 @@ ac_matriz_160_offset_cool_col_77:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_78:
   name: AC Matriz 160 Offset COOL Columna 78
   min: -3.0
@@ -662,7 +585,6 @@ ac_matriz_160_offset_cool_col_78:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_79:
   name: AC Matriz 160 Offset COOL Columna 79
   min: -3.0
@@ -670,7 +592,6 @@ ac_matriz_160_offset_cool_col_79:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_80:
   name: AC Matriz 160 Offset COOL Columna 80
   min: -3.0
@@ -678,7 +599,6 @@ ac_matriz_160_offset_cool_col_80:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_81:
   name: AC Matriz 160 Offset COOL Columna 81
   min: -3.0
@@ -686,7 +606,6 @@ ac_matriz_160_offset_cool_col_81:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_82:
   name: AC Matriz 160 Offset COOL Columna 82
   min: -3.0
@@ -694,7 +613,6 @@ ac_matriz_160_offset_cool_col_82:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_83:
   name: AC Matriz 160 Offset COOL Columna 83
   min: -3.0
@@ -702,7 +620,6 @@ ac_matriz_160_offset_cool_col_83:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_84:
   name: AC Matriz 160 Offset COOL Columna 84
   min: -3.0
@@ -710,7 +627,6 @@ ac_matriz_160_offset_cool_col_84:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_85:
   name: AC Matriz 160 Offset COOL Columna 85
   min: -3.0
@@ -718,7 +634,6 @@ ac_matriz_160_offset_cool_col_85:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_86:
   name: AC Matriz 160 Offset COOL Columna 86
   min: -3.0
@@ -726,7 +641,6 @@ ac_matriz_160_offset_cool_col_86:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_87:
   name: AC Matriz 160 Offset COOL Columna 87
   min: -3.0
@@ -734,7 +648,6 @@ ac_matriz_160_offset_cool_col_87:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_88:
   name: AC Matriz 160 Offset COOL Columna 88
   min: -3.0
@@ -742,7 +655,6 @@ ac_matriz_160_offset_cool_col_88:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_89:
   name: AC Matriz 160 Offset COOL Columna 89
   min: -3.0
@@ -750,7 +662,6 @@ ac_matriz_160_offset_cool_col_89:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_90:
   name: AC Matriz 160 Offset COOL Columna 90
   min: -3.0
@@ -758,7 +669,6 @@ ac_matriz_160_offset_cool_col_90:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_91:
   name: AC Matriz 160 Offset COOL Columna 91
   min: -3.0
@@ -766,7 +676,6 @@ ac_matriz_160_offset_cool_col_91:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_92:
   name: AC Matriz 160 Offset COOL Columna 92
   min: -3.0
@@ -774,7 +683,6 @@ ac_matriz_160_offset_cool_col_92:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_93:
   name: AC Matriz 160 Offset COOL Columna 93
   min: -3.0
@@ -782,7 +690,6 @@ ac_matriz_160_offset_cool_col_93:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_94:
   name: AC Matriz 160 Offset COOL Columna 94
   min: -3.0
@@ -790,7 +697,6 @@ ac_matriz_160_offset_cool_col_94:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_95:
   name: AC Matriz 160 Offset COOL Columna 95
   min: -3.0
@@ -798,7 +704,6 @@ ac_matriz_160_offset_cool_col_95:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_96:
   name: AC Matriz 160 Offset COOL Columna 96
   min: -3.0
@@ -806,7 +711,6 @@ ac_matriz_160_offset_cool_col_96:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_97:
   name: AC Matriz 160 Offset COOL Columna 97
   min: -3.0
@@ -814,7 +718,6 @@ ac_matriz_160_offset_cool_col_97:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_98:
   name: AC Matriz 160 Offset COOL Columna 98
   min: -3.0
@@ -822,7 +725,6 @@ ac_matriz_160_offset_cool_col_98:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_99:
   name: AC Matriz 160 Offset COOL Columna 99
   min: -3.0
@@ -830,7 +732,6 @@ ac_matriz_160_offset_cool_col_99:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_100:
   name: AC Matriz 160 Offset COOL Columna 100
   min: -3.0
@@ -838,7 +739,6 @@ ac_matriz_160_offset_cool_col_100:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_101:
   name: AC Matriz 160 Offset COOL Columna 101
   min: -3.0
@@ -846,7 +746,6 @@ ac_matriz_160_offset_cool_col_101:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_102:
   name: AC Matriz 160 Offset COOL Columna 102
   min: -3.0
@@ -854,7 +753,6 @@ ac_matriz_160_offset_cool_col_102:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_103:
   name: AC Matriz 160 Offset COOL Columna 103
   min: -3.0
@@ -862,7 +760,6 @@ ac_matriz_160_offset_cool_col_103:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_104:
   name: AC Matriz 160 Offset COOL Columna 104
   min: -3.0
@@ -870,7 +767,6 @@ ac_matriz_160_offset_cool_col_104:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_105:
   name: AC Matriz 160 Offset COOL Columna 105
   min: -3.0
@@ -878,7 +774,6 @@ ac_matriz_160_offset_cool_col_105:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_106:
   name: AC Matriz 160 Offset COOL Columna 106
   min: -3.0
@@ -886,7 +781,6 @@ ac_matriz_160_offset_cool_col_106:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_107:
   name: AC Matriz 160 Offset COOL Columna 107
   min: -3.0
@@ -894,7 +788,6 @@ ac_matriz_160_offset_cool_col_107:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_108:
   name: AC Matriz 160 Offset COOL Columna 108
   min: -3.0
@@ -902,7 +795,6 @@ ac_matriz_160_offset_cool_col_108:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_109:
   name: AC Matriz 160 Offset COOL Columna 109
   min: -3.0
@@ -910,7 +802,6 @@ ac_matriz_160_offset_cool_col_109:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_110:
   name: AC Matriz 160 Offset COOL Columna 110
   min: -3.0
@@ -918,7 +809,6 @@ ac_matriz_160_offset_cool_col_110:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_111:
   name: AC Matriz 160 Offset COOL Columna 111
   min: -3.0
@@ -926,7 +816,6 @@ ac_matriz_160_offset_cool_col_111:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_112:
   name: AC Matriz 160 Offset COOL Columna 112
   min: -3.0
@@ -934,7 +823,6 @@ ac_matriz_160_offset_cool_col_112:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_113:
   name: AC Matriz 160 Offset COOL Columna 113
   min: -3.0
@@ -942,7 +830,6 @@ ac_matriz_160_offset_cool_col_113:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_114:
   name: AC Matriz 160 Offset COOL Columna 114
   min: -3.0
@@ -950,7 +837,6 @@ ac_matriz_160_offset_cool_col_114:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_115:
   name: AC Matriz 160 Offset COOL Columna 115
   min: -3.0
@@ -958,7 +844,6 @@ ac_matriz_160_offset_cool_col_115:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_116:
   name: AC Matriz 160 Offset COOL Columna 116
   min: -3.0
@@ -966,7 +851,6 @@ ac_matriz_160_offset_cool_col_116:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_117:
   name: AC Matriz 160 Offset COOL Columna 117
   min: -3.0
@@ -974,7 +858,6 @@ ac_matriz_160_offset_cool_col_117:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_118:
   name: AC Matriz 160 Offset COOL Columna 118
   min: -3.0
@@ -982,7 +865,6 @@ ac_matriz_160_offset_cool_col_118:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_119:
   name: AC Matriz 160 Offset COOL Columna 119
   min: -3.0
@@ -990,7 +872,6 @@ ac_matriz_160_offset_cool_col_119:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_120:
   name: AC Matriz 160 Offset COOL Columna 120
   min: -3.0
@@ -998,7 +879,6 @@ ac_matriz_160_offset_cool_col_120:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_121:
   name: AC Matriz 160 Offset COOL Columna 121
   min: -3.0
@@ -1006,7 +886,6 @@ ac_matriz_160_offset_cool_col_121:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_122:
   name: AC Matriz 160 Offset COOL Columna 122
   min: -3.0
@@ -1014,7 +893,6 @@ ac_matriz_160_offset_cool_col_122:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_123:
   name: AC Matriz 160 Offset COOL Columna 123
   min: -3.0
@@ -1022,7 +900,6 @@ ac_matriz_160_offset_cool_col_123:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_124:
   name: AC Matriz 160 Offset COOL Columna 124
   min: -3.0
@@ -1030,7 +907,6 @@ ac_matriz_160_offset_cool_col_124:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_125:
   name: AC Matriz 160 Offset COOL Columna 125
   min: -3.0
@@ -1038,7 +914,6 @@ ac_matriz_160_offset_cool_col_125:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_126:
   name: AC Matriz 160 Offset COOL Columna 126
   min: -3.0
@@ -1046,7 +921,6 @@ ac_matriz_160_offset_cool_col_126:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_127:
   name: AC Matriz 160 Offset COOL Columna 127
   min: -3.0
@@ -1054,7 +928,6 @@ ac_matriz_160_offset_cool_col_127:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_128:
   name: AC Matriz 160 Offset COOL Columna 128
   min: -3.0
@@ -1062,7 +935,6 @@ ac_matriz_160_offset_cool_col_128:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_129:
   name: AC Matriz 160 Offset COOL Columna 129
   min: -3.0
@@ -1070,7 +942,6 @@ ac_matriz_160_offset_cool_col_129:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_130:
   name: AC Matriz 160 Offset COOL Columna 130
   min: -3.0
@@ -1078,7 +949,6 @@ ac_matriz_160_offset_cool_col_130:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_131:
   name: AC Matriz 160 Offset COOL Columna 131
   min: -3.0
@@ -1086,7 +956,6 @@ ac_matriz_160_offset_cool_col_131:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_132:
   name: AC Matriz 160 Offset COOL Columna 132
   min: -3.0
@@ -1094,7 +963,6 @@ ac_matriz_160_offset_cool_col_132:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_133:
   name: AC Matriz 160 Offset COOL Columna 133
   min: -3.0
@@ -1102,7 +970,6 @@ ac_matriz_160_offset_cool_col_133:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_134:
   name: AC Matriz 160 Offset COOL Columna 134
   min: -3.0
@@ -1110,7 +977,6 @@ ac_matriz_160_offset_cool_col_134:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_135:
   name: AC Matriz 160 Offset COOL Columna 135
   min: -3.0
@@ -1118,7 +984,6 @@ ac_matriz_160_offset_cool_col_135:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_136:
   name: AC Matriz 160 Offset COOL Columna 136
   min: -3.0
@@ -1126,7 +991,6 @@ ac_matriz_160_offset_cool_col_136:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_137:
   name: AC Matriz 160 Offset COOL Columna 137
   min: -3.0
@@ -1134,7 +998,6 @@ ac_matriz_160_offset_cool_col_137:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_138:
   name: AC Matriz 160 Offset COOL Columna 138
   min: -3.0
@@ -1142,7 +1005,6 @@ ac_matriz_160_offset_cool_col_138:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_139:
   name: AC Matriz 160 Offset COOL Columna 139
   min: -3.0
@@ -1150,7 +1012,6 @@ ac_matriz_160_offset_cool_col_139:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_140:
   name: AC Matriz 160 Offset COOL Columna 140
   min: -3.0
@@ -1158,7 +1019,6 @@ ac_matriz_160_offset_cool_col_140:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_141:
   name: AC Matriz 160 Offset COOL Columna 141
   min: -3.0
@@ -1166,7 +1026,6 @@ ac_matriz_160_offset_cool_col_141:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_142:
   name: AC Matriz 160 Offset COOL Columna 142
   min: -3.0
@@ -1174,7 +1033,6 @@ ac_matriz_160_offset_cool_col_142:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_143:
   name: AC Matriz 160 Offset COOL Columna 143
   min: -3.0
@@ -1182,7 +1040,6 @@ ac_matriz_160_offset_cool_col_143:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_144:
   name: AC Matriz 160 Offset COOL Columna 144
   min: -3.0
@@ -1190,7 +1047,6 @@ ac_matriz_160_offset_cool_col_144:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_145:
   name: AC Matriz 160 Offset COOL Columna 145
   min: -3.0
@@ -1198,7 +1054,6 @@ ac_matriz_160_offset_cool_col_145:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_146:
   name: AC Matriz 160 Offset COOL Columna 146
   min: -3.0
@@ -1206,7 +1061,6 @@ ac_matriz_160_offset_cool_col_146:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_147:
   name: AC Matriz 160 Offset COOL Columna 147
   min: -3.0
@@ -1214,7 +1068,6 @@ ac_matriz_160_offset_cool_col_147:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_148:
   name: AC Matriz 160 Offset COOL Columna 148
   min: -3.0
@@ -1222,7 +1075,6 @@ ac_matriz_160_offset_cool_col_148:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_149:
   name: AC Matriz 160 Offset COOL Columna 149
   min: -3.0
@@ -1230,7 +1082,6 @@ ac_matriz_160_offset_cool_col_149:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_150:
   name: AC Matriz 160 Offset COOL Columna 150
   min: -3.0
@@ -1238,7 +1089,6 @@ ac_matriz_160_offset_cool_col_150:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_151:
   name: AC Matriz 160 Offset COOL Columna 151
   min: -3.0
@@ -1246,7 +1096,6 @@ ac_matriz_160_offset_cool_col_151:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_152:
   name: AC Matriz 160 Offset COOL Columna 152
   min: -3.0
@@ -1254,7 +1103,6 @@ ac_matriz_160_offset_cool_col_152:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_153:
   name: AC Matriz 160 Offset COOL Columna 153
   min: -3.0
@@ -1262,7 +1110,6 @@ ac_matriz_160_offset_cool_col_153:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_154:
   name: AC Matriz 160 Offset COOL Columna 154
   min: -3.0
@@ -1270,7 +1117,6 @@ ac_matriz_160_offset_cool_col_154:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_155:
   name: AC Matriz 160 Offset COOL Columna 155
   min: -3.0
@@ -1278,7 +1124,6 @@ ac_matriz_160_offset_cool_col_155:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_156:
   name: AC Matriz 160 Offset COOL Columna 156
   min: -3.0
@@ -1286,7 +1131,6 @@ ac_matriz_160_offset_cool_col_156:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_157:
   name: AC Matriz 160 Offset COOL Columna 157
   min: -3.0
@@ -1294,7 +1138,6 @@ ac_matriz_160_offset_cool_col_157:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_158:
   name: AC Matriz 160 Offset COOL Columna 158
   min: -3.0
@@ -1302,7 +1145,6 @@ ac_matriz_160_offset_cool_col_158:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_159:
   name: AC Matriz 160 Offset COOL Columna 159
   min: -3.0
@@ -1310,7 +1152,6 @@ ac_matriz_160_offset_cool_col_159:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_cool_col_160:
   name: AC Matriz 160 Offset COOL Columna 160
   min: -3.0
@@ -1318,7 +1159,6 @@ ac_matriz_160_offset_cool_col_160:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_1:
   name: AC Matriz 160 Offset HEAT Columna 1
   min: -3.0
@@ -1326,7 +1166,6 @@ ac_matriz_160_offset_heat_col_1:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_2:
   name: AC Matriz 160 Offset HEAT Columna 2
   min: -3.0
@@ -1334,7 +1173,6 @@ ac_matriz_160_offset_heat_col_2:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_3:
   name: AC Matriz 160 Offset HEAT Columna 3
   min: -3.0
@@ -1342,7 +1180,6 @@ ac_matriz_160_offset_heat_col_3:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_4:
   name: AC Matriz 160 Offset HEAT Columna 4
   min: -3.0
@@ -1350,7 +1187,6 @@ ac_matriz_160_offset_heat_col_4:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_5:
   name: AC Matriz 160 Offset HEAT Columna 5
   min: -3.0
@@ -1358,7 +1194,6 @@ ac_matriz_160_offset_heat_col_5:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_6:
   name: AC Matriz 160 Offset HEAT Columna 6
   min: -3.0
@@ -1366,7 +1201,6 @@ ac_matriz_160_offset_heat_col_6:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_7:
   name: AC Matriz 160 Offset HEAT Columna 7
   min: -3.0
@@ -1374,7 +1208,6 @@ ac_matriz_160_offset_heat_col_7:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_8:
   name: AC Matriz 160 Offset HEAT Columna 8
   min: -3.0
@@ -1382,7 +1215,6 @@ ac_matriz_160_offset_heat_col_8:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_9:
   name: AC Matriz 160 Offset HEAT Columna 9
   min: -3.0
@@ -1390,7 +1222,6 @@ ac_matriz_160_offset_heat_col_9:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_10:
   name: AC Matriz 160 Offset HEAT Columna 10
   min: -3.0
@@ -1398,7 +1229,6 @@ ac_matriz_160_offset_heat_col_10:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_11:
   name: AC Matriz 160 Offset HEAT Columna 11
   min: -3.0
@@ -1406,7 +1236,6 @@ ac_matriz_160_offset_heat_col_11:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_12:
   name: AC Matriz 160 Offset HEAT Columna 12
   min: -3.0
@@ -1414,7 +1243,6 @@ ac_matriz_160_offset_heat_col_12:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_13:
   name: AC Matriz 160 Offset HEAT Columna 13
   min: -3.0
@@ -1422,7 +1250,6 @@ ac_matriz_160_offset_heat_col_13:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_14:
   name: AC Matriz 160 Offset HEAT Columna 14
   min: -3.0
@@ -1430,7 +1257,6 @@ ac_matriz_160_offset_heat_col_14:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_15:
   name: AC Matriz 160 Offset HEAT Columna 15
   min: -3.0
@@ -1438,7 +1264,6 @@ ac_matriz_160_offset_heat_col_15:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_16:
   name: AC Matriz 160 Offset HEAT Columna 16
   min: -3.0
@@ -1446,7 +1271,6 @@ ac_matriz_160_offset_heat_col_16:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_17:
   name: AC Matriz 160 Offset HEAT Columna 17
   min: -3.0
@@ -1454,7 +1278,6 @@ ac_matriz_160_offset_heat_col_17:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_18:
   name: AC Matriz 160 Offset HEAT Columna 18
   min: -3.0
@@ -1462,7 +1285,6 @@ ac_matriz_160_offset_heat_col_18:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_19:
   name: AC Matriz 160 Offset HEAT Columna 19
   min: -3.0
@@ -1470,7 +1292,6 @@ ac_matriz_160_offset_heat_col_19:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_20:
   name: AC Matriz 160 Offset HEAT Columna 20
   min: -3.0
@@ -1478,7 +1299,6 @@ ac_matriz_160_offset_heat_col_20:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_21:
   name: AC Matriz 160 Offset HEAT Columna 21
   min: -3.0
@@ -1486,7 +1306,6 @@ ac_matriz_160_offset_heat_col_21:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_22:
   name: AC Matriz 160 Offset HEAT Columna 22
   min: -3.0
@@ -1494,7 +1313,6 @@ ac_matriz_160_offset_heat_col_22:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_23:
   name: AC Matriz 160 Offset HEAT Columna 23
   min: -3.0
@@ -1502,7 +1320,6 @@ ac_matriz_160_offset_heat_col_23:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_24:
   name: AC Matriz 160 Offset HEAT Columna 24
   min: -3.0
@@ -1510,7 +1327,6 @@ ac_matriz_160_offset_heat_col_24:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_25:
   name: AC Matriz 160 Offset HEAT Columna 25
   min: -3.0
@@ -1518,7 +1334,6 @@ ac_matriz_160_offset_heat_col_25:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_26:
   name: AC Matriz 160 Offset HEAT Columna 26
   min: -3.0
@@ -1526,7 +1341,6 @@ ac_matriz_160_offset_heat_col_26:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_27:
   name: AC Matriz 160 Offset HEAT Columna 27
   min: -3.0
@@ -1534,7 +1348,6 @@ ac_matriz_160_offset_heat_col_27:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_28:
   name: AC Matriz 160 Offset HEAT Columna 28
   min: -3.0
@@ -1542,7 +1355,6 @@ ac_matriz_160_offset_heat_col_28:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_29:
   name: AC Matriz 160 Offset HEAT Columna 29
   min: -3.0
@@ -1550,7 +1362,6 @@ ac_matriz_160_offset_heat_col_29:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_30:
   name: AC Matriz 160 Offset HEAT Columna 30
   min: -3.0
@@ -1558,7 +1369,6 @@ ac_matriz_160_offset_heat_col_30:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_31:
   name: AC Matriz 160 Offset HEAT Columna 31
   min: -3.0
@@ -1566,7 +1376,6 @@ ac_matriz_160_offset_heat_col_31:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_32:
   name: AC Matriz 160 Offset HEAT Columna 32
   min: -3.0
@@ -1574,7 +1383,6 @@ ac_matriz_160_offset_heat_col_32:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_33:
   name: AC Matriz 160 Offset HEAT Columna 33
   min: -3.0
@@ -1582,7 +1390,6 @@ ac_matriz_160_offset_heat_col_33:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_34:
   name: AC Matriz 160 Offset HEAT Columna 34
   min: -3.0
@@ -1590,7 +1397,6 @@ ac_matriz_160_offset_heat_col_34:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_35:
   name: AC Matriz 160 Offset HEAT Columna 35
   min: -3.0
@@ -1598,7 +1404,6 @@ ac_matriz_160_offset_heat_col_35:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_36:
   name: AC Matriz 160 Offset HEAT Columna 36
   min: -3.0
@@ -1606,7 +1411,6 @@ ac_matriz_160_offset_heat_col_36:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_37:
   name: AC Matriz 160 Offset HEAT Columna 37
   min: -3.0
@@ -1614,7 +1418,6 @@ ac_matriz_160_offset_heat_col_37:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_38:
   name: AC Matriz 160 Offset HEAT Columna 38
   min: -3.0
@@ -1622,7 +1425,6 @@ ac_matriz_160_offset_heat_col_38:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_39:
   name: AC Matriz 160 Offset HEAT Columna 39
   min: -3.0
@@ -1630,7 +1432,6 @@ ac_matriz_160_offset_heat_col_39:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_40:
   name: AC Matriz 160 Offset HEAT Columna 40
   min: -3.0
@@ -1638,7 +1439,6 @@ ac_matriz_160_offset_heat_col_40:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_41:
   name: AC Matriz 160 Offset HEAT Columna 41
   min: -3.0
@@ -1646,7 +1446,6 @@ ac_matriz_160_offset_heat_col_41:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_42:
   name: AC Matriz 160 Offset HEAT Columna 42
   min: -3.0
@@ -1654,7 +1453,6 @@ ac_matriz_160_offset_heat_col_42:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_43:
   name: AC Matriz 160 Offset HEAT Columna 43
   min: -3.0
@@ -1662,7 +1460,6 @@ ac_matriz_160_offset_heat_col_43:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_44:
   name: AC Matriz 160 Offset HEAT Columna 44
   min: -3.0
@@ -1670,7 +1467,6 @@ ac_matriz_160_offset_heat_col_44:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_45:
   name: AC Matriz 160 Offset HEAT Columna 45
   min: -3.0
@@ -1678,7 +1474,6 @@ ac_matriz_160_offset_heat_col_45:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_46:
   name: AC Matriz 160 Offset HEAT Columna 46
   min: -3.0
@@ -1686,7 +1481,6 @@ ac_matriz_160_offset_heat_col_46:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_47:
   name: AC Matriz 160 Offset HEAT Columna 47
   min: -3.0
@@ -1694,7 +1488,6 @@ ac_matriz_160_offset_heat_col_47:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_48:
   name: AC Matriz 160 Offset HEAT Columna 48
   min: -3.0
@@ -1702,7 +1495,6 @@ ac_matriz_160_offset_heat_col_48:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_49:
   name: AC Matriz 160 Offset HEAT Columna 49
   min: -3.0
@@ -1710,7 +1502,6 @@ ac_matriz_160_offset_heat_col_49:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_50:
   name: AC Matriz 160 Offset HEAT Columna 50
   min: -3.0
@@ -1718,7 +1509,6 @@ ac_matriz_160_offset_heat_col_50:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_51:
   name: AC Matriz 160 Offset HEAT Columna 51
   min: -3.0
@@ -1726,7 +1516,6 @@ ac_matriz_160_offset_heat_col_51:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_52:
   name: AC Matriz 160 Offset HEAT Columna 52
   min: -3.0
@@ -1734,7 +1523,6 @@ ac_matriz_160_offset_heat_col_52:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_53:
   name: AC Matriz 160 Offset HEAT Columna 53
   min: -3.0
@@ -1742,7 +1530,6 @@ ac_matriz_160_offset_heat_col_53:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_54:
   name: AC Matriz 160 Offset HEAT Columna 54
   min: -3.0
@@ -1750,7 +1537,6 @@ ac_matriz_160_offset_heat_col_54:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_55:
   name: AC Matriz 160 Offset HEAT Columna 55
   min: -3.0
@@ -1758,7 +1544,6 @@ ac_matriz_160_offset_heat_col_55:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_56:
   name: AC Matriz 160 Offset HEAT Columna 56
   min: -3.0
@@ -1766,7 +1551,6 @@ ac_matriz_160_offset_heat_col_56:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_57:
   name: AC Matriz 160 Offset HEAT Columna 57
   min: -3.0
@@ -1774,7 +1558,6 @@ ac_matriz_160_offset_heat_col_57:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_58:
   name: AC Matriz 160 Offset HEAT Columna 58
   min: -3.0
@@ -1782,7 +1565,6 @@ ac_matriz_160_offset_heat_col_58:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_59:
   name: AC Matriz 160 Offset HEAT Columna 59
   min: -3.0
@@ -1790,7 +1572,6 @@ ac_matriz_160_offset_heat_col_59:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_60:
   name: AC Matriz 160 Offset HEAT Columna 60
   min: -3.0
@@ -1798,7 +1579,6 @@ ac_matriz_160_offset_heat_col_60:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_61:
   name: AC Matriz 160 Offset HEAT Columna 61
   min: -3.0
@@ -1806,7 +1586,6 @@ ac_matriz_160_offset_heat_col_61:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_62:
   name: AC Matriz 160 Offset HEAT Columna 62
   min: -3.0
@@ -1814,7 +1593,6 @@ ac_matriz_160_offset_heat_col_62:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_63:
   name: AC Matriz 160 Offset HEAT Columna 63
   min: -3.0
@@ -1822,7 +1600,6 @@ ac_matriz_160_offset_heat_col_63:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_64:
   name: AC Matriz 160 Offset HEAT Columna 64
   min: -3.0
@@ -1830,7 +1607,6 @@ ac_matriz_160_offset_heat_col_64:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_65:
   name: AC Matriz 160 Offset HEAT Columna 65
   min: -3.0
@@ -1838,7 +1614,6 @@ ac_matriz_160_offset_heat_col_65:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_66:
   name: AC Matriz 160 Offset HEAT Columna 66
   min: -3.0
@@ -1846,7 +1621,6 @@ ac_matriz_160_offset_heat_col_66:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_67:
   name: AC Matriz 160 Offset HEAT Columna 67
   min: -3.0
@@ -1854,7 +1628,6 @@ ac_matriz_160_offset_heat_col_67:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_68:
   name: AC Matriz 160 Offset HEAT Columna 68
   min: -3.0
@@ -1862,7 +1635,6 @@ ac_matriz_160_offset_heat_col_68:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_69:
   name: AC Matriz 160 Offset HEAT Columna 69
   min: -3.0
@@ -1870,7 +1642,6 @@ ac_matriz_160_offset_heat_col_69:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_70:
   name: AC Matriz 160 Offset HEAT Columna 70
   min: -3.0
@@ -1878,7 +1649,6 @@ ac_matriz_160_offset_heat_col_70:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_71:
   name: AC Matriz 160 Offset HEAT Columna 71
   min: -3.0
@@ -1886,7 +1656,6 @@ ac_matriz_160_offset_heat_col_71:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_72:
   name: AC Matriz 160 Offset HEAT Columna 72
   min: -3.0
@@ -1894,7 +1663,6 @@ ac_matriz_160_offset_heat_col_72:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_73:
   name: AC Matriz 160 Offset HEAT Columna 73
   min: -3.0
@@ -1902,7 +1670,6 @@ ac_matriz_160_offset_heat_col_73:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_74:
   name: AC Matriz 160 Offset HEAT Columna 74
   min: -3.0
@@ -1910,7 +1677,6 @@ ac_matriz_160_offset_heat_col_74:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_75:
   name: AC Matriz 160 Offset HEAT Columna 75
   min: -3.0
@@ -1918,7 +1684,6 @@ ac_matriz_160_offset_heat_col_75:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_76:
   name: AC Matriz 160 Offset HEAT Columna 76
   min: -3.0
@@ -1926,7 +1691,6 @@ ac_matriz_160_offset_heat_col_76:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_77:
   name: AC Matriz 160 Offset HEAT Columna 77
   min: -3.0
@@ -1934,7 +1698,6 @@ ac_matriz_160_offset_heat_col_77:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_78:
   name: AC Matriz 160 Offset HEAT Columna 78
   min: -3.0
@@ -1942,7 +1705,6 @@ ac_matriz_160_offset_heat_col_78:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_79:
   name: AC Matriz 160 Offset HEAT Columna 79
   min: -3.0
@@ -1950,7 +1712,6 @@ ac_matriz_160_offset_heat_col_79:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_80:
   name: AC Matriz 160 Offset HEAT Columna 80
   min: -3.0
@@ -1958,7 +1719,6 @@ ac_matriz_160_offset_heat_col_80:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_81:
   name: AC Matriz 160 Offset HEAT Columna 81
   min: -3.0
@@ -1966,7 +1726,6 @@ ac_matriz_160_offset_heat_col_81:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_82:
   name: AC Matriz 160 Offset HEAT Columna 82
   min: -3.0
@@ -1974,7 +1733,6 @@ ac_matriz_160_offset_heat_col_82:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_83:
   name: AC Matriz 160 Offset HEAT Columna 83
   min: -3.0
@@ -1982,7 +1740,6 @@ ac_matriz_160_offset_heat_col_83:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_84:
   name: AC Matriz 160 Offset HEAT Columna 84
   min: -3.0
@@ -1990,7 +1747,6 @@ ac_matriz_160_offset_heat_col_84:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_85:
   name: AC Matriz 160 Offset HEAT Columna 85
   min: -3.0
@@ -1998,7 +1754,6 @@ ac_matriz_160_offset_heat_col_85:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_86:
   name: AC Matriz 160 Offset HEAT Columna 86
   min: -3.0
@@ -2006,7 +1761,6 @@ ac_matriz_160_offset_heat_col_86:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_87:
   name: AC Matriz 160 Offset HEAT Columna 87
   min: -3.0
@@ -2014,7 +1768,6 @@ ac_matriz_160_offset_heat_col_87:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_88:
   name: AC Matriz 160 Offset HEAT Columna 88
   min: -3.0
@@ -2022,7 +1775,6 @@ ac_matriz_160_offset_heat_col_88:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_89:
   name: AC Matriz 160 Offset HEAT Columna 89
   min: -3.0
@@ -2030,7 +1782,6 @@ ac_matriz_160_offset_heat_col_89:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_90:
   name: AC Matriz 160 Offset HEAT Columna 90
   min: -3.0
@@ -2038,7 +1789,6 @@ ac_matriz_160_offset_heat_col_90:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_91:
   name: AC Matriz 160 Offset HEAT Columna 91
   min: -3.0
@@ -2046,7 +1796,6 @@ ac_matriz_160_offset_heat_col_91:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_92:
   name: AC Matriz 160 Offset HEAT Columna 92
   min: -3.0
@@ -2054,7 +1803,6 @@ ac_matriz_160_offset_heat_col_92:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_93:
   name: AC Matriz 160 Offset HEAT Columna 93
   min: -3.0
@@ -2062,7 +1810,6 @@ ac_matriz_160_offset_heat_col_93:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_94:
   name: AC Matriz 160 Offset HEAT Columna 94
   min: -3.0
@@ -2070,7 +1817,6 @@ ac_matriz_160_offset_heat_col_94:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_95:
   name: AC Matriz 160 Offset HEAT Columna 95
   min: -3.0
@@ -2078,7 +1824,6 @@ ac_matriz_160_offset_heat_col_95:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_96:
   name: AC Matriz 160 Offset HEAT Columna 96
   min: -3.0
@@ -2086,7 +1831,6 @@ ac_matriz_160_offset_heat_col_96:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_97:
   name: AC Matriz 160 Offset HEAT Columna 97
   min: -3.0
@@ -2094,7 +1838,6 @@ ac_matriz_160_offset_heat_col_97:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_98:
   name: AC Matriz 160 Offset HEAT Columna 98
   min: -3.0
@@ -2102,7 +1845,6 @@ ac_matriz_160_offset_heat_col_98:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_99:
   name: AC Matriz 160 Offset HEAT Columna 99
   min: -3.0
@@ -2110,7 +1852,6 @@ ac_matriz_160_offset_heat_col_99:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_100:
   name: AC Matriz 160 Offset HEAT Columna 100
   min: -3.0
@@ -2118,7 +1859,6 @@ ac_matriz_160_offset_heat_col_100:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_101:
   name: AC Matriz 160 Offset HEAT Columna 101
   min: -3.0
@@ -2126,7 +1866,6 @@ ac_matriz_160_offset_heat_col_101:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_102:
   name: AC Matriz 160 Offset HEAT Columna 102
   min: -3.0
@@ -2134,7 +1873,6 @@ ac_matriz_160_offset_heat_col_102:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_103:
   name: AC Matriz 160 Offset HEAT Columna 103
   min: -3.0
@@ -2142,7 +1880,6 @@ ac_matriz_160_offset_heat_col_103:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_104:
   name: AC Matriz 160 Offset HEAT Columna 104
   min: -3.0
@@ -2150,7 +1887,6 @@ ac_matriz_160_offset_heat_col_104:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_105:
   name: AC Matriz 160 Offset HEAT Columna 105
   min: -3.0
@@ -2158,7 +1894,6 @@ ac_matriz_160_offset_heat_col_105:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_106:
   name: AC Matriz 160 Offset HEAT Columna 106
   min: -3.0
@@ -2166,7 +1901,6 @@ ac_matriz_160_offset_heat_col_106:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_107:
   name: AC Matriz 160 Offset HEAT Columna 107
   min: -3.0
@@ -2174,7 +1908,6 @@ ac_matriz_160_offset_heat_col_107:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_108:
   name: AC Matriz 160 Offset HEAT Columna 108
   min: -3.0
@@ -2182,7 +1915,6 @@ ac_matriz_160_offset_heat_col_108:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_109:
   name: AC Matriz 160 Offset HEAT Columna 109
   min: -3.0
@@ -2190,7 +1922,6 @@ ac_matriz_160_offset_heat_col_109:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_110:
   name: AC Matriz 160 Offset HEAT Columna 110
   min: -3.0
@@ -2198,7 +1929,6 @@ ac_matriz_160_offset_heat_col_110:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_111:
   name: AC Matriz 160 Offset HEAT Columna 111
   min: -3.0
@@ -2206,7 +1936,6 @@ ac_matriz_160_offset_heat_col_111:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_112:
   name: AC Matriz 160 Offset HEAT Columna 112
   min: -3.0
@@ -2214,7 +1943,6 @@ ac_matriz_160_offset_heat_col_112:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_113:
   name: AC Matriz 160 Offset HEAT Columna 113
   min: -3.0
@@ -2222,7 +1950,6 @@ ac_matriz_160_offset_heat_col_113:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_114:
   name: AC Matriz 160 Offset HEAT Columna 114
   min: -3.0
@@ -2230,7 +1957,6 @@ ac_matriz_160_offset_heat_col_114:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_115:
   name: AC Matriz 160 Offset HEAT Columna 115
   min: -3.0
@@ -2238,7 +1964,6 @@ ac_matriz_160_offset_heat_col_115:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_116:
   name: AC Matriz 160 Offset HEAT Columna 116
   min: -3.0
@@ -2246,7 +1971,6 @@ ac_matriz_160_offset_heat_col_116:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_117:
   name: AC Matriz 160 Offset HEAT Columna 117
   min: -3.0
@@ -2254,7 +1978,6 @@ ac_matriz_160_offset_heat_col_117:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_118:
   name: AC Matriz 160 Offset HEAT Columna 118
   min: -3.0
@@ -2262,7 +1985,6 @@ ac_matriz_160_offset_heat_col_118:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_119:
   name: AC Matriz 160 Offset HEAT Columna 119
   min: -3.0
@@ -2270,7 +1992,6 @@ ac_matriz_160_offset_heat_col_119:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_120:
   name: AC Matriz 160 Offset HEAT Columna 120
   min: -3.0
@@ -2278,7 +1999,6 @@ ac_matriz_160_offset_heat_col_120:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_121:
   name: AC Matriz 160 Offset HEAT Columna 121
   min: -3.0
@@ -2286,7 +2006,6 @@ ac_matriz_160_offset_heat_col_121:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_122:
   name: AC Matriz 160 Offset HEAT Columna 122
   min: -3.0
@@ -2294,7 +2013,6 @@ ac_matriz_160_offset_heat_col_122:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_123:
   name: AC Matriz 160 Offset HEAT Columna 123
   min: -3.0
@@ -2302,7 +2020,6 @@ ac_matriz_160_offset_heat_col_123:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_124:
   name: AC Matriz 160 Offset HEAT Columna 124
   min: -3.0
@@ -2310,7 +2027,6 @@ ac_matriz_160_offset_heat_col_124:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_125:
   name: AC Matriz 160 Offset HEAT Columna 125
   min: -3.0
@@ -2318,7 +2034,6 @@ ac_matriz_160_offset_heat_col_125:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_126:
   name: AC Matriz 160 Offset HEAT Columna 126
   min: -3.0
@@ -2326,7 +2041,6 @@ ac_matriz_160_offset_heat_col_126:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_127:
   name: AC Matriz 160 Offset HEAT Columna 127
   min: -3.0
@@ -2334,7 +2048,6 @@ ac_matriz_160_offset_heat_col_127:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_128:
   name: AC Matriz 160 Offset HEAT Columna 128
   min: -3.0
@@ -2342,7 +2055,6 @@ ac_matriz_160_offset_heat_col_128:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_129:
   name: AC Matriz 160 Offset HEAT Columna 129
   min: -3.0
@@ -2350,7 +2062,6 @@ ac_matriz_160_offset_heat_col_129:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_130:
   name: AC Matriz 160 Offset HEAT Columna 130
   min: -3.0
@@ -2358,7 +2069,6 @@ ac_matriz_160_offset_heat_col_130:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_131:
   name: AC Matriz 160 Offset HEAT Columna 131
   min: -3.0
@@ -2366,7 +2076,6 @@ ac_matriz_160_offset_heat_col_131:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_132:
   name: AC Matriz 160 Offset HEAT Columna 132
   min: -3.0
@@ -2374,7 +2083,6 @@ ac_matriz_160_offset_heat_col_132:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_133:
   name: AC Matriz 160 Offset HEAT Columna 133
   min: -3.0
@@ -2382,7 +2090,6 @@ ac_matriz_160_offset_heat_col_133:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_134:
   name: AC Matriz 160 Offset HEAT Columna 134
   min: -3.0
@@ -2390,7 +2097,6 @@ ac_matriz_160_offset_heat_col_134:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_135:
   name: AC Matriz 160 Offset HEAT Columna 135
   min: -3.0
@@ -2398,7 +2104,6 @@ ac_matriz_160_offset_heat_col_135:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_136:
   name: AC Matriz 160 Offset HEAT Columna 136
   min: -3.0
@@ -2406,7 +2111,6 @@ ac_matriz_160_offset_heat_col_136:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_137:
   name: AC Matriz 160 Offset HEAT Columna 137
   min: -3.0
@@ -2414,7 +2118,6 @@ ac_matriz_160_offset_heat_col_137:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_138:
   name: AC Matriz 160 Offset HEAT Columna 138
   min: -3.0
@@ -2422,7 +2125,6 @@ ac_matriz_160_offset_heat_col_138:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_139:
   name: AC Matriz 160 Offset HEAT Columna 139
   min: -3.0
@@ -2430,7 +2132,6 @@ ac_matriz_160_offset_heat_col_139:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_140:
   name: AC Matriz 160 Offset HEAT Columna 140
   min: -3.0
@@ -2438,7 +2139,6 @@ ac_matriz_160_offset_heat_col_140:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_141:
   name: AC Matriz 160 Offset HEAT Columna 141
   min: -3.0
@@ -2446,7 +2146,6 @@ ac_matriz_160_offset_heat_col_141:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_142:
   name: AC Matriz 160 Offset HEAT Columna 142
   min: -3.0
@@ -2454,7 +2153,6 @@ ac_matriz_160_offset_heat_col_142:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_143:
   name: AC Matriz 160 Offset HEAT Columna 143
   min: -3.0
@@ -2462,7 +2160,6 @@ ac_matriz_160_offset_heat_col_143:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_144:
   name: AC Matriz 160 Offset HEAT Columna 144
   min: -3.0
@@ -2470,7 +2167,6 @@ ac_matriz_160_offset_heat_col_144:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_145:
   name: AC Matriz 160 Offset HEAT Columna 145
   min: -3.0
@@ -2478,7 +2174,6 @@ ac_matriz_160_offset_heat_col_145:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_146:
   name: AC Matriz 160 Offset HEAT Columna 146
   min: -3.0
@@ -2486,7 +2181,6 @@ ac_matriz_160_offset_heat_col_146:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_147:
   name: AC Matriz 160 Offset HEAT Columna 147
   min: -3.0
@@ -2494,7 +2188,6 @@ ac_matriz_160_offset_heat_col_147:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_148:
   name: AC Matriz 160 Offset HEAT Columna 148
   min: -3.0
@@ -2502,7 +2195,6 @@ ac_matriz_160_offset_heat_col_148:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_149:
   name: AC Matriz 160 Offset HEAT Columna 149
   min: -3.0
@@ -2510,7 +2202,6 @@ ac_matriz_160_offset_heat_col_149:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_150:
   name: AC Matriz 160 Offset HEAT Columna 150
   min: -3.0
@@ -2518,7 +2209,6 @@ ac_matriz_160_offset_heat_col_150:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_151:
   name: AC Matriz 160 Offset HEAT Columna 151
   min: -3.0
@@ -2526,7 +2216,6 @@ ac_matriz_160_offset_heat_col_151:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_152:
   name: AC Matriz 160 Offset HEAT Columna 152
   min: -3.0
@@ -2534,7 +2223,6 @@ ac_matriz_160_offset_heat_col_152:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_153:
   name: AC Matriz 160 Offset HEAT Columna 153
   min: -3.0
@@ -2542,7 +2230,6 @@ ac_matriz_160_offset_heat_col_153:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_154:
   name: AC Matriz 160 Offset HEAT Columna 154
   min: -3.0
@@ -2550,7 +2237,6 @@ ac_matriz_160_offset_heat_col_154:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_155:
   name: AC Matriz 160 Offset HEAT Columna 155
   min: -3.0
@@ -2558,7 +2244,6 @@ ac_matriz_160_offset_heat_col_155:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_156:
   name: AC Matriz 160 Offset HEAT Columna 156
   min: -3.0
@@ -2566,7 +2251,6 @@ ac_matriz_160_offset_heat_col_156:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_157:
   name: AC Matriz 160 Offset HEAT Columna 157
   min: -3.0
@@ -2574,7 +2258,6 @@ ac_matriz_160_offset_heat_col_157:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_158:
   name: AC Matriz 160 Offset HEAT Columna 158
   min: -3.0
@@ -2582,7 +2265,6 @@ ac_matriz_160_offset_heat_col_158:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_159:
   name: AC Matriz 160 Offset HEAT Columna 159
   min: -3.0
@@ -2590,7 +2272,6 @@ ac_matriz_160_offset_heat_col_159:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
 ac_matriz_160_offset_heat_col_160:
   name: AC Matriz 160 Offset HEAT Columna 160
   min: -3.0
@@ -2598,4 +2279,3 @@ ac_matriz_160_offset_heat_col_160:
   step: 0.25
   mode: box
   unit_of_measurement: °C
-  initial: 0.0
