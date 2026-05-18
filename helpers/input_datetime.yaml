@@ -26,3 +26,7 @@ ac_matriz_160_ultima_notificacion_ts:
   name: AC Matriz 160 Última Notificación Timestamp
   has_date: true
   has_time: true
+ac_matriz_160_manual_off_block_until:
+  name: AC Matriz 160 Bloqueo Auto ON post Manual OFF
+  has_date: true
+  has_time: true
