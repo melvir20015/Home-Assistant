@@ -2008,6 +2008,19 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - **Fecha:** 2026-05-17.
 - **Motivo operativo:** mejorar confort rápido al llegar con desvío térmico marcado y mitigar ciclos cortos inducidos por sensor interno del HVAC.
 
+#### COOL normal (no turbo): SP/Fan contractual y antioscilación (2026-05-18)
+- **Demanda de frío:** `cool_demand = Tin - eff_t_off_cool`.
+- **Setpoint normal contextual:**
+  - `sp_cool_normal_raw = sp_cool_base_col + sp_cool_humidity_adj + sp_cool_outdoor_adj + sp_cool_slot_adj`.
+  - `sp_cool_normal = clamp(sp_cool_normal_raw, 17, 23)`.
+- **Matriz de fan normal por demanda:**
+  - `high` si `cool_demand >= 1.2`.
+  - `medium` si `0.6 <= cool_demand < 1.2`.
+  - `low` si `cool_demand < 0.6`.
+  - **Boost por humedad:** si `Hin >= 55%`, subir un nivel sin superar `high`.
+- **Antioscilación de fan:** helper `input_datetime.ac_matriz_160_last_fan_change_ts` con ventana mínima de `240 s` para evitar escrituras en cada ciclo.
+- **Precedencia contractual:** `turbo > normal` en el mismo ciclo. Si `turbo_enter_cool=true`, se conserva `SP=18` y `fan=high`; al registrarse `turbo_exit_to_normal`, los ciclos siguientes pueden aplicar `sp_cool_normal` y `fan_cool_normal_target`.
+
 
 ## Mantenimiento y depuración operativa (2026-05-17)
 

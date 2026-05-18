@@ -854,6 +854,22 @@
       eff_t_on_heat: '{{ helper_on_heat if use_persisted_thresholds else t_on_heat }}'
       mid_cool: '{{ ((eff_t_on_cool|float + eff_t_off_cool|float) / 2) | round(2) }}'
       mid_heat: '{{ ((eff_t_on_heat|float + eff_t_off_heat|float) / 2) | round(2) }}'
+      cool_demand: '{{ (tin|float - eff_t_off_cool|float) | round(2) }}'
+      sp_cool_base_col: '{{ 22 - (weather_idx|int * 0.08) - (season_idx|int * 0.05) - (slot_idx|int * 0.05) }}'
+      sp_cool_humidity_adj: '{% if hin|float >= 60 %}-0.7{% elif hin|float >= 55 %}-0.4{% elif hin|float <= 45 %}0.3{% else %}0{% endif %}'
+      sp_cool_outdoor_adj: '{% if tout is not none and tout|float >= 33 %}-0.5{% elif tout is not none and tout|float >= 29 %}-0.3{% elif tout is not none and tout|float <= 22 %}0.2{% else %}0{% endif %}'
+      sp_cool_slot_adj: '{% if slot_idx|int == 0 %}-0.1{% elif slot_idx|int in [1,2] %}-0.2{% elif slot_idx|int == 3 %}-0.1{% else %}0{% endif %}'
+      sp_cool_normal_raw: '{{ (sp_cool_base_col|float + sp_cool_humidity_adj|float + sp_cool_outdoor_adj|float + sp_cool_slot_adj|float) | round(2) }}'
+      sp_cool_normal: '{{ [23, [17, (sp_cool_normal_raw|float)] | max] | min | round(1) }}'
+      fan_cool_normal_base: '{% if cool_demand|float >= 1.2 %}high{% elif cool_demand|float >= 0.6 %}medium{% else %}low{% endif %}'
+      fan_cool_normal_target: '{% if hin|float >= 55 and fan_cool_normal_base == ''low'' %}medium{% elif hin|float >= 55 and fan_cool_normal_base == ''medium'' %}high{% else %}{{ fan_cool_normal_base }}{% endif %}'
+      last_fan_change_ts_raw: '{{ states(''input_datetime.ac_matriz_160_last_fan_change_ts'') }}'
+      last_fan_change_ts: '{% if last_fan_change_ts_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(last_fan_change_ts_raw, default=0) }}{% endif %}'
+      fan_min_window_s: 240
+      fan_current_mode: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string | lower }}'
+      fan_change_window_ok: '{{ (as_timestamp(now()) - (last_fan_change_ts | float(0))) >= fan_min_window_s }}'
+      fan_needs_change: '{{ fan_current_mode != fan_cool_normal_target }}'
+      fan_should_apply: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_needs_change and (fan_change_window_ok or (last_fan_change_ts | float(0)) == 0) }}'
       validation_reason: '{% if helper_invalid_state %}recalculado_helper_no_disponible{% elif not firma_match %}contexto_recalculado_por_cambio_columna{% elif not rango_ok %}recalculado_rango_contractual_invalido{% elif not histeresis_ok %}recalculado_histeresis_invalida{% else %}ok_lectura_helper_valida{% endif %}'
       reason_invalid: '{% if invalid_data %}fallback_datos_externos_o_sensores{% elif not presence_ok %}sin_presencia_en_disparo{% else %}ok{% endif %}'
       turbo_phase: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') | lower }}'
@@ -1092,6 +1108,36 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: cool
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' }}'
+          sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              temperature: '{{ sp_cool_normal }}'
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ fan_should_apply }}'
+              sequence:
+              - service: climate.set_fan_mode
+                target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  fan_mode: '{{ fan_cool_normal_target }}'
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.ac_matriz_160_last_fan_change_ts
+                data:
+                  datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=turn_on_cool_normal | fase={{ states('input_text.ac_matriz_160_fase_ciclo') }} | sp_final={{ sp_cool_normal if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 18 }} | fan_target={{ fan_cool_normal_target if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'high' }} | fan_apply={{ fan_should_apply }} | fan_window_ok={{ fan_change_window_ok }} | cool_demand={{ cool_demand }} | Tin={{ tin }} | Hin={{ hin }} | col={{ col_humana }}
+              entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
         value_template: '{{ action_target == ''turn_on_heat'' }}'
@@ -1127,7 +1173,7 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC-Matriz 160
-          message: '{{ now().strftime(''%H:%M'') }} | Evento: {{ ''Encendido'' if action_target in [''turn_on_cool'',''turn_on_heat''] else ''Apagado'' }} | Modo final: {{ ''cool'' if action_target == ''turn_on_cool'' else ''heat'' if action_target == ''turn_on_heat'' else ''off'' }} | Interior {{ tin }}°C/{{ hin }}% | Exterior {{ tout if tout is not none else ''No disponible'' }}°C/{{ hout }}% | Umbral aplicado: {{ eff_t_on_cool if action_target == ''turn_on_cool'' else eff_t_on_heat if action_target == ''turn_on_heat'' else eff_t_off_cool if climate_mode == ''cool'' else eff_t_off_heat }} | {{ col_humana }}'
+          message: '{% set modo_final = ''cool'' if action_target == ''turn_on_cool'' else ''heat'' if action_target == ''turn_on_heat'' else ''off'' %}{% set sp_msg = ''SP '' ~ sp_cool_normal ~ ''°C'' if action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' else ''SP 18°C (turbo)'' if action_target == ''turn_on_cool'' else ''SP 28°C'' if action_target == ''turn_on_heat'' else ''SP n/a'' %}{% set fan_msg = ''Fan '' ~ fan_cool_normal_target if action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' else ''Fan high (turbo)'' if action_target == ''turn_on_cool'' else ''Fan n/a'' %}{{ now().strftime(''%H:%M'') }} | Evento: {{ ''Encendido'' if action_target in [''turn_on_cool'',''turn_on_heat''] else ''Apagado'' }} | Modo final: {{ modo_final }} | Interior {{ tin }}°C/{{ hin }}% | Exterior {{ tout if tout is not none else ''No disponible'' }}°C/{{ hout }}% | {{ sp_msg }} | {{ fan_msg }} | Umbral aplicado: {{ eff_t_on_cool if action_target == ''turn_on_cool'' else eff_t_on_heat if action_target == ''turn_on_heat'' else eff_t_off_cool if climate_mode == ''cool'' else eff_t_off_heat }} | {{ col_humana }}'
       - service: input_text.set_value
         target:
           entity_id: input_text.ac_matriz_160_ultima_firma_notificacion
