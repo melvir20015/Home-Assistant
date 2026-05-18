@@ -787,7 +787,6 @@
     - binary_sensor.presencia_movimiento_estable
     - device_tracker.samsung_s24
     - person.ivan
-    - climate.0200009211c7_climate
   conditions:
   - condition: time
     after: 07:01:00
