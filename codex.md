@@ -2137,3 +2137,51 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 ### Trazabilidad diagnóstica mínima
 - Registrar entrada: `Tin`, `Hin`, `ON`, `OFF`, `horario_habilitado`.
 - Registrar salida: `off_entero`, `SP final`, `FAN final`, `delta`, `motivo`.
+
+---
+
+## Contrato operativo AC-Matriz 160 — 2026-05-18
+
+### Alcance de esta intervención
+- Este contrato aplica a la automatización principal `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) y deja como fuente de verdad operativa los archivos actuales del workspace.
+- La intervención modifica los umbrales térmicos de encendido/apagado automático y agrega bloqueo anti-reversa bidireccional.
+- El setpoint de `heat` queda explícitamente fuera de alcance: no se modifica su setpoint normal ni el comportamiento existente de `turbo_heat`.
+
+### Base térmica fija
+- La base térmica central para el cálculo contextual de `cool` y `heat` se mantiene fija en `24`.
+- No se implementan bases térmicas distintas por estación.
+- Los offsets de aprendizaje por columna pueden seguir desplazando los umbrales calculados, pero el resultado final queda limitado por la frontera estacional correspondiente.
+
+### Frontera térmica por estación
+
+| Estación | Frontera |
+| --- | ---: |
+| Primavera | `22` |
+| Verano | `20` |
+| Otoño | `22` |
+| Invierno | `24` |
+
+### Semántica de la frontera
+- En `cool`, la frontera estacional es el mínimo permitido para `OFF cool`.
+  - Fórmula contractual: `OFF cool = clamp(OFF cool desplazado, frontera_estacional, 26.0)`.
+- En `heat`, la frontera estacional es el máximo permitido para `OFF heat`.
+  - Fórmula contractual: `OFF heat = clamp(OFF heat desplazado, 17.0, frontera_estacional)`.
+- La validación de rangos debe usar la frontera estacional dinámica, no una frontera fija única de `22`.
+
+### Histéresis contractual
+- La histéresis sigue siendo exactamente de `1.0 °C` entre `ON` y `OFF`.
+- Para `cool`: `ON cool = OFF cool + 1.0`.
+- Para `heat`: `ON heat = OFF heat - 1.0`.
+
+### Bloqueo anti-reversa automático
+- El bloqueo anti-reversa es independiente del bloqueo existente `input_datetime.ac_matriz_160_manual_off_block_until`.
+- `manual_off_block_until` protege contra reencendido automático después de apagado manual.
+- `input_datetime.ac_matriz_160_heat_block_until` y `input_datetime.ac_matriz_160_cool_block_until` protegen contra cambio automático inverso entre modos.
+- Si la automatización apaga `cool` automáticamente (`cool -> off`), debe bloquear el encendido automático de `heat` durante 60 minutos.
+- Si la automatización apaga `heat` automáticamente (`heat -> off`), debe bloquear el encendido automático de `cool` durante 60 minutos.
+- Durante un bloqueo anti-reversa activo:
+  - una acción candidata `turn_on_heat` se suprime si `heat_block_until` sigue vigente;
+  - una acción candidata `turn_on_cool` se suprime si `cool_block_until` sigue vigente.
+- Cuando un encendido automático se bloquee por anti-reversa, debe quedar trazabilidad en `logbook.log` con hitos diferenciados:
+  - `hito=anti_reverse_heat_blocked` para bloqueo de `heat`;
+  - `hito=anti_reverse_cool_blocked` para bloqueo de `cool`.
