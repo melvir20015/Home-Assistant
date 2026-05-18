@@ -1334,6 +1334,7 @@
       dedup_ok: '{{ firma_previa != (''learn|'' ~ firma_evento) }}'
       helper_offset: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje ~ ''_col_'' ~ col_idx }}'
       offset_actual: '{{ states(helper_offset) | float(0) if modo_aprendizaje in [''cool'',''heat''] else 0 }}'
+      horario_aprendizaje_habilitado: '{{ now().strftime(''%H:%M:%S'') >= ''07:01:00'' and now().strftime(''%H:%M:%S'') <= ''21:59:59'' }}'
       origen_clasificacion: '{% if marker_compatible %}automatico_ac_matriz_160{% elif not transicion_real %}automatico_recovery{% else %}manual_externo{% endif %}'
       delta: >-
         {% if modo_aprendizaje == 'cool' and evento_manual_tipo == 'encendido_manual' %}-0.25
@@ -1344,8 +1345,8 @@
         {% endif %}
       helper_valido: '{{ col_idx > 0 and modo_aprendizaje in [''cool'',''heat''] and states(helper_offset) not in [''unknown'',''unavailable'',''none'',''''] }}'
       offset_nuevo: '{{ [3.0, [-3.0, (offset_actual|float + delta|float)] | max] | min | round(2) }}'
-      resultado_terminal: '{% if origen_clasificacion != ''manual_externo'' %}ignorado{% elif evento_manual_tipo == ''ignorado'' %}ignorado{% elif not dedup_ok %}ignorado{% elif not helper_valido %}error_controlado{% else %}aplicado{% endif %}'
-      razon: '{% if origen_clasificacion == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz{% elif origen_clasificacion == ''automatico_recovery'' %}estado_recovery{% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion{% elif not dedup_ok %}dedup{% elif not helper_valido %}helper_invalido{% else %}manual_externo_aplicado{% endif %}'
+      resultado_terminal: '{% if not horario_aprendizaje_habilitado %}ignorado{% elif origen_clasificacion != ''manual_externo'' %}ignorado{% elif evento_manual_tipo == ''ignorado'' %}ignorado{% elif not dedup_ok %}ignorado{% elif not helper_valido %}error_controlado{% else %}aplicado{% endif %}'
+      razon: '{% if not horario_aprendizaje_habilitado %}out_of_scope_daytime_main{% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz{% elif origen_clasificacion == ''automatico_recovery'' %}estado_recovery{% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion{% elif not dedup_ok %}dedup{% elif not helper_valido %}helper_invalido{% else %}manual_externo_aplicado{% endif %}'
       envio_estado: '{{ ''emitida'' if resultado_terminal == ''aplicado'' else ''fallback'' if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
       mensaje_humano: '{{ hora_evento }} | tipo={{ ''encendido manual'' if evento_manual_tipo == ''encendido_manual'' else ''apagado manual'' if evento_manual_tipo == ''apagado_manual'' else ''sin transición'' }} | modo={{ modo_aprendizaje }} | columna={{ col_idx }} ({{ contexto }}) | delta={{ ''+0.25'' if delta|float > 0 else ''-0.25'' if delta|float < 0 else ''0.00'' }} | offset={{ offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual }} | envio={{ envio_estado }}'
   - choose:
@@ -1365,13 +1366,13 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: 'hito=learning_manual_columna | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | marker_vigente={{ marker_vigente }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje }} | columna={{ col_idx }} | contexto={{ contexto }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo }} | ts={{ ts_evento }}'
+          message: 'hito=learning_manual_columna | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje }} | columna={{ col_idx }} | contexto={{ contexto }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo }} | ts={{ ts_evento }}'
           entity_id: climate.0200009211c7_climate
     default:
     - service: logbook.log
       data:
         name: AC-Matriz 160
-        message: 'hito=learning_manual_ignorado | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | marker_vigente={{ marker_vigente }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | dedup_ok={{ dedup_ok }}'
+        message: 'hito=learning_manual_ignorado | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | dedup_ok={{ dedup_ok }}'
         entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
