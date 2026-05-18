@@ -1374,10 +1374,15 @@
         name: AC-Matriz 160
         message: 'hito=learning_manual_ignorado | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | marker_vigente={{ marker_vigente }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | dedup_ok={{ dedup_ok }}'
         entity_id: climate.0200009211c7_climate
-  - service: persistent_notification.create
-    data:
-      title: AC-Matriz 160 aprendizaje manual
-      message: '{{ mensaje_humano }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ resultado_terminal == ''error_controlado'' }}'
+      sequence:
+      - service: persistent_notification.create
+        data:
+          title: AC-Matriz 160 aprendizaje manual
+          message: 'Error controlado en aprendizaje manual. Revisa logbook.'
   - service: input_text.set_value
     target:
       entity_id: input_text.ac_matriz_160_ultimo_estado_notificacion
