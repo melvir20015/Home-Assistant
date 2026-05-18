@@ -42,3 +42,20 @@ ac_matriz_160_fase_ciclo:
   name: AC Matriz 160 Fase Ciclo
   max: 40
   initial: idle
+
+ac_matriz_160_auto_origin_trace:
+  name: AC Matriz 160 Auto Origin Trace
+  max: 255
+  initial: sin_trace
+ac_matriz_160_auto_origin_kind:
+  name: AC Matriz 160 Auto Origin Kind
+  max: 80
+  initial: none
+ac_matriz_160_auto_origin_expires_at:
+  name: AC Matriz 160 Auto Origin Expires At
+  max: 40
+  initial: 1970-01-01 00:00:00
+ac_matriz_160_auto_origin_last_action:
+  name: AC Matriz 160 Auto Origin Last Action
+  max: 40
+  initial: none
