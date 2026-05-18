@@ -1374,12 +1374,23 @@
         name: AC-Matriz 160
         message: 'hito=learning_manual_ignorado | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | dedup_ok={{ dedup_ok }}'
         entity_id: climate.0200009211c7_climate
+
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ resultado_terminal != ''aplicado'' and evento_manual_tipo in [''encendido_manual'',''apagado_manual''] and origen_clasificacion != ''manual_externo'' }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: 'hito=intento_modificar_offset_bloqueado | origen={{ origen_clasificacion }} | razon={{ razon }} | resultado_terminal={{ resultado_terminal }} | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | helper={{ helper_offset }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | contexto={{ contexto }} | ts={{ ts_evento }}'
+          entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
         value_template: '{{ resultado_terminal == ''error_controlado'' }}'
       sequence:
-      - service: persistent_notification.create
+      - service: notify.mobile_app_samsung_s24
         data:
           title: AC-Matriz 160 aprendizaje manual
           message: 'Error controlado en aprendizaje manual. Revisa logbook.'
