@@ -265,7 +265,13 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
   - `automatico_ac_matriz_160`: cambios trazables al propio controlador AC-Matriz 160.
   - `automatico_recovery`: cambios por recuperación/reconexión o sin transición HVAC real.
   - `manual_externo`: cambios ON/OFF externos (app fabricante, IR bridge, escenas, voz, app HA o control físico), incluso con `user_id=null`.
+- **Marcador transaccional automático con TTL**:
+  - todo encendido/apagado originado por AC-Matriz 160 debe escribir marcador de origen automático transaccional con **TTL de 30 s**.
+  - el aprendizaje manual debe validar ese marcador antes de clasificar un evento como manual.
 - **Criterio base de aprendizaje**: solo cuando hay transición HVAC real (`off<->cool` o `off<->heat`) y el origen no coincide con firma automática de AC-Matriz 160.
+- **Separación explícita entre seguridad y aprendizaje**:
+  - **seguridad**: el bloqueo por apagado manual se aplica siempre (sin depender de ambigüedad de origen).
+  - **aprendizaje**: solo se aplica cuando la clasificación no es ambigua; ante ambigüedad, registrar `ignorado` con razón terminal explícita.
 - **Contrato de aprendizaje por modo/columna**:
   - COOL: `off->cool` manual = `-0.25`, `cool->off` manual = `+0.25`.
   - HEAT espejo: `off->heat` manual = `+0.25`, `heat->off` manual = `-0.25`.
@@ -275,17 +281,27 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
   - Con `razon` explícita (`manual_externo_aplicado`, `evento_no_transicion`, `origen_automatico_ac_matriz`, `estado_recovery`, `dedup`, `helper_invalido`, etc.).
 - **Bloqueo global post-apagado manual**:
   - tras `apagado_manual` válido se fija `input_datetime.ac_matriz_160_manual_off_block_until = now + 5 min`.
+  - precedencia obligatoria: el bloqueo manual de **5 min** prevalece sobre cualquier auto-encendido (incluyendo encendidos con marcador automático válido).
   - en la automatización principal AC-Matriz 160, cualquier `turn_on_cool/turn_on_heat` se bloquea si `now < manual_off_block_until`.
   - se registra `hito=auto_on_bloqueado_post_manual_off`.
-- **Notificación de aprendizaje con fallback contractual**:
-  - canal principal: `notify.mobile_app_samsung_s24`.
-  - trazabilidad obligatoria: `logbook.log` + `persistent_notification.create`.
-  - estado de envío en helper: `input_text.ac_matriz_160_ultimo_estado_notificacion` con `emitida|fallback|error_controlado`.
+- **Comportamiento ante reinicio de Home Assistant**:
+  - `manual_off_block_until` persiste y debe respetarse hasta su expiración natural tras reinicio.
+  - ningún reinicio de HA puede limpiar ni reducir la ventana de bloqueo manual activa.
+- **Regla de notificación para aprendizaje normal**:
+  - eliminar `persistent_notification` en aprendizaje normal.
+  - mantener solo push móvil al usuario (`notify.mobile_app_samsung_s24`) y registro técnico en `logbook.log`.
+  - estado de envío en helper: `input_text.ac_matriz_160_ultimo_estado_notificacion` con `emitida|error_controlado`.
 - **Ejemplos de traza esperada**:
   - aplicado: `hito=learning_manual_columna | resultado_terminal=aplicado | razon=manual_externo_aplicado`.
   - ignorado: `hito=learning_manual_ignorado | resultado_terminal=ignorado | razon=evento_no_transicion`.
   - error controlado: `resultado_terminal=error_controlado | razon=helper_invalido`.
 5. Si hay persistencia incompleta previa al trigger, validar que exista `Resultado=error_controlado` (sin cierre silencioso).
+
+#### Checklist de validación posterior al cambio
+1. El auto-ON no dispara clasificación ni aprendizaje de tipo “manual”.
+2. `manual-OFF` bloquea auto-ON durante 5 min en todos los casos.
+3. No aparecen tarjetas `persistent_notification` para aprendizaje normal.
+4. Los logs incluyen `trace_id`, `origen` y `razón terminal` en el cierre del aprendizaje.
 
 ---
 
@@ -2084,6 +2100,10 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 ### Ejemplos de acumulación
 - `-0.25 + (+0.25) => 0.00`
 - `-0.25 + (-0.25) => -0.50`
+
+### Decisión tomada
+- **Fecha:** 2026-05-18.
+- **Decisión:** se oficializa en `codex.md` la política operativa implementada de aprendizaje manual por columna con: marcador automático transaccional TTL 30 s, precedencia absoluta de bloqueo manual de 5 min, separación seguridad/aprendizaje, retiro de `persistent_notification` en aprendizaje normal y persistencia de `manual_off_block_until` ante reinicio de HA.
 
 ## 26) Ajuste operativo COOL con setpoint entero por OFF (2026-05-18)
 
