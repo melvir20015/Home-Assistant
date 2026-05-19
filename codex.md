@@ -2214,3 +2214,9 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - usar `states.<domain>['entity_id']` para acceder al objeto state (ej. `last_changed`).
 - **Helper agregado/normalizado:** `input_text.ac_matriz_160_learning_manual_evento_firma` en `helpers/input_text.yaml` (buffer de deduplicación de evento manual para evitar reprocesamiento de la misma transición).
 
+
+## 30) Nota técnica mínima — corrección de bloque roto en Learning manual (2026-05-19)
+
+- **Ubicación corregida:** `automations.yaml`, automatización `id: ac_matriz_160_learning_manual_v1` (alias `AC-Matriz 160 - Aprendizaje manual por columna`), tramo cercano a líneas 1437–1438.
+- **Causa:** plantilla/string inline mal cerrada por comillas anidadas en `transicion_final_from`, generando arrastre de parser YAML.
+- **Estándar adoptado:** plantillas largas o sensibles de `value:`/`message:` se expresan en bloque multilínea `>-` para evitar roturas de comillas y cierres Jinja ambiguos.
