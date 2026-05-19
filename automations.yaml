@@ -1350,7 +1350,7 @@
     entity_id: climate.0200009211c7_climate
   actions:
   - variables:
-      ts_evento: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      ts_evento: '{{ now().strftime(''%Y-%m-%d %H:%M:%S.%f'') }}'
       hora_evento: '{{ now().strftime(''%I:%M:%S %p'') }}'
       modo_anterior: '{{ trigger.from_state.state | lower if trigger.from_state is not none else ''unknown'' }}'
       modo_nuevo: '{{ trigger.to_state.state | lower if trigger.to_state is not none else ''unknown'' }}'
@@ -1372,6 +1372,8 @@
       evento_last_changed_iso: '{{ as_local(trigger.to_state.last_changed).strftime(''%Y-%m-%d %H:%M:%S'') if trigger.to_state is not none else ''unknown'' }}'
       evento_context_id: '{{ trigger.to_state.context.id if trigger.to_state is not none and trigger.to_state.context is not none else ''no_context'' }}'
       firma_evento: '{{ evento_last_changed_ts ~ ''|'' ~ evento_context_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ modo_aprendizaje ~ ''|'' ~ (marker_trace_id if marker_trace_id|length > 0 else ''no_trace'') }}'
+      firma_learning_manual: '{{ evento_last_changed_ts ~ ''|'' ~ evento_context_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo }}'
+      firma_learning_manual_previa: '{{ states(''input_text.ac_matriz_160_learning_manual_evento_firma'') | trim }}'
       firma_previa: '{{ states(''input_text.ac_matriz_160_ultima_accion'') }}'
       dedup_ok: '{{ firma_previa != (''learn|'' ~ firma_evento) }}'
       helper_offset: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje ~ ''_col_'' ~ col_idx }}'
@@ -1387,10 +1389,27 @@
         {% endif %}
       helper_valido: '{{ col_idx > 0 and modo_aprendizaje in [''cool'',''heat''] and states(helper_offset) not in [''unknown'',''unavailable'',''none'',''''] }}'
       offset_nuevo: '{{ [3.0, [-3.0, (offset_actual|float + delta|float)] | max] | min | round(2) }}'
-      resultado_terminal: '{% if not horario_aprendizaje_habilitado %}ignorado{% elif origen_clasificacion != ''manual_externo'' %}ignorado{% elif evento_manual_tipo == ''ignorado'' %}ignorado{% elif not dedup_ok %}ignorado{% elif not helper_valido %}error_controlado{% else %}aplicado{% endif %}'
-      razon: '{% if not horario_aprendizaje_habilitado %}out_of_scope_daytime_main{% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz{% elif origen_clasificacion == ''automatico_recovery'' %}estado_recovery{% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion{% elif not dedup_ok %}dedup{% elif not helper_valido %}helper_invalido{% else %}manual_externo_aplicado{% endif %}'
+      resultado_terminal: '{% if not evento_estable %}ignorado{% elif not horario_aprendizaje_habilitado %}ignorado{% elif origen_clasificacion != ''manual_externo'' %}ignorado{% elif evento_manual_tipo == ''ignorado'' %}ignorado{% elif not dedup_ok %}ignorado{% elif not helper_valido %}error_controlado{% else %}aplicado{% endif %}'
+      razon: '{% if not evento_estable %}transicion_inestable{% elif not horario_aprendizaje_habilitado %}out_of_scope_daytime_main{% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz{% elif origen_clasificacion == ''automatico_recovery'' %}estado_recovery{% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion{% elif not dedup_ok %}dedup{% elif not helper_valido %}helper_invalido{% else %}manual_externo_aplicado{% endif %}'
       envio_estado: '{{ ''emitida'' if resultado_terminal == ''aplicado'' else ''fallback'' if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
       mensaje_humano: '{% set tipo_humano = ''Encendido Manual'' if evento_manual_tipo == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual'' else ''Sin Transición'' %}{% set modo_humano = ''Frío'' if modo_aprendizaje == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de Alcance'' %}{% set envio_humano = ''Emitida'' if envio_estado == ''emitida'' else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado'' %}{{ hora_evento }} | TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx }} ({{ contexto }}) | DELTA= {{ ''+0.25'' if delta|float > 0 else ''-0.25'' if delta|float < 0 else ''0.00'' }} | OFFSET= {{ offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano }}'
+
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_learning_manual_evento_firma
+    data:
+      value: '{{ firma_learning_manual }}'
+  - delay:
+      seconds: 3
+  - variables:
+      estado_actual_estabilizacion: '{{ states(''climate.0200009211c7_climate'') | lower }}'
+      last_changed_actual_ts: '{{ as_timestamp(states.climate.0200009211c7_climate.last_changed, default=0) | int(0) }}'
+      firma_actual_estabilizacion: '{{ last_changed_actual_ts ~ ''|'' ~ estado_actual_estabilizacion }}'
+      evento_estable: '{{ last_changed_actual_ts == (evento_last_changed_ts | int(0)) and estado_actual_estabilizacion == modo_nuevo }}'
+      transicion_final_from: '{{ modo_anterior if evento_estable else (states.climate.0200009211c7_climate.state | lower) }}'
+      transicion_final_to: '{{ modo_nuevo if evento_estable else estado_actual_estabilizacion }}'
+      intermediate_changes_absorbed: '{{ 0 if evento_estable else 1 }}'
+      trace_id_learning: '{{ marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts) }}'
   - choose:
     - conditions:
       - condition: template
@@ -1408,13 +1427,13 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: 'hito=learning_manual_columna | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | marker_compatible={{ marker_compatible }} | marker_transition_expected={{ marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje }} | columna={{ col_idx }} | contexto={{ contexto }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo }} | ts={{ ts_evento }}'
+          message: 'hito=learning_manual_columna | trace_id={{ trace_id_learning }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | marker_compatible={{ marker_compatible }} | marker_transition_expected={{ marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje }} | columna={{ col_idx }} | contexto={{ contexto }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo }} | ts={{ ts_evento }}'
           entity_id: climate.0200009211c7_climate
     default:
     - service: logbook.log
       data:
         name: AC-Matriz 160
-        message: 'hito=learning_manual_ignorado | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | marker_compatible={{ marker_compatible }} | marker_transition_expected={{ marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | dedup_ok={{ dedup_ok }}'
+        message: 'hito=learning_manual_ignorado | trace_id={{ trace_id_learning }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | marker_compatible={{ marker_compatible }} | marker_transition_expected={{ marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | final_transition={{ transicion_final_from ~ '->' ~ transicion_final_to }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok }}'
         entity_id: climate.0200009211c7_climate
 
 
@@ -1426,7 +1445,7 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: 'hito=learning_manual_dedup_descartado | firma_evento={{ firma_evento }} | firma_previa={{ firma_previa }} | evento_last_changed={{ evento_last_changed_iso }} | evento_context_id={{ evento_context_id }} | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo={{ modo_aprendizaje }}'
+          message: 'hito=learning_manual_dedup_descartado | firma_evento={{ firma_evento }} | firma_previa={{ firma_previa }} | evento_last_changed={{ evento_last_changed_iso }} | evento_context_id={{ evento_context_id }} | trace_id={{ trace_id_learning }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | final_transition={{ transicion_final_from ~ '->' ~ transicion_final_to }} | absorbed={{ intermediate_changes_absorbed }} | modo={{ modo_aprendizaje }}'
           entity_id: climate.0200009211c7_climate
 
   - choose:
@@ -1437,7 +1456,7 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: 'hito=intento_modificar_offset_bloqueado | origen={{ origen_clasificacion }} | razon={{ razon }} | resultado_terminal={{ resultado_terminal }} | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | helper={{ helper_offset }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | contexto={{ contexto }} | ts={{ ts_evento }}'
+          message: 'hito=intento_modificar_offset_bloqueado | origen={{ origen_clasificacion }} | razon={{ razon }} | resultado_terminal={{ resultado_terminal }} | trace_id={{ trace_id_learning }} | helper={{ helper_offset }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | final_transition={{ transicion_final_from ~ '->' ~ transicion_final_to }} | absorbed={{ intermediate_changes_absorbed }} | contexto={{ contexto }} | ts={{ ts_evento }}'
           entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:

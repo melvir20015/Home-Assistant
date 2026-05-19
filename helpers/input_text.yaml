@@ -43,6 +43,11 @@ ac_matriz_160_fase_ciclo:
   max: 40
   initial: idle
 
+ac_matriz_160_learning_manual_evento_firma:
+  name: AC Matriz 160 Learning Manual Evento Firma
+  max: 255
+  initial: sin_evento
+
 ac_matriz_160_auto_origin_trace:
   name: AC Matriz 160 Auto Origin Trace
   max: 255
