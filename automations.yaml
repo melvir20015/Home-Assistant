@@ -1210,6 +1210,25 @@
               name: AC-Matriz 160
               message: hito=turn_on_cool_normal | horario_habilitado={{ horario_habilitado }} | gate_on={{ cool_on_gate_met }} | Tin={{ tin }} | Hin={{ hin }} | ON={{ eff_t_on_cool }} | OFF={{ eff_t_off_cool }} | off_entero={{ off_entero }} | sp_objetivo={{ sp_objetivo }} | sp_final={{ sp_cool_normal if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 18 }} | fan_base={{ fan_cool_normal_base }} | fan_target={{ fan_cool_normal_target if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'high' }} | fan_apply={{ fan_should_apply }} | fan_window_ok={{ fan_change_window_ok }} | delta={{ cool_delta_real }} | col={{ col_humana }} | motivo=setpoint_entero_por_off_floor
               entity_id: climate.0200009211c7_climate
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC-Matriz 160
+          message: '{% set modo_final = ''Frío'' %}{% set sp_msg = ''SP= '' ~ sp_cool_normal ~ ''°C'' if states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' else ''SP= 18°C (Turbo)'' %}{% set fan_msg = ''FAN= '' ~ fan_cool_normal_target|title if states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' else ''FAN= High (Turbo)'' %}{{ now().strftime(''%I:%M %p'') }} | EVENTO= Encendido | MODO= {{ modo_final }} | INTERIOR= {{ tin }}°C/{{ hin }}% | EXTERIOR= {{ tout if tout is not none else ''No disponible'' }}°C/{{ hout }}% | {{ sp_msg }} | {{ fan_msg }} | UMBRAL APLICADO= {{ eff_t_on_cool }} | CONTEXTO= {{ col_humana }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_ultima_firma_notificacion
+        data:
+          value: '{{ event_signature }}'
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_ultima_notificacion_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_ultimo_estado_notificacion
+        data:
+          value: emitida|{{ event_signature }}
     - conditions:
       - condition: template
         value_template: '{{ action_target == ''turn_on_heat'' }}'
@@ -1249,6 +1268,25 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: heat
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC-Matriz 160
+          message: '{{ now().strftime(''%I:%M %p'') }} | EVENTO= Encendido | MODO= Calor | INTERIOR= {{ tin }}°C/{{ hin }}% | EXTERIOR= {{ tout if tout is not none else ''No disponible'' }}°C/{{ hout }}% | SP= 28°C | FAN= N/A | UMBRAL APLICADO= {{ eff_t_on_heat }} | CONTEXTO= {{ col_humana }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_ultima_firma_notificacion
+        data:
+          value: '{{ event_signature }}'
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_ultima_notificacion_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_ultimo_estado_notificacion
+        data:
+          value: emitida|{{ event_signature }}
     - conditions:
       - condition: template
         value_template: '{{ action_target == ''turn_off'' }}'
@@ -1324,7 +1362,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ action_target in [''turn_on_cool'',''turn_on_heat'',''turn_off''] and dedup_ok }}'
+        value_template: '{{ action_target == ''turn_off'' and dedup_ok }}'
       sequence:
       - service: notify.mobile_app_samsung_s24
         data:
