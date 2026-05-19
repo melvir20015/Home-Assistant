@@ -73,3 +73,7 @@ ac_matriz_160_auto_origin_last_action:
   name: AC Matriz 160 Auto Origin Last Action
   max: 40
   initial: none
+ac_matriz_160_auto_origin_consumed:
+  name: AC Matriz 160 Auto Origin Consumed
+  max: 10
+  initial: false

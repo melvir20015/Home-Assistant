@@ -2220,3 +2220,43 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - **Ubicación corregida:** `automations.yaml`, automatización `id: ac_matriz_160_learning_manual_v1` (alias `AC-Matriz 160 - Aprendizaje manual por columna`), tramo cercano a líneas 1437–1438.
 - **Causa:** plantilla/string inline mal cerrada por comillas anidadas en `transicion_final_from`, generando arrastre de parser YAML.
 - **Estándar adoptado:** plantillas largas o sensibles de `value:`/`message:` se expresan en bloque multilínea `>-` para evitar roturas de comillas y cierres Jinja ambiguos.
+
+## 31) Clasificación simplificada por marker + consumo seguro (2026-05-19)
+
+- **Fuente primaria de clasificación:** el learning `AC-Matriz 160 - Aprendizaje manual por columna` decide origen por `marker vigente + compatible` y no por heurísticas secundarias frágiles.
+- **Prioridad estricta de decisión:**
+  1. validar transición HVAC real (`off->cool`, `off->heat`, `cool->off`, `heat->off`);
+  2. si no hay transición real => `resultado_terminal=ignorado`, `razon=evento_no_transicion`;
+  3. con transición real, si marker vigente/no consumido/compatible => `automatico_ac_matriz_160`, cierre `ignorado` con `razon=origen_automatico_ac_matriz`;
+  4. en cualquier otro caso => `manual_externo` y se aplica aprendizaje contractual.
+- **Contrato del marker transaccional (emisor AC-Matriz 160):**
+  - antes de `turn_on_cool`, `turn_on_heat` o `turn_off`, escribir marker con:
+    - `kind=automatico_ac_matriz_160`,
+    - `trace_id` único,
+    - `last_action` esperada,
+    - `expires_at` con TTL 30 s,
+    - `consumed=false`.
+  - orden obligatorio: marker primero, `climate.*` después.
+  - el emisor no limpia marker en la misma transacción.
+- **Consumo seguro de marker (receptor learning):**
+  - solo consumir (`consumed=true`) cuando hubo transición HVAC real y el cierre terminal fue `origen_automatico_ac_matriz`;
+  - no consumir ni limpiar marker en descartes por ruido/no transición.
+- **Aprendizaje contractual sin cambios de negocio:**
+  - COOL: `off->cool=-0.25`, `cool->off=+0.25`.
+  - HEAT espejo: `off->heat=+0.25`, `heat->off=-0.25`.
+  - clamp acumulado: `[-3.0, +3.0]`.
+- **Notificación:**
+  - automáticos descartados por marker: sin push de aprendizaje manual.
+  - manuales aplicados: push móvil en español + log técnico.
+- **Matriz breve de decisión:**
+
+| Transición HVAC real | Marker vigente+compatible | Origen | Resultado terminal |
+| --- | --- | --- | --- |
+| No | N/A | `sin_transicion_real` | `ignorado:evento_no_transicion` |
+| Sí | Sí | `automatico_ac_matriz_160` | `ignorado:origen_automatico_ac_matriz` |
+| Sí | No | `manual_externo` | `aplicado:manual_externo_aplicado` (si guardas OK) |
+
+- **Ejemplos de trazas esperadas:**
+  - `hito=learning_manual_ignorado | resultado_terminal=ignorado | razon=origen_automatico_ac_matriz | marker_compatible=true`.
+  - `hito=auto_marker_consumido | resultado_terminal=ignorado | razon=origen_automatico_ac_matriz`.
+  - `hito=learning_manual_columna | resultado_terminal=aplicado | razon=manual_externo_aplicado`.
