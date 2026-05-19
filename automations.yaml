@@ -1378,7 +1378,9 @@
       marker_transition_expected: '{% if marker_last_action == ''turn_on_cool'' %}off->cool{% elif marker_last_action == ''turn_on_heat'' %}off->heat{% elif marker_last_action == ''turn_off'' and modo_anterior in [''cool'',''heat''] %}{{ modo_anterior ~ ''->off'' }}{% elif marker_last_action == ''turn_off'' %}*->off{% else %}none{% endif %}'
       marker_transition_observed: '{{ modo_anterior ~ ''->'' ~ modo_nuevo }}'
       marker_compatible: '{{ marker_vigente and (marker_transition_expected == marker_transition_observed or (marker_transition_expected == ''*->off'' and modo_nuevo == ''off'')) }}'
-      firma_evento: '{{ ts_evento ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ (marker_trace_id if marker_trace_id|length > 0 else ''no_trace'') }}'
+      evento_last_changed_ts: '{{ as_timestamp(trigger.to_state.last_changed, default=0) | int(0) if trigger.to_state is not none else 0 }}'
+      evento_last_changed_iso: '{{ as_local(trigger.to_state.last_changed).strftime(''%Y-%m-%d %H:%M:%S'') if trigger.to_state is not none else ''unknown'' }}'
+      firma_evento: '{{ evento_last_changed_ts ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ modo_aprendizaje ~ ''|'' ~ (marker_trace_id if marker_trace_id|length > 0 else ''no_trace'') }}'
       firma_previa: '{{ states(''input_text.ac_matriz_160_ultima_accion'') }}'
       dedup_ok: '{{ firma_previa != (''learn|'' ~ firma_evento) }}'
       helper_offset: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje ~ ''_col_'' ~ col_idx }}'
@@ -1423,6 +1425,18 @@
         name: AC-Matriz 160
         message: 'hito=learning_manual_ignorado | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | marker_compatible={{ marker_compatible }} | marker_transition_expected={{ marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | dedup_ok={{ dedup_ok }}'
         entity_id: climate.0200009211c7_climate
+
+
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ not dedup_ok }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: 'hito=learning_manual_dedup_descartado | firma_evento={{ firma_evento }} | firma_previa={{ firma_previa }} | evento_last_changed={{ evento_last_changed_iso }} | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo={{ modo_aprendizaje }}'
+          entity_id: climate.0200009211c7_climate
 
   - choose:
     - conditions:
