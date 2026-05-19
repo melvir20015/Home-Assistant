@@ -1384,6 +1384,7 @@
       evento_last_changed_iso: '{{ as_local(trigger.to_state.last_changed).strftime(''%Y-%m-%d %H:%M:%S'') if trigger.to_state is not none else ''unknown'' }}'
       evento_context_id: '{{ trigger.to_state.context.id if trigger.to_state is not none and trigger.to_state.context is not none else ''no_context'' }}'
       learning_bucket_corto: '{{ (as_timestamp(now()) | int(0) // 15) }}'
+      learning_bucket_error_5s: '{{ (as_timestamp(now()) | int(0) // 5) }}'
       firma_evento: '{{ evento_context_id ~ ''|'' ~ evento_last_changed_ts ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ modo_aprendizaje ~ ''|'' ~ learning_bucket_corto }}'
       firma_learning_manual: '{{ evento_last_changed_ts ~ ''|'' ~ evento_context_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo }}'
       firma_learning_manual_previa: '{{ states(''input_text.ac_matriz_160_learning_manual_evento_firma'') | trim }}'
@@ -1441,6 +1442,9 @@
       transicion_final_to: '{{ modo_nuevo if evento_estable else estado_actual_estabilizacion }}'
       intermediate_changes_absorbed: '{{ 0 if evento_estable else 1 }}'
       trace_id_learning: '{{ marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts) }}'
+      firma_error_learning: '{{ trace_id_learning ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ razon ~ ''|'' ~ learning_bucket_error_5s }}'
+      firma_error_learning_previa: '{{ states(''input_text.ac_matriz_160_learning_error_last_signature'') | trim }}'
+      notificacion_error_dedup_ok: '{{ firma_error_learning != firma_error_learning_previa }}'
   - choose:
     - conditions:
       - condition: template
@@ -1503,12 +1507,26 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ resultado_terminal == ''error_controlado'' }}'
+        value_template: '{{ resultado_terminal == ''error_controlado'' and notificacion_error_dedup_ok }}'
       sequence:
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC-Matriz 160 aprendizaje manual
           message: 'Error controlado en aprendizaje manual. Revisa logbook.'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_learning_error_last_signature
+        data:
+          value: '{{ firma_error_learning }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ resultado_terminal == ''error_controlado'' and not notificacion_error_dedup_ok }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: 'hito=error_controlado_suprimido_dedup | trace_id={{ trace_id_learning }} | firma_error={{ firma_error_learning }} | firma_previa={{ firma_error_learning_previa }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | razon={{ razon }} | bucket_5s={{ learning_bucket_error_5s }}'
+          entity_id: climate.0200009211c7_climate
   - service: input_text.set_value
     target:
       entity_id: input_text.ac_matriz_160_ultimo_estado_notificacion

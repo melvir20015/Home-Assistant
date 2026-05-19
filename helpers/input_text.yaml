@@ -53,6 +53,11 @@ ac_matriz_160_learning_manual_evento_firma:
   max: 255
   initial: sin_evento
 
+ac_matriz_160_learning_error_last_signature:
+  name: AC Matriz 160 Learning Error Last Signature
+  max: 255
+  initial: sin_firma_error
+
 ac_matriz_160_auto_origin_trace:
   name: AC Matriz 160 Auto Origin Trace
   max: 255
