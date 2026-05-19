@@ -1193,11 +1193,6 @@
               name: AC-Matriz 160
               message: hito=turn_on_cool_normal | horario_habilitado={{ horario_habilitado }} | gate_on={{ cool_on_gate_met }} | Tin={{ tin }} | Hin={{ hin }} | ON={{ eff_t_on_cool }} | OFF={{ eff_t_off_cool }} | off_entero={{ off_entero }} | sp_objetivo={{ sp_objetivo }} | sp_final={{ sp_cool_normal if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 18 }} | fan_base={{ fan_cool_normal_base }} | fan_target={{ fan_cool_normal_target if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'high' }} | fan_apply={{ fan_should_apply }} | fan_window_ok={{ fan_change_window_ok }} | delta={{ cool_delta_real }} | col={{ col_humana }} | motivo=setpoint_entero_por_off_floor
               entity_id: climate.0200009211c7_climate
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.ac_matriz_160_auto_origin_expires_at
-        data:
-          value: '{{ (now() - timedelta(seconds=1)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
     - conditions:
       - condition: template
         value_template: '{{ action_target == ''turn_on_heat'' }}'
@@ -1232,11 +1227,6 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: heat
-      - service: input_text.set_value
-        target:
-          entity_id: input_text.ac_matriz_160_auto_origin_expires_at
-        data:
-          value: '{{ (now() - timedelta(seconds=1)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
     - conditions:
       - condition: template
         value_template: '{{ action_target == ''turn_off'' }}'
@@ -1380,7 +1370,8 @@
       marker_compatible: '{{ marker_vigente and (marker_transition_expected == marker_transition_observed or (marker_transition_expected == ''*->off'' and modo_nuevo == ''off'')) }}'
       evento_last_changed_ts: '{{ as_timestamp(trigger.to_state.last_changed, default=0) | int(0) if trigger.to_state is not none else 0 }}'
       evento_last_changed_iso: '{{ as_local(trigger.to_state.last_changed).strftime(''%Y-%m-%d %H:%M:%S'') if trigger.to_state is not none else ''unknown'' }}'
-      firma_evento: '{{ evento_last_changed_ts ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ modo_aprendizaje ~ ''|'' ~ (marker_trace_id if marker_trace_id|length > 0 else ''no_trace'') }}'
+      evento_context_id: '{{ trigger.to_state.context.id if trigger.to_state is not none and trigger.to_state.context is not none else ''no_context'' }}'
+      firma_evento: '{{ evento_last_changed_ts ~ ''|'' ~ evento_context_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ modo_aprendizaje ~ ''|'' ~ (marker_trace_id if marker_trace_id|length > 0 else ''no_trace'') }}'
       firma_previa: '{{ states(''input_text.ac_matriz_160_ultima_accion'') }}'
       dedup_ok: '{{ firma_previa != (''learn|'' ~ firma_evento) }}'
       helper_offset: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje ~ ''_col_'' ~ col_idx }}'
@@ -1435,7 +1426,7 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: 'hito=learning_manual_dedup_descartado | firma_evento={{ firma_evento }} | firma_previa={{ firma_previa }} | evento_last_changed={{ evento_last_changed_iso }} | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo={{ modo_aprendizaje }}'
+          message: 'hito=learning_manual_dedup_descartado | firma_evento={{ firma_evento }} | firma_previa={{ firma_previa }} | evento_last_changed={{ evento_last_changed_iso }} | evento_context_id={{ evento_context_id }} | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo={{ modo_aprendizaje }}'
           entity_id: climate.0200009211c7_climate
 
   - choose:

@@ -2185,3 +2185,12 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - Cuando un encendido automático se bloquee por anti-reversa, debe quedar trazabilidad en `logbook.log` con hitos diferenciados:
   - `hito=anti_reverse_heat_blocked` para bloqueo de `heat`;
   - `hito=anti_reverse_cool_blocked` para bloqueo de `cool`.
+
+## 27) Nota operativa — marcador transaccional AC-Matriz 160 (2026-05-19)
+
+- En `AC-Matriz 160` (`id: ac_matriz_160_main_v1`), el marcador automático transaccional (`ac_matriz_160_auto_origin_*`) **no debe expirar dentro de la misma transacción** que ejecuta `climate.set_hvac_mode` o `climate.turn_off`.
+- La expiración debe respetar el TTL completo (mínimo 30 s) para que `AC-Matriz 160 - Aprendizaje manual por columna` pueda leer `marker_vigente=true` durante la evaluación del cambio real de estado HVAC.
+- Contrato esperado:
+  - eventos automáticos (`turn_on_cool`, `turn_on_heat`, `turn_off`) se clasifican como `automatico_ac_matriz_160`,
+  - cierre de learning en `resultado_terminal=ignorado` con `razon=origen_automatico_ac_matriz`,
+  - sin aplicar deltas de aprendizaje manual ni emitir notificación de encendido/apagado manual para esos eventos automáticos.
