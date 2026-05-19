@@ -2194,3 +2194,14 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - eventos automáticos (`turn_on_cool`, `turn_on_heat`, `turn_off`) se clasifican como `automatico_ac_matriz_160`,
   - cierre de learning en `resultado_terminal=ignorado` con `razon=origen_automatico_ac_matriz`,
   - sin aplicar deltas de aprendizaje manual ni emitir notificación de encendido/apagado manual para esos eventos automáticos.
+
+## 28) Mantenimiento sintáctico — aprendizaje manual por columna (2026-05-19)
+
+- **Causa raíz:** error de parseo YAML en `automations.yaml` dentro de `AC-Matriz 160 - Aprendizaje manual por columna` por plantillas Jinja largas con comillas anidadas inestables en líneas inline.
+- **Convención aplicada:** para plantillas largas de `message:` y `value:` se adopta bloque multilínea `>-`, evitando concatenación inline con comillas simples anidadas.
+- **Alcance del ajuste:** bloque final de la automatización `id: ac_matriz_160_learning_manual_v1`, incluyendo:
+  - normalización de `final_transition` en logs (`"->"` dentro de Jinja),
+  - reescritura de:
+    - `input_text.ac_matriz_160_ultima_accion`
+    - `input_text.ac_matriz_160_ultimo_resultado_validacion`
+  - verificación de estructura `choose/default/sequence` sin claves huérfanas.
