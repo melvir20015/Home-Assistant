@@ -1287,7 +1287,12 @@
         target:
           entity_id: input_text.ac_matriz_160_auto_origin_expires_at
         data:
-          value: '{{ (now() - timedelta(seconds=1)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+          value: '{{ auto_origin_expires_at }}'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=auto_marker_turn_off_ttl_preserved | trace_id={{ auto_origin_trace_id }} | marker_expires_at={{ auto_origin_expires_at }} | marker_ttl_s=30 | clima_previo={{ climate_mode }} | accion=turn_off
+          entity_id: climate.0200009211c7_climate
     default: []
   - choose:
     - conditions:
@@ -1410,13 +1415,13 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: 'hito=learning_manual_columna | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje }} | columna={{ col_idx }} | contexto={{ contexto }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo }} | ts={{ ts_evento }}'
+          message: 'hito=learning_manual_columna | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | marker_compatible={{ marker_compatible }} | marker_transition_expected={{ marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje }} | columna={{ col_idx }} | contexto={{ contexto }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo }} | ts={{ ts_evento }}'
           entity_id: climate.0200009211c7_climate
     default:
     - service: logbook.log
       data:
         name: AC-Matriz 160
-        message: 'hito=learning_manual_ignorado | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | dedup_ok={{ dedup_ok }}'
+        message: 'hito=learning_manual_ignorado | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else ''na'' }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | marker_compatible={{ marker_compatible }} | marker_transition_expected={{ marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | dedup_ok={{ dedup_ok }}'
         entity_id: climate.0200009211c7_climate
 
   - choose:
