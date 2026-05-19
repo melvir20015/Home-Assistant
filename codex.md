@@ -2205,3 +2205,12 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
     - `input_text.ac_matriz_160_ultima_accion`
     - `input_text.ac_matriz_160_ultimo_resultado_validacion`
   - verificación de estructura `choose/default/sequence` sin claves huérfanas.
+
+## 29) Mantenimiento — AC-Matriz 160 Learning manual (2026-05-19)
+
+- **Causa raíz:** plantillas Jinja con acceso inválido por atributo sobre `states.climate.<entity_id>` cuando el `entity_id` inicia por número (`020000...`), lo que rompe el parser (`TemplateSyntaxError`).
+- **Convención obligatoria:**
+  - usar `states('entity_id')` para lectura de estado plano,
+  - usar `states.<domain>['entity_id']` para acceder al objeto state (ej. `last_changed`).
+- **Helper agregado/normalizado:** `input_text.ac_matriz_160_learning_manual_evento_firma` en `helpers/input_text.yaml` (buffer de deduplicación de evento manual para evitar reprocesamiento de la misma transición).
+

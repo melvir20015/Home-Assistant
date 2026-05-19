@@ -1435,10 +1435,10 @@
       seconds: 3
   - variables:
       estado_actual_estabilizacion: '{{ states(''climate.0200009211c7_climate'') | lower }}'
-      last_changed_actual_ts: '{{ as_timestamp(states.climate.0200009211c7_climate.last_changed, default=0) | int(0) }}'
+      last_changed_actual_ts: '{{ as_timestamp(states.climate['0200009211c7_climate'].last_changed, default=0) | int(0) }}'
       firma_actual_estabilizacion: '{{ last_changed_actual_ts ~ ''|'' ~ estado_actual_estabilizacion }}'
       evento_estable: '{{ last_changed_actual_ts == (evento_last_changed_ts | int(0)) and estado_actual_estabilizacion == modo_nuevo }}'
-      transicion_final_from: '{{ modo_anterior if evento_estable else (states.climate.0200009211c7_climate.state | lower) }}'
+      transicion_final_from: '{{ modo_anterior if evento_estable else states('climate.0200009211c7_climate') | lower }}'
       transicion_final_to: '{{ modo_nuevo if evento_estable else estado_actual_estabilizacion }}'
       intermediate_changes_absorbed: '{{ 0 if evento_estable else 1 }}'
       trace_id_learning: '{{ marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts) }}'
