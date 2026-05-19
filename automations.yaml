@@ -1371,11 +1371,12 @@
       evento_last_changed_ts: '{{ as_timestamp(trigger.to_state.last_changed, default=0) | int(0) if trigger.to_state is not none else 0 }}'
       evento_last_changed_iso: '{{ as_local(trigger.to_state.last_changed).strftime(''%Y-%m-%d %H:%M:%S'') if trigger.to_state is not none else ''unknown'' }}'
       evento_context_id: '{{ trigger.to_state.context.id if trigger.to_state is not none and trigger.to_state.context is not none else ''no_context'' }}'
-      firma_evento: '{{ evento_last_changed_ts ~ ''|'' ~ evento_context_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ modo_aprendizaje ~ ''|'' ~ (marker_trace_id if marker_trace_id|length > 0 else ''no_trace'') }}'
+      learning_bucket_corto: '{{ (as_timestamp(now()) | int(0) // 15) }}'
+      firma_evento: '{{ evento_context_id ~ ''|'' ~ evento_last_changed_ts ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ modo_aprendizaje ~ ''|'' ~ learning_bucket_corto }}'
       firma_learning_manual: '{{ evento_last_changed_ts ~ ''|'' ~ evento_context_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo }}'
       firma_learning_manual_previa: '{{ states(''input_text.ac_matriz_160_learning_manual_evento_firma'') | trim }}'
-      firma_previa: '{{ states(''input_text.ac_matriz_160_ultima_accion'') }}'
-      dedup_ok: '{{ firma_previa != (''learn|'' ~ firma_evento) }}'
+      firma_previa: '{{ states(''input_text.ac_matriz_160_learning_last_signature'') | trim }}'
+      dedup_ok: '{{ firma_previa != firma_evento }}'
       helper_offset: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje ~ ''_col_'' ~ col_idx }}'
       offset_actual: '{{ states(helper_offset) | float(0) if modo_aprendizaje in [''cool'',''heat''] else 0 }}'
       horario_aprendizaje_habilitado: '{{ now().strftime(''%H:%M:%S'') >= ''07:01:00'' and now().strftime(''%H:%M:%S'') <= ''21:59:59'' }}'
@@ -1390,7 +1391,7 @@
       helper_valido: '{{ col_idx > 0 and modo_aprendizaje in [''cool'',''heat''] and states(helper_offset) not in [''unknown'',''unavailable'',''none'',''''] }}'
       offset_nuevo: '{{ [3.0, [-3.0, (offset_actual|float + delta|float)] | max] | min | round(2) }}'
       resultado_terminal: '{% if not evento_estable %}ignorado{% elif not horario_aprendizaje_habilitado %}ignorado{% elif origen_clasificacion != ''manual_externo'' %}ignorado{% elif evento_manual_tipo == ''ignorado'' %}ignorado{% elif not dedup_ok %}ignorado{% elif not helper_valido %}error_controlado{% else %}aplicado{% endif %}'
-      razon: '{% if not evento_estable %}transicion_inestable{% elif not horario_aprendizaje_habilitado %}out_of_scope_daytime_main{% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz{% elif origen_clasificacion == ''automatico_recovery'' %}estado_recovery{% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion{% elif not dedup_ok %}dedup{% elif not helper_valido %}helper_invalido{% else %}manual_externo_aplicado{% endif %}'
+      razon: '{% if not evento_estable %}transicion_inestable{% elif not horario_aprendizaje_habilitado %}out_of_scope_daytime_main{% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz{% elif origen_clasificacion == ''automatico_recovery'' %}estado_recovery{% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion{% elif not dedup_ok %}dedup_consolidado{% elif not helper_valido %}helper_invalido{% else %}manual_externo_aplicado{% endif %}'
       envio_estado: '{{ ''emitida'' if resultado_terminal == ''aplicado'' else ''fallback'' if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
       mensaje_humano: '{% set tipo_humano = ''Encendido Manual'' if evento_manual_tipo == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual'' else ''Sin Transición'' %}{% set modo_humano = ''Frío'' if modo_aprendizaje == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de Alcance'' %}{% set envio_humano = ''Emitida'' if envio_estado == ''emitida'' else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado'' %}{{ hora_evento }} | TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx }} ({{ contexto }}) | DELTA= {{ ''+0.25'' if delta|float > 0 else ''-0.25'' if delta|float < 0 else ''0.00'' }} | OFFSET= {{ offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano }}'
 
@@ -1445,8 +1446,19 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: 'hito=learning_manual_dedup_descartado | firma_evento={{ firma_evento }} | firma_previa={{ firma_previa }} | evento_last_changed={{ evento_last_changed_iso }} | evento_context_id={{ evento_context_id }} | trace_id={{ trace_id_learning }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | final_transition={{ transicion_final_from ~ '->' ~ transicion_final_to }} | absorbed={{ intermediate_changes_absorbed }} | modo={{ modo_aprendizaje }}'
+          message: 'hito=learning_manual_dedup_descartado | firma_evento={{ firma_evento }} | firma_previa={{ firma_previa }} | evento_last_changed={{ evento_last_changed_iso }} | evento_context_id={{ evento_context_id }} | trace_id={{ trace_id_learning }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | final_transition={{ transicion_final_from ~ '->' ~ transicion_final_to }} | absorbed={{ intermediate_changes_absorbed }} | modo={{ modo_aprendizaje }} | razon_terminal=dedup_consolidado'
           entity_id: climate.0200009211c7_climate
+
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ dedup_ok and evento_estable }}'
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_learning_last_signature
+        data:
+          value: '{{ firma_evento }}'
 
   - choose:
     - conditions:

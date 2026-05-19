@@ -43,6 +43,11 @@ ac_matriz_160_fase_ciclo:
   max: 40
   initial: idle
 
+
+ac_matriz_160_learning_last_signature:
+  name: AC Matriz 160 Learning Last Signature
+  max: 255
+  initial: sin_firma
 ac_matriz_160_learning_manual_evento_firma:
   name: AC Matriz 160 Learning Manual Evento Firma
   max: 255
