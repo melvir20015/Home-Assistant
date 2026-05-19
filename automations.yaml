@@ -774,6 +774,8 @@
   alias: AC-Matriz 160
   description: Control HVAC contextual 8x4x5 con trazabilidad y notificación humana.
   mode: single
+  trace:
+    stored_traces: 50
   triggers:
   - trigger: time_pattern
     minutes: /5
@@ -1372,6 +1374,8 @@
   description: Aprende offset por columna y modo desde ON/OFF manual con clasificación explícita y notificación transaccional.
   mode: queued
   max: 20
+  trace:
+    stored_traces: 50
   triggers:
   - trigger: state
     entity_id: climate.0200009211c7_climate
