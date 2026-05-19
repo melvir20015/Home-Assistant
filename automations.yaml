@@ -877,6 +877,9 @@
       manual_off_block_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_off_block_until'') }}'
       manual_off_block_until_ts: '{% if manual_off_block_until_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_off_block_until_raw, default=0) }}{% endif %}'
       manual_off_block_active: '{{ as_timestamp(now()) < (manual_off_block_until_ts | float(0)) }}'
+      manual_off_rebound_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_off_rebound_until'') }}'
+      manual_off_rebound_until_ts: '{% if manual_off_rebound_until_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_off_rebound_until_raw, default=0) }}{% endif %}'
+      manual_off_rebound_active: '{{ as_timestamp(now()) < (manual_off_rebound_until_ts | float(0)) }}'
       heat_block_until_raw: '{{ states(''input_datetime.ac_matriz_160_heat_block_until'') }}'
       heat_block_until_ts: '{% if heat_block_until_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(heat_block_until_raw, default=0) }}{% endif %}'
       heat_block_active: '{{ as_timestamp(now()) < (heat_block_until_ts | float(0)) }}'
@@ -893,7 +896,7 @@
       turbo_exit_cool: '{{ turbo_phase == ''turbo_cool'' and tin|float <= mid_cool|float }}'
       turbo_exit_heat: '{{ turbo_phase == ''turbo_heat'' and tin|float >= mid_heat|float }}'
       action_target_base: '{% if reason_invalid != ''ok'' %}none{% elif climate_mode == ''off'' and (cool_on_gate_met or turbo_enter_cool) %}turn_on_cool{% elif climate_mode == ''off'' and (tin|float <= eff_t_on_heat|float or turbo_enter_heat) %}turn_on_heat{% elif climate_mode == ''cool'' and tin|float <= eff_t_off_cool|float %}turn_off{% elif climate_mode == ''heat'' and tin|float >= eff_t_off_heat|float %}turn_off{% else %}none{% endif %}'
-      action_target: '{% if manual_off_block_active and action_target_base in [''turn_on_cool'',''turn_on_heat''] %}none{% elif heat_block_active and action_target_base == ''turn_on_heat'' %}none{% elif cool_block_active and action_target_base == ''turn_on_cool'' %}none{% else %}{{ action_target_base }}{% endif %}'
+      action_target: '{% if (manual_off_block_active or manual_off_rebound_active) and action_target_base in [''turn_on_cool'',''turn_on_heat''] %}none{% elif heat_block_active and action_target_base == ''turn_on_heat'' %}none{% elif cool_block_active and action_target_base == ''turn_on_cool'' %}none{% else %}{{ action_target_base }}{% endif %}'
       auto_origin_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S'') ~ ''-'' ~ (context.id if context is defined and context.id is defined else ''ctx'') }}'
       auto_origin_kind: automatico_ac_matriz_160
       auto_origin_expires_at: '{{ (now() + timedelta(seconds=30)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
@@ -980,6 +983,15 @@
         data:
           name: AC-Matriz 160
           message: hito=auto_on_bloqueado_post_manual_off | block_until={{ manual_off_block_until_raw }} | now_ts={{ now_ts }} | block_active={{ manual_off_block_active }} | action_intento={{ action_target_base }} | resultado=blocked | contexto={{ col_humana }}
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ manual_off_rebound_active and action_target_base in [''turn_on_cool'',''turn_on_heat''] }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=auto_on_bloqueado_rebote_post_manual_off | rebound_until={{ manual_off_rebound_until_raw }} | now_ts={{ now_ts }} | rebound_active={{ manual_off_rebound_active }} | action_intento={{ action_target_base }} | resultado=blocked | contexto={{ col_humana }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -1381,6 +1393,9 @@
       offset_actual: '{{ states(helper_offset) | float(0) if modo_aprendizaje in [''cool'',''heat''] else 0 }}'
       horario_aprendizaje_habilitado: '{{ now().strftime(''%H:%M:%S'') >= ''07:01:00'' and now().strftime(''%H:%M:%S'') <= ''21:59:59'' }}'
       origen_clasificacion: '{% if marker_compatible %}automatico_ac_matriz_160{% elif not transicion_real %}automatico_recovery{% else %}manual_externo{% endif %}'
+      manual_off_rebound_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_off_rebound_until'') | trim }}'
+      manual_off_rebound_until_ts: '{% if manual_off_rebound_until_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_off_rebound_until_raw, default=0) }}{% endif %}'
+      manual_off_rebound_active: '{{ as_timestamp(now()) < (manual_off_rebound_until_ts | float(0)) }}'
       delta: >-
         {% if modo_aprendizaje == 'cool' and evento_manual_tipo == 'encendido_manual' %}-0.25
         {% elif modo_aprendizaje == 'cool' and evento_manual_tipo == 'apagado_manual' %}0.25
@@ -1390,8 +1405,8 @@
         {% endif %}
       helper_valido: '{{ col_idx > 0 and modo_aprendizaje in [''cool'',''heat''] and states(helper_offset) not in [''unknown'',''unavailable'',''none'',''''] }}'
       offset_nuevo: '{{ [3.0, [-3.0, (offset_actual|float + delta|float)] | max] | min | round(2) }}'
-      resultado_terminal: '{% if not evento_estable %}ignorado{% elif not horario_aprendizaje_habilitado %}ignorado{% elif origen_clasificacion != ''manual_externo'' %}ignorado{% elif evento_manual_tipo == ''ignorado'' %}ignorado{% elif not dedup_ok %}ignorado{% elif not helper_valido %}error_controlado{% else %}aplicado{% endif %}'
-      razon: '{% if not evento_estable %}transicion_inestable{% elif not horario_aprendizaje_habilitado %}out_of_scope_daytime_main{% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz{% elif origen_clasificacion == ''automatico_recovery'' %}estado_recovery{% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion{% elif not dedup_ok %}dedup_consolidado{% elif not helper_valido %}helper_invalido{% else %}manual_externo_aplicado{% endif %}'
+      resultado_terminal: '{% if not evento_estable %}ignorado{% elif not horario_aprendizaje_habilitado %}ignorado{% elif origen_clasificacion != ''manual_externo'' %}ignorado{% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active %}ignorado{% elif evento_manual_tipo == ''ignorado'' %}ignorado{% elif not dedup_ok %}ignorado{% elif not helper_valido %}error_controlado{% else %}aplicado{% endif %}'
+      razon: '{% if not evento_estable %}transicion_inestable{% elif not horario_aprendizaje_habilitado %}out_of_scope_daytime_main{% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz{% elif origen_clasificacion == ''automatico_recovery'' %}estado_recovery{% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active %}rebote_post_manual_off{% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion{% elif not dedup_ok %}dedup_consolidado{% elif not helper_valido %}helper_invalido{% else %}manual_externo_aplicado{% endif %}'
       envio_estado: '{{ ''emitida'' if resultado_terminal == ''aplicado'' else ''fallback'' if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
       mensaje_humano: '{% set tipo_humano = ''Encendido Manual'' if evento_manual_tipo == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual'' else ''Sin Transición'' %}{% set modo_humano = ''Frío'' if modo_aprendizaje == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de Alcance'' %}{% set envio_humano = ''Emitida'' if envio_estado == ''emitida'' else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado'' %}{{ hora_evento }} | TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx }} ({{ contexto }}) | DELTA= {{ ''+0.25'' if delta|float > 0 else ''-0.25'' if delta|float < 0 else ''0.00'' }} | OFFSET= {{ offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano }}'
 
@@ -1400,6 +1415,21 @@
       entity_id: input_text.ac_matriz_160_learning_manual_evento_firma
     data:
       value: '{{ firma_learning_manual }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ evento_manual_tipo == ''apagado_manual'' and origen_clasificacion == ''manual_externo'' and dedup_ok }}'
+      sequence:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_manual_off_rebound_until
+        data:
+          datetime: '{{ (now() + timedelta(seconds=15)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: 'hito=manual_off_rebound_bloqueo_set | trace_id={{ marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts) }} | rebound_until={{ (now() + timedelta(seconds=15)).strftime(''%Y-%m-%d %H:%M:%S'') }} | ttl_s=15 | origen={{ origen_clasificacion }} | dedup_ok={{ dedup_ok }} | from={{ modo_anterior }} | to={{ modo_nuevo }}'
+          entity_id: climate.0200009211c7_climate
   - delay:
       seconds: 3
   - variables:
@@ -1494,6 +1524,11 @@
           entity_id: input_datetime.ac_matriz_160_manual_off_block_until
         data:
           datetime: '{{ (now() + timedelta(minutes=5)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: 'hito=manual_off_bloqueo_largo_set | trace_id={{ trace_id_learning }} | block_until={{ (now() + timedelta(minutes=5)).strftime(''%Y-%m-%d %H:%M:%S'') }} | origen={{ origen_clasificacion }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }}'
+          entity_id: climate.0200009211c7_climate
   - service: input_text.set_value
     target:
       entity_id: input_text.ac_matriz_160_ultima_accion
