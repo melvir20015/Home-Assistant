@@ -1486,6 +1486,7 @@
       hora_evento: '{{ now().strftime(''%I:%M:%S %p'') }}'
       modo_anterior: '{{ trigger.from_state.state | lower if trigger.from_state is not none else ''unknown'' }}'
       modo_nuevo: '{{ trigger.to_state.state | lower if trigger.to_state is not none else ''unknown'' }}'
+      tin: '{{ [states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(0), states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(0)] | average | round(2) }}'
       transicion_real: '{{ modo_anterior != modo_nuevo }}'
       transicion_hvac_real: >-
         {{ (modo_anterior == 'off' and modo_nuevo in ['cool','heat']) or (modo_nuevo == 'off' and modo_anterior in ['cool','heat']) }}
@@ -1556,12 +1557,116 @@
         {% endif %}
       envio_estado: '{{ ''emitida'' if resultado_terminal == ''aplicado'' else ''fallback'' if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
       mensaje_humano: '{% set tipo_humano = ''Encendido Manual'' if evento_manual_tipo == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual'' else ''Sin Transición'' %}{% set modo_humano = ''Frío'' if modo_aprendizaje == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de Alcance'' %}{% set envio_humano = ''Emitida'' if envio_estado == ''emitida'' else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado'' %}{{ hora_evento }} | TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx }} ({{ contexto }}) | DELTA= {{ ''+0.25'' if delta|float > 0 else ''-0.25'' if delta|float < 0 else ''0.00'' }} | OFFSET= {{ offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano }}'
+      legacy_manual_hold_active: '{{ states(''input_text.ac_matriz_160_manual_legacy_hold'') == ''on'' }}'
+      hvac_min_sp: '{{ state_attr(''climate.0200009211c7_climate'', ''min_temp'') | float(17) | round(0, ''floor'') | int }}'
+      hvac_max_sp: '{{ state_attr(''climate.0200009211c7_climate'', ''max_temp'') | float(23) | round(0, ''floor'') | int }}'
+      helper_t_off_cool: '{{ states(''input_number.ac_matriz_160_t_off_cool'') | float(24) }}'
+      helper_t_on_cool: '{{ states(''input_number.ac_matriz_160_t_on_cool'') | float(25) }}'
+      helper_t_off_heat: '{{ states(''input_number.ac_matriz_160_t_off_heat'') | float(22) }}'
+      helper_t_on_heat: '{{ states(''input_number.ac_matriz_160_t_on_heat'') | float(21) }}'
+      reconcile_target_mode: >-
+        {% set tin_v = tin | float(0) %}
+        {% if tin_v >= helper_t_on_cool | float(25) %}cool
+        {% elif tin_v <= helper_t_on_heat | float(21) %}heat
+        {% elif (tin_v - helper_t_off_cool | float(24)) | abs <= (tin_v - helper_t_off_heat | float(22)) | abs %}cool
+        {% else %}heat
+        {% endif %}
+      reconcile_sp_target: >-
+        {% if reconcile_target_mode == 'cool' %}
+        {{ [hvac_max_sp|int, [hvac_min_sp|int, ((helper_t_off_cool | float(24)) | round(0, 'floor') | int - 1)] | max] | min | int }}
+        {% else %}28{% endif %}
+      reconcile_cool_delta: '{{ (tin|float(0) - helper_t_off_cool|float(24)) | round(2) }}'
+      reconcile_fan_internal: >-
+        {% if reconcile_target_mode == 'cool' %}
+          {% if reconcile_cool_delta|float >= 2.0 %}high
+          {% elif reconcile_cool_delta|float >= 1.0 %}medium
+          {% else %}low
+          {% endif %}
+        {% else %}high{% endif %}
+      reconcile_fan_candidate_label: '{% if reconcile_fan_internal == ''low'' %}Low{% elif reconcile_fan_internal == ''medium'' %}Med{% elif reconcile_fan_internal == ''high'' %}High{% elif reconcile_fan_internal == ''auto'' %}Auto{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{% endif %}'
+      reconcile_fan_modes_supported: '{{ (state_attr(''climate.0200009211c7_climate'', ''fan_modes'') or []) | list }}'
+      reconcile_fan_target_final: '{% if reconcile_fan_candidate_label in reconcile_fan_modes_supported %}{{ reconcile_fan_candidate_label }}{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{% endif %}'
+      reconcile_event_signature: '{{ evento_context_id ~ ''|'' ~ evento_last_changed_ts ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ reconcile_target_mode }}'
+      reconcile_dedup_ok: '{{ states(''input_text.ac_matriz_160_reconcile_last_signature'') != reconcile_event_signature }}'
+      reconcile_inconsistent_mode: '{{ modo_nuevo in [''fan_only'',''auto''] }}'
+      reconcile_inconsistent_contract: '{{ modo_nuevo in [''cool'',''heat''] and ((modo_nuevo == ''cool'' and (state_attr(''climate.0200009211c7_climate'',''temperature'') | int(-999) != reconcile_sp_target|int)) or (modo_nuevo == ''heat'' and (state_attr(''climate.0200009211c7_climate'',''temperature'') | int(-999) != reconcile_sp_target|int))) }}'
+      reconcile_apply: '{{ origen_clasificacion == ''manual_externo'' and transicion_real and (reconcile_inconsistent_mode or reconcile_inconsistent_contract) and (not legacy_manual_hold_active) and reconcile_dedup_ok }}'
 
   - service: input_text.set_value
     target:
       entity_id: input_text.ac_matriz_160_learning_manual_evento_firma
     data:
       value: '{{ firma_learning_manual }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ origen_clasificacion == ''manual_externo'' and modo_nuevo in [''fan_only'',''auto''] }}'
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_manual_legacy_hold
+        data:
+          value: 'on'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=reconcile_manual_hold_on | origen={{ origen_clasificacion }} | modo_manual={{ modo_nuevo }} | razon=respeto_intencion_fan_auto
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ origen_clasificacion == ''manual_externo'' and modo_nuevo in [''cool'',''heat''] and legacy_manual_hold_active }}'
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_manual_legacy_hold
+        data:
+          value: 'off'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=reconcile_manual_hold_off | origen={{ origen_clasificacion }} | modo_manual={{ modo_nuevo }} | razon=rearmado_por_seleccion_termica_manual
+          entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ reconcile_apply }}'
+      sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: '{{ reconcile_target_mode }}'
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ reconcile_sp_target }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ reconcile_fan_target_final in reconcile_fan_modes_supported }}'
+          sequence:
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: '{{ reconcile_fan_target_final }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_reconcile_last_signature
+        data:
+          value: '{{ reconcile_event_signature }}'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=reconcile_manual_post_on_applied | origen={{ origen_clasificacion }} | modo_heredado={{ modo_nuevo }} | modo_objetivo={{ reconcile_target_mode }} | columna={{ col_idx }} | contexto={{ contexto }} | sp_objetivo={{ reconcile_sp_target }} | fan_objetivo={{ reconcile_fan_target_final }} | dedup_ok={{ reconcile_dedup_ok }}
+          entity_id: climate.0200009211c7_climate
+    default:
+    - service: logbook.log
+      data:
+        name: AC-Matriz 160
+        message: hito=reconcile_manual_post_on_skip | origen={{ origen_clasificacion }} | modo_heredado={{ modo_nuevo }} | modo_objetivo={{ reconcile_target_mode }} | columna={{ col_idx }} | sp_objetivo={{ reconcile_sp_target }} | fan_objetivo={{ reconcile_fan_target_final }} | hold={{ legacy_manual_hold_active }} | dedup_ok={{ reconcile_dedup_ok }} | razon={{ 'origen_no_manual' if origen_clasificacion != 'manual_externo' else 'hold_manual_fan_auto' if legacy_manual_hold_active else 'sin_inconsistencia' if not (reconcile_inconsistent_mode or reconcile_inconsistent_contract) else 'dedup_evento' if not reconcile_dedup_ok else 'no_aplica' }}
+        entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template

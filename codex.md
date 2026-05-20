@@ -2324,3 +2324,26 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - `hito=turn_on_cool_normal` con `sp_final` y `fan_apply` finales.
   - `hito=fan_mode_skip_invalid` con capacidades reportadas y razón técnica.
   - `hito=fan_post_check_auto_on` con resultado final post-check y reintento.
+
+## 35) Reconciliación post-encendido manual con modo heredado (2026-05-20)
+
+- **Alcance:** automatización `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`), reutilizando la clasificación vigente (`manual_externo` vs `automatico_ac_matriz_160`).
+- **Condiciones de entrada:**
+  - Solo aplica cuando el origen ya fue clasificado como `manual_externo`.
+  - Se activa para encendido/manual con modo heredado `fan_only` o `auto`.
+  - También puede aplicar a `cool`/`heat` cuando el `SP` queda inconsistente frente al contrato de columna activa.
+- **Decisión de modo objetivo por columna activa:**
+  - Se decide `cool` o `heat` usando los umbrales efectivos vigentes (`t_on/t_off`) ya persistidos por AC-Matriz 160.
+  - La rama define `SP` contractual objetivo y FAN objetivo con normalización de etiqueta real del equipo (`medium -> Med`).
+- **Orden de aplicación atómica por evento:**
+  1. `climate.set_hvac_mode` al modo objetivo,
+  2. `climate.set_temperature` al `SP` objetivo,
+  3. `climate.set_fan_mode` al FAN normalizado cuando exista soporte real.
+  4. Persistencia de firma de reconciliación para deduplicación por evento/traza.
+- **Exclusión por intención manual `FAN/AUTO`:**
+  - Si el usuario cambia manualmente a `fan_only` o `auto`, se activa un hold (`ac_matriz_160_manual_legacy_hold=on`) y no se reimpone columna en ese acto.
+  - El hold se desactiva únicamente con una nueva selección manual explícita a `cool` o `heat`, rehabilitando la reconciliación.
+- **Garantías de no regresión:**
+  - No se modifica la lógica base de clasificación de origen.
+  - No se resetean ni limpian bloqueos estructurales (`manual_off_block_until`, `cool_block_until`, `heat_block_until`).
+  - Se agregan hitos de observabilidad terminal (`reconcile_manual_post_on_applied`, `reconcile_manual_post_on_skip`, `reconcile_manual_hold_on`, `reconcile_manual_hold_off`).
