@@ -2260,3 +2260,25 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - `hito=learning_manual_ignorado | resultado_terminal=ignorado | razon=origen_automatico_ac_matriz | marker_compatible=true`.
   - `hito=auto_marker_consumido | resultado_terminal=ignorado | razon=origen_automatico_ac_matriz`.
   - `hito=learning_manual_columna | resultado_terminal=aplicado | razon=manual_externo_aplicado`.
+
+
+## 32) Ajuste por franja en fórmula COOL de AC-Matriz 160 (2026-05-20)
+
+- Se incorpora ajuste explícito por franja horaria en `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) para que `cool_off` y `cool_on` varíen dentro del horario diurno.
+- Implementación aplicada sobre `t_off_cool_base` antes de offsets de aprendizaje por columna.
+- Mapeo de ajuste por `slot_idx`:
+  - `0` (`07:01–10:00`): `+0.30`
+  - `1` (`10:01–13:00`): `-0.20`
+  - `2` (`13:01–16:00`): `-0.30`
+  - `3` (`16:01–19:00`): `-0.10`
+  - `4` (`19:01–21:59`): `+0.20`
+- Fórmula operativa:
+  - `t_off_cool_base_no_slot = clamp(base_cool, frontera_estacional, 26.0)`
+  - `t_off_cool_base = clamp(t_off_cool_base_no_slot + slot_cool_adjust, frontera_estacional, 26.0)`
+  - `t_on_cool_base = t_off_cool_base + 1.0`
+- Seguridad/robustez:
+  - Se conservan clamps estacionales y máximos contractuales existentes.
+  - Se preserva histéresis fija de `1.0 °C`.
+  - No se altera la lógica de offsets por columna ni bloqueos de seguridad.
+- Observabilidad:
+  - `logbook` de evaluación ahora incluye `cool_off_no_slot` y `slot_adj` para trazabilidad diagnóstica.

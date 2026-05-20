@@ -821,7 +821,16 @@
       base_cool: '{{ 24 }}'
       base_heat: '{{ 24 }}'
       thermal_boundary_by_season: '{% if season_name == ''Verano'' %}20{% elif season_name == ''Invierno'' %}24{% else %}22{% endif %}'
-      t_off_cool_base: '{{ [26.0, [thermal_boundary_by_season|float(22), (base_cool|float(24))] | max] | min | round(2) }}'
+      slot_cool_adjust: >-
+        {% set si = slot_idx | int(0) %}
+        {% if si == 0 %}0.30
+        {% elif si == 1 %}-0.20
+        {% elif si == 2 %}-0.30
+        {% elif si == 3 %}-0.10
+        {% else %}0.20
+        {% endif %}
+      t_off_cool_base_no_slot: '{{ [26.0, [thermal_boundary_by_season|float(22), (base_cool|float(24))] | max] | min | round(2) }}'
+      t_off_cool_base: '{{ [26.0, [thermal_boundary_by_season|float(22), (t_off_cool_base_no_slot|float + slot_cool_adjust|float)] | max] | min | round(2) }}'
       t_on_cool_base: '{{ (t_off_cool_base|float + 1.0) | round(2) }}'
       t_off_heat_base: '{{ [thermal_boundary_by_season|float(22), [17.0, (base_heat|float(24))] | max] | min | round(2) }}'
       t_on_heat_base: '{{ (t_off_heat_base|float - 1.0) | round(2) }}'
@@ -974,7 +983,7 @@
   - service: logbook.log
     data:
       name: AC-Matriz 160
-      message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base }},heat_on {{ t_on_heat_base }},heat_off {{ t_off_heat_base }} | offset_columna=cool {{ offset_cool_helper }},heat {{ offset_heat_helper }} | umbrales_efectivos=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}
+      message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base }},cool_off_no_slot {{ t_off_cool_base_no_slot }},slot_adj {{ slot_cool_adjust }},heat_on {{ t_on_heat_base }},heat_off {{ t_off_heat_base }} | offset_columna=cool {{ offset_cool_helper }},heat {{ offset_heat_helper }} | umbrales_efectivos=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
