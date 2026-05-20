@@ -2282,3 +2282,21 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - No se altera la lógica de offsets por columna ni bloqueos de seguridad.
 - Observabilidad:
   - `logbook` de evaluación ahora incluye `cool_off_no_slot` y `slot_adj` para trazabilidad diagnóstica.
+
+## 33) Nota operativa — normalización dinámica de fan en `turn_on_cool` AC-Matriz 160 (2026-05-20)
+
+- En la automatización `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) se agrega validación dinámica de capacidades reales de fan antes de `climate.set_fan_mode` para evitar errores `not_valid_fan_mode`.
+- Capacidades confirmadas del equipo:
+  - `fan_modes: Auto, Low, Med, High`
+  - `hvac_modes: off, auto, cool, fan_only, heat`
+- Regla oficial de normalización para esta entidad:
+  - target interno `medium` siempre se traduce a etiqueta real `Med`.
+- Política de fallback aplicada en `turn_on_cool`:
+  - usar target normalizado si está soportado;
+  - si `medium` no existe, intentar `High` y luego `Auto`;
+  - si no hay modo soportado alterno, conservar `fan_mode` actual y no llamar servicio.
+- Guarda de ejecución:
+  - `fan_call_allowed = fan_should_apply AND fan_target_valid AND fan_target_final_label != fan_mode_actual`.
+- Telemetría técnica:
+  - cuando se requiere fan pero se omite la llamada, se registra `hito=fan_mode_skip_invalid` con `fan_target_internal`, `fan_target_final_label`, `fan_mode_actual`, `fan_modes_supported` y `razon` (`target_no_soportado` o `sin_cambio_requerido`).
+- La ruta de `turn_on_cool` mantiene el flujo general y la notificación de encendido automático sin cambios estructurales.
