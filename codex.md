@@ -2300,3 +2300,27 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - Telemetría técnica:
   - cuando se requiere fan pero se omite la llamada, se registra `hito=fan_mode_skip_invalid` con `fan_target_internal`, `fan_target_final_label`, `fan_mode_actual`, `fan_modes_supported` y `razon` (`target_no_soportado` o `sin_cambio_requerido`).
 - La ruta de `turn_on_cool` mantiene el flujo general y la notificación de encendido automático sin cambios estructurales.
+
+## 34) Política FAN auto-ON y verificación post-aplicación AC-Matriz 160 (2026-05-20)
+
+- **Alcance:** automatización `AC-Matriz 160` (`id: ac_matriz_160_main_v1`), rama `action_target == turn_on_cool`.
+- **Bypass controlado de 240 s (solo primer set FAN en auto-ON):**
+  - Se introduce condición explícita `fan_auto_on_first_set` para permitir intento de aplicación de FAN en el encendido automático inicial aun cuando `fan_change_window_ok=false`.
+  - La ventana anti-flapping de `240 s` se mantiene vigente para ajustes dinámicos posteriores (`fan_should_apply_dynamic`).
+- **Capacidades del equipo y normalización:**
+  - Se mantiene lectura de `fan_modes` reales y la normalización `medium -> Med`.
+  - Si existe modo soportado objetivo, se ejecuta `climate.set_fan_mode`.
+  - Si no existe, se conserva fallback definido y se registra `hito=fan_mode_skip_invalid` con razón técnica y momento (`auto_on` o `dinamico`).
+- **Verificación post-aplicación en auto-ON:**
+  - Luego de aplicar `climate.set_temperature` y potencial `climate.set_fan_mode`, se espera `3 s`, se releen `temperature` y `fan_mode` reales y se comparan contra objetivo.
+  - Si FAN no coincide y era aplicable en auto-ON, se ejecuta un único reintento de `climate.set_fan_mode`, nueva espera corta y nueva lectura.
+  - Se registra resultado en `logbook` con `hito=fan_post_check_auto_on` y estados: `aplicado`, `aplicado_tras_reintento`, `no_aplicado_controlado`, `no_aplicado_por_limitacion`.
+- **Notificación ON/OFF humana compacta:**
+  - Se mantiene deduplicación/ventana para eventos automáticos y solo se notifican ON/OFF automáticos.
+  - Para ON de `cool`, la notificación usa valores finales confirmados (lectura real):
+    - FAN en español: `Low->Bajo`, `Med/Medium->Medio`, `High->Alto`, con fallback seguro.
+    - SP mostrado desde `temperature` real del equipo.
+- **Trazas esperadas de soporte:**
+  - `hito=turn_on_cool_normal` con `sp_final` y `fan_apply` finales.
+  - `hito=fan_mode_skip_invalid` con capacidades reportadas y razón técnica.
+  - `hito=fan_post_check_auto_on` con resultado final post-check y reintento.

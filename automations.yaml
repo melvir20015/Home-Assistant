@@ -885,7 +885,7 @@
       fan_target_valid: '{{ fan_target_final_label in fan_modes_supported }}'
       fan_mode_actual: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}'
       fan_mode_actual_lc: '{{ fan_mode_actual | lower }}'
-      fan_call_allowed: '{{ fan_should_apply and fan_target_valid and (fan_target_final_label | lower) != fan_mode_actual_lc }}'
+      fan_call_allowed: '{{ fan_target_valid and (fan_target_final_label | lower) != fan_mode_actual_lc }}'
       fan_skip_reason: '{% if not fan_should_apply %}fan_no_requerido{% elif not fan_target_valid %}target_no_soportado{% elif (fan_target_final_label | lower) == fan_mode_actual_lc %}sin_cambio_requerido{% else %}ok{% endif %}'
       last_fan_change_ts_raw: '{{ states(''input_datetime.ac_matriz_160_last_fan_change_ts'') }}'
       last_fan_change_ts: '{% if last_fan_change_ts_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(last_fan_change_ts_raw, default=0) }}{% endif %}'
@@ -893,7 +893,11 @@
       fan_current_mode: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string | lower }}'
       fan_change_window_ok: '{{ (as_timestamp(now()) - (last_fan_change_ts | float(0))) >= fan_min_window_s }}'
       fan_needs_change: '{{ fan_current_mode != fan_cool_normal_target }}'
-      fan_should_apply: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_needs_change and (fan_change_window_ok or (last_fan_change_ts | float(0)) == 0) }}'
+      fan_should_apply: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_needs_change }}'
+      fan_should_apply_dynamic: '{{ fan_should_apply and (fan_change_window_ok or (last_fan_change_ts | float(0)) == 0) }}'
+      fan_auto_on_first_set: '{{ action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_should_apply }}'
+      fan_apply_allowed_dynamic: '{{ fan_call_allowed and fan_should_apply_dynamic }}'
+      fan_apply_allowed_auto_on: '{{ fan_call_allowed and fan_auto_on_first_set }}'
       validation_reason: '{% if helper_invalid_state %}recalculado_helper_no_disponible{% elif not firma_match %}contexto_recalculado_por_cambio_columna{% elif not rango_ok %}recalculado_rango_contractual_invalido{% elif not histeresis_ok %}recalculado_histeresis_invalida{% else %}ok_lectura_helper_valida{% endif %}'
       reason_invalid: '{% if invalid_data %}fallback_datos_externos_o_sensores{% elif not presence_ok %}sin_presencia_en_disparo{% else %}ok{% endif %}'
       manual_off_block_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_off_block_until'') }}'
@@ -1215,31 +1219,90 @@
           - choose:
             - conditions:
               - condition: template
-                value_template: '{{ fan_call_allowed }}'
+                value_template: '{{ fan_apply_allowed_auto_on or fan_apply_allowed_dynamic }}'
               sequence:
               - service: climate.set_fan_mode
                 target:
                   entity_id: climate.0200009211c7_climate
                 data:
                   fan_mode: '{{ fan_target_final_label }}'
-              - service: input_datetime.set_datetime
-                target:
-                  entity_id: input_datetime.ac_matriz_160_last_fan_change_ts
-                data:
-                  datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+              - delay: '00:00:03'
+              - variables:
+                  fan_mode_after_apply: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}'
+                  temp_after_apply: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'') }}'
+                  fan_apply_match: '{{ (fan_mode_after_apply | lower) == (fan_target_final_label | lower) }}'
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ (not fan_apply_match) and fan_apply_allowed_auto_on }}'
+                  sequence:
+                  - service: climate.set_fan_mode
+                    target:
+                      entity_id: climate.0200009211c7_climate
+                    data:
+                      fan_mode: '{{ fan_target_final_label }}'
+                  - delay: '00:00:03'
+                  - variables:
+                      fan_mode_after_retry: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}'
+                      temp_after_retry: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'') }}'
+                      fan_retry_match: '{{ (fan_mode_after_retry | lower) == (fan_target_final_label | lower) }}'
+                  - service: logbook.log
+                    data:
+                      name: AC-Matriz 160
+                      message: hito=fan_post_check_auto_on | resultado={{ 'aplicado_tras_reintento' if fan_retry_match else 'no_aplicado_controlado' }} | fan_objetivo={{ fan_target_final_label }} | fan_final={{ fan_mode_after_retry }} | sp_objetivo={{ sp_cool_normal }} | sp_final={{ temp_after_retry }} | reintento=1
+                      entity_id: climate.0200009211c7_climate
+                default:
+                - service: logbook.log
+                  data:
+                    name: AC-Matriz 160
+                    message: hito=fan_post_check_auto_on | resultado={{ 'aplicado' if fan_apply_match else 'no_aplicado_controlado' }} | fan_objetivo={{ fan_target_final_label }} | fan_final={{ fan_mode_after_apply }} | sp_objetivo={{ sp_cool_normal }} | sp_final={{ temp_after_apply }} | reintento=0
+                    entity_id: climate.0200009211c7_climate
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ fan_apply_allowed_dynamic }}'
+                  sequence:
+                  - service: input_datetime.set_datetime
+                    target:
+                      entity_id: input_datetime.ac_matriz_160_last_fan_change_ts
+                    data:
+                      datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
             - conditions:
               - condition: template
-                value_template: '{{ fan_should_apply and (not fan_call_allowed) }}'
+                value_template: '{{ fan_auto_on_first_set and (not fan_call_allowed) }}'
               sequence:
               - service: logbook.log
                 data:
                   name: AC-Matriz 160
-                  message: hito=fan_mode_skip_invalid | fan_target_internal={{ fan_target_internal }} | fan_target_final_label={{ fan_target_final_label }} | fan_mode_actual={{ fan_mode_actual }} | fan_modes_supported={{ fan_modes_supported }} | razon={{ fan_skip_reason }}
+                  message: hito=fan_mode_skip_invalid | fan_target_internal={{ fan_target_internal }} | fan_target_final_label={{ fan_target_final_label }} | fan_mode_actual={{ fan_mode_actual }} | fan_modes_supported={{ fan_modes_supported }} | razon={{ fan_skip_reason }} | momento=auto_on
+                  entity_id: climate.0200009211c7_climate
+              - service: logbook.log
+                data:
+                  name: AC-Matriz 160
+                  message: hito=fan_post_check_auto_on | resultado=no_aplicado_por_limitacion | fan_objetivo={{ fan_target_final_label }} | fan_final={{ fan_mode_actual }} | sp_objetivo={{ sp_cool_normal }} | sp_final={{ state_attr('climate.0200009211c7_climate','temperature') }} | reintento=0
+                  entity_id: climate.0200009211c7_climate
+            - conditions:
+              - condition: template
+                value_template: '{{ fan_should_apply_dynamic and (not fan_call_allowed) }}'
+              sequence:
+              - service: logbook.log
+                data:
+                  name: AC-Matriz 160
+                  message: hito=fan_mode_skip_invalid | fan_target_internal={{ fan_target_internal }} | fan_target_final_label={{ fan_target_final_label }} | fan_mode_actual={{ fan_mode_actual }} | fan_modes_supported={{ fan_modes_supported }} | razon={{ fan_skip_reason }} | momento=dinamico
+                  entity_id: climate.0200009211c7_climate
+            - conditions:
+              - condition: template
+                value_template: '{{ fan_should_apply and (not fan_change_window_ok) and (not fan_auto_on_first_set) }}'
+              sequence:
+              - service: logbook.log
+                data:
+                  name: AC-Matriz 160
+                  message: hito=fan_mode_skip_window_240s | fan_target={{ fan_target_final_label }} | fan_mode_actual={{ fan_mode_actual }} | fan_window_ok={{ fan_change_window_ok }} | col={{ col_humana }}
                   entity_id: climate.0200009211c7_climate
           - service: logbook.log
             data:
               name: AC-Matriz 160
-              message: hito=turn_on_cool_normal | horario_habilitado={{ horario_habilitado }} | gate_on={{ cool_on_gate_met }} | Tin={{ tin }} | Hin={{ hin }} | ON={{ eff_t_on_cool }} | OFF={{ eff_t_off_cool }} | off_entero={{ off_entero }} | sp_objetivo={{ sp_objetivo }} | sp_final={{ sp_cool_normal if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 18 }} | fan_base={{ fan_cool_normal_base }} | fan_target={{ fan_target_final_label if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'high' }} | fan_apply={{ fan_call_allowed }} | fan_window_ok={{ fan_change_window_ok }} | delta={{ cool_delta_real }} | col={{ col_humana }} | motivo=setpoint_entero_por_off_floor
+              message: hito=turn_on_cool_normal | horario_habilitado={{ horario_habilitado }} | gate_on={{ cool_on_gate_met }} | Tin={{ tin }} | Hin={{ hin }} | ON={{ eff_t_on_cool }} | OFF={{ eff_t_off_cool }} | off_entero={{ off_entero }} | sp_objetivo={{ sp_objetivo }} | sp_final={{ state_attr('climate.0200009211c7_climate','temperature') }} | fan_base={{ fan_cool_normal_base }} | fan_target={{ fan_target_final_label if states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'high' }} | fan_apply={{ fan_apply_allowed_auto_on or fan_apply_allowed_dynamic }} | fan_window_ok={{ fan_change_window_ok }} | delta={{ cool_delta_real }} | col={{ col_humana }} | motivo=setpoint_entero_por_off_floor
               entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -1355,12 +1418,12 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ action_target in [''turn_on_cool'',''turn_on_heat'',''turn_off''] and dedup_ok }}'
+        value_template: '{{ action_target in [''turn_on_cool'',''turn_on_heat'',''turn_off''] and dedup_ok and action_target in [''turn_on_cool'',''turn_off''] }}'
       sequence:
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC-Matriz 160
-          message: '{% set modo_final = ''Frío'' if action_target == ''turn_on_cool'' else ''Calor'' if action_target == ''turn_on_heat'' else ''Apagado'' %}{% set include_detalle_operacion = action_target != ''turn_off'' %}{% set sp_msg = ''SP= '' ~ sp_cool_normal ~ ''°C'' if action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' else ''SP= 18°C (Turbo)'' if action_target == ''turn_on_cool'' else ''SP= 28°C'' if action_target == ''turn_on_heat'' else '''' %}{% set fan_msg = ''FAN= '' ~ fan_cool_normal_target|title if action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' else ''FAN= High (Turbo)'' if action_target == ''turn_on_cool'' else '''' %}{% set temp_apagado = eff_t_off_cool if action_target in [''turn_on_cool'',''turn_off''] and climate_mode == ''cool'' else eff_t_off_heat if action_target in [''turn_on_heat'',''turn_off''] and climate_mode == ''heat'' else eff_t_off_cool if action_target == ''turn_on_cool'' else eff_t_off_heat if action_target == ''turn_on_heat'' else eff_t_off_cool %}{{ now().strftime(''%I:%M %p'') }} | EVENTO= {{ ''Encendido'' if action_target in [''turn_on_cool'',''turn_on_heat''] else ''Apagado'' }}{% if include_detalle_operacion %} | MODO= {{ modo_final }} | {{ sp_msg }} | {{ fan_msg }}{% endif %} | INTERIOR= {{ tin }}°C/{{ hin }}% | EXTERIOR= {{ tout if tout is not none else ''No disponible'' }}°C/{{ hout }}% | TEMP APAGADO= {{ temp_apagado }} | CONTEXTO= Columna {{ col_idx }} ({{ col_humana }})'
+          message: '{% set modo_final = ''Frío'' if action_target == ''turn_on_cool'' else ''Calor'' if action_target == ''turn_on_heat'' else ''Apagado'' %}{% set include_detalle_operacion = action_target != ''turn_off'' %}{% set sp_real = state_attr('climate.0200009211c7_climate','temperature') %}{% set sp_msg = 'SP= ' ~ sp_real ~ '°C' if action_target == 'turn_on_cool' and states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'SP= 18°C (Turbo)' if action_target == 'turn_on_cool' else '' %}{% set fan_real = state_attr('climate.0200009211c7_climate','fan_mode') | string %}{% set fan_es = 'Bajo' if fan_real|lower == 'low' else 'Medio' if fan_real|lower in ['med','medium'] else 'Alto' if fan_real|lower == 'high' else fan_real %}{% set fan_msg = 'FAN= ' ~ fan_es if action_target == 'turn_on_cool' and states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'FAN= Alto (Turbo)' if action_target == 'turn_on_cool' else '' %}{% set temp_apagado = eff_t_off_cool if action_target in [''turn_on_cool'',''turn_off''] and climate_mode == ''cool'' else eff_t_off_heat if action_target in [''turn_on_heat'',''turn_off''] and climate_mode == ''heat'' else eff_t_off_cool if action_target == ''turn_on_cool'' else eff_t_off_heat if action_target == ''turn_on_heat'' else eff_t_off_cool %}{{ now().strftime(''%I:%M %p'') }} | EVENTO= {{ ''Encendido'' if action_target in [''turn_on_cool'',''turn_on_heat''] else ''Apagado'' }}{% if include_detalle_operacion %} | MODO= {{ modo_final }} | {{ sp_msg }} | {{ fan_msg }}{% endif %} | INTERIOR= {{ tin }}°C/{{ hin }}% | EXTERIOR= {{ tout if tout is not none else ''No disponible'' }}°C/{{ hout }}% | TEMP APAGADO= {{ temp_apagado }} | CONTEXTO= Columna {{ col_idx }} ({{ col_humana }})'
       - service: input_text.set_value
         target:
           entity_id: input_text.ac_matriz_160_ultima_firma_notificacion
