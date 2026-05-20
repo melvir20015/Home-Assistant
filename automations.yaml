@@ -1634,7 +1634,7 @@
           name: AC-Matriz 160
           message: >-
             hito=learning_manual_ignorado | trace_id={{ trace_id_learning }} | origen_clasificacion={{ origen_clasificacion }} | horario_habilitado={{ horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }} | marker_compatible={{ marker_compatible }} | marker_transition_expected={{ marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | final_transition={{ transicion_final_from ~ "->" ~ transicion_final_to }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok }}
-        entity_id: climate.0200009211c7_climate
+          entity_id: climate.0200009211c7_climate
 
 
   - choose:
