@@ -879,14 +879,22 @@
       fan_modes_supported_raw: '{{ state_attr(''climate.0200009211c7_climate'', ''fan_modes'') }}'
       fan_modes_supported: '{% set modes = fan_modes_supported_raw %}{% if modes is none %}[]{% else %}{{ modes | list }}{% endif %}'
       fan_modes_supported_lc: '{{ fan_modes_supported | map(''lower'') | list }}'
+      fan_mode_normalized_low: Low
+      fan_mode_normalized_med: Med
+      fan_mode_normalized_high: High
+      fan_mode_normalized_auto: Auto
       fan_target_internal: '{{ fan_cool_normal_target | lower }}'
-      fan_target_candidate_label: '{% if fan_target_internal == ''low'' %}Low{% elif fan_target_internal == ''medium'' %}Med{% elif fan_target_internal == ''high'' %}High{% elif fan_target_internal == ''auto'' %}Auto{% else %}{{ fan_cool_normal_target }}{% endif %}'
+      fan_target_candidate_label: '{% if fan_target_internal == ''low'' %}{{ fan_mode_normalized_low }}{% elif fan_target_internal in [''medium'',''med''] %}{{ fan_mode_normalized_med }}{% elif fan_target_internal == ''high'' %}{{ fan_mode_normalized_high }}{% elif fan_target_internal == ''auto'' %}{{ fan_mode_normalized_auto }}{% else %}{{ fan_cool_normal_target }}{% endif %}'
       fan_target_final_label: '{% if fan_target_candidate_label in fan_modes_supported %}{{ fan_target_candidate_label }}{% elif fan_target_internal == ''medium'' and ''High'' in fan_modes_supported %}High{% elif fan_target_internal == ''medium'' and ''Auto'' in fan_modes_supported %}Auto{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{% endif %}'
       fan_target_valid: '{{ fan_target_final_label in fan_modes_supported }}'
       fan_mode_actual: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}'
       fan_mode_actual_lc: '{{ fan_mode_actual | lower }}'
       fan_call_allowed: '{{ fan_target_valid and (fan_target_final_label | lower) != fan_mode_actual_lc }}'
       fan_skip_reason: '{% if not fan_should_apply %}fan_no_requerido{% elif not fan_target_valid %}target_no_soportado{% elif (fan_target_final_label | lower) == fan_mode_actual_lc %}sin_cambio_requerido{% else %}ok{% endif %}'
+      turbo_fan_internal: high
+      turbo_fan_candidate_label: '{% if turbo_fan_internal == ''low'' %}{{ fan_mode_normalized_low }}{% elif turbo_fan_internal in [''medium'',''med''] %}{{ fan_mode_normalized_med }}{% elif turbo_fan_internal == ''high'' %}{{ fan_mode_normalized_high }}{% elif turbo_fan_internal == ''auto'' %}{{ fan_mode_normalized_auto }}{% else %}{{ turbo_fan_internal }}{% endif %}'
+      turbo_fan_target_valid: '{{ turbo_fan_candidate_label in fan_modes_supported }}'
+      turbo_fan_skip_reason: '{% if not turbo_fan_target_valid %}target_no_soportado{% elif (turbo_fan_candidate_label | lower) == fan_mode_actual_lc %}sin_cambio_requerido{% else %}ok{% endif %}'
       last_fan_change_ts_raw: '{{ states(''input_datetime.ac_matriz_160_last_fan_change_ts'') }}'
       last_fan_change_ts: '{% if last_fan_change_ts_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(last_fan_change_ts_raw, default=0) }}{% endif %}'
       fan_min_window_s: 240
@@ -1047,6 +1055,31 @@
           entity_id: input_text.ac_matriz_160_fase_ciclo
         data:
           value: turbo_cool
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_kind
+        data:
+          value: '{{ auto_origin_kind }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_trace
+        data:
+          value: '{{ auto_origin_trace_id }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_expires_at
+        data:
+          value: '{{ auto_origin_expires_at }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_last_action
+        data:
+          value: turn_on_cool
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_consumed
+        data:
+          value: 'false'
       - service: climate.set_hvac_mode
         target:
           entity_id: climate.0200009211c7_climate
@@ -1057,11 +1090,22 @@
           entity_id: climate.0200009211c7_climate
         data:
           temperature: 18
-      - service: climate.set_fan_mode
-        target:
-          entity_id: climate.0200009211c7_climate
-        data:
-          fan_mode: high
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ turbo_fan_target_valid and (turbo_fan_candidate_label | lower) != fan_mode_actual_lc }}'
+          sequence:
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: '{{ turbo_fan_candidate_label }}'
+        default:
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: hito=fan_mode_skip_invalid | fan_target_internal={{ turbo_fan_internal }} | fan_target_final_label={{ turbo_fan_candidate_label }} | fan_mode_actual={{ fan_mode_actual }} | fan_modes_supported={{ fan_modes_supported }} | razon={{ turbo_fan_skip_reason }} | momento=turbo_cool
+            entity_id: climate.0200009211c7_climate
       - service: logbook.log
         data:
           name: AC-Matriz 160
@@ -1080,6 +1124,31 @@
           entity_id: input_text.ac_matriz_160_fase_ciclo
         data:
           value: turbo_heat
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_kind
+        data:
+          value: '{{ auto_origin_kind }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_trace
+        data:
+          value: '{{ auto_origin_trace_id }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_expires_at
+        data:
+          value: '{{ auto_origin_expires_at }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_last_action
+        data:
+          value: turn_on_heat
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_auto_origin_consumed
+        data:
+          value: 'false'
       - service: climate.set_hvac_mode
         target:
           entity_id: climate.0200009211c7_climate
@@ -1090,11 +1159,22 @@
           entity_id: climate.0200009211c7_climate
         data:
           temperature: 30
-      - service: climate.set_fan_mode
-        target:
-          entity_id: climate.0200009211c7_climate
-        data:
-          fan_mode: high
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ turbo_fan_target_valid and (turbo_fan_candidate_label | lower) != fan_mode_actual_lc }}'
+          sequence:
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: '{{ turbo_fan_candidate_label }}'
+        default:
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: hito=fan_mode_skip_invalid | fan_target_internal={{ turbo_fan_internal }} | fan_target_final_label={{ turbo_fan_candidate_label }} | fan_mode_actual={{ fan_mode_actual }} | fan_modes_supported={{ fan_modes_supported }} | razon={{ turbo_fan_skip_reason }} | momento=turbo_heat
+            entity_id: climate.0200009211c7_climate
       - service: logbook.log
         data:
           name: AC-Matriz 160
@@ -1583,7 +1663,7 @@
           {% else %}low
           {% endif %}
         {% else %}high{% endif %}
-      reconcile_fan_candidate_label: '{% if reconcile_fan_internal == ''low'' %}Low{% elif reconcile_fan_internal == ''medium'' %}Med{% elif reconcile_fan_internal == ''high'' %}High{% elif reconcile_fan_internal == ''auto'' %}Auto{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{% endif %}'
+      reconcile_fan_candidate_label: '{% if reconcile_fan_internal == ''low'' %}Low{% elif reconcile_fan_internal in [''medium'',''med''] %}Med{% elif reconcile_fan_internal == ''high'' %}High{% elif reconcile_fan_internal == ''auto'' %}Auto{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{% endif %}'
       reconcile_fan_modes_supported: '{{ (state_attr(''climate.0200009211c7_climate'', ''fan_modes'') or []) | list }}'
       reconcile_fan_target_final: '{% if reconcile_fan_candidate_label in reconcile_fan_modes_supported %}{{ reconcile_fan_candidate_label }}{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{% endif %}'
       reconcile_event_signature: '{{ evento_context_id ~ ''|'' ~ evento_last_changed_ts ~ ''|'' ~ modo_anterior ~ ''->'' ~ modo_nuevo ~ ''|'' ~ reconcile_target_mode }}'
