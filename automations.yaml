@@ -802,7 +802,8 @@
       tin: '{{ [states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(0), states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(0)] | average | round(2) }}'
       hin: '{{ [states(''sensor.lumi_lumi_weather_cuarto_humedad'')|float(0), states(''sensor.lumi_lumi_weather_coco_humedad'')|float(0)] | average | round(2) }}'
       tout: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
-      hout: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(50) }}'
+      hout_raw: '{{ state_attr(''weather.openweathermap'',''humidity'') | float(none) }}'
+      hout: '{{ hout_raw if hout_raw is not none else 60 }}'
       wx_raw: '{{ states(''weather.openweathermap'') | lower }}'
       presence_motion: '{{ is_state(''binary_sensor.presencia_movimiento_estable'',''on'') }}'
       presence_s24: '{{ is_state(''device_tracker.samsung_s24'',''home'') or is_state(''person.ivan'',''home'') }}'
@@ -829,8 +830,21 @@
         {% elif si == 3 %}-0.10
         {% else %}0.20
         {% endif %}
+      adj_tout_cool: >-
+        {% if tout is none %}
+          0
+        {% else %}
+          {% set raw = (tout | float - 24) * -0.05 %}
+          {{ [0.40, [-0.40, raw] | max] | min | round(2) }}
+        {% endif %}
+      adj_hout_cool: >-
+        {% set raw = (hout | float(60) - 60) * -0.01 %}
+        {{ [0.20, [-0.20, raw] | max] | min | round(2) }}
+      adj_clima_cool: >-
+        {% set raw = (adj_tout_cool | float(0)) + (adj_hout_cool | float(0)) %}
+        {{ [0.50, [-0.50, raw] | max] | min | round(2) }}
       t_off_cool_base_no_slot: '{{ [26.0, [thermal_boundary_by_season|float(22), (base_cool|float(24))] | max] | min | round(2) }}'
-      t_off_cool_base: '{{ [26.0, [thermal_boundary_by_season|float(22), (t_off_cool_base_no_slot|float + slot_cool_adjust|float)] | max] | min | round(2) }}'
+      t_off_cool_base: '{{ [26.0, [thermal_boundary_by_season|float(22), (t_off_cool_base_no_slot|float + slot_cool_adjust|float + adj_clima_cool|float)] | max] | min | round(2) }}'
       t_on_cool_base: '{{ (t_off_cool_base|float + 1.0) | round(2) }}'
       t_off_heat_base: '{{ [thermal_boundary_by_season|float(22), [17.0, (base_heat|float(24))] | max] | min | round(2) }}'
       t_on_heat_base: '{{ (t_off_heat_base|float - 1.0) | round(2) }}'
@@ -1006,7 +1020,7 @@
   - service: logbook.log
     data:
       name: AC-Matriz 160
-      message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base }},cool_off_no_slot {{ t_off_cool_base_no_slot }},slot_adj {{ slot_cool_adjust }},heat_on {{ t_on_heat_base }},heat_off {{ t_off_heat_base }} | offset_columna=cool {{ offset_cool_helper }},heat {{ offset_heat_helper }} | umbrales_efectivos=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}
+      message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia={{ presence_ok }}({{ presence_origin }}) | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base }},cool_off_no_slot {{ t_off_cool_base_no_slot }},slot_adj {{ slot_cool_adjust }},adj_tout {{ adj_tout_cool }},adj_hout {{ adj_hout_cool }},adj_clima {{ adj_clima_cool }},heat_on {{ t_on_heat_base }},heat_off {{ t_off_heat_base }} | offset_columna=cool {{ offset_cool_helper }},heat {{ offset_heat_helper }} | umbrales_efectivos=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:

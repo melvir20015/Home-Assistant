@@ -2347,3 +2347,27 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - No se modifica la lógica base de clasificación de origen.
   - No se resetean ni limpian bloqueos estructurales (`manual_off_block_until`, `cool_block_until`, `heat_block_until`).
   - Se agregan hitos de observabilidad terminal (`reconcile_manual_post_on_applied`, `reconcile_manual_post_on_skip`, `reconcile_manual_hold_on`, `reconcile_manual_hold_off`).
+
+## 36) Ajuste climático dinámico en ON/OFF por columna AC-Matriz 160 (2026-05-21)
+
+- **Alcance:** automatización principal `AC-Matriz 160` (`id: ac_matriz_160_main_v1`), cálculo de umbrales `cool_off/cool_on` para las 160 columnas.
+- **Objetivo operativo:** cuando el exterior esté más caliente/húmedo, `cool` debe encender antes, conservando histéresis fija de `1.0 °C`.
+- **Variables nuevas del cálculo COOL base:**
+  - `adj_tout_cool`: ajuste por temperatura exterior (`tout`) con referencia `24 °C`.
+  - `adj_hout_cool`: ajuste por humedad exterior (`hout`) con referencia `60 %`.
+  - `adj_clima_cool`: suma acotada de ambos ajustes.
+- **Fórmulas y clamps aplicados:**
+  - `adj_tout_cool = clamp((tout - 24) * -0.05, -0.40, +0.40)`
+  - `adj_hout_cool = clamp((hout - 60) * -0.01, -0.20, +0.20)`
+  - `adj_clima_cool = clamp(adj_tout_cool + adj_hout_cool, -0.50, +0.50)`
+  - `t_off_cool_base = clamp(t_off_cool_base_no_slot + slot_cool_adjust + adj_clima_cool, frontera_estacional, 26.0)`
+  - `t_on_cool_base = t_off_cool_base + 1.0`
+- **Robustez implementada:**
+  - `hout_raw` se lee con `float(none)` y, si no existe, `hout` usa fallback seguro `60`.
+  - si `tout` no está disponible, `adj_tout_cool` se fuerza a `0` (sin sesgo por temperatura exterior ausente).
+  - todos los ajustes tienen clamp por componente y clamp total para prevenir sobre-reacción.
+- **Observabilidad:**
+  - `logbook` de evaluación incorpora `adj_tout`, `adj_hout` y `adj_clima` para trazabilidad de decisiones.
+- **No regresión contractual:**
+  - se conserva histéresis fija de `1.0 °C` en COOL;
+  - se conservan clamps estacionales, offsets por columna y validaciones estructurales existentes.
