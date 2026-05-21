@@ -1603,7 +1603,8 @@
             {% set modo_final = 'Frío' if action_target == 'turn_on_cool' else 'Calor' if action_target == 'turn_on_heat' else 'Apagado' %}
             {% set include_detalle_operacion = action_target != 'turn_off' %}
             {% set sp_real = state_attr('climate.0200009211c7_climate','temperature') %}
-            {% set sp_msg = 'SP= ' ~ sp_real ~ '°C' if action_target == 'turn_on_cool' and states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'SP= 18°C (Turbo)' if action_target == 'turn_on_cool' else '' %}
+            {% set sp_notif = sp_cool_normal if action_target == 'turn_on_cool' and states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else sp_real %}
+            {% set sp_msg = 'SP= ' ~ sp_notif ~ '°C' if action_target == 'turn_on_cool' and states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'SP= 18°C (Turbo)' if action_target == 'turn_on_cool' else '' %}
             {% set fan_real = state_attr('climate.0200009211c7_climate','fan_mode') | string %}
             {% set fan_es = 'Bajo' if fan_real|lower == 'low' else 'Medio' if fan_real|lower in ['med','medium'] else 'Alto' if fan_real|lower == 'high' else fan_real %}
             {% set fan_msg = 'FAN= ' ~ fan_es if action_target == 'turn_on_cool' and states('input_text.ac_matriz_160_fase_ciclo') != 'turbo_cool' else 'FAN= Alto (Turbo)' if action_target == 'turn_on_cool' else '' %}
