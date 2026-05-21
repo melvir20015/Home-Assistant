@@ -1475,9 +1475,11 @@
           entity_id: input_text.ac_matriz_160_auto_origin_consumed
         data:
           value: 'false'
-      - service: climate.turn_off
+      - service: climate.set_hvac_mode
         target:
           entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: 'off'
       - choose:
         - conditions:
           - condition: template
