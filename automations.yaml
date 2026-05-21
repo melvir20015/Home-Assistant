@@ -1491,7 +1491,8 @@
           - service: logbook.log
             data:
               name: AC-Matriz 160
-              message: hito=turn_off_failed | trace_id={{ auto_origin_trace_id }} | estado_actual={{ states(''climate.0200009211c7_climate'') }} | estado_previo={{ climate_mode }} | accion=turn_off
+              message: >-
+                hito=turn_off_failed | trace_id={{ auto_origin_trace_id }} | estado_actual={{ states('climate.0200009211c7_climate') }} | estado_previo={{ climate_mode }} | accion=turn_off
               entity_id: climate.0200009211c7_climate
           - service: notify.mobile_app_samsung_s24
             data:
