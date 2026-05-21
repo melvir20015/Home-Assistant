@@ -1263,15 +1263,6 @@
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ (not presence_ok) and action_target == ''turn_off'' }}'
-      sequence:
-      - service: logbook.log
-        data:
-          name: AC-Matriz 160
-          message: hito=apagado_por_umbral_sin_presencia_permitido | modo={{ climate_mode }} | Tin={{ tin }} | T_off_cool={{ eff_t_off_cool }} | T_off_heat={{ eff_t_off_heat }} | col={{ col_humana }}
-          entity_id: climate.0200009211c7_climate
-    - conditions:
-      - condition: template
         value_template: '{{ action_target == ''turn_on_cool'' }}'
       sequence:
       - service: logbook.log
@@ -1450,6 +1441,21 @@
       - condition: template
         value_template: '{{ action_target == ''turn_off'' }}'
       sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ not presence_ok }}'
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=apagado_por_umbral_sin_presencia_permitido | modo={{ climate_mode }} | Tin={{ tin }} | T_off_cool={{ eff_t_off_cool }} | T_off_heat={{ eff_t_off_heat }} | col={{ col_humana }}
+              entity_id: climate.0200009211c7_climate
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=turn_off_dispatch | trace_id={{ auto_origin_trace_id }} | estado_previo={{ climate_mode }} | presencia={{ presence_ok }} | causa={{ reason_invalid }}
+          entity_id: climate.0200009211c7_climate
       - service: input_text.set_value
         target:
           entity_id: input_text.ac_matriz_160_auto_origin_kind
@@ -1564,6 +1570,11 @@
           entity_id: input_text.ac_matriz_160_auto_origin_expires_at
         data:
           value: '{{ auto_origin_expires_at }}'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=turn_off_branch_completed | resultado={{ 'success' if off_confirmed_final else 'failed' }}
+          entity_id: climate.0200009211c7_climate
       - service: logbook.log
         data:
           name: AC-Matriz 160
