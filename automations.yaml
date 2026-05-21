@@ -943,7 +943,7 @@
       turbo_enter_heat: '{{ (not manual_off_block_active) and (not heat_block_active) and new_presence_event and (not turbo_blocked) and (tin|float <= (eff_t_on_heat|float - 1.0)) }}'
       turbo_exit_cool: '{{ turbo_phase == ''turbo_cool'' and tin|float <= mid_cool|float }}'
       turbo_exit_heat: '{{ turbo_phase == ''turbo_heat'' and tin|float >= mid_heat|float }}'
-      action_target_base: '{% if reason_invalid != ''ok'' %}none{% elif climate_mode == ''off'' and (cool_on_gate_met or turbo_enter_cool) %}turn_on_cool{% elif climate_mode == ''off'' and (tin|float <= eff_t_on_heat|float or turbo_enter_heat) %}turn_on_heat{% elif climate_mode == ''cool'' and tin|float <= eff_t_off_cool|float %}turn_off{% elif climate_mode == ''heat'' and tin|float >= eff_t_off_heat|float %}turn_off{% else %}none{% endif %}'
+      action_target_base: '{% if invalid_data %}none{% elif climate_mode == ''cool'' and tin|float <= eff_t_off_cool|float %}turn_off{% elif climate_mode == ''heat'' and tin|float >= eff_t_off_heat|float %}turn_off{% elif not presence_ok %}none{% elif climate_mode == ''off'' and (cool_on_gate_met or turbo_enter_cool) %}turn_on_cool{% elif climate_mode == ''off'' and (tin|float <= eff_t_on_heat|float or turbo_enter_heat) %}turn_on_heat{% else %}none{% endif %}'
       action_target: '{% if (manual_off_block_active or manual_off_rebound_active) and action_target_base in [''turn_on_cool'',''turn_on_heat''] %}none{% elif heat_block_active and action_target_base == ''turn_on_heat'' %}none{% elif cool_block_active and action_target_base == ''turn_on_cool'' %}none{% else %}{{ action_target_base }}{% endif %}'
       auto_origin_trace_id: '{{ now().strftime(''%Y%m%d%H%M%S'') ~ ''-'' ~ (context.id if context is defined and context.id is defined else ''ctx'') }}'
       auto_origin_kind: automatico_ac_matriz_160
@@ -1254,12 +1254,21 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ reason_invalid != ''ok'' }}'
+        value_template: '{{ invalid_data }}'
       sequence:
       - service: logbook.log
         data:
           name: AC-Matriz 160
           message: hito=fallback_seguro | razon={{ reason_invalid }}
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ (not presence_ok) and action_target == ''turn_off'' }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=apagado_por_umbral_sin_presencia_permitido | modo={{ climate_mode }} | Tin={{ tin }} | T_off_cool={{ eff_t_off_cool }} | T_off_heat={{ eff_t_off_heat }} | col={{ col_humana }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
