@@ -1480,6 +1480,23 @@
           entity_id: climate.0200009211c7_climate
         data:
           hvac_mode: 'off'
+      - wait_template: '{{ states(''climate.0200009211c7_climate'') == ''off'' }}'
+        timeout: 00:00:15
+        continue_on_timeout: true
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ states(''climate.0200009211c7_climate'') != ''off'' }}'
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=turn_off_failed | trace_id={{ auto_origin_trace_id }} | estado_actual={{ states(''climate.0200009211c7_climate'') }} | estado_previo={{ climate_mode }} | accion=turn_off
+              entity_id: climate.0200009211c7_climate
+          - service: notify.mobile_app_samsung_s24
+            data:
+              title: AC-Matriz 160
+              message: "{{ now().strftime('%I:%M %p') }} | EVENTO= Fallo de apagado | MODO ACTUAL= {{ states('climate.0200009211c7_climate') }} | INTERIOR= {{ tin }}°C/{{ hin }}% | CONTEXTO= Columna {{ col_idx }} ({{ col_humana }})"
       - choose:
         - conditions:
           - condition: template
@@ -1523,7 +1540,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ action_target in [''turn_on_cool'',''turn_on_heat'',''turn_off''] and dedup_ok and action_target in [''turn_on_cool'',''turn_off''] }}'
+        value_template: '{{ action_target in [''turn_on_cool'',''turn_on_heat'',''turn_off''] and dedup_ok and action_target in [''turn_on_cool'',''turn_off''] and (action_target != ''turn_off'' or states(''climate.0200009211c7_climate'') == ''off'') }}'
       sequence:
       - service: notify.mobile_app_samsung_s24
         data:
@@ -1563,7 +1580,7 @@
     target:
       entity_id: input_text.ac_matriz_160_ultima_accion
     data:
-      value: '{{ action_target if action_target != ''none'' else ''sin_accion'' }}'
+      value: '{% if action_target == ''turn_off'' and states(''climate.0200009211c7_climate'') != ''off'' %}turn_off_failed{% elif action_target != ''none'' %}{{ action_target }}{% else %}sin_accion{% endif %}'
   - service: input_datetime.set_datetime
     target:
       entity_id: input_datetime.ac_matriz_160_ultima_accion_ts
