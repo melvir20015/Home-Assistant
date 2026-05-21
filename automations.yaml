@@ -890,7 +890,8 @@
       fan_mode_actual: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}'
       fan_mode_actual_lc: '{{ fan_mode_actual | lower }}'
       fan_call_allowed: '{{ fan_target_valid and (fan_target_final_label | lower) != fan_mode_actual_lc }}'
-      fan_skip_reason: '{% if not fan_should_apply %}fan_no_requerido{% elif not fan_target_valid %}target_no_soportado{% elif (fan_target_final_label | lower) == fan_mode_actual_lc %}sin_cambio_requerido{% else %}ok{% endif %}'
+      fan_should_apply: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_needs_change }}'
+      fan_skip_reason: '{% if not (fan_should_apply | default(false)) %}fan_no_requerido{% elif not fan_target_valid %}target_no_soportado{% elif (fan_target_final_label | lower) == fan_mode_actual_lc %}sin_cambio_requerido{% else %}ok{% endif %}'
       turbo_fan_internal: high
       turbo_fan_candidate_label: '{% if turbo_fan_internal == ''low'' %}{{ fan_mode_normalized_low }}{% elif turbo_fan_internal in [''medium'',''med''] %}{{ fan_mode_normalized_med }}{% elif turbo_fan_internal == ''high'' %}{{ fan_mode_normalized_high }}{% elif turbo_fan_internal == ''auto'' %}{{ fan_mode_normalized_auto }}{% else %}{{ turbo_fan_internal }}{% endif %}'
       turbo_fan_target_valid: '{{ turbo_fan_candidate_label in fan_modes_supported }}'
@@ -901,7 +902,6 @@
       fan_current_mode: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string | lower }}'
       fan_change_window_ok: '{{ (as_timestamp(now()) - (last_fan_change_ts | float(0))) >= fan_min_window_s }}'
       fan_needs_change: '{{ fan_current_mode != fan_cool_normal_target }}'
-      fan_should_apply: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_needs_change }}'
       fan_should_apply_dynamic: '{{ fan_should_apply and (fan_change_window_ok or (last_fan_change_ts | float(0)) == 0) }}'
       fan_auto_on_first_set: '{{ action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_should_apply }}'
       fan_apply_allowed_dynamic: '{{ fan_call_allowed and fan_should_apply_dynamic }}'
