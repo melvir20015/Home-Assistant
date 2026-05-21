@@ -1647,6 +1647,163 @@
       message: hito=migracion_control_exclusivo | ac_dda_desactivado=true | controlador_activo=AC-Matriz 160
       entity_id: climate.0200009211c7_climate
 
+- id: ac_matriz_160_presencia_ausencia_v1
+  alias: AC-Matriz 160 - Presencia/Ausencia
+  description: Gestión dedicada de apagado por no presencia (S24+movimiento), desacoplada de la lógica térmica principal.
+  mode: restart
+  trace:
+    stored_traces: 50
+  triggers:
+  - trigger: state
+    entity_id: device_tracker.samsung_s24
+    to: not_home
+    id: s24_away
+  - trigger: state
+    entity_id: device_tracker.samsung_s24
+    to: home
+    id: s24_home
+  - trigger: state
+    entity_id: person.ivan
+    to: home
+    id: person_home
+  - trigger: state
+    entity_id: climate.0200009211c7_climate
+    id: hvac_mode_changed
+  conditions: []
+  actions:
+  - variables:
+      trace_id: "{{ now().strftime('%Y%m%d%H%M%S%f') ~ '-np' }}"
+      s24_state: "{{ states('device_tracker.samsung_s24') }}"
+      movimiento_state: "{{ states('binary_sensor.presencia_movimiento_estable') }}"
+      hvac_mode: "{{ states('climate.0200009211c7_climate') }}"
+      hvac_scope_ok: "{{ hvac_mode in ['cool','heat'] }}"
+      manual_off_block_until_raw: "{{ states('input_datetime.ac_matriz_160_manual_off_block_until') }}"
+      manual_off_block_until_ts: "{% if manual_off_block_until_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_off_block_until_raw, default=0) }}{% endif %}"
+      manual_off_block_active: "{{ as_timestamp(now()) < (manual_off_block_until_ts | float(0)) }}"
+      event_signature: "{{ trigger.id ~ '|' ~ s24_state ~ '|' ~ movimiento_state ~ '|' ~ hvac_mode ~ '|' ~ now().strftime('%Y-%m-%d %H:%M') }}"
+      dedup_window_s: 90
+      dedup_last_signature: "{{ states('input_text.ac_matriz_160_no_presencia_firma') | default('', true) | trim }}"
+      dedup_last_ts_raw: "{{ states('input_datetime.ac_matriz_160_no_presencia_firma_ts') }}"
+      dedup_last_ts: "{% if dedup_last_ts_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(dedup_last_ts_raw, default=0) }}{% endif %}"
+      dedup_in_window: "{{ (as_timestamp(now()) - (dedup_last_ts | float(0))) < (dedup_window_s | float(90)) }}"
+      dedup_ok: "{{ event_signature != dedup_last_signature or not dedup_in_window }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id in ['s24_home','person_home'] }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: "hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_state={{ movimiento_state }} | resultado_terminal=cancelado | razon=s24_en_casa"
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 'hvac_mode_changed' and states('climate.0200009211c7_climate') not in ['cool','heat'] }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: "hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_state={{ movimiento_state }} | resultado_terminal=cancelado | razon=hvac_fuera_de_alcance"
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 's24_away' and dedup_ok and hvac_scope_ok }}"
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_no_presencia_firma
+        data:
+          value: "{{ event_signature }}"
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_no_presencia_firma_ts
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: binary_sensor.presencia_movimiento_estable
+            state: 'off'
+          sequence:
+          - delay: 00:10:00
+          - variables:
+              modo_previo: "{{ states('climate.0200009211c7_climate') }}"
+              s24_guard_ok: "{{ states('device_tracker.samsung_s24') == 'not_home' }}"
+              motion_guard_ok: "{{ states('binary_sensor.presencia_movimiento_estable') == 'off' }}"
+              hvac_guard_ok: "{{ modo_previo in ['cool','heat'] }}"
+              security_guard_ok: "{{ not (as_timestamp(now()) < (manual_off_block_until_ts | float(0))) }}"
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{{ s24_guard_ok and motion_guard_ok and hvac_guard_ok and security_guard_ok }}"
+              sequence:
+              - service: climate.turn_off
+                target:
+                  entity_id: climate.0200009211c7_climate
+              - service: notify.mobile_app_samsung_s24
+                data:
+                  title: AC-Matriz 160 · Apagado por no presencia
+                  message: "Se apagó el AC ({{ modo_previo }}) por no presencia: S24 fuera y sin movimiento durante 10 min."
+              - service: logbook.log
+                data:
+                  name: AC-Matriz 160
+                  message: "hito=auto_off_no_presencia_10m | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24') }} | movimiento_state={{ states('binary_sensor.presencia_movimiento_estable') }} | resultado_terminal=aplicado | razon=s24_fuera_y_10m_sin_movimiento"
+                  entity_id: climate.0200009211c7_climate
+            default:
+            - service: logbook.log
+              data:
+                name: AC-Matriz 160
+                message: "hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24') }} | movimiento_state={{ states('binary_sensor.presencia_movimiento_estable') }} | resultado_terminal=cancelado | razon=guardas_no_cumplidas_10m"
+                entity_id: climate.0200009211c7_climate
+        default:
+        - wait_for_trigger:
+          - trigger: state
+            entity_id: binary_sensor.presencia_movimiento_estable
+            to: 'off'
+            for: 00:30:00
+          timeout: 24:00:00
+          continue_on_timeout: false
+        - variables:
+            modo_previo: "{{ states('climate.0200009211c7_climate') }}"
+            s24_guard_ok: "{{ states('device_tracker.samsung_s24') == 'not_home' }}"
+            motion_guard_ok: "{{ states('binary_sensor.presencia_movimiento_estable') == 'off' }}"
+            hvac_guard_ok: "{{ modo_previo in ['cool','heat'] }}"
+            security_guard_ok: "{{ not (as_timestamp(now()) < (manual_off_block_until_ts | float(0))) }}"
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: "{{ s24_guard_ok and motion_guard_ok and hvac_guard_ok and security_guard_ok }}"
+            sequence:
+            - service: climate.turn_off
+              target:
+                entity_id: climate.0200009211c7_climate
+            - service: notify.mobile_app_samsung_s24
+              data:
+                title: AC-Matriz 160 · Apagado por no presencia
+                message: "Se apagó el AC ({{ modo_previo }}) por no presencia: S24 fuera y 30 min continuos sin movimiento."
+            - service: logbook.log
+              data:
+                name: AC-Matriz 160
+                message: "hito=auto_off_no_presencia_30m | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24') }} | movimiento_state={{ states('binary_sensor.presencia_movimiento_estable') }} | resultado_terminal=aplicado | razon=s24_fuera_y_30m_continuos_sin_movimiento"
+                entity_id: climate.0200009211c7_climate
+          default:
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: "hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24') }} | movimiento_state={{ states('binary_sensor.presencia_movimiento_estable') }} | resultado_terminal=cancelado | razon=guardas_no_cumplidas_30m"
+              entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ trigger.id == 's24_away' and (not dedup_ok) }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: "hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_state={{ movimiento_state }} | resultado_terminal=cancelado | razon=dedup_ventana"
+          entity_id: climate.0200009211c7_climate
+
 - id: ac_matriz_160_learning_manual_v1
   alias: AC-Matriz 160 - Aprendizaje manual por columna
   description: Aprende offset por columna y modo desde ON/OFF manual con clasificación explícita y notificación transaccional.

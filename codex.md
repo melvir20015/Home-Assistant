@@ -2371,3 +2371,28 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - **No regresión contractual:**
   - se conserva histéresis fija de `1.0 °C` en COOL;
   - se conservan clamps estacionales, offsets por columna y validaciones estructurales existentes.
+
+## 37) Política de apagado por no presencia S24+movimiento AC-Matriz 160 (2026-05-21)
+
+- **Alcance:** automatización dedicada `AC-Matriz 160 - Presencia/Ausencia` (`id: ac_matriz_160_presencia_ausencia_v1`), separada del control térmico principal.
+- **Modos HVAC cubiertos:** solo `cool` y `heat`.
+- **Precedencia de presencia:** si S24 está en `home`, no se apaga por no presencia.
+- **Ramas de decisión:**
+  - `10m`: cuando S24 pasa a `not_home` y el movimiento ya está en `off`, se agenda apagado tras 10 minutos.
+  - `30m`: cuando S24 pasa a `not_home` con movimiento en `on`, se espera `30m` continuos en `off` para apagar.
+- **Guardas antes de apagar (`climate.turn_off`):**
+  - S24 sigue `not_home`.
+  - Movimiento cumple la rama activa (10m/30m).
+  - HVAC sigue en `cool` o `heat`.
+  - Respeta bloqueos vigentes (`manual_off_block_until`) y cancelaciones por retorno de S24 o cambio de HVAC fuera de alcance.
+- **Deduplicación y carrera:**
+  - firma de evento + ventana corta (`dedup`) para evitar dobles disparos.
+  - `mode: restart` para cancelar rama pendiente si llega evento de cancelación (`S24 home` o HVAC fuera de alcance).
+- **Notificaciones push oficiales:**
+  - Título: `AC-Matriz 160 · Apagado por no presencia`
+  - Rama `10m`: `Se apagó el AC ({{ modo_previo }}) por no presencia: S24 fuera y sin movimiento durante 10 min.`
+  - Rama `30m`: `Se apagó el AC ({{ modo_previo }}) por no presencia: S24 fuera y 30 min continuos sin movimiento.`
+- **Observabilidad en `logbook.log`:**
+  - terminales: `hito=auto_off_no_presencia_10m` / `hito=auto_off_no_presencia_30m`.
+  - cancelaciones: `hito=auto_off_no_presencia_cancelado`.
+  - payload mínimo: `trace_id`, `modo_previo`, `s24_state`, `movimiento_state`, `resultado_terminal`, `razon`.

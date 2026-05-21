@@ -85,3 +85,7 @@ ac_matriz_160_manual_legacy_hold:
   name: AC Matriz 160 Manual Legacy Hold
   max: 40
   initial: off
+ac_matriz_160_no_presencia_firma:
+  name: AC Matriz 160 No Presencia Firma
+  max: 255
+  initial: sin_firma_no_presencia
