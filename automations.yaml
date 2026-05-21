@@ -1481,23 +1481,65 @@
         data:
           hvac_mode: 'off'
       - wait_template: '{{ states(''climate.0200009211c7_climate'') == ''off'' }}'
-        timeout: 00:00:15
+        timeout: 00:00:05
         continue_on_timeout: true
+      - variables:
+          off_confirmed_1: '{{ states(''climate.0200009211c7_climate'') == ''off'' }}'
       - choose:
         - conditions:
           - condition: template
-            value_template: '{{ states(''climate.0200009211c7_climate'') != ''off'' }}'
+            value_template: '{{ not off_confirmed_1 }}'
+          sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              hvac_mode: 'off'
+          - wait_template: '{{ states(''climate.0200009211c7_climate'') == ''off'' }}'
+            timeout: 00:00:08
+            continue_on_timeout: true
+      - variables:
+          off_confirmed_2: '{{ states(''climate.0200009211c7_climate'') == ''off'' }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ not off_confirmed_2 }}'
+          sequence:
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              hvac_mode: 'off'
+          - wait_template: '{{ states(''climate.0200009211c7_climate'') == ''off'' }}'
+            timeout: 00:00:15
+            continue_on_timeout: true
+      - variables:
+          off_confirmed_3: '{{ states(''climate.0200009211c7_climate'') == ''off'' }}'
+          off_confirmed_final: '{{ off_confirmed_1 or off_confirmed_2 or off_confirmed_3 }}'
+          off_confirmed_attempt: >-
+            {% if off_confirmed_1 %}1{% elif off_confirmed_2 %}2{% elif off_confirmed_3 %}3{% else %}0{% endif %}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ off_confirmed_final }}'
           sequence:
           - service: logbook.log
             data:
               name: AC-Matriz 160
               message: >-
-                hito=turn_off_failed | trace_id={{ auto_origin_trace_id }} | estado_actual={{ states('climate.0200009211c7_climate') }} | estado_previo={{ climate_mode }} | accion=turn_off
+                hito=turn_off_confirmed | trace_id={{ auto_origin_trace_id }} | intento={{ off_confirmed_attempt }} | estado_actual={{ states('climate.0200009211c7_climate') }} | estado_previo={{ climate_mode }} | accion=turn_off
               entity_id: climate.0200009211c7_climate
-          - service: notify.mobile_app_samsung_s24
-            data:
-              title: AC-Matriz 160
-              message: "{{ now().strftime('%I:%M %p') }} | EVENTO= Fallo de apagado | MODO ACTUAL= {{ states('climate.0200009211c7_climate') }} | INTERIOR= {{ tin }}°C/{{ hin }}% | CONTEXTO= Columna {{ col_idx }} ({{ col_humana }})"
+        default:
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: >-
+              hito=turn_off_failed_after_retries | trace_id={{ auto_origin_trace_id }} | estado_actual={{ states('climate.0200009211c7_climate') }} | estado_previo={{ climate_mode }} | accion=turn_off
+            entity_id: climate.0200009211c7_climate
+        - service: notify.mobile_app_samsung_s24
+          data:
+            title: AC-Matriz 160
+            message: "{{ now().strftime('%I:%M %p') }} | EVENTO= Fallo de apagado (3 intentos) | MODO ACTUAL= {{ states('climate.0200009211c7_climate') }} | INTERIOR= {{ tin }}°C/{{ hin }}% | CONTEXTO= Columna {{ col_idx }} ({{ col_humana }})"
       - choose:
         - conditions:
           - condition: template
@@ -1541,7 +1583,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ action_target in [''turn_on_cool'',''turn_on_heat'',''turn_off''] and dedup_ok and action_target in [''turn_on_cool'',''turn_off''] and (action_target != ''turn_off'' or states(''climate.0200009211c7_climate'') == ''off'') }}'
+        value_template: '{{ action_target in [''turn_on_cool'',''turn_on_heat'',''turn_off''] and dedup_ok and action_target in [''turn_on_cool'',''turn_off''] and (action_target != ''turn_off'' or off_confirmed_final | default(states(''climate.0200009211c7_climate'') == ''off'')) }}'
       sequence:
       - service: notify.mobile_app_samsung_s24
         data:
@@ -1581,7 +1623,7 @@
     target:
       entity_id: input_text.ac_matriz_160_ultima_accion
     data:
-      value: '{% if action_target == ''turn_off'' and states(''climate.0200009211c7_climate'') != ''off'' %}turn_off_failed{% elif action_target != ''none'' %}{{ action_target }}{% else %}sin_accion{% endif %}'
+      value: '{% if action_target == ''turn_off'' and not (off_confirmed_final | default(states(''climate.0200009211c7_climate'') == ''off'')) %}turn_off_failed{% elif action_target != ''none'' %}{{ action_target }}{% else %}sin_accion{% endif %}'
   - service: input_datetime.set_datetime
     target:
       entity_id: input_datetime.ac_matriz_160_ultima_accion_ts
