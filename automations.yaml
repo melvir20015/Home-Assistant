@@ -904,7 +904,7 @@
       fan_mode_actual: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}'
       fan_mode_actual_lc: '{{ fan_mode_actual | lower }}'
       fan_call_allowed: '{{ fan_target_valid and (fan_target_final_label | lower) != fan_mode_actual_lc }}'
-      fan_should_apply: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_needs_change }}'
+      fan_should_apply: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and (fan_needs_change | default(false)) }}'
       fan_skip_reason: '{% if not (fan_should_apply | default(false)) %}fan_no_requerido{% elif not fan_target_valid %}target_no_soportado{% elif (fan_target_final_label | lower) == fan_mode_actual_lc %}sin_cambio_requerido{% else %}ok{% endif %}'
       turbo_fan_internal: high
       turbo_fan_candidate_label: '{% if turbo_fan_internal == ''low'' %}{{ fan_mode_normalized_low }}{% elif turbo_fan_internal in [''medium'',''med''] %}{{ fan_mode_normalized_med }}{% elif turbo_fan_internal == ''high'' %}{{ fan_mode_normalized_high }}{% elif turbo_fan_internal == ''auto'' %}{{ fan_mode_normalized_auto }}{% else %}{{ turbo_fan_internal }}{% endif %}'
