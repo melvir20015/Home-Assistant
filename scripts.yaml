@@ -1,1 +1,78 @@
-{}
+ac_matriz_160_reporte_diagnostico:
+  alias: AC-Matriz 160 - Reporte diagnóstico bajo demanda
+  mode: single
+  sequence:
+    - variables:
+        hvac_mode: "{{ states('climate.0200009211c7_climate') }}"
+        tin: "{{ [states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average | round(2) }}"
+        hin: "{{ [states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average | round(2) }}"
+        tout: "{{ state_attr('weather.openweathermap','temperature') | float(none) }}"
+        hout_raw: "{{ state_attr('weather.openweathermap','humidity') | float(none) }}"
+        hout: "{{ hout_raw if hout_raw is not none else 60 }}"
+        presence_motion: "{{ is_state('binary_sensor.presencia_movimiento_estable','on') }}"
+        presence_s24: "{{ is_state('device_tracker.samsung_s24','home') or is_state('person.ivan','home') }}"
+        presence_ok: "{{ presence_motion or presence_s24 }}"
+        manual_presence_override_until_raw: "{{ states('input_datetime.ac_matriz_160_manual_presence_override_until') }}"
+        manual_presence_override_until_ts: "{% if manual_presence_override_until_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_presence_override_until_raw, default=0) }}{% endif %}"
+        manual_presence_override_active: "{{ as_timestamp(now()) < (manual_presence_override_until_ts | float(0)) }}"
+        presence_ok_effective: "{{ presence_ok or manual_presence_override_active }}"
+        cool_off: "{{ states('input_number.ac_matriz_160_t_off_cool') | float(none) }}"
+        cool_on: "{{ states('input_number.ac_matriz_160_t_on_cool') | float(none) }}"
+        heat_off: "{{ states('input_number.ac_matriz_160_t_off_heat') | float(none) }}"
+        heat_on: "{{ states('input_number.ac_matriz_160_t_on_heat') | float(none) }}"
+        manual_off_block_until_raw: "{{ states('input_datetime.ac_matriz_160_manual_off_block_until') }}"
+        manual_off_block_until_ts: "{% if manual_off_block_until_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_off_block_until_raw, default=0) }}{% endif %}"
+        manual_off_block_active: "{{ as_timestamp(now()) < (manual_off_block_until_ts | float(0)) }}"
+        stop_condition: "{% if hvac_mode == 'cool' %}Tin <= cool_off ({{ tin }} <= {{ cool_off|round(2) if cool_off is not none else 'n/d' }}){% elif hvac_mode == 'heat' %}Tin >= heat_off ({{ tin }} >= {{ heat_off|round(2) if heat_off is not none else 'n/d' }}){% elif hvac_mode == 'fan_only' %}No aplica (modo ventilación){% else %}No aplica (HVAC apagado){% endif %}"
+        tendencia_10m: "{{ state_attr('sensor.lumi_lumi_weather_cuarto_temperatura', 'trend') if state_attr('sensor.lumi_lumi_weather_cuarto_temperatura', 'trend') is not none else 'n/d' }}"
+        minutos_estimados: >-
+          {% if hvac_mode == 'cool' and cool_off is not none %}
+            {% set delta = (tin|float - cool_off|float) %}
+            {% if delta <= 0 %}0{% else %}n/d{% endif %}
+          {% elif hvac_mode == 'heat' and heat_off is not none %}
+            {% set delta = (heat_off|float - tin|float) %}
+            {% if delta <= 0 %}0{% else %}n/d{% endif %}
+          {% else %}
+            n/d
+          {% endif %}
+        estimacion_texto: "{{ 'estimación no disponible' if minutos_estimados == 'n/d' else (minutos_estimados ~ ' min (tentativo)') }}"
+        causal: >-
+          {% if hvac_mode == 'off' %}
+            HVAC apagado: {% if manual_off_block_active %}bloqueo manual activo hasta {{ manual_off_block_until_raw }}.{% elif not presence_ok_effective %}sin presencia efectiva (movimiento={{ presence_motion }}, s24={{ presence_s24 }}, override={{ manual_presence_override_active }}).{% elif cool_on is not none and heat_on is not none %}Tin {{ tin }} no cumple encendido (cool_on={{ cool_on|round(2) }}, heat_on={{ heat_on|round(2) }}).{% else %}umbrales no disponibles para validar arranque.{% endif %}
+          {% elif hvac_mode == 'cool' %}
+            Sigue en COOL porque aún no cumple apagado: Tin {{ tin }} > cool_off {{ cool_off|round(2) if cool_off is not none else 'n/d' }}.
+          {% elif hvac_mode == 'heat' %}
+            Sigue en HEAT porque aún no cumple apagado: Tin {{ tin }} < heat_off {{ heat_off|round(2) if heat_off is not none else 'n/d' }}.
+          {% elif hvac_mode == 'fan_only' %}
+            Modo FAN_ONLY activo: fuera de ciclo térmico directo.
+          {% else %}
+            Modo no contemplado por contrato térmico principal.
+          {% endif %}
+    - service: logbook.log
+      data:
+        name: AC-Matriz 160
+        message: "hito=diagnostico_bajo_demanda_reporte | hvac={{ hvac_mode }} | tin={{ tin }} | cool_on={{ cool_on }} | cool_off={{ cool_off }}"
+    - service: notify.mobile_app_samsung_s24
+      data:
+        title: "AC-Matriz 160 · Reporte diagnóstico"
+        message: >-
+          Estado HVAC: {{ hvac_mode | upper }}
+
+          Condiciones:
+          - Tin: {{ tin }} °C
+          - Hin: {{ hin }} %
+          - Tout: {{ tout if tout is not none else 'n/d' }} °C
+          - Hout: {{ hout }} %
+
+          Umbrales efectivos:
+          - cool_on: {{ cool_on|round(2) if cool_on is not none else 'n/d' }}
+          - cool_off: {{ cool_off|round(2) if cool_off is not none else 'n/d' }}
+          - heat_on: {{ heat_on|round(2) if heat_on is not none else 'n/d' }}
+          - heat_off: {{ heat_off|round(2) if heat_off is not none else 'n/d' }}
+
+          Diagnóstico causal:
+          {{ causal }}
+
+          Cuándo se apaga:
+          - Condición exacta: {{ stop_condition }}
+          - Estimación: {{ estimacion_texto }}

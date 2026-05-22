@@ -1,0 +1,13 @@
+title: Mi Panel
+views:
+  - title: Mi Panel
+    path: mi-panel
+    icon: mdi:home-assistant
+    cards:
+      - type: button
+        name: Reporte AC-Matriz 160
+        icon: mdi:air-conditioner
+        tap_action:
+          action: call-service
+          service: script.ac_matriz_160_reporte_diagnostico
+        show_state: false
