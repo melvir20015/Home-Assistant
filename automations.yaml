@@ -850,7 +850,20 @@
       t_off_cool_base_no_slot: '{{ [26.0, [thermal_boundary_by_season|float(22), (base_cool|float(24))] | max] | min | round(2) }}'
       t_off_cool_base: '{{ [26.0, [thermal_boundary_by_season|float(22), (t_off_cool_base_no_slot|float + slot_cool_adjust|float + adj_clima_cool|float)] | max] | min | round(2) }}'
       t_on_cool_base: '{{ (t_off_cool_base|float + 1.0) | round(2) }}'
-      t_off_heat_base: '{{ [thermal_boundary_by_season|float(22), [17.0, (base_heat|float(24))] | max] | min | round(2) }}'
+      adj_tout_heat: >-
+        {% if tout is none %}
+          0
+        {% else %}
+          {% set raw = (tout | float - 12) * -0.04 %}
+          {{ [0.35, [-0.35, raw] | max] | min | round(2) }}
+        {% endif %}
+      adj_hout_heat: >-
+        {% set raw = (hout | float(60) - 60) * 0.005 %}
+        {{ [0.10, [-0.10, raw] | max] | min | round(2) }}
+      adj_clima_heat: >-
+        {% set raw = (adj_tout_heat | float(0)) + (adj_hout_heat | float(0)) %}
+        {{ [0.40, [-0.40, raw] | max] | min | round(2) }}
+      t_off_heat_base: '{{ [thermal_boundary_by_season|float(22), [17.0, (base_heat|float(24) + adj_clima_heat|float)] | max] | min | round(2) }}'
       t_on_heat_base: '{{ (t_off_heat_base|float - 1.0) | round(2) }}'
       offset_cool_helper: '{{ states(''input_number.ac_matriz_160_offset_cool_col_'' ~ col_idx) | float(0) }}'
       offset_heat_helper: '{{ states(''input_number.ac_matriz_160_offset_heat_col_'' ~ col_idx) | float(0) }}'
@@ -1049,7 +1062,7 @@
   - service: logbook.log
     data:
       name: AC-Matriz 160
-      message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia_real={{ presence_ok }}({{ presence_origin }}) | override_activo={{ manual_presence_override_active }} | override_until={{ manual_presence_override_until_raw }} | presencia_efectiva={{ presence_ok_effective }} | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base }},cool_off_no_slot {{ t_off_cool_base_no_slot }},slot_adj {{ slot_cool_adjust }},adj_tout {{ adj_tout_cool }},adj_hout {{ adj_hout_cool }},adj_clima {{ adj_clima_cool }},heat_on {{ t_on_heat_base }},heat_off {{ t_off_heat_base }} | offset_columna=cool {{ offset_cool_helper }},heat {{ offset_heat_helper }} | umbrales_efectivos=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}
+      message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{ contexto_firma }} | presencia_real={{ presence_ok }}({{ presence_origin }}) | override_activo={{ manual_presence_override_active }} | override_until={{ manual_presence_override_until_raw }} | presencia_efectiva={{ presence_ok_effective }} | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base }},cool_off_no_slot {{ t_off_cool_base_no_slot }},slot_adj {{ slot_cool_adjust }},adj_tout {{ adj_tout_cool }},adj_hout {{ adj_hout_cool }},adj_clima {{ adj_clima_cool }},heat_adj_tout {{ adj_tout_heat }},heat_adj_hout {{ adj_hout_heat }},heat_adj_clima {{ adj_clima_heat }},heat_on {{ t_on_heat_base }},heat_off {{ t_off_heat_base }} | offset_columna=cool {{ offset_cool_helper }},heat {{ offset_heat_helper }} | umbrales_efectivos=cool_on {{ eff_t_on_cool }},cool_off {{ eff_t_off_cool }},heat_on {{ eff_t_on_heat }},heat_off {{ eff_t_off_heat }} | action={{ action_target }} | reason={{ reason_invalid }} | validacion={{ validation_reason }}
       entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:

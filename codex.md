@@ -2450,3 +2450,28 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - `hito=fan_dynamic_cycle_apply` cuando aplica cambio,
   - `hito=fan_dynamic_cycle_skip` cuando se omite.
   - Campos mínimos: `delta`, `fan_actual`, `fan_objetivo`, `change_direction`, `window_required_s`, `window_ok`, `razon`, `col`.
+
+## 40) Ajuste climático dinámico en ON/OFF HEAT por columna AC-Matriz 160 (2026-05-22)
+
+- **Alcance:** automatización principal `AC-Matriz 160` (`id: ac_matriz_160_main_v1`), cálculo de umbrales `heat_off/heat_on` para las 160 columnas.
+- **Objetivo operativo:** modular el ciclo de calefacción con contexto exterior (`tout`/`hout`) sin romper la frontera estacional ni la histéresis contractual.
+- **Variables nuevas del cálculo HEAT base:**
+  - `adj_tout_heat`: ajuste por temperatura exterior (`tout`) con referencia `12 °C`.
+  - `adj_hout_heat`: ajuste fino por humedad exterior (`hout`) con referencia `60 %`.
+  - `adj_clima_heat`: suma acotada de ambos ajustes.
+- **Fórmulas y clamps aplicados:**
+  - `adj_tout_heat = clamp((tout - 12) * -0.04, -0.35, +0.35)`
+  - `adj_hout_heat = clamp((hout - 60) * +0.005, -0.10, +0.10)`
+  - `adj_clima_heat = clamp(adj_tout_heat + adj_hout_heat, -0.40, +0.40)`
+  - `t_off_heat_base = clamp(base_heat + adj_clima_heat, 17.0, frontera_estacional)`
+  - `t_on_heat_base = t_off_heat_base - 1.0`
+- **Robustez implementada:**
+  - si `tout` no está disponible, `adj_tout_heat` se fuerza a `0`;
+  - `hout` conserva fallback seguro a `60`;
+  - se mantienen clamps por componente y total para evitar sobre-reacción.
+- **Observabilidad:**
+  - `logbook` de evaluación agrega `heat_adj_tout`, `heat_adj_hout` y `heat_adj_clima`.
+- **No regresión contractual:**
+  - se mantiene histéresis fija de `1.0 °C` en HEAT;
+  - se conserva frontera estacional por modo (`t_off_heat` nunca supera frontera de estación);
+  - se preservan offsets por columna y validaciones estructurales existentes.
