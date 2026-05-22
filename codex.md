@@ -2396,3 +2396,27 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - terminales: `hito=auto_off_no_presencia_10m` / `hito=auto_off_no_presencia_30m`.
   - cancelaciones: `hito=auto_off_no_presencia_cancelado`.
   - payload mínimo: `trace_id`, `modo_previo`, `s24_state`, `movimiento_state`, `resultado_terminal`, `razon`.
+
+## 38) Override manual de presencia (60 min) AC-Matriz 160 (2026-05-22)
+
+- **Alcance:** `AC-Matriz 160` (`id: ac_matriz_160_main_v1`), `AC-Matriz 160 - Presencia/Ausencia` (`id: ac_matriz_160_presencia_ausencia_v1`) y `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`).
+- **Helper de expiración:** `input_datetime.ac_matriz_160_manual_presence_override_until` define vigencia del override manual (persistente tras reinicio de HA).
+- **Helper de traza:** `input_text.ac_matriz_160_manual_presence_override_trace` conserva `trace_id`, modo, razón y expiración para observabilidad.
+- **Activación/renovación (1h):**
+  - solo cuando `origen_clasificacion=manual_externo`, transición real `off->cool` o `off->heat`, S24 fuera, sin movimiento y sin presencia real.
+  - acción: fijar `override_until = now + 1h` (renovación reemplaza expiración, no acumula).
+  - trazabilidad: `hito=manual_presence_override_set` con `resultado_terminal=activado|renovado`.
+- **Cancelación temprana:**
+  - si durante vigencia se detecta presencia real (`s24_home` o `movimiento_on`), invalidar override (timestamp pasado).
+  - trazabilidad: `hito=manual_presence_override_cancelled` con razón terminal explícita.
+- **Presencia efectiva operativa en principal:**
+  - se mantiene `presence_ok` como presencia real.
+  - se deriva `manual_presence_override_active = now < override_until`.
+  - se usa `presence_ok_effective = presence_ok OR manual_presence_override_active` para elegibilidad de acciones por presencia.
+  - trazabilidad de impacto en auto-ON: `hito=presence_effective_by_override`.
+- **Auto-off por no presencia:**
+  - en automatización dedicada de ausencia, si override está activo se cancela apagado con `hito=auto_off_no_presencia_cancelado_por_override`.
+- **Precedencias y no regresión:**
+  - `manual_off_block_until` mantiene precedencia absoluta sobre auto-ON.
+  - `cool_block_until` / `heat_block_until` mantienen anti-reversa sin excepciones.
+  - sin override activo, el comportamiento existente se conserva.

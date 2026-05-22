@@ -77,6 +77,10 @@ ac_matriz_160_auto_origin_consumed:
   name: AC Matriz 160 Auto Origin Consumed
   max: 10
   initial: false
+ac_matriz_160_manual_presence_override_trace:
+  name: AC Matriz 160 Manual Presence Override Trace
+  max: 255
+  initial: sin_trace
 ac_matriz_160_reconcile_last_signature:
   name: AC Matriz 160 Reconcile Last Signature
   max: 255

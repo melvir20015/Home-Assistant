@@ -42,6 +42,10 @@ ac_matriz_160_cool_block_until:
   name: AC Matriz 160 Bloqueo Cool anti-reversa
   has_date: true
   has_time: true
+ac_matriz_160_manual_presence_override_until:
+  name: AC Matriz 160 Presence Override Manual Until
+  has_date: true
+  has_time: true
 ac_matriz_160_last_fan_change_ts:
   name: AC Matriz 160 Último cambio de fan
   has_date: true
