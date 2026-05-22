@@ -1,7 +1,7 @@
 - id: ac_dormitorio_noche_off_0700
   alias: AC - Apaga a las 07:00 am
   trace:
-    stored_traces: 50
+    stored_traces: 150
   mode: single
   trigger:
   - platform: time
