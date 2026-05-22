@@ -1970,6 +1970,13 @@
       reconcile_inconsistent_mode: '{{ modo_nuevo in [''fan_only'',''auto''] }}'
       reconcile_inconsistent_contract: '{{ modo_nuevo in [''cool'',''heat''] and ((modo_nuevo == ''cool'' and (state_attr(''climate.0200009211c7_climate'',''temperature'') | int(-999) != reconcile_sp_target|int)) or (modo_nuevo == ''heat'' and (state_attr(''climate.0200009211c7_climate'',''temperature'') | int(-999) != reconcile_sp_target|int))) }}'
       reconcile_apply: '{{ origen_clasificacion == ''manual_externo'' and transicion_real and (reconcile_inconsistent_mode or reconcile_inconsistent_contract) and (not legacy_manual_hold_active) and reconcile_dedup_ok }}'
+      manual_presence_override_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_presence_override_until'') | trim }}'
+      manual_presence_override_until_ts: '{% if manual_presence_override_until_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_presence_override_until_raw, default=0) }}{% endif %}'
+      manual_presence_override_active: '{{ as_timestamp(now()) < (manual_presence_override_until_ts | float(0)) }}'
+      s24_home: '{{ states(''device_tracker.samsung_s24'') == ''home'' }}'
+      movimiento_on: '{{ states(''binary_sensor.presencia_movimiento_estable'') == ''on'' }}'
+      manual_presence_override_candidate: '{{ origen_clasificacion == ''manual_externo'' and transicion_hvac_real and modo_anterior == ''off'' and modo_nuevo in [''cool'',''heat''] and not s24_home and not movimiento_on }}'
+      manual_presence_override_trace_id: '{{ marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts) }}'
 
   - service: input_text.set_value
     target:
