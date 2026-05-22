@@ -1929,7 +1929,6 @@
         {% else %}manual_externo_aplicado
         {% endif %}
       envio_estado: '{{ ''emitida'' if resultado_terminal == ''aplicado'' else ''fallback'' if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
-      mensaje_humano: '{% set tipo_humano = ''Encendido Manual'' if evento_manual_tipo == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual'' else ''Sin Transición'' %}{% set modo_humano = ''Frío'' if modo_aprendizaje == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de Alcance'' %}{% set envio_humano = ''Emitida'' if envio_estado == ''emitida'' else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado'' %}{% set temp_apagado_valor = helper_t_off_cool if modo_aprendizaje == ''cool'' else helper_t_off_heat if modo_aprendizaje == ''heat'' else 0 %}{% set temp_apagado_fmt = ''%.2f'' | format(temp_apagado_valor | float(0)) %}{{ hora_evento }} | TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto }} ({{ contexto_activo_resuelto }}) | DELTA= {{ ''+0.25'' if delta|float > 0 else ''-0.25'' if delta|float < 0 else ''0.00'' }} | OFFSET= {{ offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano }} | TEMP APAGADO= {{ temp_apagado_fmt }}'
       legacy_manual_hold_active: '{{ states(''input_text.ac_matriz_160_manual_legacy_hold'') == ''on'' }}'
       hvac_min_sp: '{{ state_attr(''climate.0200009211c7_climate'', ''min_temp'') | float(17) | round(0, ''floor'') | int }}'
       hvac_max_sp: '{{ state_attr(''climate.0200009211c7_climate'', ''max_temp'') | float(23) | round(0, ''floor'') | int }}'
@@ -1937,6 +1936,13 @@
       helper_t_on_cool: '{{ states(''input_number.ac_matriz_160_t_on_cool'') | float(25) }}'
       helper_t_off_heat: '{{ states(''input_number.ac_matriz_160_t_off_heat'') | float(22) }}'
       helper_t_on_heat: '{{ states(''input_number.ac_matriz_160_t_on_heat'') | float(21) }}'
+      mensaje_humano: >-
+        {% set tipo_humano = 'Encendido Manual' if evento_manual_tipo == 'encendido_manual' else 'Apagado Manual' if evento_manual_tipo == 'apagado_manual' else 'Sin Transición' %}
+        {% set modo_humano = 'Frío' if modo_aprendizaje == 'cool' else 'Calor' if modo_aprendizaje == 'heat' else 'Fuera de Alcance' %}
+        {% set envio_humano = 'Emitida' if envio_estado == 'emitida' else 'Fallback' if envio_estado == 'fallback' else 'Error Controlado' %}
+        {% set temp_apagado_valor = states('input_number.ac_matriz_160_t_off_cool') | float(24) if modo_aprendizaje == 'cool' else states('input_number.ac_matriz_160_t_off_heat') | float(22) if modo_aprendizaje == 'heat' else 0 %}
+        {% set temp_apagado_fmt = '%.2f' | format(temp_apagado_valor | float(0)) %}
+        {{ hora_evento }} | TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto }} ({{ contexto_activo_resuelto }}) | DELTA= {{ '+0.25' if delta|float > 0 else '-0.25' if delta|float < 0 else '0.00' }} | OFFSET= {{ offset_nuevo if resultado_terminal == 'aplicado' else offset_actual }} | ENVÍO= {{ envio_humano }} | TEMP APAGADO= {{ temp_apagado_fmt }}
       reconcile_target_mode: >-
         {% set tin_v = tin | float(0) %}
         {% if tin_v >= helper_t_on_cool | float(25) %}cool
