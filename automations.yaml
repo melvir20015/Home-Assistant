@@ -775,7 +775,7 @@
   description: Control HVAC contextual 8x4x5 con trazabilidad y notificación humana.
   mode: single
   trace:
-    stored_traces: 50
+    stored_traces: 200
   triggers:
   - trigger: time_pattern
     minutes: /1
