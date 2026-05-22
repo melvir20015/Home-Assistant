@@ -2501,3 +2501,10 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - `hito=post_cool_dry_completed`
   - `hito=post_cool_dry_fallback_off`
   - payload mínimo: `trace_id`, `modo_previo`, `resultado_terminal`, `razon`.
+
+## 42) Ajuste operativo de trazas en learning manual AC-Matriz 160 (2026-05-22)
+
+- **Alcance exacto:** automatización `ac_matriz_160_learning_manual_v1` (`AC-Matriz 160 - Aprendizaje manual por columna`).
+- **Cambio aplicado:** `trace.stored_traces` ajustado de `50` a `200`.
+- **Motivo:** aumentar capacidad de auditoría y diagnóstico en ejecuciones del aprendizaje manual.
+- **Simetría operativa verificada:** la automatización principal `ac_matriz_160_main_v1` ya conserva `trace.stored_traces: 200`.

@@ -2747,7 +2747,7 @@
   mode: queued
   max: 20
   trace:
-    stored_traces: 50
+    stored_traces: 200
   triggers:
   - trigger: state
     entity_id: climate.0200009211c7_climate
