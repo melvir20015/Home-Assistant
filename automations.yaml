@@ -1532,11 +1532,78 @@
           entity_id: input_text.ac_matriz_160_auto_origin_consumed
         data:
           value: 'false'
-      - service: climate.set_hvac_mode
-        target:
-          entity_id: climate.0200009211c7_climate
-        data:
-          hvac_mode: 'off'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ climate_mode == ''cool'' }}'
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=post_cool_dry_start | trace_id={{ auto_origin_trace_id }} | modo_previo={{ climate_mode }} | resultado_terminal=en_progreso | razon=turn_off_desde_cool
+              entity_id: climate.0200009211c7_climate
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              hvac_mode: fan_only
+          - wait_template: '{{ states(''climate.0200009211c7_climate'') == ''fan_only'' }}'
+            timeout: 00:00:08
+            continue_on_timeout: true
+          - variables:
+              post_cool_fan_only_ok_1: '{{ states(''climate.0200009211c7_climate'') == ''fan_only'' }}'
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ not post_cool_fan_only_ok_1 }}'
+              sequence:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  hvac_mode: fan_only
+              - wait_template: '{{ states(''climate.0200009211c7_climate'') == ''fan_only'' }}'
+                timeout: 00:00:08
+                continue_on_timeout: true
+          - variables:
+              post_cool_fan_only_ok_2: '{{ states(''climate.0200009211c7_climate'') == ''fan_only'' }}'
+              post_cool_fan_only_ok: '{{ post_cool_fan_only_ok_1 or post_cool_fan_only_ok_2 }}'
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ post_cool_fan_only_ok }}'
+              sequence:
+              - service: climate.set_fan_mode
+                target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  fan_mode: Low
+              - delay: 00:02:00
+              - service: climate.turn_off
+                target:
+                  entity_id: climate.0200009211c7_climate
+              - service: logbook.log
+                data:
+                  name: AC-Matriz 160
+                  message: hito=post_cool_dry_completed | trace_id={{ auto_origin_trace_id }} | modo_previo={{ climate_mode }} | resultado_terminal=off | razon=secado_2m_completado
+                  entity_id: climate.0200009211c7_climate
+            default:
+            - service: climate.set_hvac_mode
+              target:
+                entity_id: climate.0200009211c7_climate
+              data:
+                hvac_mode: 'off'
+            - service: logbook.log
+              data:
+                name: AC-Matriz 160
+                message: hito=post_cool_dry_fallback_off | trace_id={{ auto_origin_trace_id }} | modo_previo={{ climate_mode }} | resultado_terminal=off | razon=fan_only_no_disponible_tras_reintento
+                entity_id: climate.0200009211c7_climate
+        default:
+        - service: climate.set_hvac_mode
+          target:
+            entity_id: climate.0200009211c7_climate
+          data:
+            hvac_mode: 'off'
       - wait_template: '{{ states(''climate.0200009211c7_climate'') == ''off'' }}'
         timeout: 00:00:05
         continue_on_timeout: true
@@ -1837,9 +1904,75 @@
               - condition: template
                 value_template: "{{ s24_guard_ok and motion_guard_ok and hvac_guard_ok and security_guard_ok }}"
               sequence:
-              - service: climate.turn_off
-                target:
-                  entity_id: climate.0200009211c7_climate
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: "{{ modo_previo == 'cool' }}"
+                  sequence:
+                  - service: logbook.log
+                    data:
+                      name: AC-Matriz 160
+                      message: "hito=post_cool_dry_start | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | resultado_terminal=en_progreso | razon=auto_off_no_presencia_10m"
+                      entity_id: climate.0200009211c7_climate
+                  - service: climate.set_hvac_mode
+                    target:
+                      entity_id: climate.0200009211c7_climate
+                    data:
+                      hvac_mode: fan_only
+                  - wait_template: "{{ states('climate.0200009211c7_climate') == 'fan_only' }}"
+                    timeout: 00:00:08
+                    continue_on_timeout: true
+                  - variables:
+                      post_cool_fan_only_ok_1: "{{ states('climate.0200009211c7_climate') == 'fan_only' }}"
+                  - choose:
+                    - conditions:
+                      - condition: template
+                        value_template: "{{ not post_cool_fan_only_ok_1 }}"
+                      sequence:
+                      - service: climate.set_hvac_mode
+                        target:
+                          entity_id: climate.0200009211c7_climate
+                        data:
+                          hvac_mode: fan_only
+                      - wait_template: "{{ states('climate.0200009211c7_climate') == 'fan_only' }}"
+                        timeout: 00:00:08
+                        continue_on_timeout: true
+                  - variables:
+                      post_cool_fan_only_ok: "{{ post_cool_fan_only_ok_1 or states('climate.0200009211c7_climate') == 'fan_only' }}"
+                  - choose:
+                    - conditions:
+                      - condition: template
+                        value_template: "{{ post_cool_fan_only_ok }}"
+                      sequence:
+                      - service: climate.set_fan_mode
+                        target:
+                          entity_id: climate.0200009211c7_climate
+                        data:
+                          fan_mode: Low
+                      - delay: 00:02:00
+                      - service: climate.turn_off
+                        target:
+                          entity_id: climate.0200009211c7_climate
+                      - service: logbook.log
+                        data:
+                          name: AC-Matriz 160
+                          message: "hito=post_cool_dry_completed | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | resultado_terminal=off | razon=secado_2m_completado"
+                          entity_id: climate.0200009211c7_climate
+                    default:
+                    - service: climate.set_hvac_mode
+                      target:
+                        entity_id: climate.0200009211c7_climate
+                      data:
+                        hvac_mode: 'off'
+                    - service: logbook.log
+                      data:
+                        name: AC-Matriz 160
+                        message: "hito=post_cool_dry_fallback_off | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | resultado_terminal=off | razon=fan_only_no_disponible_tras_reintento"
+                        entity_id: climate.0200009211c7_climate
+                default:
+                - service: climate.turn_off
+                  target:
+                    entity_id: climate.0200009211c7_climate
               - service: notify.mobile_app_samsung_s24
                 data:
                   title: AC-Matriz 160 · Apagado por no presencia
@@ -1874,9 +2007,75 @@
             - condition: template
               value_template: "{{ s24_guard_ok and motion_guard_ok and hvac_guard_ok and security_guard_ok }}"
             sequence:
-            - service: climate.turn_off
-              target:
-                entity_id: climate.0200009211c7_climate
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: "{{ modo_previo == 'cool' }}"
+                sequence:
+                - service: logbook.log
+                  data:
+                    name: AC-Matriz 160
+                    message: "hito=post_cool_dry_start | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | resultado_terminal=en_progreso | razon=auto_off_no_presencia_30m"
+                    entity_id: climate.0200009211c7_climate
+                - service: climate.set_hvac_mode
+                  target:
+                    entity_id: climate.0200009211c7_climate
+                  data:
+                    hvac_mode: fan_only
+                - wait_template: "{{ states('climate.0200009211c7_climate') == 'fan_only' }}"
+                  timeout: 00:00:08
+                  continue_on_timeout: true
+                - variables:
+                    post_cool_fan_only_ok_1: "{{ states('climate.0200009211c7_climate') == 'fan_only' }}"
+                - choose:
+                  - conditions:
+                    - condition: template
+                      value_template: "{{ not post_cool_fan_only_ok_1 }}"
+                    sequence:
+                    - service: climate.set_hvac_mode
+                      target:
+                        entity_id: climate.0200009211c7_climate
+                      data:
+                        hvac_mode: fan_only
+                    - wait_template: "{{ states('climate.0200009211c7_climate') == 'fan_only' }}"
+                      timeout: 00:00:08
+                      continue_on_timeout: true
+                - variables:
+                    post_cool_fan_only_ok: "{{ post_cool_fan_only_ok_1 or states('climate.0200009211c7_climate') == 'fan_only' }}"
+                - choose:
+                  - conditions:
+                    - condition: template
+                      value_template: "{{ post_cool_fan_only_ok }}"
+                    sequence:
+                    - service: climate.set_fan_mode
+                      target:
+                        entity_id: climate.0200009211c7_climate
+                      data:
+                        fan_mode: Low
+                    - delay: 00:02:00
+                    - service: climate.turn_off
+                      target:
+                        entity_id: climate.0200009211c7_climate
+                    - service: logbook.log
+                      data:
+                        name: AC-Matriz 160
+                        message: "hito=post_cool_dry_completed | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | resultado_terminal=off | razon=secado_2m_completado"
+                        entity_id: climate.0200009211c7_climate
+                  default:
+                  - service: climate.set_hvac_mode
+                    target:
+                      entity_id: climate.0200009211c7_climate
+                    data:
+                      hvac_mode: 'off'
+                  - service: logbook.log
+                    data:
+                      name: AC-Matriz 160
+                      message: "hito=post_cool_dry_fallback_off | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | resultado_terminal=off | razon=fan_only_no_disponible_tras_reintento"
+                      entity_id: climate.0200009211c7_climate
+              default:
+              - service: climate.turn_off
+                target:
+                  entity_id: climate.0200009211c7_climate
             - service: notify.mobile_app_samsung_s24
               data:
                 title: AC-Matriz 160 · Apagado por no presencia

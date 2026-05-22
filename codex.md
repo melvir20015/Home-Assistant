@@ -2475,3 +2475,29 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - se mantiene histéresis fija de `1.0 °C` en HEAT;
   - se conserva frontera estacional por modo (`t_off_heat` nunca supera frontera de estación);
   - se preservan offsets por columna y validaciones estructurales existentes.
+
+
+## 41) Secado post-cool obligatorio en apagados AC-Matriz 160 (2026-05-22)
+
+- **Alcance:** automatización principal `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) y automatización dedicada `AC-Matriz 160 - Presencia/Ausencia` (`id: ac_matriz_160_presencia_ausencia_v1`).
+- **Contrato operativo de secado:** toda salida de `cool` hacia apagado ejecuta secuencia fija:
+  1. `climate.set_hvac_mode` a `fan_only`.
+  2. `climate.set_fan_mode` a `Low`.
+  3. espera obligatoria de `00:02:00`.
+  4. cierre en `off` (`climate.turn_off`).
+- **No regresión por modo previo:**
+  - si `modo_previo != cool`, el apagado conserva el flujo actual sin secado.
+  - si `modo_previo == cool`, no se permite apagado directo salvo fallback técnico.
+- **Fallback robusto de secado:**
+  - si `fan_only` no entra al primer intento, se reintenta una vez.
+  - si el reintento falla, se fuerza cierre seguro en `off` y se registra razón terminal explícita.
+- **No presencia integrada:**
+  - los apagados automáticos por no presencia (ramas 10m y 30m) también aplican secado cuando `modo_previo=cool`.
+- **Notificación de apagado:**
+  - la notificación de “apagado” se emite solo al cierre real en `off` (post-secado o fallback).
+  - no se emite notificación de apagado al entrar en `fan_only`.
+- **Trazabilidad técnica obligatoria (`logbook.log`):**
+  - `hito=post_cool_dry_start`
+  - `hito=post_cool_dry_completed`
+  - `hito=post_cool_dry_fallback_off`
+  - payload mínimo: `trace_id`, `modo_previo`, `resultado_terminal`, `razon`.
