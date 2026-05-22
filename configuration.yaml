@@ -34,13 +34,3 @@ http:
 template: !include templates.yaml
 sensor: !include sensors.yaml
 utility_meter: !include utility_meter.yaml
-
-
-lovelace:
-  dashboards:
-    mi_panel:
-      mode: yaml
-      title: Mi Panel 2
-      icon: mdi:view-dashboard
-      show_in_sidebar: true
-      filename: lovelace/mi_panel_2.yaml
