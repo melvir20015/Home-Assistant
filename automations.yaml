@@ -778,7 +778,7 @@
     stored_traces: 50
   triggers:
   - trigger: time_pattern
-    minutes: /5
+    minutes: /1
   - trigger: state
     entity_id:
     - sensor.lumi_lumi_weather_cuarto_temperatura
@@ -917,13 +917,38 @@
       turbo_fan_skip_reason: '{% if not turbo_fan_target_valid %}target_no_soportado{% elif (turbo_fan_candidate_label | lower) == fan_mode_actual_lc %}sin_cambio_requerido{% else %}ok{% endif %}'
       last_fan_change_ts_raw: '{{ states(''input_datetime.ac_matriz_160_last_fan_change_ts'') }}'
       last_fan_change_ts: '{% if last_fan_change_ts_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(last_fan_change_ts_raw, default=0) }}{% endif %}'
-      fan_min_window_s: 240
+      fan_downshift_min_window_s: 90
+      fan_upshift_min_window_s: 240
       fan_current_mode: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string | lower }}'
-      fan_change_window_ok: '{{ (as_timestamp(now()) - (last_fan_change_ts | float(0))) >= fan_min_window_s }}'
-      fan_should_apply_dynamic: '{{ fan_should_apply and (fan_change_window_ok or (last_fan_change_ts | float(0)) == 0) }}'
+      fan_change_direction: >-
+        {% set order = {'low': 1, 'med': 2, 'medium': 2, 'high': 3} %}
+        {% set current_rank = order.get(fan_mode_actual_lc, 0) %}
+        {% set target_rank = order.get(fan_target_internal, 0) %}
+        {% if target_rank < current_rank %}downshift
+        {% elif target_rank > current_rank %}upshift
+        {% else %}none
+        {% endif %}
+      fan_window_required_s: >-
+        {% if fan_change_direction == 'downshift' %}{{ fan_downshift_min_window_s }}
+        {% elif fan_change_direction == 'upshift' %}{{ fan_upshift_min_window_s }}
+        {% else %}0
+        {% endif %}
+      fan_window_elapsed_s: '{{ (as_timestamp(now()) - (last_fan_change_ts | float(0))) | int(0) }}'
+      fan_change_window_ok: '{{ (last_fan_change_ts | float(0)) == 0 or fan_window_elapsed_s >= (fan_window_required_s | int(0)) }}'
+      fan_should_apply_dynamic: '{{ fan_should_apply and fan_change_direction in [''downshift'',''upshift''] and fan_change_window_ok }}'
       fan_auto_on_first_set: '{{ action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' and fan_should_apply }}'
       fan_apply_allowed_dynamic: '{{ fan_call_allowed and fan_should_apply_dynamic }}'
       fan_apply_allowed_auto_on: '{{ fan_call_allowed and fan_auto_on_first_set }}'
+      fan_dynamic_eval_allowed: '{{ climate_mode == ''cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' }}'
+      fan_dynamic_real_change_required: '{{ fan_change_direction in [''downshift'',''upshift''] and fan_needs_change }}'
+      fan_dynamic_skip_reason: >-
+        {% if climate_mode != 'cool' %}modo_no_cool
+        {% elif states('input_text.ac_matriz_160_fase_ciclo') == 'turbo_cool' %}turbo_activo
+        {% elif not fan_target_valid %}target_no_soportado
+        {% elif not fan_dynamic_real_change_required %}sin_cambio_requerido
+        {% elif not fan_change_window_ok %}bloqueado_por_ventana
+        {% else %}ok
+        {% endif %}
       validation_reason: '{% if helper_invalid_state %}recalculado_helper_no_disponible{% elif not firma_match %}contexto_recalculado_por_cambio_columna{% elif not rango_ok %}recalculado_rango_contractual_invalido{% elif not histeresis_ok %}recalculado_histeresis_invalida{% else %}ok_lectura_helper_valida{% endif %}'
       reason_invalid: '{% if invalid_data %}fallback_datos_externos_o_sensores{% elif not presence_ok %}sin_presencia_en_disparo{% else %}ok{% endif %}'
       manual_off_block_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_off_block_until'') }}'
@@ -1594,6 +1619,42 @@
           message: hito=auto_marker_turn_off_ttl_preserved | trace_id={{ auto_origin_trace_id }} | marker_expires_at={{ auto_origin_expires_at }} | marker_ttl_s=30 | clima_previo={{ climate_mode }} | accion=turn_off
           entity_id: climate.0200009211c7_climate
     default: []
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ action_target == ''none'' and fan_dynamic_eval_allowed }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=fan_dynamic_cycle_eval | delta={{ cool_delta_real }} | fan_actual={{ fan_mode_actual }} | fan_objetivo={{ fan_target_final_label }} | change_direction={{ fan_change_direction }} | window_required_s={{ fan_window_required_s }} | window_ok={{ fan_change_window_ok }} | col={{ col_humana }}
+          entity_id: climate.0200009211c7_climate
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ fan_dynamic_skip_reason == ''ok'' }}'
+          sequence:
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: '{{ fan_target_final_label }}'
+          - service: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.ac_matriz_160_last_fan_change_ts
+            data:
+              datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=fan_dynamic_cycle_apply | delta={{ cool_delta_real }} | fan_actual={{ fan_mode_actual }} | fan_objetivo={{ fan_target_final_label }} | change_direction={{ fan_change_direction }} | window_required_s={{ fan_window_required_s }} | window_ok={{ fan_change_window_ok }} | razon=aplicado | col={{ col_humana }}
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: hito=fan_dynamic_cycle_skip | delta={{ cool_delta_real }} | fan_actual={{ fan_mode_actual }} | fan_objetivo={{ fan_target_final_label }} | change_direction={{ fan_change_direction }} | window_required_s={{ fan_window_required_s }} | window_ok={{ fan_change_window_ok }} | razon={{ fan_dynamic_skip_reason }} | col={{ col_humana }}
+            entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template

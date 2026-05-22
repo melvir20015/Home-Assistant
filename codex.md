@@ -2420,3 +2420,33 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - `manual_off_block_until` mantiene precedencia absoluta sobre auto-ON.
   - `cool_block_until` / `heat_block_until` mantienen anti-reversa sin excepciones.
   - sin override activo, el comportamiento existente se conserva.
+
+## 39) FAN dinámico intra-ciclo COOL con ventanas por dirección AC-Matriz 160 (2026-05-22)
+
+- **Alcance:** automatización principal `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) en modo `cool`.
+- **Evaluación dinámica en ciclo activo:** además de cambios de sensores, se evalúa cada 1 minuto para permitir ajustes de FAN aunque `action_target=none` y el HVAC ya esté en `cool`.
+- **Política delta COOL (sin cambios de negocio):**
+  - `delta_cool = Tin - eff_t_off_cool`.
+  - `delta >= 2.0 => High`
+  - `1.0 <= delta < 2.0 => Med`
+  - `delta < 1.0 => Low`
+  - Se mantiene normalización a modos reales del equipo (`Low`, `Med`, `High`, `Auto`) y validación contra `fan_modes`.
+- **Dirección de cambio y compuertas:**
+  - `downshift` (`High->Med`, `Med->Low`) requiere ventana mínima de `90 s`.
+  - `upshift` (`Low->Med`, `Med->High`) requiere ventana mínima de `240 s`.
+  - `none` no requiere ventana y no dispara `set_fan_mode`.
+- **Guardas obligatorias para aplicar `climate.set_fan_mode`:**
+  - `climate_mode == cool`,
+  - fase distinta de `turbo_cool`,
+  - target soportado por el equipo,
+  - cambio real requerido,
+  - ventana cumplida según dirección.
+- **Exclusiones explícitas:**
+  - no aplica ajuste dinámico durante `turbo_cool`,
+  - no modifica comportamiento de `turbo_heat`,
+  - no altera lógica de `heat`.
+- **Observabilidad técnica (`logbook.log`):**
+  - `hito=fan_dynamic_cycle_eval` para evaluación,
+  - `hito=fan_dynamic_cycle_apply` cuando aplica cambio,
+  - `hito=fan_dynamic_cycle_skip` cuando se omite.
+  - Campos mínimos: `delta`, `fan_actual`, `fan_objetivo`, `change_direction`, `window_required_s`, `window_ok`, `razon`, `col`.
