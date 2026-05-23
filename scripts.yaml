@@ -11,6 +11,20 @@ ac_matriz_160_reporte_diagnostico:
         hout: "{{ hout_raw if hout_raw is not none else 60 }}"
         weather_state_raw: "{{ states('weather.openweathermap') | lower }}"
         weather_desc_raw: "{{ state_attr('weather.openweathermap', 'forecast') }}"
+        prev_diag_snapshot_raw: "{{ states('input_text.ac_matriz_160_diag_demanda_snapshot') }}"
+        prev_diag_parts: "{{ prev_diag_snapshot_raw.split('|') if prev_diag_snapshot_raw not in ['unknown','unavailable','none','','sin_snapshot'] else [] }}"
+        prev_tin: "{{ prev_diag_parts[0] | float(tin) if prev_diag_parts | count > 0 else tin }}"
+        prev_hin: "{{ prev_diag_parts[1] | float(hin) if prev_diag_parts | count > 1 else hin }}"
+        prev_tout: "{{ prev_diag_parts[2] | float(tout if tout is not none else 0) if prev_diag_parts | count > 2 else (tout if tout is not none else 0) }}"
+        prev_hout: "{{ prev_diag_parts[3] | float(hout) if prev_diag_parts | count > 3 else hout }}"
+        trend_tin: "{% if tin > (prev_tin|float) %}↑{% elif tin < (prev_tin|float) %}↓{% else %}{% endif %}"
+        trend_hin: "{% if hin > (prev_hin|float) %}↑{% elif hin < (prev_hin|float) %}↓{% else %}{% endif %}"
+        trend_tout: "{% set tout_cmp = tout if tout is not none else 0 %}{% if tout_cmp > (prev_tout|float) %}↑{% elif tout_cmp < (prev_tout|float) %}↓{% else %}{% endif %}"
+        trend_hout: "{% if hout > (prev_hout|float) %}↑{% elif hout < (prev_hout|float) %}↓{% else %}{% endif %}"
+        tin_fmt: "{{ '%.2f' | format(tin|float) }}"
+        hin_fmt: "{{ '%.2f' | format(hin|float) }}"
+        tout_fmt: "{{ '%.2f' | format((tout if tout is not none else 0)|float) }}"
+        hout_fmt: "{{ '%.2f' | format(hout|float) }}"
         clima_actual: >-
           {% set w = weather_state_raw %}
           {% if w in ['clear', 'sunny', 'clear-night'] %}Despejado
@@ -61,18 +75,21 @@ ac_matriz_160_reporte_diagnostico:
             {% if heat_on is none %}{% set razones = razones + ['Umbral heat_on no disponible'] %}{% elif not turn_on_heat %}{% set razones = razones + ['Tin ' ~ tin ~ ' > heat_on ' ~ (heat_on|round(2))] %}{% endif %}
             {{ razones | join(' | ') if razones | length > 0 else 'Condiciones de encendido HEAT cumplidas.' }}
           {% endif %}
-        stop_condition: "{% if hvac_mode == 'cool' %}Tin <= cool_off ({{ tin }} <= {{ cool_off|round(2) if cool_off is not none else 'n/d' }}){% elif hvac_mode == 'heat' %}Tin >= heat_off ({{ tin }} >= {{ heat_off|round(2) if heat_off is not none else 'n/d' }}){% elif hvac_mode == 'fan_only' %}No aplica (modo ventilación){% else %}No aplica (HVAC apagado){% endif %}"
-        minutos_estimados: >-
-          {% if hvac_mode == 'cool' and cool_off is not none %}
-            {% set delta = (tin|float - cool_off|float) %}
-            {% if delta <= 0 %}0{% else %}n/d{% endif %}
-          {% elif hvac_mode == 'heat' and heat_off is not none %}
-            {% set delta = (heat_off|float - tin|float) %}
-            {% if delta <= 0 %}0{% else %}n/d{% endif %}
+        hvac_encendido: "{{ hvac_mode in ['cool','heat','fan_only','auto'] }}"
+        demanda_label: "{{ 'Enfriar' if modo_demandado == 'cool' else 'Calentar' }}"
+        tin_comp_umbral: >-
+          {% if hvac_encendido %}
+            {% if modo_demandado == 'cool' %}{{ cool_off if cool_off is not none else none }}{% else %}{{ heat_off if heat_off is not none else none }}{% endif %}
           {% else %}
-            n/d
+            {% if modo_demandado == 'cool' %}{{ cool_on if cool_on is not none else none }}{% else %}{{ heat_on if heat_on is not none else none }}{% endif %}
           {% endif %}
-        estimacion_texto: "{{ 'estimación no disponible' if minutos_estimados == 'n/d' else (minutos_estimados ~ ' min (tentativo)') }}"
+        comp_operador: >-
+          {% if hvac_encendido %}
+            {% if modo_demandado == 'cool' %}>{% else %}<{% endif %}
+          {% else %}
+            {% if modo_demandado == 'cool' %}<{% else %}>{% endif %}
+          {% endif %}
+        umbral_fmt: "{{ '%.2f' | format((tin_comp_umbral if tin_comp_umbral is not none else 0)|float) }}"
         resultado_reporte: "{{ 'off_solo_no_encendido' if hvac_mode == 'off' else 'on_con_evaluacion_apagado' }}"
     - service: logbook.log
       data:
@@ -82,20 +99,12 @@ ac_matriz_160_reporte_diagnostico:
       data:
         title: "AC-Matriz 160 · Reporte diagnóstico"
         message: >-
-          Estado HVAC: {{ hvac_mode | upper }}
+          Estado HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
+          Condiciones: {{ clima_actual }} | Tin: {{ trend_tin }}{{ tin_fmt }}°C | Hin: {{ trend_hin }}{{ hin_fmt }}% | Tout: {{ trend_tout }}{{ tout_fmt }}°C | Hout: {{ trend_hout }}{{ hout_fmt }}%
 
-          Condiciones:
-          - Tin: {{ tin }} °C
-          - Hin: {{ hin }} %
-          - Tout: {{ tout if tout is not none else 'n/d' }} °C
-          - Hout: {{ hout }} %
-          - Clima: {{ clima_actual }}
-
-          Diagnóstico por modo demandado ({{ modo_demandado | upper }}):
-          {{ razones_modo_demandado }}
-
-          {% if hvac_mode != 'off' %}
-          Cuándo se apaga:
-          - Condición exacta: {{ stop_condition }}
-          - Estimación: {{ estimacion_texto }}
-          {% endif %}
+          Demanda: {{ demanda_label }} | Tin: {{ tin_fmt }}°C {{ comp_operador }} {{ umbral_fmt }}°C
+    - service: input_text.set_value
+      target:
+        entity_id: input_text.ac_matriz_160_diag_demanda_snapshot
+      data:
+        value: "{{ tin_fmt }}|{{ hin_fmt }}|{{ tout_fmt }}|{{ hout_fmt }}"

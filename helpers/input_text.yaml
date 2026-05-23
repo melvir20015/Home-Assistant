@@ -34,6 +34,10 @@ ac_matriz_160_ultimo_estado_notificacion:
   name: AC Matriz 160 Último Estado Notificación
   max: 255
   initial: sin_evento
+ac_matriz_160_diag_demanda_snapshot:
+  name: AC Matriz 160 Diagnóstico Demanda Snapshot
+  max: 255
+  initial: sin_snapshot
 ac_matriz_160_origen_presencia_disparo:
   name: AC Matriz 160 Origen Presencia Disparo
   max: 80
