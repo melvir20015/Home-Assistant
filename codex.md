@@ -2508,3 +2508,39 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - **Cambio aplicado:** `trace.stored_traces` ajustado de `50` a `200`.
 - **Motivo:** aumentar capacidad de auditoría y diagnóstico en ejecuciones del aprendizaje manual.
 - **Simetría operativa verificada:** la automatización principal `ac_matriz_160_main_v1` ya conserva `trace.stored_traces: 200`.
+
+## 43) Política de reporte diagnóstico por modo demandado AC-Matriz 160 (2026-05-23)
+
+- **Alcance:** script `ac_matriz_160_reporte_diagnostico` en `scripts.yaml` (notificación móvil y logbook de diagnóstico bajo demanda).
+- **Modo demandado como fuente de reporte:**
+  - el reporte ahora deriva `modo_demandado` desde la lógica efectiva de demanda (`turn_on_cool` / `turn_on_heat`) y no desde el `hvac_mode` actual.
+  - si ambos demandan simultáneamente por ruido, se prioriza `cool` como fallback estable de observabilidad.
+- **Builder de razones sin mezcla de columnas:**
+  - con `modo_demandado=cool`, solo se listan guardas/umbrales de encendido COOL (`manual_off_block`, `cool_block`, presencia efectiva, `cool_on`).
+  - con `modo_demandado=heat`, solo se listan guardas/umbrales de encendido HEAT (`manual_off_block`, `heat_block`, presencia efectiva, `heat_on`).
+  - se excluyen explícitamente razones de la columna no demandada para evitar ruido operativo.
+- **Normalización de clima OpenWeather a español (con fallback robusto):**
+  - `clear/sunny/clear-night -> Despejado`
+  - `few clouds/scattered clouds/partly cloudy -> Parcialmente nublado`
+  - `broken clouds/overcast/cloudy -> Nublado`
+  - `rain/drizzle/pouring -> Lluvioso`
+  - `thunderstorm/lightning* -> Tormenta`
+  - `mist/fog/haze/smoky -> Neblina`
+  - `snow* -> Nevando`
+  - fallback final: `Condición no disponible`.
+- **Compuerta por estado HVAC para bloque de apagado:**
+  - `HVAC OFF`: se reporta solo “por qué no enciende” por modo demandado + clima.
+  - `HVAC ON`: se mantiene bloque “Cuándo se apaga” con condición y estimación existentes.
+- **Trazabilidad diagnóstica reforzada:**
+  - `logbook.log` emite `hito=diagnostico_bajo_demanda_reporte` con `modo_demandado`, `hvac_state`, `resultado_reporte` y `razones` incluidas para verificar no mezcla de modos.
+
+### Ejemplos esperados
+
+- **OFF + demanda COOL:**
+  - incluye solo causas COOL (ej. `Tin < cool_on`, bloqueos cool/manual, presencia efectiva).
+  - no incluye causas HEAT ni bloque “Cuándo se apaga”.
+- **OFF + demanda HEAT:**
+  - incluye solo causas HEAT (ej. `Tin > heat_on`, bloqueos heat/manual, presencia efectiva).
+  - no incluye causas COOL ni bloque “Cuándo se apaga”.
+- **ON (cool o heat):**
+  - conserva diagnóstico por modo demandado y agrega evaluación “Cuándo se apaga” según contrato vigente.

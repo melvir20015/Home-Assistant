@@ -9,6 +9,19 @@ ac_matriz_160_reporte_diagnostico:
         tout: "{{ state_attr('weather.openweathermap','temperature') | float(none) }}"
         hout_raw: "{{ state_attr('weather.openweathermap','humidity') | float(none) }}"
         hout: "{{ hout_raw if hout_raw is not none else 60 }}"
+        weather_state_raw: "{{ states('weather.openweathermap') | lower }}"
+        weather_desc_raw: "{{ state_attr('weather.openweathermap', 'forecast') }}"
+        clima_actual: >-
+          {% set w = weather_state_raw %}
+          {% if w in ['clear', 'sunny', 'clear-night'] %}Despejado
+          {% elif w in ['partlycloudy', 'partly cloudy', 'few clouds', 'scattered clouds'] %}Parcialmente nublado
+          {% elif w in ['cloudy', 'overcast', 'broken clouds'] %}Nublado
+          {% elif w in ['rainy', 'rain', 'pouring', 'drizzle'] %}Lluvioso
+          {% elif w in ['lightning', 'lightning-rainy', 'thunderstorm'] %}Tormenta
+          {% elif w in ['fog', 'mist', 'haze', 'smoky'] %}Neblina
+          {% elif w in ['snowy', 'snow', 'snowy-rainy'] %}Nevando
+          {% else %}Condición no disponible
+          {% endif %}
         presence_motion: "{{ is_state('binary_sensor.presencia_movimiento_estable','on') }}"
         presence_s24: "{{ is_state('device_tracker.samsung_s24','home') or is_state('person.ivan','home') }}"
         presence_ok: "{{ presence_motion or presence_s24 }}"
@@ -23,8 +36,32 @@ ac_matriz_160_reporte_diagnostico:
         manual_off_block_until_raw: "{{ states('input_datetime.ac_matriz_160_manual_off_block_until') }}"
         manual_off_block_until_ts: "{% if manual_off_block_until_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_off_block_until_raw, default=0) }}{% endif %}"
         manual_off_block_active: "{{ as_timestamp(now()) < (manual_off_block_until_ts | float(0)) }}"
+        heat_block_until_raw: "{{ states('input_datetime.ac_matriz_160_heat_block_until') }}"
+        heat_block_until_ts: "{% if heat_block_until_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(heat_block_until_raw, default=0) }}{% endif %}"
+        heat_block_active: "{{ as_timestamp(now()) < (heat_block_until_ts | float(0)) }}"
+        cool_block_until_raw: "{{ states('input_datetime.ac_matriz_160_cool_block_until') }}"
+        cool_block_until_ts: "{% if cool_block_until_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(cool_block_until_raw, default=0) }}{% endif %}"
+        cool_block_active: "{{ as_timestamp(now()) < (cool_block_until_ts | float(0)) }}"
+        turn_on_cool: "{{ (cool_on is not none) and (tin|float >= cool_on|float) }}"
+        turn_on_heat: "{{ (heat_on is not none) and (tin|float <= heat_on|float) }}"
+        modo_demandado: "{% if turn_on_cool and not turn_on_heat %}cool{% elif turn_on_heat and not turn_on_cool %}heat{% elif turn_on_cool and turn_on_heat %}cool{% else %}cool{% endif %}"
+        razones_modo_demandado: >-
+          {% if modo_demandado == 'cool' %}
+            {% set razones = [] %}
+            {% if manual_off_block_active %}{% set razones = razones + ['Bloqueo manual activo hasta ' ~ manual_off_block_until_raw] %}{% endif %}
+            {% if cool_block_active %}{% set razones = razones + ['Bloqueo anti-reversa cool activo hasta ' ~ cool_block_until_raw] %}{% endif %}
+            {% if not presence_ok_effective %}{% set razones = razones + ['Sin presencia efectiva (movimiento=' ~ presence_motion ~ ', s24=' ~ presence_s24 ~ ', override=' ~ manual_presence_override_active ~ ')'] %}{% endif %}
+            {% if cool_on is none %}{% set razones = razones + ['Umbral cool_on no disponible'] %}{% elif not turn_on_cool %}{% set razones = razones + ['Tin ' ~ tin ~ ' < cool_on ' ~ (cool_on|round(2))] %}{% endif %}
+            {{ razones | join(' | ') if razones | length > 0 else 'Condiciones de encendido COOL cumplidas.' }}
+          {% else %}
+            {% set razones = [] %}
+            {% if manual_off_block_active %}{% set razones = razones + ['Bloqueo manual activo hasta ' ~ manual_off_block_until_raw] %}{% endif %}
+            {% if heat_block_active %}{% set razones = razones + ['Bloqueo anti-reversa heat activo hasta ' ~ heat_block_until_raw] %}{% endif %}
+            {% if not presence_ok_effective %}{% set razones = razones + ['Sin presencia efectiva (movimiento=' ~ presence_motion ~ ', s24=' ~ presence_s24 ~ ', override=' ~ manual_presence_override_active ~ ')'] %}{% endif %}
+            {% if heat_on is none %}{% set razones = razones + ['Umbral heat_on no disponible'] %}{% elif not turn_on_heat %}{% set razones = razones + ['Tin ' ~ tin ~ ' > heat_on ' ~ (heat_on|round(2))] %}{% endif %}
+            {{ razones | join(' | ') if razones | length > 0 else 'Condiciones de encendido HEAT cumplidas.' }}
+          {% endif %}
         stop_condition: "{% if hvac_mode == 'cool' %}Tin <= cool_off ({{ tin }} <= {{ cool_off|round(2) if cool_off is not none else 'n/d' }}){% elif hvac_mode == 'heat' %}Tin >= heat_off ({{ tin }} >= {{ heat_off|round(2) if heat_off is not none else 'n/d' }}){% elif hvac_mode == 'fan_only' %}No aplica (modo ventilación){% else %}No aplica (HVAC apagado){% endif %}"
-        tendencia_10m: "{{ state_attr('sensor.lumi_lumi_weather_cuarto_temperatura', 'trend') if state_attr('sensor.lumi_lumi_weather_cuarto_temperatura', 'trend') is not none else 'n/d' }}"
         minutos_estimados: >-
           {% if hvac_mode == 'cool' and cool_off is not none %}
             {% set delta = (tin|float - cool_off|float) %}
@@ -36,22 +73,11 @@ ac_matriz_160_reporte_diagnostico:
             n/d
           {% endif %}
         estimacion_texto: "{{ 'estimación no disponible' if minutos_estimados == 'n/d' else (minutos_estimados ~ ' min (tentativo)') }}"
-        causal: >-
-          {% if hvac_mode == 'off' %}
-            HVAC apagado: {% if manual_off_block_active %}bloqueo manual activo hasta {{ manual_off_block_until_raw }}.{% elif not presence_ok_effective %}sin presencia efectiva (movimiento={{ presence_motion }}, s24={{ presence_s24 }}, override={{ manual_presence_override_active }}).{% elif cool_on is not none and heat_on is not none %}Tin {{ tin }} no cumple encendido (cool_on={{ cool_on|round(2) }}, heat_on={{ heat_on|round(2) }}).{% else %}umbrales no disponibles para validar arranque.{% endif %}
-          {% elif hvac_mode == 'cool' %}
-            Sigue en COOL porque aún no cumple apagado: Tin {{ tin }} > cool_off {{ cool_off|round(2) if cool_off is not none else 'n/d' }}.
-          {% elif hvac_mode == 'heat' %}
-            Sigue en HEAT porque aún no cumple apagado: Tin {{ tin }} < heat_off {{ heat_off|round(2) if heat_off is not none else 'n/d' }}.
-          {% elif hvac_mode == 'fan_only' %}
-            Modo FAN_ONLY activo: fuera de ciclo térmico directo.
-          {% else %}
-            Modo no contemplado por contrato térmico principal.
-          {% endif %}
+        resultado_reporte: "{{ 'off_solo_no_encendido' if hvac_mode == 'off' else 'on_con_evaluacion_apagado' }}"
     - service: logbook.log
       data:
         name: AC-Matriz 160
-        message: "hito=diagnostico_bajo_demanda_reporte | hvac={{ hvac_mode }} | tin={{ tin }} | cool_on={{ cool_on }} | cool_off={{ cool_off }}"
+        message: "hito=diagnostico_bajo_demanda_reporte | modo_demandado={{ modo_demandado }} | hvac_state={{ hvac_mode }} | resultado_reporte={{ resultado_reporte }} | razones={{ razones_modo_demandado }}"
     - service: notify.mobile_app_samsung_s24
       data:
         title: "AC-Matriz 160 · Reporte diagnóstico"
@@ -63,16 +89,13 @@ ac_matriz_160_reporte_diagnostico:
           - Hin: {{ hin }} %
           - Tout: {{ tout if tout is not none else 'n/d' }} °C
           - Hout: {{ hout }} %
+          - Clima: {{ clima_actual }}
 
-          Umbrales efectivos:
-          - cool_on: {{ cool_on|round(2) if cool_on is not none else 'n/d' }}
-          - cool_off: {{ cool_off|round(2) if cool_off is not none else 'n/d' }}
-          - heat_on: {{ heat_on|round(2) if heat_on is not none else 'n/d' }}
-          - heat_off: {{ heat_off|round(2) if heat_off is not none else 'n/d' }}
+          Diagnóstico por modo demandado ({{ modo_demandado | upper }}):
+          {{ razones_modo_demandado }}
 
-          Diagnóstico causal:
-          {{ causal }}
-
+          {% if hvac_mode != 'off' %}
           Cuándo se apaga:
           - Condición exacta: {{ stop_condition }}
           - Estimación: {{ estimacion_texto }}
+          {% endif %}
