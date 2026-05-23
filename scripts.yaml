@@ -98,7 +98,7 @@ ac_matriz_160_reporte_diagnostico:
     - service: notify.mobile_app_samsung_s24
       data:
         title: "AC-Matriz 160 · Reporte diagnóstico"
-        message: >-
+        message: |-
           Estado HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
           Condiciones: {{ clima_actual }} | Tin: {{ trend_tin }}{{ tin_fmt }}°C | Hin: {{ trend_hin }}{{ hin_fmt }}% | Tout: {{ trend_tout }}{{ tout_fmt }}°C | Hout: {{ trend_hout }}{{ hout_fmt }}%
 
