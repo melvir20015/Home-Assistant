@@ -2632,3 +2632,10 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - `04:10 AM | EVENTO= AUTO_ON_NIGHT_HEAT | MODO= Calor | SP= 23°C | FAN= Bajo | INTERIOR= 19.2°C | EXTERIOR= 15.9°C | TEMP APAGADO= 20.1°C | CONTEXTO= Columna 61 (Despejado | Invierno | Horario 04:00-05:59)`
 - **OFF (desde cool o heat, conservando modo previo):**
   - `01:20 AM | EVENTO= AUTO_OFF_NIGHT_UMBRAL | MODO= Frío | SP= 22°C | FAN= Bajo | INTERIOR= 23.4°C | EXTERIOR= 25.0°C | TEMP APAGADO= 23.4°C | CONTEXTO= Columna 44 (Nublado | Primavera | Horario 01:00-03:59)`
+
+## 47) Eliminación de compuerta helper en Night (2026-05-24)
+
+- **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`).
+- **Cambio operativo:** se elimina la condición de entrada por helper `input_boolean.ac_night_auto_habilitado`.
+- **Motivo:** evitar bloqueos de ejecución tras reinicio o recarga de configuración cuando el helper queda en `off`.
+- **Comportamiento resultante:** Night se ejecuta por ventana horaria (`22:00–07:00`) y sus guardas internas existentes, sin dependencia del booleano.

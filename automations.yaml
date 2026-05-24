@@ -3396,9 +3396,6 @@
     - sensor.lumi_lumi_weather_coco_humedad
     - binary_sensor.presencia_ok_estable
   condition:
-  - condition: state
-    entity_id: input_boolean.ac_night_auto_habilitado
-    state: 'on'
   - condition: time
     after: '22:00:00'
     before: '07:00:00'
