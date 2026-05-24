@@ -2763,8 +2763,10 @@
         states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(0)] | average
         | round(2) }}'
       transicion_real: '{{ modo_anterior != modo_nuevo }}'
-      transicion_hvac_real: '{{ (modo_anterior == ''off'' and modo_nuevo in [''cool'',''heat''])
+      transicion_hvac_directa_real: '{{ (modo_anterior == ''off'' and modo_nuevo in [''cool'',''heat''])
         or (modo_nuevo == ''off'' and modo_anterior in [''cool'',''heat'']) }}'
+      transicion_compuesta_inicio_valida: '{{ modo_anterior == ''off'' and modo_nuevo == ''fan_only'' }}'
+      transicion_hvac_real: '{{ transicion_hvac_directa_real }}'
       modo_aprendizaje: '{% if modo_nuevo in [''cool'',''heat''] %}{{ modo_nuevo }}{%
         elif modo_anterior in [''cool'',''heat''] %}{{ modo_anterior }}{% else %}fuera_alcance{%
         endif %}'
@@ -2974,7 +2976,7 @@
       movimiento_on: '{{ states(''binary_sensor.presencia_movimiento_estable'') ==
         ''on'' }}'
       manual_presence_override_candidate: '{{ origen_clasificacion == ''manual_externo''
-        and transicion_hvac_real and modo_anterior == ''off'' and modo_nuevo in [''cool'',''heat'']
+        and transicion_hvac_real and transicion_consolidada_from == ''off'' and transicion_consolidada_to in [''cool'',''heat'']
         and not s24_home and not movimiento_on }}'
       manual_presence_override_trace_id: '{{ marker_trace_id if marker_trace_id|length
         > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts) }}'
@@ -3187,6 +3189,55 @@
   - delay:
       seconds: 3
   - variables:
+      estado_tras_10s: '{{ states(''climate.0200009211c7_climate'') | lower }}'
+      cierre_compuesto_valido: '{{ transicion_compuesta_inicio_valida and estado_tras_10s in [''cool'',''heat''] }}'
+      transicion_consolidada_from: '{{ ''off'' if cierre_compuesto_valido else modo_anterior }}'
+      transicion_consolidada_to: '{{ estado_tras_10s if cierre_compuesto_valido else modo_nuevo }}'
+      transicion_observada_consolidada: '{{ transicion_consolidada_from ~ ''->'' ~ transicion_consolidada_to }}'
+      transicion_hvac_real: '{{ (transicion_consolidada_from == ''off'' and transicion_consolidada_to in [''cool'',''heat''])
+        or (transicion_consolidada_to == ''off'' and transicion_consolidada_from in [''cool'',''heat'']) }}'
+      modo_aprendizaje: '{% if transicion_consolidada_to in [''cool'',''heat''] %}{{ transicion_consolidada_to }}{%
+        elif transicion_consolidada_from in [''cool'',''heat''] %}{{ transicion_consolidada_from }}{% else %}fuera_alcance{%
+        endif %}'
+      evento_manual_tipo: '{% if transicion_hvac_real and transicion_consolidada_to in [''cool'',''heat'']
+        and transicion_consolidada_from == ''off'' %}encendido_manual{% elif transicion_hvac_real and
+        transicion_consolidada_to == ''off'' and transicion_consolidada_from in [''cool'',''heat''] %}apagado_manual{%
+        else %}ignorado{% endif %}'
+      origen_clasificacion: '{% if not transicion_hvac_real %}sin_transicion_real
+        {% elif marker_compatible %}automatico_ac_matriz_160 {% else %}manual_externo
+        {% endif %}'
+      resultado_terminal: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
+        {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}ignorado
+        {% elif not horario_aprendizaje_habilitado %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
+        %}ignorado {% elif evento_manual_tipo == ''ignorado'' %}ignorado {% elif not dedup_ok %}ignorado
+        {% elif not helper_valido %}error_controlado {% else %}aplicado
+        {% endif %}'
+      razon: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}fan_only_sin_cierre_termico_10s
+        {% elif not transicion_hvac_real %}evento_no_transicion {% elif origen_clasificacion
+        == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz {% elif not
+        horario_aprendizaje_habilitado %}out_of_scope_daytime_main {% elif evento_manual_tipo
+        == ''encendido_manual'' and manual_off_rebound_active %}rebote_post_manual_off
+        {% elif evento_manual_tipo == ''ignorado'' %}evento_no_transicion {% elif
+        not dedup_ok %}dedup_consolidado {% elif col_idx_resuelto|int <= 0 %}columna_no_resuelta
+        {% elif not helper_valido %}helper_invalido {% elif cierre_compuesto_valido %}manual_compuesto_desde_fan_only
+        {% else %}manual_externo_aplicado
+        {% endif %}'
+      mensaje_humano: '{% set tipo_humano = ''Encendido manual detectado por transición compuesta (apagado → ventilación → frío/calor)'' if cierre_compuesto_valido else ''Encendido Manual'' if evento_manual_tipo
+        == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual''
+        else ''Sin Transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje
+        == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de
+        Alcance'' %} {% set envio_humano = ''Emitida'' if envio_estado == ''emitida''
+        else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado''
+        %} {% set temp_apagado_valor = states(''input_number.ac_matriz_160_t_off_cool'')
+        | float(24) if modo_aprendizaje == ''cool'' else states(''input_number.ac_matriz_160_t_off_heat'')
+        | float(22) if modo_aprendizaje == ''heat'' else 0 %} {% set temp_apagado_fmt
+        = ''%.2f'' | format(temp_apagado_valor | float(0)) %} {{ hora_evento }} |
+        TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto
+        }} ({{ contexto_activo_resuelto }}) | DELTA= {{ ''+0.25'' if delta|float >
+        0 else ''-0.25'' if delta|float < 0 else ''0.00'' }} | OFFSET= {{ offset_nuevo
+        if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano
+        }} | TEMP APAGADO= {{ temp_apagado_fmt }}'
+  - variables:
       estado_actual_estabilizacion: '{{ states(''climate.0200009211c7_climate'') |
         lower }}'
       last_changed_actual_ts: '{{ as_timestamp(states.climate[''0200009211c7_climate''].last_changed,
@@ -3250,7 +3301,7 @@
             horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }}
             | marker_compatible={{ marker_compatible }} | marker_transition_expected={{
             marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed
-            }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
+            }} | transicion_consolidada={{ transicion_observada_consolidada }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
             }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje
             }} | columna={{ col_idx_resuelto }} | contexto={{ contexto_activo_resuelto
             }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo
@@ -3265,7 +3316,7 @@
           horario_aprendizaje_habilitado }} | marker_vigente={{ marker_vigente }}
           | marker_compatible={{ marker_compatible }} | marker_transition_expected={{
           marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed
-          }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
+          }} | transicion_consolidada={{ transicion_observada_consolidada }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
           }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }}
           | final_transition={{ transicion_final_from ~ "->" ~ transicion_final_to
           }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok

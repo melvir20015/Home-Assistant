@@ -2679,3 +2679,30 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - Escenario: `Tin=24.11`, `Hin=56.3`, noche húmeda.
   - Antes: `on_cool` podía quedar alto (ej. `25.17`), retrasando encendido por confort.
   - Ahora: `bochorno_score` elevado reduce `hysteresis_eff`, aplica sesgo de confort y cap dinámico, dejando `on_cool` más cerca de `Tin` para encender antes o quedar “cerca de encender” sin romper anti-ciclo.
+
+## 7. Contrato operativo AC-Matriz 160 (aprendizaje manual)
+
+### Encendido manual compuesto (off → fan_only → cool/heat)
+- Se considera transición manual compuesta válida cuando ocurre `off -> fan_only` y el modo final térmico (`cool` o `heat`) llega dentro de una **ventana fija de 10 segundos**.
+- La transición efectiva para aprendizaje se consolida como:
+  - `off->cool`, o
+  - `off->heat`.
+- Si el evento queda únicamente en `fan_only` al cierre de 10 segundos, el terminal es `ignorado` y **no** se aprende.
+
+### Fuente única de verdad para origen
+- La clasificación de origen no se duplica en learning.
+- `ac_matriz_160_learning_manual_v1` consume exclusivamente el marcador transaccional emitido por `ac_matriz_160_main_v1`.
+- Precedencia contractual:
+  1. Si existe marcador automático vigente y compatible con la transición consolidada, el resultado terminal es `ignorado`.
+  2. Si no existe marcador compatible y pasan guardas vigentes, el origen final es `manual_externo`.
+
+### Reglas de aprendizaje y deduplicación
+- El aprendizaje aplica únicamente sobre el modo térmico final (`cool`/`heat`).
+- No debe existir doble aprendizaje entre el evento intermedio `off->fan_only` y el cierre térmico.
+- La deduplicación opera sobre la firma del evento final consolidado.
+
+### Trazabilidad mínima obligatoria
+- El registro terminal debe incluir: `trace_id`, transición observada, transición consolidada, origen final, modo de aprendizaje y razón terminal.
+- Razón técnica recomendada para el caso compuesto aplicado: `manual_compuesto_desde_fan_only`.
+- Mensaje humano recomendado: “Encendido manual detectado por transición compuesta (apagado → ventilación → frío/calor)”.
+- El estado intermedio de consolidación no debe generar notificación visible al usuario.
