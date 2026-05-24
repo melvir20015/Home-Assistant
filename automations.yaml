@@ -3440,6 +3440,10 @@
       - condition: template
         value_template: "{{ not presencia_ok and hvac_mode in ['cool','heat'] }}"
       sequence:
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_auto_origin_payload}
+        data:
+          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition={{ hvac_mode }}->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: notify.mobile_app_samsung_s24
@@ -3455,18 +3459,30 @@
         target: {entity_id: "{{ climate_ent }}"}
         data: {fan_mode: Low}
       - delay: "00:00:45"
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_auto_origin_payload}
+        data:
+          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition=cool->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'heat' and tin >= off_heat }}"
       sequence:
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_auto_origin_payload}
+        data:
+          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition=heat->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode != 'cool' and tin >= on_cool and presencia_ok }}"
       sequence:
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_auto_origin_payload}
+        data:
+          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_on_cool|expected_transition=off->cool|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: cool}
@@ -3480,6 +3496,10 @@
       - condition: template
         value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok }}"
       sequence:
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_auto_origin_payload}
+        data:
+          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_on_heat|expected_transition=off->heat|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: heat}
@@ -3504,3 +3524,92 @@
       data:
         name: AC Night
         message: "resultado=sin_cambio | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }} | sp_cool_target={{ sp_cool_target }} | sp_heat_target={{ sp_heat_target }} | fan=Low | on_cool={{ on_cool }} | off_cool={{ off_cool }} | on_heat={{ on_heat }} | off_heat={{ off_heat }}"
+
+
+- id: ac_night_learning_manual_v1
+  alias: AC Night - Aprendizaje manual por columna
+  trace:
+    stored_traces: 200
+  mode: queued
+  trigger:
+  - platform: state
+    entity_id: climate.0200009211c7_climate
+  condition:
+  - condition: time
+    after: '22:00:00'
+    before: '07:00:00'
+  action:
+  - variables:
+      climate_ent: climate.0200009211c7_climate
+      from_state: "{{ trigger.from_state.state if trigger.from_state is not none else '' }}"
+      to_state: "{{ trigger.to_state.state if trigger.to_state is not none else '' }}"
+      transicion: "{{ from_state ~ '->' ~ to_state }}"
+      valid_transition: "{{ transicion in ['off->cool','cool->off','off->heat','heat->off'] }}"
+      month: "{{ now().month }}"
+      estacion: "{% if month in [12,1,2] %}invierno{% elif month in [3,4,5] %}primavera{% elif month in [6,7,8] %}verano{% else %}otono{% endif %}"
+      franja: "{% set h=now().hour %}{% if h in [22,23,0] %}2200_0059{% elif h in [1,2,3] %}0100_0359{% elif h in [4,5] %}0400_0559{% else %}0600_0700{% endif %}"
+      weather_raw: "{{ states('weather.openweathermap')|lower }}"
+      weather_state: "{% if weather_raw in ['clear-night','clear','sunny'] %}despejado{% elif weather_raw in ['partlycloudy','partly cloudy','few clouds','scattered clouds'] %}parcial{% elif weather_raw in ['cloudy','overcast','broken clouds'] %}nublado{% elif weather_raw in ['rainy','rain','drizzle','pouring'] %}lluvia{% elif 'thunder' in weather_raw %}tormenta{% elif weather_raw in ['fog','mist','haze','smoky'] %}niebla{% elif 'snow' in weather_raw or 'sleet' in weather_raw %}hielo{% else %}despejado{% endif %}"
+      col_idx: "{% set est=['verano','otono','invierno','primavera'] %}{% set fra=['2200_0059','0100_0359','0400_0559','0600_0700'] %}{% set cli=['despejado','nublado','parcial','lluvia','tormenta','niebla','hielo'] %}{{ (est.index(estacion)*28)+(fra.index(franja)*7)+(cli.index(weather_state))+1 }}"
+      signature: "{{ (trigger.to_state.context.id if trigger.to_state is not none else 'na') ~ '|' ~ (as_timestamp(trigger.to_state.last_changed)|int if trigger.to_state is not none else 0) ~ '|' ~ transicion ~ '|col=' ~ col_idx }}"
+      last_signature: "{{ states('input_text.ac_night_learning_last_signature') }}"
+      marker_raw: "{{ states('input_text.ac_night_auto_origin_payload') }}"
+      marker_kind: "{{ marker_raw.split('kind=')[1].split('|')[0] if 'kind=' in marker_raw else '' }}"
+      marker_expected: "{{ marker_raw.split('expected_transition=')[1].split('|')[0] if 'expected_transition=' in marker_raw else '' }}"
+      marker_exp: "{{ marker_raw.split('expires_at=')[1].split('|')[0] | int(0) if 'expires_at=' in marker_raw else 0 }}"
+      marker_consumed: "{{ marker_raw.split('consumed=')[1].split('|')[0] if 'consumed=' in marker_raw else '1' }}"
+      marker_valid: "{{ marker_kind == 'night_auto' and marker_expected == transicion and marker_consumed == '0' and as_timestamp(now())|int <= marker_exp }}"
+      origen_clasificacion: "{{ 'automatico_night' if marker_valid else 'manual_externo' }}"
+      helper_target: "{{ 'input_number.ac_night_offset_cool_col_' ~ col_idx if transicion in ['off->cool','cool->off'] else 'input_number.ac_night_offset_heat_col_' ~ col_idx }}"
+      modo: "{{ 'cool' if transicion in ['off->cool','cool->off'] else ('heat' if transicion in ['off->heat','heat->off'] else 'na') }}"
+      delta: "{% if transicion == 'off->cool' %}-0.10{% elif transicion == 'cool->off' %}+0.10{% elif transicion == 'off->heat' %}+0.10{% elif transicion == 'heat->off' %}-0.10{% else %}0{% endif %}"
+      offset_prev: "{{ states(helper_target) | float(0) if valid_transition else 0 }}"
+      offset_new: "{{ [3.0, [-3.0, (offset_prev + (delta|float(0)))] | max] | min | round(2) if valid_transition else offset_prev }}"
+      trace_id: "{{ trigger.to_state.context.id if trigger.to_state is not none else context.id|default('na') }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ not valid_transition }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Night Learning
+          message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion=n/a | delta=0 | offset_anterior=0 | offset_nuevo=0 | resultado_terminal=ignorado | razon=transicion_fuera_de_alcance"
+    - conditions:
+      - condition: template
+        value_template: "{{ signature == last_signature }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Night Learning
+          message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | resultado_terminal=ignorado | razon=dedup_signature_repetida"
+    default:
+    - service: input_text.set_value
+      target: {entity_id: input_text.ac_night_learning_last_signature}
+      data: {value: "{{ signature }}"}
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: "{{ marker_valid }}"
+        sequence:
+        - service: input_text.set_value
+          target: {entity_id: input_text.ac_night_auto_origin_payload}
+          data:
+            value: "{{ marker_raw.replace('consumed=0','consumed=1') if 'consumed=0' in marker_raw else marker_raw }}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: "{{ origen_clasificacion == 'manual_externo' }}"
+        sequence:
+        - service: input_number.set_value
+          target: {entity_id: "{{ helper_target }}"}
+          data: {value: "{{ offset_new }}"}
+        - service: logbook.log
+          data:
+            name: AC Night Learning
+            message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_new }} | resultado_terminal=aplicado | razon=manual_externo_aplicado"
+      default:
+      - service: logbook.log
+        data:
+          name: AC Night Learning
+          message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | resultado_terminal=ignorado | razon=origen_automatico_night"

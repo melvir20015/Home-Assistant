@@ -2560,3 +2560,42 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - Si el equipo no soporta `Low` en `heat`, no se rompe el flujo: se registra telemetría explícita `resultado=fan_heat_no_soportado`.
 - **Observabilidad:** `resultado=sin_cambio` incluye `sp_cool_target`, `sp_heat_target`, `fan=Low`, `col_idx`, `tin` y `hvac_mode` para auditoría compacta.
 - **No cambios de alcance:** se preservan presencia, ventanas horarias nocturnas e histéresis ON/OFF existentes.
+
+## 45) Aprendizaje manual nocturno autónomo (2026-05-24)
+
+- **Alcance:**
+  - `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) y nueva automatización `AC Night - Aprendizaje manual por columna` (`id: ac_night_learning_manual_v1`).
+  - Flujo 100% Night: no usa ni lee/escribe helpers `ac_matriz_160_*`.
+- **Horario estricto de aprendizaje nocturno:** solo entre `22:00:00` y `07:00:00` (incluye cruce de medianoche).
+- **Clasificación de origen (manual vs automático):**
+  - `ac_night_matrix_v1` escribe marcador transaccional Night en `input_text.ac_night_auto_origin_payload` antes de acciones automáticas ON/OFF, con TTL de `30 s`.
+  - Estructura del marcador: `kind`, `trace_id`, `last_action`, `expected_transition`, `expires_at`, `consumed`.
+  - `ac_night_learning_manual_v1` clasifica como `automatico_night` solo si el marcador está vigente, no consumido y compatible con la transición observada.
+  - Tras clasificar, si se usó marcador válido, se consume (`consumed=1`) para evitar reuso.
+- **Transiciones válidas para aprendizaje:**
+  - `off->cool`, `cool->off`, `off->heat`, `heat->off`.
+  - Cualquier transición con `fan_only`, `auto` u otros modos queda en `resultado_terminal=ignorado`.
+- **Cálculo de columna (`col_idx`) alineado con Night control:**
+  - Se replica la misma lógica de `estacion`, `franja`, `weather_state` y fórmula de índice de `ac_night_matrix_v1` para garantizar escritura en la misma columna operativa.
+- **Delta de aprendizaje por modo con paso fijo `0.10` y clamp `[-3.0,+3.0]`:**
+  - COOL: `off->cool = -0.10`, `cool->off = +0.10`.
+  - HEAT espejo: `off->heat = +0.10`, `heat->off = -0.10`.
+  - Escritura destino:
+    - `input_number.ac_night_offset_cool_col_<col_idx>`
+    - `input_number.ac_night_offset_heat_col_<col_idx>`
+- **Deduplicación mínima:**
+  - Firma de evento en `input_text.ac_night_learning_last_signature`:
+    - `context_id + last_changed + transicion + col_idx`.
+  - Si la firma se repite, cierre terminal `ignorado` con razón explícita.
+- **Trazabilidad terminal obligatoria (`logbook.log`):**
+  - Campos mínimos por evento: `trace_id`, `col_idx`, `modo`, `transicion`, `origen_clasificacion`, `delta`, `offset_anterior`, `offset_nuevo`, `resultado_terminal`, `razon`.
+  - Resultados terminales usados: `aplicado`, `ignorado`.
+  - Reserva de `error_controlado` para fallos controlados en validaciones/entidades helper (si se habilitan guardas adicionales de disponibilidad).
+
+### Ejemplos breves de traza
+- **Aplicado (manual):**
+  - `trace_id=abc123 | col_idx=37 | modo=cool | transicion=off->cool | origen_clasificacion=manual_externo | delta=-0.10 | offset_anterior=0.20 | offset_nuevo=0.10 | resultado_terminal=aplicado | razon=manual_externo_aplicado`
+- **Ignorado (automático Night):**
+  - `trace_id=def456 | col_idx=37 | modo=heat | transicion=off->heat | origen_clasificacion=automatico_night | delta=+0.10 | offset_anterior=-0.10 | offset_nuevo=-0.10 | resultado_terminal=ignorado | razon=origen_automatico_night`
+- **Ignorado (dedup):**
+  - `trace_id=ghi789 | col_idx=37 | modo=cool | transicion=cool->off | origen_clasificacion=manual_externo | delta=+0.10 | offset_anterior=0.10 | offset_nuevo=0.10 | resultado_terminal=ignorado | razon=dedup_signature_repetida`
