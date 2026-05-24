@@ -18,3 +18,10 @@ ac_matriz_160_presencia_valida_disparo:
 ac_matriz_160_turbo_reentrada_bloqueada:
   name: AC Matriz 160 Turbo Reentrada Bloqueada
   icon: mdi:lock
+
+ac_night_auto_habilitado:
+  name: AC Night Auto Habilitado
+  icon: mdi:weather-night
+ac_night_manual_off_lock:
+  name: AC Night Manual OFF Lock
+  icon: mdi:hand-back-right

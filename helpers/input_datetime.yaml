@@ -54,3 +54,16 @@ ac_matriz_160_no_presencia_firma_ts:
   name: AC Matriz 160 No Presencia Firma Timestamp
   has_date: true
   has_time: true
+
+ac_night_manual_off_block_until:
+  name: AC Night Bloqueo Auto ON post Manual OFF
+  has_date: true
+  has_time: true
+ac_night_heat_block_until:
+  name: AC Night Bloqueo Heat anti-reversa
+  has_date: true
+  has_time: true
+ac_night_cool_block_until:
+  name: AC Night Bloqueo Cool anti-reversa
+  has_date: true
+  has_time: true

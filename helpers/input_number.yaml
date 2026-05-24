@@ -2279,3 +2279,1581 @@ ac_matriz_160_offset_heat_col_160:
   step: 0.25
   mode: box
   unit_of_measurement: °C
+
+
+ac_night_hysteresis_base:
+  name: AC Night Histéresis Base
+  min: 0.4
+  max: 1.2
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+  initial: 0.8
+ac_night_offset_cool_col_1:
+  name: AC Night Offset COOL Columna 1 (verano-2200_0059-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_1:
+  name: AC Night Offset HEAT Columna 1 (verano-2200_0059-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_2:
+  name: AC Night Offset COOL Columna 2 (verano-2200_0059-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_2:
+  name: AC Night Offset HEAT Columna 2 (verano-2200_0059-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_3:
+  name: AC Night Offset COOL Columna 3 (verano-2200_0059-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_3:
+  name: AC Night Offset HEAT Columna 3 (verano-2200_0059-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_4:
+  name: AC Night Offset COOL Columna 4 (verano-2200_0059-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_4:
+  name: AC Night Offset HEAT Columna 4 (verano-2200_0059-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_5:
+  name: AC Night Offset COOL Columna 5 (verano-2200_0059-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_5:
+  name: AC Night Offset HEAT Columna 5 (verano-2200_0059-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_6:
+  name: AC Night Offset COOL Columna 6 (verano-2200_0059-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_6:
+  name: AC Night Offset HEAT Columna 6 (verano-2200_0059-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_7:
+  name: AC Night Offset COOL Columna 7 (verano-2200_0059-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_7:
+  name: AC Night Offset HEAT Columna 7 (verano-2200_0059-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_8:
+  name: AC Night Offset COOL Columna 8 (verano-0100_0359-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_8:
+  name: AC Night Offset HEAT Columna 8 (verano-0100_0359-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_9:
+  name: AC Night Offset COOL Columna 9 (verano-0100_0359-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_9:
+  name: AC Night Offset HEAT Columna 9 (verano-0100_0359-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_10:
+  name: AC Night Offset COOL Columna 10 (verano-0100_0359-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_10:
+  name: AC Night Offset HEAT Columna 10 (verano-0100_0359-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_11:
+  name: AC Night Offset COOL Columna 11 (verano-0100_0359-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_11:
+  name: AC Night Offset HEAT Columna 11 (verano-0100_0359-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_12:
+  name: AC Night Offset COOL Columna 12 (verano-0100_0359-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_12:
+  name: AC Night Offset HEAT Columna 12 (verano-0100_0359-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_13:
+  name: AC Night Offset COOL Columna 13 (verano-0100_0359-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_13:
+  name: AC Night Offset HEAT Columna 13 (verano-0100_0359-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_14:
+  name: AC Night Offset COOL Columna 14 (verano-0100_0359-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_14:
+  name: AC Night Offset HEAT Columna 14 (verano-0100_0359-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_15:
+  name: AC Night Offset COOL Columna 15 (verano-0400_0559-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_15:
+  name: AC Night Offset HEAT Columna 15 (verano-0400_0559-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_16:
+  name: AC Night Offset COOL Columna 16 (verano-0400_0559-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_16:
+  name: AC Night Offset HEAT Columna 16 (verano-0400_0559-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_17:
+  name: AC Night Offset COOL Columna 17 (verano-0400_0559-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_17:
+  name: AC Night Offset HEAT Columna 17 (verano-0400_0559-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_18:
+  name: AC Night Offset COOL Columna 18 (verano-0400_0559-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_18:
+  name: AC Night Offset HEAT Columna 18 (verano-0400_0559-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_19:
+  name: AC Night Offset COOL Columna 19 (verano-0400_0559-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_19:
+  name: AC Night Offset HEAT Columna 19 (verano-0400_0559-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_20:
+  name: AC Night Offset COOL Columna 20 (verano-0400_0559-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_20:
+  name: AC Night Offset HEAT Columna 20 (verano-0400_0559-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_21:
+  name: AC Night Offset COOL Columna 21 (verano-0400_0559-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_21:
+  name: AC Night Offset HEAT Columna 21 (verano-0400_0559-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_22:
+  name: AC Night Offset COOL Columna 22 (verano-0600_0700-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_22:
+  name: AC Night Offset HEAT Columna 22 (verano-0600_0700-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_23:
+  name: AC Night Offset COOL Columna 23 (verano-0600_0700-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_23:
+  name: AC Night Offset HEAT Columna 23 (verano-0600_0700-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_24:
+  name: AC Night Offset COOL Columna 24 (verano-0600_0700-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_24:
+  name: AC Night Offset HEAT Columna 24 (verano-0600_0700-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_25:
+  name: AC Night Offset COOL Columna 25 (verano-0600_0700-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_25:
+  name: AC Night Offset HEAT Columna 25 (verano-0600_0700-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_26:
+  name: AC Night Offset COOL Columna 26 (verano-0600_0700-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_26:
+  name: AC Night Offset HEAT Columna 26 (verano-0600_0700-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_27:
+  name: AC Night Offset COOL Columna 27 (verano-0600_0700-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_27:
+  name: AC Night Offset HEAT Columna 27 (verano-0600_0700-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_28:
+  name: AC Night Offset COOL Columna 28 (verano-0600_0700-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_28:
+  name: AC Night Offset HEAT Columna 28 (verano-0600_0700-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_29:
+  name: AC Night Offset COOL Columna 29 (otono-2200_0059-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_29:
+  name: AC Night Offset HEAT Columna 29 (otono-2200_0059-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_30:
+  name: AC Night Offset COOL Columna 30 (otono-2200_0059-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_30:
+  name: AC Night Offset HEAT Columna 30 (otono-2200_0059-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_31:
+  name: AC Night Offset COOL Columna 31 (otono-2200_0059-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_31:
+  name: AC Night Offset HEAT Columna 31 (otono-2200_0059-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_32:
+  name: AC Night Offset COOL Columna 32 (otono-2200_0059-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_32:
+  name: AC Night Offset HEAT Columna 32 (otono-2200_0059-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_33:
+  name: AC Night Offset COOL Columna 33 (otono-2200_0059-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_33:
+  name: AC Night Offset HEAT Columna 33 (otono-2200_0059-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_34:
+  name: AC Night Offset COOL Columna 34 (otono-2200_0059-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_34:
+  name: AC Night Offset HEAT Columna 34 (otono-2200_0059-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_35:
+  name: AC Night Offset COOL Columna 35 (otono-2200_0059-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_35:
+  name: AC Night Offset HEAT Columna 35 (otono-2200_0059-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_36:
+  name: AC Night Offset COOL Columna 36 (otono-0100_0359-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_36:
+  name: AC Night Offset HEAT Columna 36 (otono-0100_0359-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_37:
+  name: AC Night Offset COOL Columna 37 (otono-0100_0359-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_37:
+  name: AC Night Offset HEAT Columna 37 (otono-0100_0359-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_38:
+  name: AC Night Offset COOL Columna 38 (otono-0100_0359-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_38:
+  name: AC Night Offset HEAT Columna 38 (otono-0100_0359-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_39:
+  name: AC Night Offset COOL Columna 39 (otono-0100_0359-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_39:
+  name: AC Night Offset HEAT Columna 39 (otono-0100_0359-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_40:
+  name: AC Night Offset COOL Columna 40 (otono-0100_0359-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_40:
+  name: AC Night Offset HEAT Columna 40 (otono-0100_0359-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_41:
+  name: AC Night Offset COOL Columna 41 (otono-0100_0359-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_41:
+  name: AC Night Offset HEAT Columna 41 (otono-0100_0359-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_42:
+  name: AC Night Offset COOL Columna 42 (otono-0100_0359-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_42:
+  name: AC Night Offset HEAT Columna 42 (otono-0100_0359-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_43:
+  name: AC Night Offset COOL Columna 43 (otono-0400_0559-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_43:
+  name: AC Night Offset HEAT Columna 43 (otono-0400_0559-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_44:
+  name: AC Night Offset COOL Columna 44 (otono-0400_0559-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_44:
+  name: AC Night Offset HEAT Columna 44 (otono-0400_0559-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_45:
+  name: AC Night Offset COOL Columna 45 (otono-0400_0559-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_45:
+  name: AC Night Offset HEAT Columna 45 (otono-0400_0559-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_46:
+  name: AC Night Offset COOL Columna 46 (otono-0400_0559-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_46:
+  name: AC Night Offset HEAT Columna 46 (otono-0400_0559-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_47:
+  name: AC Night Offset COOL Columna 47 (otono-0400_0559-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_47:
+  name: AC Night Offset HEAT Columna 47 (otono-0400_0559-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_48:
+  name: AC Night Offset COOL Columna 48 (otono-0400_0559-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_48:
+  name: AC Night Offset HEAT Columna 48 (otono-0400_0559-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_49:
+  name: AC Night Offset COOL Columna 49 (otono-0400_0559-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_49:
+  name: AC Night Offset HEAT Columna 49 (otono-0400_0559-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_50:
+  name: AC Night Offset COOL Columna 50 (otono-0600_0700-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_50:
+  name: AC Night Offset HEAT Columna 50 (otono-0600_0700-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_51:
+  name: AC Night Offset COOL Columna 51 (otono-0600_0700-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_51:
+  name: AC Night Offset HEAT Columna 51 (otono-0600_0700-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_52:
+  name: AC Night Offset COOL Columna 52 (otono-0600_0700-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_52:
+  name: AC Night Offset HEAT Columna 52 (otono-0600_0700-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_53:
+  name: AC Night Offset COOL Columna 53 (otono-0600_0700-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_53:
+  name: AC Night Offset HEAT Columna 53 (otono-0600_0700-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_54:
+  name: AC Night Offset COOL Columna 54 (otono-0600_0700-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_54:
+  name: AC Night Offset HEAT Columna 54 (otono-0600_0700-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_55:
+  name: AC Night Offset COOL Columna 55 (otono-0600_0700-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_55:
+  name: AC Night Offset HEAT Columna 55 (otono-0600_0700-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_56:
+  name: AC Night Offset COOL Columna 56 (otono-0600_0700-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_56:
+  name: AC Night Offset HEAT Columna 56 (otono-0600_0700-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_57:
+  name: AC Night Offset COOL Columna 57 (invierno-2200_0059-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_57:
+  name: AC Night Offset HEAT Columna 57 (invierno-2200_0059-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_58:
+  name: AC Night Offset COOL Columna 58 (invierno-2200_0059-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_58:
+  name: AC Night Offset HEAT Columna 58 (invierno-2200_0059-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_59:
+  name: AC Night Offset COOL Columna 59 (invierno-2200_0059-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_59:
+  name: AC Night Offset HEAT Columna 59 (invierno-2200_0059-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_60:
+  name: AC Night Offset COOL Columna 60 (invierno-2200_0059-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_60:
+  name: AC Night Offset HEAT Columna 60 (invierno-2200_0059-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_61:
+  name: AC Night Offset COOL Columna 61 (invierno-2200_0059-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_61:
+  name: AC Night Offset HEAT Columna 61 (invierno-2200_0059-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_62:
+  name: AC Night Offset COOL Columna 62 (invierno-2200_0059-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_62:
+  name: AC Night Offset HEAT Columna 62 (invierno-2200_0059-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_63:
+  name: AC Night Offset COOL Columna 63 (invierno-2200_0059-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_63:
+  name: AC Night Offset HEAT Columna 63 (invierno-2200_0059-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_64:
+  name: AC Night Offset COOL Columna 64 (invierno-0100_0359-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_64:
+  name: AC Night Offset HEAT Columna 64 (invierno-0100_0359-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_65:
+  name: AC Night Offset COOL Columna 65 (invierno-0100_0359-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_65:
+  name: AC Night Offset HEAT Columna 65 (invierno-0100_0359-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_66:
+  name: AC Night Offset COOL Columna 66 (invierno-0100_0359-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_66:
+  name: AC Night Offset HEAT Columna 66 (invierno-0100_0359-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_67:
+  name: AC Night Offset COOL Columna 67 (invierno-0100_0359-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_67:
+  name: AC Night Offset HEAT Columna 67 (invierno-0100_0359-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_68:
+  name: AC Night Offset COOL Columna 68 (invierno-0100_0359-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_68:
+  name: AC Night Offset HEAT Columna 68 (invierno-0100_0359-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_69:
+  name: AC Night Offset COOL Columna 69 (invierno-0100_0359-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_69:
+  name: AC Night Offset HEAT Columna 69 (invierno-0100_0359-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_70:
+  name: AC Night Offset COOL Columna 70 (invierno-0100_0359-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_70:
+  name: AC Night Offset HEAT Columna 70 (invierno-0100_0359-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_71:
+  name: AC Night Offset COOL Columna 71 (invierno-0400_0559-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_71:
+  name: AC Night Offset HEAT Columna 71 (invierno-0400_0559-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_72:
+  name: AC Night Offset COOL Columna 72 (invierno-0400_0559-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_72:
+  name: AC Night Offset HEAT Columna 72 (invierno-0400_0559-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_73:
+  name: AC Night Offset COOL Columna 73 (invierno-0400_0559-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_73:
+  name: AC Night Offset HEAT Columna 73 (invierno-0400_0559-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_74:
+  name: AC Night Offset COOL Columna 74 (invierno-0400_0559-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_74:
+  name: AC Night Offset HEAT Columna 74 (invierno-0400_0559-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_75:
+  name: AC Night Offset COOL Columna 75 (invierno-0400_0559-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_75:
+  name: AC Night Offset HEAT Columna 75 (invierno-0400_0559-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_76:
+  name: AC Night Offset COOL Columna 76 (invierno-0400_0559-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_76:
+  name: AC Night Offset HEAT Columna 76 (invierno-0400_0559-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_77:
+  name: AC Night Offset COOL Columna 77 (invierno-0400_0559-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_77:
+  name: AC Night Offset HEAT Columna 77 (invierno-0400_0559-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_78:
+  name: AC Night Offset COOL Columna 78 (invierno-0600_0700-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_78:
+  name: AC Night Offset HEAT Columna 78 (invierno-0600_0700-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_79:
+  name: AC Night Offset COOL Columna 79 (invierno-0600_0700-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_79:
+  name: AC Night Offset HEAT Columna 79 (invierno-0600_0700-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_80:
+  name: AC Night Offset COOL Columna 80 (invierno-0600_0700-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_80:
+  name: AC Night Offset HEAT Columna 80 (invierno-0600_0700-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_81:
+  name: AC Night Offset COOL Columna 81 (invierno-0600_0700-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_81:
+  name: AC Night Offset HEAT Columna 81 (invierno-0600_0700-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_82:
+  name: AC Night Offset COOL Columna 82 (invierno-0600_0700-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_82:
+  name: AC Night Offset HEAT Columna 82 (invierno-0600_0700-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_83:
+  name: AC Night Offset COOL Columna 83 (invierno-0600_0700-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_83:
+  name: AC Night Offset HEAT Columna 83 (invierno-0600_0700-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_84:
+  name: AC Night Offset COOL Columna 84 (invierno-0600_0700-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_84:
+  name: AC Night Offset HEAT Columna 84 (invierno-0600_0700-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_85:
+  name: AC Night Offset COOL Columna 85 (primavera-2200_0059-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_85:
+  name: AC Night Offset HEAT Columna 85 (primavera-2200_0059-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_86:
+  name: AC Night Offset COOL Columna 86 (primavera-2200_0059-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_86:
+  name: AC Night Offset HEAT Columna 86 (primavera-2200_0059-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_87:
+  name: AC Night Offset COOL Columna 87 (primavera-2200_0059-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_87:
+  name: AC Night Offset HEAT Columna 87 (primavera-2200_0059-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_88:
+  name: AC Night Offset COOL Columna 88 (primavera-2200_0059-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_88:
+  name: AC Night Offset HEAT Columna 88 (primavera-2200_0059-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_89:
+  name: AC Night Offset COOL Columna 89 (primavera-2200_0059-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_89:
+  name: AC Night Offset HEAT Columna 89 (primavera-2200_0059-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_90:
+  name: AC Night Offset COOL Columna 90 (primavera-2200_0059-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_90:
+  name: AC Night Offset HEAT Columna 90 (primavera-2200_0059-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_91:
+  name: AC Night Offset COOL Columna 91 (primavera-2200_0059-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_91:
+  name: AC Night Offset HEAT Columna 91 (primavera-2200_0059-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_92:
+  name: AC Night Offset COOL Columna 92 (primavera-0100_0359-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_92:
+  name: AC Night Offset HEAT Columna 92 (primavera-0100_0359-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_93:
+  name: AC Night Offset COOL Columna 93 (primavera-0100_0359-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_93:
+  name: AC Night Offset HEAT Columna 93 (primavera-0100_0359-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_94:
+  name: AC Night Offset COOL Columna 94 (primavera-0100_0359-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_94:
+  name: AC Night Offset HEAT Columna 94 (primavera-0100_0359-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_95:
+  name: AC Night Offset COOL Columna 95 (primavera-0100_0359-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_95:
+  name: AC Night Offset HEAT Columna 95 (primavera-0100_0359-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_96:
+  name: AC Night Offset COOL Columna 96 (primavera-0100_0359-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_96:
+  name: AC Night Offset HEAT Columna 96 (primavera-0100_0359-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_97:
+  name: AC Night Offset COOL Columna 97 (primavera-0100_0359-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_97:
+  name: AC Night Offset HEAT Columna 97 (primavera-0100_0359-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_98:
+  name: AC Night Offset COOL Columna 98 (primavera-0100_0359-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_98:
+  name: AC Night Offset HEAT Columna 98 (primavera-0100_0359-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_99:
+  name: AC Night Offset COOL Columna 99 (primavera-0400_0559-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_99:
+  name: AC Night Offset HEAT Columna 99 (primavera-0400_0559-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_100:
+  name: AC Night Offset COOL Columna 100 (primavera-0400_0559-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_100:
+  name: AC Night Offset HEAT Columna 100 (primavera-0400_0559-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_101:
+  name: AC Night Offset COOL Columna 101 (primavera-0400_0559-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_101:
+  name: AC Night Offset HEAT Columna 101 (primavera-0400_0559-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_102:
+  name: AC Night Offset COOL Columna 102 (primavera-0400_0559-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_102:
+  name: AC Night Offset HEAT Columna 102 (primavera-0400_0559-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_103:
+  name: AC Night Offset COOL Columna 103 (primavera-0400_0559-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_103:
+  name: AC Night Offset HEAT Columna 103 (primavera-0400_0559-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_104:
+  name: AC Night Offset COOL Columna 104 (primavera-0400_0559-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_104:
+  name: AC Night Offset HEAT Columna 104 (primavera-0400_0559-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_105:
+  name: AC Night Offset COOL Columna 105 (primavera-0400_0559-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_105:
+  name: AC Night Offset HEAT Columna 105 (primavera-0400_0559-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_106:
+  name: AC Night Offset COOL Columna 106 (primavera-0600_0700-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_106:
+  name: AC Night Offset HEAT Columna 106 (primavera-0600_0700-despejado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_107:
+  name: AC Night Offset COOL Columna 107 (primavera-0600_0700-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_107:
+  name: AC Night Offset HEAT Columna 107 (primavera-0600_0700-nublado)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_108:
+  name: AC Night Offset COOL Columna 108 (primavera-0600_0700-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_108:
+  name: AC Night Offset HEAT Columna 108 (primavera-0600_0700-parcial)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_109:
+  name: AC Night Offset COOL Columna 109 (primavera-0600_0700-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_109:
+  name: AC Night Offset HEAT Columna 109 (primavera-0600_0700-lluvia)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_110:
+  name: AC Night Offset COOL Columna 110 (primavera-0600_0700-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_110:
+  name: AC Night Offset HEAT Columna 110 (primavera-0600_0700-tormenta)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_111:
+  name: AC Night Offset COOL Columna 111 (primavera-0600_0700-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_111:
+  name: AC Night Offset HEAT Columna 111 (primavera-0600_0700-niebla)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_cool_col_112:
+  name: AC Night Offset COOL Columna 112 (primavera-0600_0700-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_offset_heat_col_112:
+  name: AC Night Offset HEAT Columna 112 (primavera-0600_0700-hielo)
+  min: -3.0
+  max: 3.0
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C

@@ -1,1 +1,5 @@
 {}
+
+ac_night_post_cool_dry:
+  name: AC Night Post Cool Dry
+  duration: "00:00:45"
