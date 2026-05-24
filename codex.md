@@ -2544,3 +2544,19 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - no incluye causas COOL ni bloque “Cuándo se apaga”.
 - **ON (cool o heat):**
   - conserva diagnóstico por modo demandado y agrega evaluación “Cuándo se apaga” según contrato vigente.
+
+## 44) Alineación nocturna de SP/fan con contrato AC-Matriz 160 (2026-05-24)
+
+- **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`).
+- **Contrato nocturno de setpoint (equivalente a AC-Matriz 160):**
+  - en `cool`, se calcula `sp_cool_target = clamp(floor(off_cool) - 1, min_temp_equipo, max_temp_equipo)`;
+  - en `heat`, se aplica `sp_heat_target` con valor base fijo `24` y clamp al rango térmico del equipo (`min_temp/max_temp`);
+  - ambos respetan límites de seguridad térmica del dispositivo (sin forzar setpoints fuera de capacidad real).
+- **Orden transaccional de encendido nocturno:**
+  1. `climate.set_hvac_mode` (`cool` o `heat`),
+  2. `climate.set_temperature` con `sp_*_target`,
+  3. `climate.set_fan_mode` en `Low` (si el equipo lo soporta).
+- **Política fan nocturno:** `Low` fijo por contrato operativo nocturno.
+  - Si el equipo no soporta `Low` en `heat`, no se rompe el flujo: se registra telemetría explícita `resultado=fan_heat_no_soportado`.
+- **Observabilidad:** `resultado=sin_cambio` incluye `sp_cool_target`, `sp_heat_target`, `fan=Low`, `col_idx`, `tin` y `hvac_mode` para auditoría compacta.
+- **No cambios de alcance:** se preservan presencia, ventanas horarias nocturnas e histéresis ON/OFF existentes.

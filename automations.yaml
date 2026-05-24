@@ -3424,6 +3424,13 @@
       on_cool: "{{ (off_cool + hysteresis) | round(2) }}"
       off_heat: "{{ ([states('input_number.ac_night_offset_heat_col_' ~ col_idx)|float(0) + off_heat_base, 24.0] | min) | round(2) }}"
       on_heat: "{{ (off_heat - hysteresis) | round(2) }}"
+      hvac_min_sp: "{{ state_attr(climate_ent, 'min_temp') | float(17) | round(0, 'floor') | int }}"
+      hvac_max_sp: "{{ state_attr(climate_ent, 'max_temp') | float(23) | round(0, 'floor') | int }}"
+      off_cool_floor: "{{ (off_cool | float) | round(0, 'floor') | int }}"
+      sp_cool_target_raw: "{{ (off_cool_floor | int) - 1 }}"
+      sp_cool_target: "{{ [hvac_max_sp|int, [hvac_min_sp|int, (sp_cool_target_raw|int)] | max] | min | int }}"
+      sp_heat_target_base: 24
+      sp_heat_target: "{{ [hvac_max_sp|int, [hvac_min_sp|int, (sp_heat_target_base|int)] | max] | min | int }}"
       hvac_mode: "{{ states(climate_ent) }}"
   - service: input_text.set_value
     target: {entity_id: input_text.ac_night_contexto_firma_activa}
@@ -3463,6 +3470,12 @@
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: cool}
+      - service: climate.set_temperature
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {temperature: "{{ sp_cool_target }}"}
+      - service: climate.set_fan_mode
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {fan_mode: Low}
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok }}"
@@ -3470,8 +3483,24 @@
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: heat}
+      - service: climate.set_temperature
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {temperature: "{{ sp_heat_target }}"}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ 'Low' in (state_attr(climate_ent,'fan_modes') | default([], true)) }}"
+          sequence:
+          - service: climate.set_fan_mode
+            target: {entity_id: "{{ climate_ent }}"}
+            data: {fan_mode: Low}
+        default:
+        - service: logbook.log
+          data:
+            name: AC Night
+            message: "resultado=fan_heat_no_soportado | fan=Low | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }}"
     default:
     - service: logbook.log
       data:
         name: AC Night
-        message: "resultado=sin_cambio | col={{ col_idx }} | tin={{ tin }} | on_cool={{ on_cool }} | off_cool={{ off_cool }} | on_heat={{ on_heat }} | off_heat={{ off_heat }}"
+        message: "resultado=sin_cambio | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }} | sp_cool_target={{ sp_cool_target }} | sp_heat_target={{ sp_heat_target }} | fan=Low | on_cool={{ on_cool }} | off_cool={{ off_cool }} | on_heat={{ on_heat }} | off_heat={{ off_heat }}"

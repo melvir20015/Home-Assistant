@@ -164,3 +164,12 @@ estado inválido; no fuerza encendidos.
 Ejemplo de traza esperada:
 
 - `cool_night_ramp_stale_flag_reset | cur_mode=off | minutes_since_last_off=34.2 | threshold=20 | ts=2026-03-30 02:15:00`
+
+## Nota operativa final (2026-05-24)
+
+La automatización nocturna `AC Night Matriz Contextual` aplica contrato operativo de SP alineado a AC‑Matriz 160:
+
+- En `cool`: `sp_cool_target = clamp(floor(off_cool) - 1, min_temp, max_temp)`.
+- En `heat`: `sp_heat_target` con base fija `24` y clamp a `min_temp/max_temp` del equipo.
+
+Además, por política nocturna el `fan_mode` se fija en `Low` en encendidos y rutas de transición. Si el dispositivo no soporta fan en `heat`, el flujo no falla y deja traza en logbook.
