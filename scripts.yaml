@@ -108,3 +108,25 @@ ac_matriz_160_reporte_diagnostico:
         entity_id: input_text.ac_matriz_160_diag_demanda_snapshot
       data:
         value: "{{ tin_fmt }}|{{ hin_fmt }}|{{ tout_fmt }}|{{ hout_fmt }}"
+
+ac_night_reset_offsets_a_cero:
+  alias: AC Night - Reset offsets a cero
+  mode: single
+  sequence:
+    - repeat:
+        count: 112
+        sequence:
+          - service: input_number.set_value
+            target:
+              entity_id: "{{ 'input_number.ac_night_offset_cool_col_' ~ repeat.index }}"
+            data:
+              value: 0
+          - service: input_number.set_value
+            target:
+              entity_id: "{{ 'input_number.ac_night_offset_heat_col_' ~ repeat.index }}"
+            data:
+              value: 0
+    - service: logbook.log
+      data:
+        name: AC Night
+        message: "hito=night_offsets_reset | resultado_terminal=aplicado | cool_cols=112 | heat_cols=112 | valor=0"

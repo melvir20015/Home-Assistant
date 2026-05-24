@@ -3522,6 +3522,10 @@
       - service: climate.set_temperature
         target: {entity_id: "{{ climate_ent }}"}
         data: {temperature: "{{ sp_cool_target }}"}
+      - delay: "00:00:02"
+      - service: climate.set_temperature
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {temperature: "{{ sp_cool_target }}"}
       - service: climate.set_fan_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {fan_mode: Low}
@@ -3544,6 +3548,10 @@
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: heat}
+      - service: climate.set_temperature
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {temperature: "{{ sp_heat_target }}"}
+      - delay: "00:00:02"
       - service: climate.set_temperature
         target: {entity_id: "{{ climate_ent }}"}
         data: {temperature: "{{ sp_heat_target }}"}
