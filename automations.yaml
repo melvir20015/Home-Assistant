@@ -443,7 +443,7 @@
           sp_before: '{{ state_attr(climate_ent, ''temperature'') | float(none) }}'
           sp_target: '{{ cool_initial_setpoint_selected }}'
           writer_id: auto_on
-          manual_lock_state: '{{ manual_sp_lock_active }}'
+          manual_lock_state: '{{ manual_sp_lock_active | default(false) }}'
           bucket: '{{ cool_context }}'
       - target:
           entity_id: '{{ climate_ent }}'
@@ -2070,7 +2070,7 @@
           - variables:
               post_cool_fan_only_ok_2: '{{ states(''climate.0200009211c7_climate'')
                 == ''fan_only'' }}'
-              post_cool_fan_only_ok: '{{ post_cool_fan_only_ok_1 or post_cool_fan_only_ok_2
+              post_cool_fan_only_ok: '{{ (post_cool_fan_only_ok_1 | default(false)) or (post_cool_fan_only_ok_2 | default(false))
                 }}'
           - choose:
             - conditions:
@@ -2536,7 +2536,7 @@
                         timeout: 00:00:08
                         continue_on_timeout: true
                   - variables:
-                      post_cool_fan_only_ok: '{{ post_cool_fan_only_ok_1 or states(''climate.0200009211c7_climate'')
+                      post_cool_fan_only_ok: '{{ (post_cool_fan_only_ok_1 | default(false)) or states(''climate.0200009211c7_climate'')
                         == ''fan_only'' }}'
                   - choose:
                     - conditions:
@@ -2663,7 +2663,7 @@
                       timeout: 00:00:08
                       continue_on_timeout: true
                 - variables:
-                    post_cool_fan_only_ok: '{{ post_cool_fan_only_ok_1 or states(''climate.0200009211c7_climate'')
+                    post_cool_fan_only_ok: '{{ (post_cool_fan_only_ok_1 | default(false)) or states(''climate.0200009211c7_climate'')
                       == ''fan_only'' }}'
                 - choose:
                   - conditions:
