@@ -2639,3 +2639,43 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - **Cambio operativo:** se elimina la condición de entrada por helper `input_boolean.ac_night_auto_habilitado`.
 - **Motivo:** evitar bloqueos de ejecución tras reinicio o recarga de configuración cuando el helper queda en `off`.
 - **Comportamiento resultante:** Night se ejecuta por ventana horaria (`22:00–07:00`) y sus guardas internas existentes, sin dependencia del booleano.
+
+## 48) Recalibración integral de confort nocturno por bochorno (2026-05-24)
+
+- **Alcance:** `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`).
+- **Filosofía operativa:** prioridad de confort al dormir; se reduce el sesgo de ahorro agresivo cuando existe riesgo de sudoración/incomodidad nocturna, sin romper el contrato matricial por columna.
+- **Contrato preservado por columna (sin romper aprendizaje):**
+  - Se conserva `col_idx` y el esquema de helpers `input_number.ac_night_offset_cool_col_<col_idx>` / `...heat...`.
+  - `off_cool` permanece como valor final efectivo para control nocturno de frío, calculado como base + offset contextual por columna + clamps.
+  - Se deja explícito `off_cool_final_real` para derivaciones de encendido/setpoint.
+- **Nuevo índice `bochorno_score` (interior dominante):**
+  - Componentes interiores (`tin`, `hin`) con peso dominante (82% del score total).
+  - Componentes exteriores (`tout`, `hout`) como ajuste auxiliar suave (18%).
+  - Resultado final en `[0,1]` redondeado a 2 decimales para trazabilidad.
+- **Histéresis dinámica nocturna (`hysteresis_eff`):**
+  - Reemplaza banda fija por banda adaptable al `bochorno_score`.
+  - A mayor bochorno, menor banda para adelantar respuesta de confort.
+  - Clamps contractuales anti-ciclo y anti-ahorro excesivo: mínimo `0.45`, máximo `1.15` (redondeo a 2 decimales).
+- **Nuevo cálculo de `on_cool` con tope dinámico nocturno:**
+  - Base: `off_cool_final_real + hysteresis_eff`.
+  - Sesgo de confort adicional (`comfort_bias_cool`) para adelantar ON en noches húmedas/bochornosas.
+  - Tope dinámico `on_cool_cap_night_dynamic` para impedir encendidos tardíos cuando sube el bochorno.
+  - Guardas duras: `on_cool > off_cool` siempre y banda mínima anti-ciclo de `0.35`.
+- **Contrato de setpoint en frío (sin cambios de principio):**
+  - `off_cool_floor = floor(off_cool_final_real)`
+  - `sp_cool_target_raw = off_cool_floor - 1`
+  - `sp_cool_target = clamp(sp_cool_target_raw, hvac_min_sp, hvac_max_sp)`
+- **Verificación post-escritura de setpoint en equipo HVAC:**
+  - Tras `climate.set_temperature`, se lee atributo real reportado por el equipo (`temperature`).
+  - Se registra en `logbook`:
+    - `sp_objetivo`
+    - `sp_reportado_equipo`
+    - `sp_confirmado_ok`
+  - Si no coincide, se ejecuta **1 reintento controlado** con delay corto y log terminal `confirmado` / `no_confirmado`.
+- **Observabilidad nocturna ampliada:**
+  - En `resultado=sin_cambio` y eventos ON/OFF se reportan `bochorno_score`, `hysteresis_eff` y (para ON/sin_cambio) `on_cool_cap_night_dynamic`.
+  - En ON se agrega estado de confirmación de SP (`sp_confirmado_ok`) para auditar discrepancias cálculo-vs-equipo.
+- **Ejemplo de auditoría (similar al caso reportado):**
+  - Escenario: `Tin=24.11`, `Hin=56.3`, noche húmeda.
+  - Antes: `on_cool` podía quedar alto (ej. `25.17`), retrasando encendido por confort.
+  - Ahora: `bochorno_score` elevado reduce `hysteresis_eff`, aplica sesgo de confort y cap dinámico, dejando `on_cool` más cerca de `Tin` para encender antes o quedar “cerca de encender” sin romper anti-ciclo.
