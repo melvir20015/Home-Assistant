@@ -2751,6 +2751,10 @@
   triggers:
   - trigger: state
     entity_id: climate.0200009211c7_climate
+  conditions:
+  - condition: time
+    after: 07:01:00
+    before: '21:59:59'
   actions:
   - variables:
       ts_evento: '{{ now().strftime(''%Y-%m-%d %H:%M:%S.%f'') }}'
