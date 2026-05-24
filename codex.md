@@ -2599,3 +2599,36 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
   - `trace_id=def456 | col_idx=37 | modo=heat | transicion=off->heat | origen_clasificacion=automatico_night | delta=+0.10 | offset_anterior=-0.10 | offset_nuevo=-0.10 | resultado_terminal=ignorado | razon=origen_automatico_night`
 - **Ignorado (dedup):**
   - `trace_id=ghi789 | col_idx=37 | modo=cool | transicion=cool->off | origen_clasificacion=manual_externo | delta=+0.10 | offset_anterior=0.10 | offset_nuevo=0.10 | resultado_terminal=ignorado | razon=dedup_signature_repetida`
+
+## 46) Notificaciones push Night terminales (2026-05-24)
+
+- **Alcance:** `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`).
+- **Regla de emisión:** se notifica **solo en eventos terminales deduplicados** de control nocturno:
+  - encendido `turn_on_cool`,
+  - encendido `turn_on_heat`,
+  - apagado `turn_off`.
+- **Sin notificación en no-op:** cuando la decisión es `sin_cambio`, no se envía push.
+- **Formato contractual Night (estilo AC‑Matriz 160):**
+  - `HH:MM AM/PM | EVENTO= ... | MODO= ... | SP= ... | FAN= ... | INTERIOR= ... | EXTERIOR= ... | TEMP APAGADO= ... | CONTEXTO= Columna ... (Clima | Estación | Horario ...)`
+- **Equivalencias de etiqueta:**
+  - `cool -> Frío`
+  - `heat -> Calor`
+  - `off -> Apagado`
+  - `fan low -> Bajo` (patrón de fan en español alineado a AC‑Matriz 160; mapeos `med/medium -> Medio`, `high -> Alto` reservados para futuras variantes Night con fan dinámico).
+- **Contexto reutilizado Night:**
+  - `col_idx` (índice de columna),
+  - `weather_label_es`,
+  - `estacion_label`,
+  - `franja_label` con prefijo legible `Horario ...`.
+- **Trazabilidad paralela (`logbook.log`) al emitir push:**
+  - ON: `hito=night_auto_on_notified`
+  - OFF: `hito=night_auto_off_notified`
+  - campos mínimos: `trace_id`, `modo`, `col_idx`, `resultado_terminal`.
+
+### Ejemplos de notificación
+- **ON cool:**
+  - `11:35 PM | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP= 22°C | FAN= Bajo | INTERIOR= 24.8°C | EXTERIOR= 27.1°C | TEMP APAGADO= 23.6°C | CONTEXTO= Columna 37 (Parcial | Primavera | Horario 22:00-00:59)`
+- **ON heat:**
+  - `04:10 AM | EVENTO= AUTO_ON_NIGHT_HEAT | MODO= Calor | SP= 23°C | FAN= Bajo | INTERIOR= 19.2°C | EXTERIOR= 15.9°C | TEMP APAGADO= 20.1°C | CONTEXTO= Columna 61 (Despejado | Invierno | Horario 04:00-05:59)`
+- **OFF (desde cool o heat, conservando modo previo):**
+  - `01:20 AM | EVENTO= AUTO_OFF_NIGHT_UMBRAL | MODO= Frío | SP= 22°C | FAN= Bajo | INTERIOR= 23.4°C | EXTERIOR= 25.0°C | TEMP APAGADO= 23.4°C | CONTEXTO= Columna 44 (Nublado | Primavera | Horario 01:00-03:59)`

@@ -3417,6 +3417,9 @@
       franja: "{% set h=now().hour %}{% if h in [22,23,0] %}2200_0059{% elif h in [1,2,3] %}0100_0359{% elif h in [4,5] %}0400_0559{% else %}0600_0700{% endif %}"
       presencia_ok: "{{ is_state('binary_sensor.presencia_ok_estable','on') }}"
       col_idx: "{% set est=['verano','otono','invierno','primavera'] %}{% set fra=['2200_0059','0100_0359','0400_0559','0600_0700'] %}{% set cli=['despejado','nublado','parcial','lluvia','tormenta','niebla','hielo'] %}{{ (est.index(estacion)*28)+(fra.index(franja)*7)+(cli.index(weather_state))+1 }}"
+      weather_label_es: "{% if weather_state == 'despejado' %}Despejado{% elif weather_state == 'parcial' %}Parcial{% elif weather_state == 'nublado' %}Nublado{% elif weather_state == 'lluvia' %}Lluvia{% elif weather_state == 'tormenta' %}Tormenta{% elif weather_state == 'niebla' %}Niebla{% elif weather_state == 'hielo' %}Hielo{% else %}Despejado{% endif %}"
+      estacion_label: "{{ estacion | capitalize }}"
+      franja_label: "{% if franja == '2200_0059' %}22:00-00:59{% elif franja == '0100_0359' %}01:00-03:59{% elif franja == '0400_0559' %}04:00-05:59{% else %}06:00-07:00{% endif %}"
       off_cool_base: "{{ [25.7, [22.0, 24.2 + ((tout-24)*-0.05) + ((hout-60)*-0.01) + ((hin-55)*-0.015)] | max] | min | round(2) }}"
       off_heat_base: "{{ [24.0, [17.0, 20.5 + ((12-tout)*0.05) + ((hout-60)*0.005)] | max] | min | round(2) }}"
       hysteresis: "{{ states('input_number.ac_night_hysteresis_base')|float(0.8) }}"
@@ -3440,6 +3443,10 @@
       - condition: template
         value_template: "{{ not presencia_ok and hvac_mode in ['cool','heat'] }}"
       sequence:
+      - variables:
+          modo_previo_label: "{% if hvac_mode == 'cool' %}Frío{% elif hvac_mode == 'heat' %}Calor{% else %}Apagado{% endif %}"
+          sp_previo: "{{ sp_cool_target if hvac_mode == 'cool' else sp_heat_target if hvac_mode == 'heat' else sp_cool_target }}"
+          temp_apagado_prev: "{{ off_cool if hvac_mode == 'cool' else off_heat if hvac_mode == 'heat' else off_cool }}"
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
@@ -3447,11 +3454,19 @@
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: notify.mobile_app_samsung_s24
-        data: {title: "AC Night · OFF", message: "Sin presencia efectiva."}
+        data:
+          title: AC Night Matriz Contextual
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_SIN_PRESENCIA | MODO= {{ modo_previo_label }} | SP= {{ sp_previo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ temp_apagado_prev }}°C | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo={{ hvac_mode }} | col_idx={{ col_idx }} | resultado_terminal=turn_off"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and tin <= off_cool }}"
       sequence:
+      - variables:
+          modo_previo_label: Frío
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: fan_only}
@@ -3465,16 +3480,34 @@
           value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition=cool->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Night Matriz Contextual
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_UMBRAL | MODO= {{ modo_previo_label }} | SP= {{ sp_cool_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | resultado_terminal=turn_off"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'heat' and tin >= off_heat }}"
       sequence:
+      - variables:
+          modo_previo_label: Calor
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
           value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition=heat->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Night Matriz Contextual
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_UMBRAL | MODO= {{ modo_previo_label }} | SP= {{ sp_heat_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_heat }}°C | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo=heat | col_idx={{ col_idx }} | resultado_terminal=turn_off"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode != 'cool' and tin >= on_cool and presencia_ok }}"
@@ -3492,6 +3525,14 @@
       - service: climate.set_fan_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {fan_mode: Low}
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Night Matriz Contextual
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP= {{ sp_cool_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | resultado_terminal=turn_on_cool"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok }}"
@@ -3519,6 +3560,14 @@
           data:
             name: AC Night
             message: "resultado=fan_heat_no_soportado | fan=Low | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }}"
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Night Matriz Contextual
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_HEAT | MODO= Calor | SP= {{ sp_heat_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_heat }}°C | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=heat | col_idx={{ col_idx }} | resultado_terminal=turn_on_heat"
     default:
     - service: logbook.log
       data:
