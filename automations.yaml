@@ -3210,6 +3210,23 @@
       origen_clasificacion: '{% if not transicion_hvac_real %}sin_transicion_real
         {% elif marker_compatible %}automatico_ac_matriz_160 {% else %}manual_externo
         {% endif %}'
+      helper_offset_resuelto: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje
+        ~ ''_col_'' ~ col_idx_resuelto }}'
+      helper_offset_previo: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje
+        ~ ''_col_'' ~ col_idx }}'
+      helper_offset: '{{ helper_offset_resuelto }}'
+      offset_actual: '{{ states(helper_offset_resuelto) | float(0) if modo_aprendizaje
+        in [''cool'',''heat''] else 0 }}'
+      delta: '{% if modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
+        %}-0.25 {% elif modo_aprendizaje == ''cool'' and evento_manual_tipo == ''apagado_manual''
+        %}0.25 {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo == ''encendido_manual''
+        %}0.25 {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo == ''apagado_manual''
+        %}-0.25 {% else %}0 {% endif %}'
+      helper_valido: '{{ col_idx_resuelto|int > 0 and modo_aprendizaje in [''cool'',''heat'']
+        and states(helper_offset_resuelto) not in [''unknown'',''unavailable'',''none'','''']
+        }}'
+      offset_nuevo: '{{ [3.0, [-3.0, (offset_actual|float + delta|float)] | max] |
+        min | round(2) }}'
       resultado_terminal: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
         {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}ignorado
         {% elif not horario_aprendizaje_habilitado %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
@@ -3226,6 +3243,8 @@
         {% elif not helper_valido %}helper_invalido {% elif cierre_compuesto_valido %}manual_compuesto_desde_fan_only
         {% else %}manual_externo_aplicado
         {% endif %}'
+      envio_estado: '{{ ''emitida'' if resultado_terminal == ''aplicado'' else ''fallback''
+        if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
       mensaje_humano: '{% set tipo_humano = ''Encendido manual detectado por transición compuesta (apagado → ventilación → frío/calor)'' if cierre_compuesto_valido else ''Encendido Manual'' if evento_manual_tipo
         == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual''
         else ''Sin Transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje
