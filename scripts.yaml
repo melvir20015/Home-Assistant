@@ -77,6 +77,7 @@ ac_matriz_160_reporte_diagnostico:
           {% endif %}
         hvac_encendido: "{{ hvac_mode in ['cool','heat','fan_only','auto'] }}"
         demanda_label: "{{ 'Enfriar' if modo_demandado == 'cool' else 'Calentar' }}"
+        umbral_tipo: "{{ 'OFF' if hvac_encendido else 'ON' }}"
         tin_comp_umbral: >-
           {% if hvac_encendido %}
             {% if modo_demandado == 'cool' %}{{ cool_off if cool_off is not none else none }}{% else %}{{ heat_off if heat_off is not none else none }}{% endif %}
@@ -84,12 +85,19 @@ ac_matriz_160_reporte_diagnostico:
             {% if modo_demandado == 'cool' %}{{ cool_on if cool_on is not none else none }}{% else %}{{ heat_on if heat_on is not none else none }}{% endif %}
           {% endif %}
         comp_operador: >-
-          {% if hvac_encendido %}
-            {% if modo_demandado == 'cool' %}>{% else %}<{% endif %}
+          {% if modo_demandado == 'cool' %}
+            {% if tin_comp_umbral is not none and (tin|float >= tin_comp_umbral|float) %}>{% else %}<{% endif %}
           {% else %}
-            {% if modo_demandado == 'cool' %}<{% else %}>{% endif %}
+            {% if tin_comp_umbral is not none and (tin|float <= tin_comp_umbral|float) %}<{% else %}>{% endif %}
           {% endif %}
         umbral_fmt: "{{ '%.2f' | format((tin_comp_umbral if tin_comp_umbral is not none else 0)|float) }}"
+        razones_bloqueo_resumen: >-
+          {% set razones = [] %}
+          {% if manual_off_block_active %}{% set razones = razones + ['Bloqueo manual activo hasta ' ~ manual_off_block_until_raw] %}{% endif %}
+          {% if modo_demandado == 'cool' and cool_block_active %}{% set razones = razones + ['Bloqueo anti-reversa cool activo hasta ' ~ cool_block_until_raw] %}{% endif %}
+          {% if modo_demandado == 'heat' and heat_block_active %}{% set razones = razones + ['Bloqueo anti-reversa heat activo hasta ' ~ heat_block_until_raw] %}{% endif %}
+          {% if not presence_ok_effective %}{% set razones = razones + ['Sin presencia'] %}{% endif %}
+          {% if razones | length > 0 %}| {{ razones | join(' | ') }}{% else %}| Condiciones habilitadas{% endif %}
         resultado_reporte: "{{ 'off_solo_no_encendido' if hvac_mode == 'off' else 'on_con_evaluacion_apagado' }}"
     - service: logbook.log
       data:
@@ -102,7 +110,7 @@ ac_matriz_160_reporte_diagnostico:
           Estado HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
           Condiciones: {{ clima_actual }} | Tin: {{ trend_tin }}{{ tin_fmt }}°C | Hin: {{ trend_hin }}{{ hin_fmt }}% | Tout: {{ trend_tout }}{{ tout_fmt }}°C | Hout: {{ trend_hout }}{{ hout_fmt }}%
 
-          Demanda: {{ demanda_label }} | Tin: {{ tin_fmt }}°C {{ comp_operador }} {{ umbral_fmt }}°C
+          Demanda: {{ demanda_label }} | Tin: {{ tin_fmt }}°C {{ comp_operador }} {{ umbral_tipo }}: {{ umbral_fmt }}°C {{ razones_bloqueo_resumen }}
     - service: input_text.set_value
       target:
         entity_id: input_text.ac_matriz_160_diag_demanda_snapshot
