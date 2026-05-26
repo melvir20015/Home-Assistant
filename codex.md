@@ -2842,3 +2842,18 @@ Implementación contractual:
   - El rango se mueve como bloque (misma traslación), sin recalcular `on/off` de forma independiente para el caso ancla fuera de rango.
   - Se agrega telemetría `ancho_histeresis_nuevo` para auditar que la banda se conserva en `1.0` según convención interna del módulo.
 - **No alcance:** no se alteran otras reglas de aprendizaje fuera de AC-Matriz 160.
+
+## 53) Night — eliminación de secado post-cool para proteger aprendizaje manual (2026-05-26)
+
+- **Alcance estricto:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) en `automations.yaml`.
+- **Cambio operativo:** se elimina exclusivamente en Night el flujo intermedio de secado `cool -> fan_only -> off` (incluyendo `delay` intermedio) para apagado por umbral en frío.
+- **Nuevo comportamiento Night (cool):**
+  - se mantiene escritura de marcador transaccional en `input_text.ac_night_auto_origin_payload` con:
+    - `last_action=turn_off`
+    - `expected_transition=cool->off`
+  - el apagado pasa a ser terminal directo con `climate.turn_off` (sin `fan_only` intermedio).
+  - se conservan notificación push terminal y `logbook.log` con `hito=night_auto_off_notified`.
+- **Motivación:** robustecer la clasificación del aprendizaje manual nocturno evitando contaminación por estado intermedio `fan_only` y prevenir secuencias inducidas `off-fan-cool` por la propia automatización Night.
+- **No alcance:**
+  - no se modifica `ac_night_learning_manual_v1`.
+  - no se alteran automatizaciones fuera de `ac_night_matrix_v1`.

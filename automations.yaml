@@ -3645,13 +3645,6 @@
       sequence:
       - variables:
           modo_previo_label: Frío
-      - service: climate.set_hvac_mode
-        target: {entity_id: "{{ climate_ent }}"}
-        data: {hvac_mode: fan_only}
-      - service: climate.set_fan_mode
-        target: {entity_id: "{{ climate_ent }}"}
-        data: {fan_mode: Low}
-      - delay: "00:00:45"
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
