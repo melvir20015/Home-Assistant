@@ -33,6 +33,11 @@
   - `input_number.ac_matriz_160_t_off_heat`
 
 ## Reglas de diagnóstico
+- Ventana operativa del reporte bajo demanda: **07:01:00 → 21:59:00**.
+- Si se invoca fuera de esa ventana:
+  - no ejecuta el cálculo completo del reporte;
+  - envía notificación explícita: **“Fuera de horario diurno (válido: 07:01:00 → 21:59:00)”**;
+  - registra traza en `logbook` con `hito=diagnostico_bajo_demanda_fuera_horario`.
 - Si HVAC está `off`:
   - explica si hay bloqueo manual activo;
   - o ausencia de presencia efectiva;
@@ -49,3 +54,11 @@
 - No se usan servicios de escritura de control térmico (`climate.turn_on/off`, `climate.set_*`).
 - No se escriben helpers (`input_*`, `timer`, `toggle`, `marker`, etc.).
 - No se altera ninguna automatización de control existente de AC‑Matriz 160.
+
+## Snapshot y tendencia entre consultas
+- Snapshot dedicado: `input_text.ac_matriz_160_diag_demanda_snapshot`.
+- Estructura persistida: `Tin|Hin|Tout|Hout` (con 2 decimales).
+- En cada consulta válida (dentro del horario diurno):
+  - compara contra el snapshot previo;
+  - muestra tendencia por variable con flechas (`↑`/`↓`);
+  - actualiza snapshot para la siguiente consulta.

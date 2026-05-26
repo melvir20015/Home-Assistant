@@ -3,6 +3,23 @@ ac_matriz_160_reporte_diagnostico:
   mode: single
   sequence:
     - variables:
+        dentro_horario_diurno: "{{ now().strftime('%H:%M:%S') >= '07:01:00' and now().strftime('%H:%M:%S') <= '21:59:00' }}"
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ not dentro_horario_diurno }}"
+          sequence:
+            - service: notify.mobile_app_samsung_s24
+              data:
+                title: "AC-Matriz 160 · Reporte diagnóstico"
+                message: "Fuera de horario diurno (válido: 07:01:00 → 21:59:00)."
+            - service: logbook.log
+              data:
+                name: AC-Matriz 160
+                message: "hito=diagnostico_bajo_demanda_fuera_horario | ventana=diurna | valido=07:01:00-21:59:00"
+            - stop: "Reporte diurno fuera de horario"
+      default: []
+    - variables:
         hvac_mode: "{{ states('climate.0200009211c7_climate') }}"
         tin: "{{ [states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average | round(2) }}"
         hin: "{{ [states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average | round(2) }}"
@@ -117,100 +134,98 @@ ac_matriz_160_reporte_diagnostico:
       data:
         value: "{{ tin_fmt }}|{{ hin_fmt }}|{{ tout_fmt }}|{{ hout_fmt }}"
 
-ac_night_reset_offsets_bloque:
-  alias: AC Night - Reset offsets por bloque
+ac_night_reporte_diagnostico:
+  alias: AC Night - Reporte diagnóstico bajo demanda
   mode: single
-  fields:
-    start_idx:
-      description: Índice inicial de columna (1-112)
-      example: 1
-    end_idx:
-      description: Índice final de columna (1-112)
-      example: 28
   sequence:
     - variables:
-        start_idx: "{{ (start_idx | default(1)) | int(1) }}"
-        end_idx: "{{ (end_idx | default(112)) | int(112) }}"
-        total_iter: "{{ (end_idx - start_idx + 1) if end_idx >= start_idx else 0 }}"
+        dentro_horario_nocturno: "{{ now().strftime('%H:%M:%S') >= '22:00:00' or now().strftime('%H:%M:%S') <= '07:00:00' }}"
     - choose:
         - conditions:
             - condition: template
-              value_template: "{{ start_idx < 1 or end_idx > 112 or end_idx < start_idx }}"
+              value_template: "{{ not dentro_horario_nocturno }}"
           sequence:
+            - service: notify.mobile_app_samsung_s24
+              data:
+                title: "AC Night · Reporte diagnóstico"
+                message: "Fuera de horario nocturno (válido: 22:00:00 → 07:00:00)."
             - service: logbook.log
               data:
                 name: AC Night
-                message: "hito=night_offsets_reset_error | razon=rango_invalido | start={{ start_idx }} | end={{ end_idx }}"
-            - stop: "Rango inválido para reset de offsets Night"
-    - repeat:
-        count: "{{ total_iter }}"
-        sequence:
-          - variables:
-              col_idx: "{{ start_idx + repeat.index - 1 }}"
-              cool_entity: "{{ 'input_number.ac_night_offset_cool_col_' ~ col_idx }}"
-              heat_entity: "{{ 'input_number.ac_night_offset_heat_col_' ~ col_idx }}"
-              cool_exists: "{{ states(cool_entity) not in ['unknown', 'unavailable'] }}"
-              heat_exists: "{{ states(heat_entity) not in ['unknown', 'unavailable'] }}"
-          - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ cool_exists }}"
-                sequence:
-                  - service: input_number.set_value
-                    data:
-                      entity_id: "{{ cool_entity }}"
-                      value: 0
-              - conditions:
-                  - condition: template
-                    value_template: "{{ not cool_exists }}"
-                sequence:
-                  - service: logbook.log
-                    data:
-                      name: AC Night
-                      message: "hito=night_offsets_reset_error | razon=helper_faltante | entidad={{ cool_entity }}"
-          - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ heat_exists }}"
-                sequence:
-                  - service: input_number.set_value
-                    data:
-                      entity_id: "{{ heat_entity }}"
-                      value: 0
-              - conditions:
-                  - condition: template
-                    value_template: "{{ not heat_exists }}"
-                sequence:
-                  - service: logbook.log
-                    data:
-                      name: AC Night
-                      message: "hito=night_offsets_reset_error | razon=helper_faltante | entidad={{ heat_entity }}"
+                message: "hito=night_diagnostico_bajo_demanda_fuera_horario | ventana=nocturna | valido=22:00:00-07:00:00"
+            - stop: "Reporte nocturno fuera de horario"
+      default: []
+    - variables:
+        hvac_mode: "{{ states('climate.0200009211c7_climate') }}"
+        tin: "{{ [states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average | round(2) }}"
+        hin: "{{ [states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average | round(2) }}"
+        tout: "{{ state_attr('weather.openweathermap','temperature') | float(none) }}"
+        hout_raw: "{{ state_attr('weather.openweathermap','humidity') | float(none) }}"
+        hout: "{{ hout_raw if hout_raw is not none else 60 }}"
+        weather_state_raw: "{{ states('weather.openweathermap') | lower }}"
+        prev_diag_snapshot_raw: "{{ states('input_text.ac_night_diag_demanda_snapshot') }}"
+        prev_diag_parts: "{{ prev_diag_snapshot_raw.split('|') if prev_diag_snapshot_raw not in ['unknown','unavailable','none','','sin_snapshot'] else [] }}"
+        prev_tin: "{{ prev_diag_parts[0] | float(tin) if prev_diag_parts | count > 0 else tin }}"
+        prev_hin: "{{ prev_diag_parts[1] | float(hin) if prev_diag_parts | count > 1 else hin }}"
+        prev_tout: "{{ prev_diag_parts[2] | float(tout if tout is not none else 0) if prev_diag_parts | count > 2 else (tout if tout is not none else 0) }}"
+        prev_hout: "{{ prev_diag_parts[3] | float(hout) if prev_diag_parts | count > 3 else hout }}"
+        trend_tin: "{% if tin > (prev_tin|float) %}↑{% elif tin < (prev_tin|float) %}↓{% else %}{% endif %}"
+        trend_hin: "{% if hin > (prev_hin|float) %}↑{% elif hin < (prev_hin|float) %}↓{% else %}{% endif %}"
+        trend_tout: "{% set tout_cmp = tout if tout is not none else 0 %}{% if tout_cmp > (prev_tout|float) %}↑{% elif tout_cmp < (prev_tout|float) %}↓{% else %}{% endif %}"
+        trend_hout: "{% if hout > (prev_hout|float) %}↑{% elif hout < (prev_hout|float) %}↓{% else %}{% endif %}"
+        tin_fmt: "{{ '%.2f' | format(tin|float) }}"
+        hin_fmt: "{{ '%.2f' | format(hin|float) }}"
+        tout_fmt: "{{ '%.2f' | format((tout if tout is not none else 0)|float) }}"
+        hout_fmt: "{{ '%.2f' | format(hout|float) }}"
+        clima_actual: >-
+          {% set w = weather_state_raw %}
+          {% if w in ['clear', 'sunny', 'clear-night'] %}Despejado
+          {% elif w in ['partlycloudy', 'partly cloudy', 'few clouds', 'scattered clouds'] %}Parcialmente nublado
+          {% elif w in ['cloudy', 'overcast', 'broken clouds'] %}Nublado
+          {% elif w in ['rainy', 'rain', 'pouring', 'drizzle'] %}Lluvioso
+          {% elif w in ['lightning', 'lightning-rainy', 'thunderstorm'] %}Tormenta
+          {% elif w in ['fog', 'mist', 'haze', 'smoky'] %}Neblina
+          {% elif w in ['snowy', 'snow', 'snowy-rainy'] %}Nevando
+          {% else %}Condición no disponible
+          {% endif %}
+        cool_off: "{{ states('input_number.ac_night_t_off_cool') | float(none) }}"
+        cool_on: "{{ states('input_number.ac_night_t_on_cool') | float(none) }}"
+        heat_off: "{{ states('input_number.ac_night_t_off_heat') | float(none) }}"
+        heat_on: "{{ states('input_number.ac_night_t_on_heat') | float(none) }}"
+        turn_on_cool: "{{ (cool_on is not none) and (tin|float >= cool_on|float) }}"
+        turn_on_heat: "{{ (heat_on is not none) and (tin|float <= heat_on|float) }}"
+        modo_demandado: "{% if turn_on_cool and not turn_on_heat %}cool{% elif turn_on_heat and not turn_on_cool %}heat{% elif turn_on_cool and turn_on_heat %}cool{% else %}cool{% endif %}"
+        hvac_encendido: "{{ hvac_mode in ['cool','heat','fan_only','auto'] }}"
+        demanda_label: "{{ 'Enfriar' if modo_demandado == 'cool' else 'Calentar' }}"
+        umbral_tipo: "{{ 'OFF' if hvac_encendido else 'ON' }}"
+        tin_comp_umbral: >-
+          {% if hvac_encendido %}
+            {% if modo_demandado == 'cool' %}{{ cool_off if cool_off is not none else none }}{% else %}{{ heat_off if heat_off is not none else none }}{% endif %}
+          {% else %}
+            {% if modo_demandado == 'cool' %}{{ cool_on if cool_on is not none else none }}{% else %}{{ heat_on if heat_on is not none else none }}{% endif %}
+          {% endif %}
+        comp_operador: >-
+          {% if modo_demandado == 'cool' %}
+            {% if tin_comp_umbral is not none and (tin|float >= tin_comp_umbral|float) %}>{% else %}<{% endif %}
+          {% else %}
+            {% if tin_comp_umbral is not none and (tin|float <= tin_comp_umbral|float) %}<{% else %}>{% endif %}
+          {% endif %}
+        umbral_fmt: "{{ '%.2f' | format((tin_comp_umbral if tin_comp_umbral is not none else 0)|float) }}"
+        resultado_reporte: "{{ 'off_solo_no_encendido' if hvac_mode == 'off' else 'on_con_evaluacion_apagado' }}"
+    - service: logbook.log
+      data:
+        name: AC Night
+        message: "hito=night_diagnostico_bajo_demanda_reporte | modo_demandado={{ modo_demandado }} | hvac_state={{ hvac_mode }} | resultado_reporte={{ resultado_reporte }}"
+    - service: notify.mobile_app_samsung_s24
+      data:
+        title: "AC Night · Reporte diagnóstico"
+        message: |-
+          Estado HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
+          Condiciones: {{ clima_actual }} | Tin: {{ trend_tin }}{{ tin_fmt }}°C | Hin: {{ trend_hin }}{{ hin_fmt }}% | Tout: {{ trend_tout }}{{ tout_fmt }}°C | Hout: {{ trend_hout }}{{ hout_fmt }}%
 
-ac_night_reset_offsets_a_cero:
-  alias: AC Night - Reset offsets a cero
-  mode: single
-  sequence:
-    - service: logbook.log
+          Demanda: {{ demanda_label }} | Tin: {{ tin_fmt }}°C {{ comp_operador }} {{ umbral_tipo }}: {{ umbral_fmt }}°C
+    - service: input_text.set_value
+      target:
+        entity_id: input_text.ac_night_diag_demanda_snapshot
       data:
-        name: AC Night
-        message: "hito=night_offsets_reset_start"
-    - service: script.ac_night_reset_offsets_bloque
-      data:
-        start_idx: 1
-        end_idx: 28
-    - service: script.ac_night_reset_offsets_bloque
-      data:
-        start_idx: 29
-        end_idx: 56
-    - service: script.ac_night_reset_offsets_bloque
-      data:
-        start_idx: 57
-        end_idx: 84
-    - service: script.ac_night_reset_offsets_bloque
-      data:
-        start_idx: 85
-        end_idx: 112
-    - service: logbook.log
-      data:
-        name: AC Night
-        message: "hito=night_offsets_reset_done | total_cols=112 | valor=0"
+        value: "{{ tin_fmt }}|{{ hin_fmt }}|{{ tout_fmt }}|{{ hout_fmt }}"
