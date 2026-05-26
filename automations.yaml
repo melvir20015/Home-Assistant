@@ -3816,9 +3816,15 @@
       origen_clasificacion: "{{ 'automatico_night' if marker_valid else 'manual_externo' }}"
       helper_target: "{{ 'input_number.ac_night_offset_cool_col_' ~ col_idx if transicion in ['off->cool','cool->off'] else 'input_number.ac_night_offset_heat_col_' ~ col_idx }}"
       modo: "{{ 'cool' if transicion in ['off->cool','cool->off'] else ('heat' if transicion in ['off->heat','heat->off'] else 'na') }}"
-      delta: "{% if transicion == 'off->cool' %}-0.10{% elif transicion == 'cool->off' %}+0.10{% elif transicion == 'off->heat' %}+0.10{% elif transicion == 'heat->off' %}-0.10{% else %}0{% endif %}"
+      evento_manual_tipo: "{% if transicion in ['off->cool','off->heat'] %}encendido_manual{% elif transicion in ['cool->off','heat->off'] %}apagado_manual{% else %}ignorado{% endif %}"
+      delta: "{% if transicion == 'off->cool' %}-0.20{% elif transicion == 'cool->off' %}+0.20{% elif transicion == 'off->heat' %}+0.20{% elif transicion == 'heat->off' %}-0.20{% else %}0{% endif %}"
       offset_prev: "{{ states(helper_target) | float(0) if valid_transition else 0 }}"
       offset_new: "{{ [3.0, [-3.0, (offset_prev + (delta|float(0)))] | max] | min | round(2) if valid_transition else offset_prev }}"
+      hora_evento: "{{ now().strftime('%I:%M:%S %p') }}"
+      contexto_night: "{{ weather_state }} | {{ estacion }} | Horario {{ franja }}"
+      delta_aplicado_real: "{{ ((offset_new | float(0)) - (offset_prev | float(0))) | round(2) if valid_transition else 0 }}"
+      envio_estado: "{{ 'Emitida' if (valid_transition and signature != last_signature and origen_clasificacion == 'manual_externo') else 'Fallback' if (valid_transition and signature != last_signature) else 'Suprimida' }}"
+      mensaje_humano: "{% set tipo_humano = 'Encendido Manual' if evento_manual_tipo == 'encendido_manual' else 'Apagado Manual' if evento_manual_tipo == 'apagado_manual' else 'Sin Transición' %} {% set modo_humano = 'Frío' if modo == 'cool' else 'Calor' if modo == 'heat' else 'Fuera de Alcance' %} {{ hora_evento }} | TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx }} ({{ contexto_night }}) | DELTA_REAL= {{ ('+' if (delta_aplicado_real | float(0)) >= 0 else '') ~ ((delta_aplicado_real | float(0)) | round(2)) }} | DELTA_OBJ= {{ ('+' if (delta | float(0)) >= 0 else '') ~ ((delta | float(0)) | round(2)) }} | OFFSET= {{ offset_new if origen_clasificacion == 'manual_externo' else offset_prev }} | ENVÍO= {{ envio_estado }} | TEMP APAGADO= n/a"
       trace_id: "{{ trigger.to_state.context.id if trigger.to_state is not none else context.id|default('na') }}"
   - choose:
     - conditions:
@@ -3862,8 +3868,16 @@
           data:
             name: AC Night Learning
             message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_new }} | resultado_terminal=aplicado | razon=manual_externo_aplicado"
+        - service: notify.mobile_app_samsung_s24
+          data:
+            title: AC Night
+            message: "{{ mensaje_humano }}"
       default:
       - service: logbook.log
         data:
           name: AC Night Learning
           message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | resultado_terminal=ignorado | razon=origen_automatico_night"
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: AC Night
+          message: "{{ mensaje_humano }}"

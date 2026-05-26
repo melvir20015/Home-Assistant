@@ -2882,3 +2882,17 @@ Implementación contractual:
 - **Impacto esperado:**
   - **confort:** encendido COOL más oportuno en ventana Night (`22:00–07:00`) al bajar el umbral efectivo de apagado/encendido derivado.
   - **consumo:** posible incremento moderado de tiempo en frío por mayor prontitud de reacción, manteniendo protecciones anti-ciclo y límites contractuales.
+
+## 55) Night — aprendizaje manual por columna con delta 0.20 y notificación espejo diurna (2026-05-26)
+
+### Cambios operativos aplicados
+- **Alcance estricto:** solo la automatización `AC Night - Aprendizaje manual por columna` (`id: ac_night_learning_manual_v1`) en `automations.yaml`.
+- **Ajuste de aprendizaje manual Night:** los deltas por transición manual pasaron de `0.10` a `0.20` (manteniendo signo por tipo de transición):
+  - `off->cool`: `-0.20`
+  - `cool->off`: `+0.20`
+  - `off->heat`: `+0.20`
+  - `heat->off`: `-0.20`
+- **Sin alterar reglas existentes:** se conserva la lógica actual de clasificación de origen (`manual_externo`/`automatico_night`), deduplicación por firma, clamps y transiciones válidas.
+- **Notificación de aprendizaje Night:** se homologó estructura de mensaje al formato diurno (campos, orden y estilo) usando variables propias de Night (`TIPO`, `MODO`, `COLUMNA`, `DELTA_REAL`, `DELTA_OBJ`, `OFFSET`, `ENVÍO`, `TEMP APAGADO`).
+- **Canal de envío confirmado:** notificación por `notify.mobile_app_samsung_s24`.
+- **Terminalidad sin duplicados:** se emite una sola notificación terminal por evento manual ON/OFF válido y no deduplicado, respetando la dedup existente por `signature`.
