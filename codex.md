@@ -2857,3 +2857,28 @@ Implementación contractual:
 - **No alcance:**
   - no se modifica `ac_night_learning_manual_v1`.
   - no se alteran automatizaciones fuera de `ac_night_matrix_v1`.
+
+## 54) Night — bias global COOL de confort (-0.5 °C) en baseline nocturno (2026-05-26)
+
+- **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) en `automations.yaml`.
+- **Objetivo operativo:** adelantar reacción de frío nocturno para reducir bochorno/sudoración, aplicando un ajuste global únicamente al flujo COOL de Night.
+- **Fórmula aplicada (COOL Night):**
+  - `cool_global_bias = -0.5`
+  - `off_cool_biased_pre_clamp = off_cool_base_plus_offset + cool_global_bias`
+  - `off_cool = clamp(off_cool_biased_pre_clamp, 22.0, 25.7)`
+  - Derivaciones preservadas desde `off_cool_final_real`:
+    - `on_cool_pre_cap = off_cool_final_real + hysteresis_eff + comfort_bias_cool`
+    - `on_cool = clamp(max(off_cool_final_real + 0.35, min(on_cool_cap_night_dynamic, on_cool_pre_cap)), ..., 26.0)`
+    - `sp_cool_target = clamp(floor(off_cool_final_real) - 1, hvac_min_sp, hvac_max_sp)`
+- **No alcance (HEAT intacto):**
+  - sin cambios en `off_heat`, `on_heat` ni `sp_heat_target` contractual.
+  - no se modifica lógica de aprendizaje manual nocturno por columna; solo coexiste con el nuevo baseline COOL.
+- **Contrato y guardas preservadas:**
+  - se mantiene `on_cool > off_cool` mediante banda mínima anti-ciclo (`+0.35`) y clamps existentes.
+  - se conservan clamps/rangos de seguridad ya definidos para operación nocturna.
+- **Observabilidad / auditoría recomendada:**
+  - se expone `cool_global_bias` en notificaciones/logbook de eventos terminales y en `resultado=sin_cambio`.
+  - campos sugeridos para auditoría Night: `trace_id`, `col_idx`, `tin`, `off_cool`, `on_cool`, `hysteresis_eff`, `bochorno_score`, `cool_global_bias`, `sp_cool_target`, `resultado_terminal`.
+- **Impacto esperado:**
+  - **confort:** encendido COOL más oportuno en ventana Night (`22:00–07:00`) al bajar el umbral efectivo de apagado/encendido derivado.
+  - **consumo:** posible incremento moderado de tiempo en frío por mayor prontitud de reacción, manteniendo protecciones anti-ciclo y límites contractuales.

@@ -3594,7 +3594,9 @@
       bochorno_exterior_component: "{{ ((bochorno_exterior_temp_component | float * 0.55) + (bochorno_exterior_hum_component | float * 0.45)) | round(3) }}"
       bochorno_score: "{{ ((bochorno_interior_component | float * 0.82) + (bochorno_exterior_component | float * 0.18)) | round(2) }}"
       off_cool_base_plus_offset: "{{ (states('input_number.ac_night_offset_cool_col_' ~ col_idx)|float(0) + off_cool_base) | round(2) }}"
-      off_cool: "{{ ([25.7, [22.0, (off_cool_base_plus_offset|float)] | max] | min) | round(2) }}"
+      cool_global_bias: -0.5
+      off_cool_biased_pre_clamp: "{{ ((off_cool_base_plus_offset|float) + (cool_global_bias|float)) | round(2) }}"
+      off_cool: "{{ ([25.7, [22.0, (off_cool_biased_pre_clamp|float)] | max] | min) | round(2) }}"
       off_cool_final_real: "{{ off_cool | float }}"
       hysteresis_eff: "{{ ([1.15, [0.45, ((hysteresis_base|float) - ((bochorno_score|float) * 0.38))] | max] | min) | round(2) }}"
       comfort_bias_cool_raw: "{{ (0 - ((bochorno_score|float) * 0.55)) | round(2) }}"
@@ -3634,7 +3636,7 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_SIN_PRESENCIA | MODO= {{ modo_previo_label }} | SP= {{ sp_previo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ temp_apagado_prev }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_SIN_PRESENCIA | MODO= {{ modo_previo_label }} | SP= {{ sp_previo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ temp_apagado_prev }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | cool_global_bias={{ cool_global_bias }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
@@ -3727,11 +3729,11 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP= {{ sp_objetivo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | cap_on={{ on_cool_cap_night_dynamic }} | sp_ok={{ sp_confirmado_ok }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP= {{ sp_objetivo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | cool_global_bias={{ cool_global_bias }} | cap_on={{ on_cool_cap_night_dynamic }} | sp_ok={{ sp_confirmado_ok }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_objetivo={{ sp_objetivo }} | sp_reportado_equipo={{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }} | sp_confirmado_ok={{ sp_confirmado_ok }} | resultado_terminal=turn_on_cool"
+          message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | cool_global_bias={{ cool_global_bias }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_objetivo={{ sp_objetivo }} | sp_reportado_equipo={{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }} | sp_confirmado_ok={{ sp_confirmado_ok }} | resultado_terminal=turn_on_cool"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok }}"
@@ -3775,7 +3777,7 @@
     - service: logbook.log
       data:
         name: AC Night
-        message: "resultado=sin_cambio | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_cool_target={{ sp_cool_target }} | sp_heat_target={{ sp_heat_target }} | fan=Low | on_cool={{ on_cool }} | off_cool={{ off_cool }} | on_heat={{ on_heat }} | off_heat={{ off_heat }}"
+        message: "resultado=sin_cambio | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | cool_global_bias={{ cool_global_bias }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_cool_target={{ sp_cool_target }} | sp_heat_target={{ sp_heat_target }} | fan=Low | on_cool={{ on_cool }} | off_cool={{ off_cool }} | on_heat={{ on_heat }} | off_heat={{ off_heat }}"
 
 
 - id: ac_night_learning_manual_v1
