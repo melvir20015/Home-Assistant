@@ -2880,6 +2880,28 @@
         }}{% endif %}'
       manual_off_rebound_active: '{{ as_timestamp(now()) < (manual_off_rebound_until_ts
         | float(0)) }}'
+      hvac_min_sp: '{{ state_attr(''climate.0200009211c7_climate'', ''min_temp'')
+        | float(17) | round(0, ''floor'') | int }}'
+      hvac_max_sp: '{{ state_attr(''climate.0200009211c7_climate'', ''max_temp'')
+        | float(23) | round(0, ''floor'') | int }}'
+      helper_t_off_cool: '{{ states(''input_number.ac_matriz_160_t_off_cool'') | float(24)
+        }}'
+      helper_t_on_cool: '{{ states(''input_number.ac_matriz_160_t_on_cool'') | float(25)
+        }}'
+      helper_t_off_heat: '{{ states(''input_number.ac_matriz_160_t_off_heat'') | float(22)
+        }}'
+      helper_t_on_heat: '{{ states(''input_number.ac_matriz_160_t_on_heat'') | float(21)
+        }}'
+      transicion_consolidada_from: '{{ modo_anterior }}'
+      transicion_consolidada_to: '{{ modo_nuevo }}'
+      transicion_observada_consolidada: '{{ transicion_consolidada_from ~ ''->'' ~ transicion_consolidada_to }}'
+      cierre_compuesto_valido: '{{ false }}'
+      transicion_hvac_real: '{{ (transicion_consolidada_from == ''off'' and transicion_consolidada_to in [''cool'',''heat''])
+        or (transicion_consolidada_to == ''off'' and transicion_consolidada_from in [''cool'',''heat'']) }}'
+      modo_aprendizaje: '{% if transicion_consolidada_to in [''cool'',''heat''] %}{{ transicion_consolidada_to }}{% elif transicion_consolidada_from in [''cool'',''heat''] %}{{ transicion_consolidada_from }}{% else %}fuera_alcance{% endif %}'
+      evento_manual_tipo: '{% if transicion_hvac_real and transicion_consolidada_to in [''cool'',''heat'']
+        and transicion_consolidada_from == ''off'' %}encendido_manual{% elif transicion_hvac_real and
+        transicion_consolidada_to == ''off'' and transicion_consolidada_from in [''cool'',''heat''] %}apagado_manual{% else %}ignorado{% endif %}'
       off_vigente: '{% if modo_aprendizaje == ''cool'' %}{{ helper_t_off_cool | float(24)
         }}{% elif modo_aprendizaje == ''heat'' %}{{ helper_t_off_heat | float(22)
         }}{% else %}0{% endif %}'
@@ -2947,18 +2969,6 @@
         if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
       legacy_manual_hold_active: '{{ states(''input_text.ac_matriz_160_manual_legacy_hold'')
         == ''on'' }}'
-      hvac_min_sp: '{{ state_attr(''climate.0200009211c7_climate'', ''min_temp'')
-        | float(17) | round(0, ''floor'') | int }}'
-      hvac_max_sp: '{{ state_attr(''climate.0200009211c7_climate'', ''max_temp'')
-        | float(23) | round(0, ''floor'') | int }}'
-      helper_t_off_cool: '{{ states(''input_number.ac_matriz_160_t_off_cool'') | float(24)
-        }}'
-      helper_t_on_cool: '{{ states(''input_number.ac_matriz_160_t_on_cool'') | float(25)
-        }}'
-      helper_t_off_heat: '{{ states(''input_number.ac_matriz_160_t_off_heat'') | float(22)
-        }}'
-      helper_t_on_heat: '{{ states(''input_number.ac_matriz_160_t_on_heat'') | float(21)
-        }}'
       mensaje_humano: '{% set tipo_humano = ''Encendido Manual'' if evento_manual_tipo
         == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual''
         else ''Sin Transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje
