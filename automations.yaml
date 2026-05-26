@@ -2979,7 +2979,7 @@
         | float(22) if modo_aprendizaje == ''heat'' else 0 %} {% set temp_apagado_fmt
         = ''%.2f'' | format(temp_apagado_valor | float(0)) %} {{ hora_evento }} |
         TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto
-        }} ({{ contexto_activo_resuelto }}) | DELTA_REAL= {{ '%+.2f' | format(delta_aplicado_real | float(0)) }} | DELTA_OBJ= {{ '%+.2f' | format(delta | float(0)) }} | OFFSET= {{ offset_nuevo
+        }} ({{ contexto_activo_resuelto }}) | DELTA_REAL= {{ ('+' if (delta_aplicado_real | float(0)) >= 0 else '') ~ ((delta_aplicado_real | float(0)) | round(2)) }} | DELTA_OBJ= {{ ('+' if (delta | float(0)) >= 0 else '') ~ ((delta | float(0)) | round(2)) }} | OFFSET= {{ offset_nuevo
         if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano
         }} | TEMP APAGADO= {{ temp_apagado_fmt }}'
       reconcile_target_mode: '{% set tin_v = tin | float(0) %} {% if tin_v >= helper_t_on_cool
@@ -3347,7 +3347,7 @@
         | float(22) if modo_aprendizaje == ''heat'' else 0 %} {% set temp_apagado_fmt
         = ''%.2f'' | format(temp_apagado_valor | float(0)) %} {{ hora_evento }} |
         TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto
-        }} ({{ contexto_activo_resuelto }}) | DELTA_REAL= {{ '%+.2f' | format(delta_aplicado_real | float(0)) }} | DELTA_OBJ= {{ '%+.2f' | format(delta | float(0)) }} | OFFSET= {{ offset_nuevo
+        }} ({{ contexto_activo_resuelto }}) | DELTA_REAL= {{ ('+' if (delta_aplicado_real | float(0)) >= 0 else '') ~ ((delta_aplicado_real | float(0)) | round(2)) }} | DELTA_OBJ= {{ ('+' if (delta | float(0)) >= 0 else '') ~ ((delta | float(0)) | round(2)) }} | OFFSET= {{ offset_nuevo
         if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano
         }} | TEMP APAGADO= {{ temp_apagado_fmt }}'
   - variables:

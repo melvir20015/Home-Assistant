@@ -2802,3 +2802,15 @@ Implementación contractual:
 - **Observabilidad terminal reforzada:**
   - Se registran en `logbook` campos de auditoría: `off_previo`, `on_previo`, `off_nuevo`, `on_nuevo`, `delta`, `delta_aplicado`, `col_idx`, `modo`, `resultado_terminal`, `razon`.
   - Se conservan terminales de contrato: `aplicado | ignorado | error_controlado`.
+
+## 50) Fix de parseo YAML/Jinja en telemetría DELTA (AC-Matriz 160) (2026-05-26)
+
+- **Alcance:** automatización `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`) en `automations.yaml`.
+- **Problema corregido:** error de validación de configuración en `automations.yaml` (referencia previa: `line 2982, column 63`) por uso de formato con `%` dentro de plantilla Jinja embebida en literal YAML (`'%+.2f' | format(...)`).
+- **Cambio aplicado (dos bloques duplicados del flujo):**
+  - Se reemplazó `DELTA_REAL= {{ '%+.2f' | format(...) }}` por construcción segura sin `%`:
+    - `DELTA_REAL= {{ ('+' if (delta_aplicado_real | float(0)) >= 0 else '') ~ ((delta_aplicado_real | float(0)) | round(2)) }}`
+  - Se reemplazó `DELTA_OBJ= {{ '%+.2f' | format(...) }}` por construcción segura sin `%`:
+    - `DELTA_OBJ= {{ ('+' if (delta | float(0)) >= 0 else '') ~ ((delta | float(0)) | round(2)) }}`
+- **Motivo:** evitar colisiones de parseo YAML/Jinja por `%` en plantillas inline largas, preservando telemetría `DELTA_REAL` y `DELTA_OBJ` en notificaciones.
+- **Resultado esperado:** Home Assistant vuelve a validar configuración y cargar la automatización sin errores de `annotatedyaml.loader` relacionados a ese tramo.
