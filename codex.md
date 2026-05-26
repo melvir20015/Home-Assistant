@@ -2826,3 +2826,19 @@ Implementación contractual:
 - **Evidencia de validación posterior (OK):**
   - validación de parseo YAML local ejecutada con Python + PyYAML sin errores luego del ajuste (`yaml.safe_load('automations.yaml')`),
   - desaparece el error de parser en `line 2982` dentro de la validación de archivo.
+
+## 52) AC-Matriz 160 — Corrección de interpretación por salida de umbral OFF (2026-05-26)
+
+- **Alcance:** `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`).
+- **Objetivo del ajuste:** cuando `Tin` queda fuera del umbral `off` durante arranque manual y puede derivar en comportamiento no deseado (`fan_only`/apagado), reubicar el rango completo por traslación rígida manteniendo histéresis fija de `1.0 °`.
+- **Condiciones de activación por modo:**
+  - **COOL:** si `Tin < off_actual`, entonces `off_objetivo = Tin - 0.5`.
+  - **HEAT (espejo):** si `Tin > off_actual`, entonces `off_objetivo = Tin + 0.5`.
+- **Fórmula única de ajuste (sin forzar signo de offset):**
+  - `delta = off_objetivo - off_actual`.
+  - Aplicación uniforme: `off_nuevo = off_actual + delta`, `on_nuevo = on_actual + delta`, `offset_nuevo = offset_actual + delta`.
+  - El signo de `offset_actual` no altera la regla: aplica igual para offset positivo, negativo o cruce por cero.
+- **Consistencia de histéresis:**
+  - El rango se mueve como bloque (misma traslación), sin recalcular `on/off` de forma independiente para el caso ancla fuera de rango.
+  - Se agrega telemetría `ancho_histeresis_nuevo` para auditar que la banda se conserva en `1.0` según convención interna del módulo.
+- **No alcance:** no se alteran otras reglas de aprendizaje fuera de AC-Matriz 160.

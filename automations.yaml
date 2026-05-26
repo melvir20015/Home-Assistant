@@ -2946,10 +2946,11 @@
         }}'
       off_nuevo: '{{ ((off_vigente | float(0)) + (delta_aplicado_real | float(0)))
         | round(2) }}'
-      on_nuevo: '{% if modo_aprendizaje == ''cool'' %}{{ ((off_nuevo | float(0)) +
-        1.0) | round(2) }}{% elif modo_aprendizaje == ''heat'' %}{{ ((off_nuevo |
-        float(0)) - 1.0) | round(2) }}{% else %}{{ on_vigente | float(0) }}{% endif
-        %}'
+      on_nuevo: '{% if modo_aprendizaje in [''cool'',''heat''] %}{{ ((on_vigente |
+        float(0)) + (delta_aplicado_real | float(0))) | round(2) }}{% else %}{{ on_vigente
+        | float(0) }}{% endif %}'
+      ancho_histeresis_nuevo: '{{ ((on_nuevo | float(0)) - (off_nuevo | float(0)))
+        | round(2) }}'
       resultado_terminal: '{% if not transicion_hvac_real %}ignorado {% elif origen_clasificacion
         == ''automatico_ac_matriz_160'' %}ignorado {% elif not horario_aprendizaje_habilitado
         %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
@@ -3314,10 +3315,11 @@
         }}'
       off_nuevo: '{{ ((off_vigente | float(0)) + (delta_aplicado_real | float(0)))
         | round(2) }}'
-      on_nuevo: '{% if modo_aprendizaje == ''cool'' %}{{ ((off_nuevo | float(0)) +
-        1.0) | round(2) }}{% elif modo_aprendizaje == ''heat'' %}{{ ((off_nuevo |
-        float(0)) - 1.0) | round(2) }}{% else %}{{ on_vigente | float(0) }}{% endif
-        %}'
+      on_nuevo: '{% if modo_aprendizaje in [''cool'',''heat''] %}{{ ((on_vigente |
+        float(0)) + (delta_aplicado_real | float(0))) | round(2) }}{% else %}{{ on_vigente
+        | float(0) }}{% endif %}'
+      ancho_histeresis_nuevo: '{{ ((on_nuevo | float(0)) - (off_nuevo | float(0)))
+        | round(2) }}'
       resultado_terminal: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
         {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}ignorado
         {% elif not horario_aprendizaje_habilitado %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
