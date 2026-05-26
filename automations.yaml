@@ -2880,16 +2880,55 @@
         }}{% endif %}'
       manual_off_rebound_active: '{{ as_timestamp(now()) < (manual_off_rebound_until_ts
         | float(0)) }}'
-      delta: '{% if modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
-        %}-0.25 {% elif modo_aprendizaje == ''cool'' and evento_manual_tipo == ''apagado_manual''
-        %}0.25 {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo == ''encendido_manual''
-        %}0.25 {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo == ''apagado_manual''
-        %}-0.25 {% else %}0 {% endif %}'
+      off_vigente: '{% if modo_aprendizaje == ''cool'' %}{{ helper_t_off_cool | float(24)
+        }}{% elif modo_aprendizaje == ''heat'' %}{{ helper_t_off_heat | float(22)
+        }}{% else %}0{% endif %}'
+      on_vigente: '{% if modo_aprendizaje == ''cool'' %}{{ helper_t_on_cool | float(25)
+        }}{% elif modo_aprendizaje == ''heat'' %}{{ helper_t_on_heat | float(21)
+        }}{% else %}0{% endif %}'
+      fuera_rango_anchor: '{{ (modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
+        and tin | float(0) < off_vigente | float(0)) or (modo_aprendizaje == ''heat''
+        and evento_manual_tipo == ''encendido_manual'' and tin | float(0) > off_vigente
+        | float(0)) }}'
+      off_obj_anchor: '{% if modo_aprendizaje == ''cool'' %}{{ (tin | float(0)) -
+        0.5 }}{% elif modo_aprendizaje == ''heat'' %}{{ (tin | float(0)) + 0.5 }}{%
+        else %}{{ off_vigente | float(0) }}{% endif %}'
+      on_obj_anchor: '{% if modo_aprendizaje == ''cool'' %}{{ (off_obj_anchor | float(0))
+        + 1.0 }}{% elif modo_aprendizaje == ''heat'' %}{{ (off_obj_anchor | float(0))
+        - 1.0 }}{% else %}{{ on_vigente | float(0) }}{% endif %}'
+      rango_dist: '{% if modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
+        %}{{ (tin | float(0)) - (off_vigente | float(0)) }}{% elif modo_aprendizaje
+        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ (on_vigente
+        | float(0)) - (tin | float(0)) }}{% elif modo_aprendizaje == ''heat'' and
+        evento_manual_tipo == ''encendido_manual'' %}{{ (off_vigente | float(0)) -
+        (tin | float(0)) }}{% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
+        == ''apagado_manual'' %}{{ (tin | float(0)) - (on_vigente | float(0)) }}{%
+        else %}0{% endif %}'
+      delta_tramo: '{% set d = rango_dist | float(0) %}{% if d > 0.7 and d <= 1.0
+        %}0.50{% elif d > 0.5 and d <= 0.7 %}0.25{% elif d > 0.2 and d <= 0.5 %}0.10{%
+        elif d >= 0 and d < 0.2 %}0.05{% else %}0{% endif %}'
+      delta: '{% if evento_manual_tipo not in [''encendido_manual'',''apagado_manual'']
+        %}0 {% elif fuera_rango_anchor %}{{ (off_obj_anchor | float(0)) - (off_vigente
+        | float(0)) }} {% elif modo_aprendizaje == ''cool'' and evento_manual_tipo
+        == ''encendido_manual'' %}{{ -1 * (delta_tramo | float(0)) }} {% elif modo_aprendizaje
+        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ delta_tramo
+        | float(0) }} {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
+        == ''encendido_manual'' %}{{ delta_tramo | float(0) }} {% elif modo_aprendizaje
+        == ''heat'' and evento_manual_tipo == ''apagado_manual'' %}{{ -1 * (delta_tramo
+        | float(0)) }} {% else %}0{% endif %}'
       helper_valido: '{{ col_idx_resuelto|int > 0 and modo_aprendizaje in [''cool'',''heat'']
         and states(helper_offset_resuelto) not in [''unknown'',''unavailable'',''none'','''']
         }}'
       offset_nuevo: '{{ [3.0, [-3.0, (offset_actual|float + delta|float)] | max] |
         min | round(2) }}'
+      delta_aplicado_real: '{{ (offset_nuevo | float(0)) - (offset_actual | float(0))
+        }}'
+      off_nuevo: '{{ ((off_vigente | float(0)) + (delta_aplicado_real | float(0)))
+        | round(2) }}'
+      on_nuevo: '{% if modo_aprendizaje == ''cool'' %}{{ ((off_nuevo | float(0)) +
+        1.0) | round(2) }}{% elif modo_aprendizaje == ''heat'' %}{{ ((off_nuevo |
+        float(0)) - 1.0) | round(2) }}{% else %}{{ on_vigente | float(0) }}{% endif
+        %}'
       resultado_terminal: '{% if not transicion_hvac_real %}ignorado {% elif origen_clasificacion
         == ''automatico_ac_matriz_160'' %}ignorado {% elif not horario_aprendizaje_habilitado
         %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
@@ -3222,16 +3261,55 @@
       helper_offset: '{{ helper_offset_resuelto }}'
       offset_actual: '{{ states(helper_offset_resuelto) | float(0) if modo_aprendizaje
         in [''cool'',''heat''] else 0 }}'
-      delta: '{% if modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
-        %}-0.25 {% elif modo_aprendizaje == ''cool'' and evento_manual_tipo == ''apagado_manual''
-        %}0.25 {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo == ''encendido_manual''
-        %}0.25 {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo == ''apagado_manual''
-        %}-0.25 {% else %}0 {% endif %}'
+      off_vigente: '{% if modo_aprendizaje == ''cool'' %}{{ helper_t_off_cool | float(24)
+        }}{% elif modo_aprendizaje == ''heat'' %}{{ helper_t_off_heat | float(22)
+        }}{% else %}0{% endif %}'
+      on_vigente: '{% if modo_aprendizaje == ''cool'' %}{{ helper_t_on_cool | float(25)
+        }}{% elif modo_aprendizaje == ''heat'' %}{{ helper_t_on_heat | float(21)
+        }}{% else %}0{% endif %}'
+      fuera_rango_anchor: '{{ (modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
+        and tin | float(0) < off_vigente | float(0)) or (modo_aprendizaje == ''heat''
+        and evento_manual_tipo == ''encendido_manual'' and tin | float(0) > off_vigente
+        | float(0)) }}'
+      off_obj_anchor: '{% if modo_aprendizaje == ''cool'' %}{{ (tin | float(0)) -
+        0.5 }}{% elif modo_aprendizaje == ''heat'' %}{{ (tin | float(0)) + 0.5 }}{%
+        else %}{{ off_vigente | float(0) }}{% endif %}'
+      on_obj_anchor: '{% if modo_aprendizaje == ''cool'' %}{{ (off_obj_anchor | float(0))
+        + 1.0 }}{% elif modo_aprendizaje == ''heat'' %}{{ (off_obj_anchor | float(0))
+        - 1.0 }}{% else %}{{ on_vigente | float(0) }}{% endif %}'
+      rango_dist: '{% if modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
+        %}{{ (tin | float(0)) - (off_vigente | float(0)) }}{% elif modo_aprendizaje
+        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ (on_vigente
+        | float(0)) - (tin | float(0)) }}{% elif modo_aprendizaje == ''heat'' and
+        evento_manual_tipo == ''encendido_manual'' %}{{ (off_vigente | float(0)) -
+        (tin | float(0)) }}{% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
+        == ''apagado_manual'' %}{{ (tin | float(0)) - (on_vigente | float(0)) }}{%
+        else %}0{% endif %}'
+      delta_tramo: '{% set d = rango_dist | float(0) %}{% if d > 0.7 and d <= 1.0
+        %}0.50{% elif d > 0.5 and d <= 0.7 %}0.25{% elif d > 0.2 and d <= 0.5 %}0.10{%
+        elif d >= 0 and d < 0.2 %}0.05{% else %}0{% endif %}'
+      delta: '{% if evento_manual_tipo not in [''encendido_manual'',''apagado_manual'']
+        %}0 {% elif fuera_rango_anchor %}{{ (off_obj_anchor | float(0)) - (off_vigente
+        | float(0)) }} {% elif modo_aprendizaje == ''cool'' and evento_manual_tipo
+        == ''encendido_manual'' %}{{ -1 * (delta_tramo | float(0)) }} {% elif modo_aprendizaje
+        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ delta_tramo
+        | float(0) }} {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
+        == ''encendido_manual'' %}{{ delta_tramo | float(0) }} {% elif modo_aprendizaje
+        == ''heat'' and evento_manual_tipo == ''apagado_manual'' %}{{ -1 * (delta_tramo
+        | float(0)) }} {% else %}0{% endif %}'
       helper_valido: '{{ col_idx_resuelto|int > 0 and modo_aprendizaje in [''cool'',''heat'']
         and states(helper_offset_resuelto) not in [''unknown'',''unavailable'',''none'','''']
         }}'
       offset_nuevo: '{{ [3.0, [-3.0, (offset_actual|float + delta|float)] | max] |
         min | round(2) }}'
+      delta_aplicado_real: '{{ (offset_nuevo | float(0)) - (offset_actual | float(0))
+        }}'
+      off_nuevo: '{{ ((off_vigente | float(0)) + (delta_aplicado_real | float(0)))
+        | round(2) }}'
+      on_nuevo: '{% if modo_aprendizaje == ''cool'' %}{{ ((off_nuevo | float(0)) +
+        1.0) | round(2) }}{% elif modo_aprendizaje == ''heat'' %}{{ ((off_nuevo |
+        float(0)) - 1.0) | round(2) }}{% else %}{{ on_vigente | float(0) }}{% endif
+        %}'
       resultado_terminal: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
         {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}ignorado
         {% elif not horario_aprendizaje_habilitado %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
@@ -3332,8 +3410,8 @@
             }} | marker_transition_observed_final={{ marker_transition_observed_final }} | cierre_compuesto_valido={{ cierre_compuesto_valido }} | transicion_observada_consolidada={{ transicion_observada_consolidada }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
             }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje
             }} | columna={{ col_idx_resuelto }} | contexto={{ contexto_activo_resuelto
-            }} | before={{ offset_actual }} | delta={{ delta }} | after={{ offset_nuevo
-            }} | ts={{ ts_evento }}
+            }} | before={{ offset_actual }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | after={{ offset_nuevo
+            }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto }} | ts={{ ts_evento }}
           entity_id: climate.0200009211c7_climate
     default:
     - service: logbook.log
@@ -3347,7 +3425,7 @@
           }} | marker_transition_observed_final={{ marker_transition_observed_final }} | cierre_compuesto_valido={{ cierre_compuesto_valido }} | transicion_observada_consolidada={{ transicion_observada_consolidada }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
           }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }}
           | final_transition={{ transicion_final_from ~ "->" ~ transicion_final_to
-          }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok
+          }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto
           }}
         entity_id: climate.0200009211c7_climate
   - choose:

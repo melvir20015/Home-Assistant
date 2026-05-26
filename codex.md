@@ -2755,3 +2755,50 @@ Implementación contractual:
 4. **No transición térmica válida**
    - `razon=evento_no_transicion` o `fan_only_sin_cierre_termico_10s`
    - `resultado_terminal=ignorado`
+
+## 49) AC-Matriz 160 — aprendizaje dinámico por columna COOL/HEAT en espejo (2026-05-26)
+
+- **Alcance:** automatización `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`) y helpers `input_number.ac_matriz_160_offset_*_col_*`.
+- **Cambio de precisión en helpers de offset (sin renombrar entidades):**
+  - `step` de columnas COOL/HEAT pasa de `0.25` a `0.05`.
+  - Se mantienen `entity_id` actuales para preservar historial/persistencia.
+- **Contrato dinámico por columna (aplicación inmediata en el mismo ciclo):**
+  - Tras calcular `delta`, el offset se clampa en `[-3.0, +3.0]` y se persiste.
+  - En la misma ejecución se recalculan umbrales efectivos de columna:
+    - `off_nuevo = off_vigente + delta_aplicado_real`
+    - `on_nuevo = off_nuevo + 1.0` en COOL
+    - `on_nuevo = off_nuevo - 1.0` en HEAT
+  - No se difiere al siguiente ciclo.
+- **COOL — encendido manual (`off->cool`):**
+  - **Fuera de rango bajo** (`Tin < OFF_vigente`):
+    - `OFF_obj = Tin - 0.5`
+    - `ON_obj = OFF_obj + 1.0`
+    - `delta_offset = OFF_obj - OFF_vigente` (con clamp contractual)
+  - **Dentro de rango** (tramos con `Tin - OFF_vigente`):
+    - `>0.7 && <=1.0 => -0.50`
+    - `>0.5 && <=0.7 => -0.25`
+    - `>0.2 && <=0.5 => -0.10`
+    - `<0.2 => -0.05`
+- **COOL — apagado manual (`cool->off`, dentro de rango):**
+  - Tramos con `ON_vigente - Tin`:
+    - `>0.7 && <=1.0 => +0.50`
+    - `>0.5 && <=0.7 => +0.25`
+    - `>0.2 && <=0.5 => +0.10`
+    - `<0.2 => +0.05`
+- **HEAT — espejo térmico y de signo:**
+  - **Encendido manual (`off->heat`)**
+    - Fuera de rango alto (`Tin > OFF_vigente`): `OFF_obj = Tin + 0.5`, `ON_obj = OFF_obj - 1.0`, `delta_offset = OFF_obj - OFF_vigente`.
+    - Dentro de rango por tramos con `OFF_vigente - Tin`:
+      - `>0.7 && <=1.0 => +0.50`
+      - `>0.5 && <=0.7 => +0.25`
+      - `>0.2 && <=0.5 => +0.10`
+      - `<0.2 => +0.05`
+  - **Apagado manual (`heat->off`)**
+    - Tramos con `Tin - ON_vigente`:
+      - `>0.7 && <=1.0 => -0.50`
+      - `>0.5 && <=0.7 => -0.25`
+      - `>0.2 && <=0.5 => -0.10`
+      - `<0.2 => -0.05`
+- **Observabilidad terminal reforzada:**
+  - Se registran en `logbook` campos de auditoría: `off_previo`, `on_previo`, `off_nuevo`, `on_nuevo`, `delta`, `delta_aplicado`, `col_idx`, `modo`, `resultado_terminal`, `razon`.
+  - Se conservan terminales de contrato: `aplicado | ignorado | error_controlado`.
