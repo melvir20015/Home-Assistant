@@ -2706,3 +2706,52 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - Razón técnica recomendada para el caso compuesto aplicado: `manual_compuesto_desde_fan_only`.
 - Mensaje humano recomendado: “Encendido manual detectado por transición compuesta (apagado → ventilación → frío/calor)”.
 - El estado intermedio de consolidación no debe generar notificación visible al usuario.
+
+---
+
+## 7. Corrección AC-Matriz 160: precedencia marker + transición consolidada (2026-05-26)
+
+### Causa raíz
+En `AC-Matriz 160 - Aprendizaje manual por columna`, la compatibilidad del marker automático se evaluaba contra la transición inmediata (`modo_anterior->modo_nuevo`).
+En secuencias válidas `off->fan_only->cool/heat`, la primera observación (`off->fan_only`) no coincide con `turn_on_cool/turn_on_heat`, produciendo clasificación errónea como manual.
+
+### Regla de precedencia nueva
+Se establece la precedencia:
+
+`marker automático vigente + transición consolidada final` **>** `heurística de fan_only`.
+
+Implementación contractual:
+- `marker_transition_observed_inmediata`: transición instantánea del trigger.
+- `marker_transition_observed_final`: usa `transicion_observada_consolidada` cuando `cierre_compuesto_valido=true`; si no, usa la inmediata.
+- `marker_compatible_final`: compatibilidad entre `marker_transition_expected` y `marker_transition_observed_final` (incluye wildcard `*->off` para `turn_off`).
+- `marker_vigente_final`: telemetría explícita del estado vigente del marker en cierre.
+
+### Alcance exacto modificado en `automations.yaml`
+- Automatización `ac_matriz_160_learning_manual_v1`:
+  - Bloque post-estabilización (cálculo de cierre compuesto y clasificación final).
+  - Consumo de marker (`hito=auto_marker_consumido`) condicionado por clasificación automática consolidada.
+  - Logs terminales (`hito=learning_manual_columna`, `hito=learning_manual_ignorado`) enriquecidos con transición inmediata/final y compatibilidad final.
+- Automatización `ac_matriz_160_main_v1`:
+  - Sin cambio funcional del contrato de firma; se mantiene emisión de `kind`, `trace`, `last_action`, `expires_at`, `consumed=false`.
+  - TTL operativo de marker mantenido en `30s` (válido para evaluación de learning).
+
+### Telemetría esperada
+1. **Automático consolidado ignorado (sin tocar offset)**
+   - `origen_clasificacion=automatico_ac_matriz_160`
+   - `resultado_terminal=ignorado`
+   - `razon=origen_automatico_ac_matriz`
+   - `marker_compatible_final=true`
+
+2. **Manual asistido aplicado (`off->fan_only->cool/heat` sin marker compatible final)**
+   - `resultado_terminal=aplicado`
+   - `razon=manual_compuesto_desde_fan_only`
+   - `cierre_compuesto_valido=true`
+   - `marker_compatible_final=false`
+
+3. **Descartado por deduplicación**
+   - `razon=dedup_consolidado`
+   - `hito=learning_manual_dedup_descartado`
+
+4. **No transición térmica válida**
+   - `razon=evento_no_transicion` o `fan_only_sin_cierre_termico_10s`
+   - `resultado_terminal=ignorado`
