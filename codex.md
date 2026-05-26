@@ -2814,3 +2814,15 @@ Implementación contractual:
     - `DELTA_OBJ= {{ ('+' if (delta | float(0)) >= 0 else '') ~ ((delta | float(0)) | round(2)) }}`
 - **Motivo:** evitar colisiones de parseo YAML/Jinja por `%` en plantillas inline largas, preservando telemetría `DELTA_REAL` y `DELTA_OBJ` en notificaciones.
 - **Resultado esperado:** Home Assistant vuelve a validar configuración y cargar la automatización sin errores de `annotatedyaml.loader` relacionados a ese tramo.
+
+## 51) Incidente parseo YAML/Jinja en `mensaje_humano` (AC-Matriz 160) — cierre validado (2026-05-26)
+
+- **Fecha del incidente:** 2026-05-26.
+- **Automatización afectada:** `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`).
+- **Causa raíz:** en cadenas YAML con comillas simples, la plantilla Jinja de `DELTA_REAL`/`DELTA_OBJ` quedó con comillas simples internas sin escape (`'+'` y `''`), rompiendo el parseo del loader YAML en el tramo reportado (`line 2982`).
+- **Solución aplicada (formato seguro por concatenación):**
+  - se mantuvo construcción sin `%` para `DELTA_REAL` y `DELTA_OBJ` (signo manual + redondeo a 2 decimales + concatenación `~`),
+  - y se corrigió el escape YAML de comillas simples internas a `''+''` y `''''` en ambos bloques `mensaje_humano` (bloque inicial y bloque post-estabilización), preservando string YAML válido de una sola pieza.
+- **Evidencia de validación posterior (OK):**
+  - validación de parseo YAML local ejecutada con Python + PyYAML sin errores luego del ajuste (`yaml.safe_load('automations.yaml')`),
+  - desaparece el error de parser en `line 2982` dentro de la validación de archivo.
