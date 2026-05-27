@@ -2896,3 +2896,24 @@ Implementación contractual:
 - **Notificación de aprendizaje Night:** se homologó estructura de mensaje al formato diurno (campos, orden y estilo) usando variables propias de Night (`TIPO`, `MODO`, `COLUMNA`, `DELTA_REAL`, `DELTA_OBJ`, `OFFSET`, `ENVÍO`, `TEMP APAGADO`).
 - **Canal de envío confirmado:** notificación por `notify.mobile_app_samsung_s24`.
 - **Terminalidad sin duplicados:** se emite una sola notificación terminal por evento manual ON/OFF válido y no deduplicado, respetando la dedup existente por `signature`.
+
+## 56) AC-Matriz 160 — aplicación inmediata transaccional del aprendizaje manual (2026-05-27)
+
+- **Alcance:** `ac_matriz_160_learning_manual_v1` y validación de consumo operativo en `ac_matriz_160_main_v1`.
+- **Objetivo:** eliminar desfase entre persistencia de offset aprendido y uso de umbrales en el mismo evento manual.
+- **Contrato operativo aplicado en caliente (mismo ciclo):**
+  - Tras calcular `delta_aplicado_real`, se recalculan siempre:
+    - `off_nuevo = off_vigente + delta_aplicado_real`
+    - `on_nuevo = off_nuevo + 1.0` en COOL
+    - `on_nuevo = off_nuevo - 1.0` en HEAT
+  - Esta regla queda uniforme para las 4 transiciones manuales válidas:
+    - `off->cool`, `cool->off`, `off->heat`, `heat->off`.
+- **Precedencia de consumo en el evento actual:**
+  - Si `resultado_terminal=aplicado`, la lógica de reconciliación usa primero umbrales operacionales recalculados (`umbral_off_*_operacional`, `umbral_on_*_operacional`) en vez de helpers previos.
+  - Si no aplica aprendizaje, se mantiene fallback a helpers vigentes.
+- **Trazabilidad/telemetría sincronizada en caliente:**
+  - Se mantiene publicación de `off_previo`, `on_previo`, `delta`, `delta_aplicado`, `off_nuevo`, `on_nuevo`, `offset_nuevo`, `modo`, `col_idx`, `trace_id`, `resultado_terminal`, `razon`.
+- **Garantías preservadas:**
+  - clamp de offset `[-3.0,+3.0]`,
+  - histéresis espejo por modo (`+1.0` COOL, `-1.0` HEAT respecto a `off`),
+  - terminal obligatorio `aplicado|ignorado|error_controlado` con razón explícita.

@@ -2946,9 +2946,10 @@
         }}'
       off_nuevo: '{{ ((off_vigente | float(0)) + (delta_aplicado_real | float(0)))
         | round(2) }}'
-      on_nuevo: '{% if modo_aprendizaje in [''cool'',''heat''] %}{{ ((on_vigente |
-        float(0)) + (delta_aplicado_real | float(0))) | round(2) }}{% else %}{{ on_vigente
-        | float(0) }}{% endif %}'
+      on_nuevo: '{% if modo_aprendizaje == ''cool'' %}{{ ((off_nuevo | float(0))
+        + 1.0) | round(2) }}{% elif modo_aprendizaje == ''heat'' %}{{ ((off_nuevo
+        | float(0)) - 1.0) | round(2) }}{% else %}{{ on_vigente | float(0) }}{% endif
+        %}'
       ancho_histeresis_nuevo: '{{ ((on_nuevo | float(0)) - (off_nuevo | float(0)))
         | round(2) }}'
       resultado_terminal: '{% if not transicion_hvac_real %}ignorado {% elif origen_clasificacion
@@ -3315,9 +3316,10 @@
         }}'
       off_nuevo: '{{ ((off_vigente | float(0)) + (delta_aplicado_real | float(0)))
         | round(2) }}'
-      on_nuevo: '{% if modo_aprendizaje in [''cool'',''heat''] %}{{ ((on_vigente |
-        float(0)) + (delta_aplicado_real | float(0))) | round(2) }}{% else %}{{ on_vigente
-        | float(0) }}{% endif %}'
+      on_nuevo: '{% if modo_aprendizaje == ''cool'' %}{{ ((off_nuevo | float(0))
+        + 1.0) | round(2) }}{% elif modo_aprendizaje == ''heat'' %}{{ ((off_nuevo
+        | float(0)) - 1.0) | round(2) }}{% else %}{{ on_vigente | float(0) }}{% endif
+        %}'
       ancho_histeresis_nuevo: '{{ ((on_nuevo | float(0)) - (off_nuevo | float(0)))
         | round(2) }}'
       resultado_terminal: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
@@ -3374,6 +3376,27 @@
         | trim }}'
       notificacion_error_dedup_ok: '{{ firma_error_learning != firma_error_learning_previa
         }}'
+  - variables:
+      umbral_off_cool_operacional: '{% if resultado_terminal == ''aplicado'' and
+        modo_aprendizaje == ''cool'' %}{{ off_nuevo | float(0) }}{% else %}{{ helper_t_off_cool
+        | float(24) }}{% endif %}'
+      umbral_on_cool_operacional: '{{ ((umbral_off_cool_operacional | float(0)) +
+        1.0) | round(2) }}'
+      umbral_off_heat_operacional: '{% if resultado_terminal == ''aplicado'' and
+        modo_aprendizaje == ''heat'' %}{{ off_nuevo | float(0) }}{% else %}{{ helper_t_off_heat
+        | float(22) }}{% endif %}'
+      umbral_on_heat_operacional: '{{ ((umbral_off_heat_operacional | float(0)) -
+        1.0) | round(2) }}'
+      reconcile_target_mode: '{% set tin_v = tin | float(0) %} {% if tin_v >= umbral_on_cool_operacional
+        | float(25) %}cool {% elif tin_v <= umbral_on_heat_operacional | float(21)
+        %}heat {% elif (tin_v - umbral_off_cool_operacional | float(24)) | abs <=
+        (tin_v - umbral_off_heat_operacional | float(22)) | abs %}cool {% else %}heat
+        {% endif %}'
+      reconcile_sp_target: '{% if reconcile_target_mode == ''cool'' %} {{ [hvac_max_sp|int,
+        [hvac_min_sp|int, ((umbral_off_cool_operacional | float(24)) | round(0, ''floor'')
+        | int - 1)] | max] | min | int }} {% else %}28{% endif %}'
+      reconcile_cool_delta: '{{ (tin|float(0) - umbral_off_cool_operacional|float(24))
+        | round(2) }}'
   - choose:
     - conditions:
       - condition: template
