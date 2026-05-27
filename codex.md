@@ -2917,3 +2917,15 @@ Implementación contractual:
   - clamp de offset `[-3.0,+3.0]`,
   - histéresis espejo por modo (`+1.0` COOL, `-1.0` HEAT respecto a `off`),
   - terminal obligatorio `aplicado|ignorado|error_controlado` con razón explícita.
+
+## 57) AC-Matriz 160 — Turbo por humedad solo contextual (2026-05-27)
+
+- **Alcance:** automatización `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) en `automations.yaml`.
+- **Decisión operativa:** **Turbo por humedad solo contextual, umbral 60%, sin humedad aislada**.
+- **Regla aplicada en reingreso/presencia (`new_presence_event`):**
+  - Se mantiene `new_presence_event` como gatillo de evaluación.
+  - El ingreso a `turbo_enter_cool` exige además ausencia de bloqueos (`manual_off_block_active`, `cool_block_active`, `turbo_blocked`) y una de dos rutas:
+    1. `desvio_termico_fuerte`: `Tin >= eff_t_on_cool + 1.0`.
+    2. `humedad_alta_contextual`: `Hin >= 60` **y** `Tin >= eff_t_off_cool`.
+- **Garantía funcional:** `Hin >= 60` por sí sola ya no habilita turbo cuando `Tin` está fuera de contexto de frío.
+- **Observabilidad:** `hito=turbo_enter_cool` ahora reporta `motivo=desvio_termico_fuerte` o `motivo=humedad_alta_contextual` y conserva trazabilidad compacta (`Tin`, `Hin`, `T_on`, `T_off`, `col`, `trace`).

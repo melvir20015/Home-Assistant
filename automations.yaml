@@ -1352,9 +1352,16 @@
       prev_presence_ok: '{{ is_state(''input_boolean.ac_matriz_160_presencia_valida_disparo'',''on'')
         }}'
       new_presence_event: '{{ presence_ok and not prev_presence_ok }}'
+      tin_in_cool_context_range: '{{ (tin | float) >= (eff_t_off_cool | float) }}'
+      turbo_cool_strong_thermal_deviation: '{{ (tin | float) >= ((eff_t_on_cool | float)
+        + 1.0) }}'
+      turbo_cool_contextual_humidity: '{{ (hin | float) >= 60 and tin_in_cool_context_range
+        }}'
+      turbo_enter_cool_reason: '{% if turbo_cool_strong_thermal_deviation %}desvio_termico_fuerte{% elif turbo_cool_contextual_humidity
+        %}humedad_alta_contextual{% else %}none{% endif %}'
       turbo_enter_cool: '{{ (not manual_off_block_active) and (not cool_block_active)
-        and new_presence_event and (not turbo_blocked) and ((tin|float >= (eff_t_on_cool|float
-        + 1.0)) or (hin|float >= 55)) }}'
+        and (not turbo_blocked) and new_presence_event and (turbo_cool_strong_thermal_deviation
+        or turbo_cool_contextual_humidity) }}'
       turbo_enter_heat: '{{ (not manual_off_block_active) and (not heat_block_active)
         and new_presence_event and (not turbo_blocked) and (tin|float <= (eff_t_on_heat|float
         - 1.0)) }}'
@@ -1591,12 +1598,12 @@
           name: AC-Matriz 160
           message: hito=turbo_enter_cool | Tin={{ tin }} | Hin={{ hin }} | T_on={{
             eff_t_on_cool }} | T_off={{ eff_t_off_cool }} | mid={{ mid_cool }} | col={{
-            col_humana }} | motivo=llegada_desvio_fuerte
+            col_humana }} | motivo={{ turbo_enter_cool_reason }} | trace={{ auto_origin_trace_id }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - data:
           title: AC-Matriz 160
-          message: Se activó turbo de enfriamiento por llegada con desvío fuerte.
+          message: '{% if turbo_enter_cool_reason == ''humedad_alta_contextual'' %}Se activó turbo de enfriamiento por humedad contextual (Tin/Hin en rango de frío).{% else %}Se activó turbo de enfriamiento por desvío térmico fuerte.{% endif %}'
         action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
