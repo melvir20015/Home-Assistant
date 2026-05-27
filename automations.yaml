@@ -3322,13 +3322,20 @@
         %}'
       ancho_histeresis_nuevo: '{{ ((on_nuevo | float(0)) - (off_nuevo | float(0)))
         | round(2) }}'
-      resultado_terminal: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
+      manual_fan_stuck_case: '{{ transicion_compuesta_inicio_valida and not cierre_compuesto_valido and origen_clasificacion == ''manual_externo'' }}'
+      manual_fan_stuck_trace_id: '{{ trace_id_learning if trace_id_learning is defined else (marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts)) }}'
+      manual_fan_stuck_signature: '{{ manual_fan_stuck_trace_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ estado_tras_10s ~ ''|'' ~ (as_timestamp(now()) | int(0) // 10) }}'
+      manual_fan_stuck_requires_reconcile: '{{ manual_fan_stuck_case and estado_tras_10s in [''fan_only'',''auto''] }}'
+      manual_fan_stuck_cancel_reason: '{% if not manual_fan_stuck_case %}no_aplica {% elif legacy_manual_hold_active %}manual_hold_activo {% elif not horario_aprendizaje_habilitado %}fuera_horario {% elif not (manual_presence_override_active and (s24_home or movimiento_on)) %}sin_presencia_manual_override {% elif not reconcile_dedup_ok %}dedup_reconcile {% else %}none{% endif %}'
+      manual_fan_stuck_reconcile_eligible: '{{ manual_fan_stuck_requires_reconcile and manual_fan_stuck_cancel_reason == ''none'' }}'
+      resultado_terminal: '{% if manual_fan_stuck_case and not manual_fan_stuck_reconcile_eligible %}ignorado {% elif transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
         {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}ignorado
         {% elif not horario_aprendizaje_habilitado %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
         %}ignorado {% elif evento_manual_tipo == ''ignorado'' %}ignorado {% elif not dedup_ok %}ignorado
         {% elif not helper_valido %}error_controlado {% else %}aplicado
         {% endif %}'
-      razon: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}fan_only_sin_cierre_termico_10s
+      razon: '{% if manual_fan_stuck_case and not manual_fan_stuck_reconcile_eligible %}fan_only_sin_reconciliacion_por_guardas
+        {% elif transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}fan_only_sin_cierre_termico_10s
         {% elif not transicion_hvac_real %}evento_no_transicion {% elif origen_clasificacion
         == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz {% elif not
         horario_aprendizaje_habilitado %}out_of_scope_daytime_main {% elif evento_manual_tipo
@@ -3397,6 +3404,75 @@
         | int - 1)] | max] | min | int }} {% else %}28{% endif %}'
       reconcile_cool_delta: '{{ (tin|float(0) - umbral_off_cool_operacional|float(24))
         | round(2) }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ manual_fan_stuck_reconcile_eligible }}'
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_manual_fan_stuck_marker
+        data:
+          value: trace_id={{ manual_fan_stuck_trace_id }}|ts_origen={{ ts_evento }}|modo_observado={{ estado_tras_10s }}|status=pending
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: '{{ reconcile_target_mode }}'
+      - delay:
+          seconds: 1
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ reconcile_sp_target | int }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ reconcile_target_mode == ''cool'' }}'
+          sequence:
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: '{{ reconcile_fan_target_final }}'
+      - delay:
+          seconds: 2
+      - variables:
+          manual_fan_stuck_final_mode: '{{ states(''climate.0200009211c7_climate'') | lower }}'
+          manual_fan_stuck_final_sp: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'') | int(-999) }}'
+          manual_fan_stuck_confirmed: '{{ manual_fan_stuck_final_mode == reconcile_target_mode and manual_fan_stuck_final_sp == (reconcile_sp_target | int) }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ manual_fan_stuck_confirmed }}'
+          sequence:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.ac_matriz_160_manual_fan_stuck_marker
+            data:
+              value: trace_id={{ manual_fan_stuck_trace_id }}|ts_origen={{ ts_evento }}|modo_observado={{ estado_tras_10s }}|status=confirmed|final_mode={{ manual_fan_stuck_final_mode }}
+          - service: notify.mobile_app_samsung_s24
+            data:
+              title: AC-Matriz 160
+              message: '{{ hora_evento }} | TIPO= Encendido Manual Asistido | MODO= {{ ''Frío'' if reconcile_target_mode == ''cool'' else ''Calor'' }} | RESULTADO= Confirmado | RAZÓN= fan_only_off_reconciliado | TRACE= {{ manual_fan_stuck_trace_id }} | SP= {{ reconcile_sp_target | int }} | FAN= {{ reconcile_fan_target_final }}'
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=manual_off_fan_only_reconcile_confirmed | trace_id={{ manual_fan_stuck_trace_id }} | from={{ modo_anterior }} | observed={{ estado_tras_10s }} | target_mode={{ reconcile_target_mode }} | final_mode={{ manual_fan_stuck_final_mode }} | sp={{ reconcile_sp_target | int }} | fan={{ reconcile_fan_target_final }} | resultado_terminal=aplicado | razon=fan_only_off_reconciliado
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.ac_matriz_160_manual_fan_stuck_marker
+          data:
+            value: trace_id={{ manual_fan_stuck_trace_id }}|ts_origen={{ ts_evento }}|modo_observado={{ estado_tras_10s }}|status=cancelled|reason=confirmacion_fallida
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: hito=manual_off_fan_only_reconcile_cancelled | trace_id={{ manual_fan_stuck_trace_id }} | from={{ modo_anterior }} | observed={{ estado_tras_10s }} | target_mode={{ reconcile_target_mode }} | final_mode={{ manual_fan_stuck_final_mode }} | final_sp={{ manual_fan_stuck_final_sp }} | resultado_terminal=cancelado | razon=confirmacion_fallida
+            entity_id: climate.0200009211c7_climate
+
   - choose:
     - conditions:
       - condition: template

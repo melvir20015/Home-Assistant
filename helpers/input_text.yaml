@@ -117,3 +117,7 @@ ac_night_ultimo_resultado:
   name: AC Night Último Resultado
   max: 255
   initial: pendiente
+ac_matriz_160_manual_fan_stuck_marker:
+  name: AC Matriz 160 Manual Fan Stuck Marker
+  max: 255
+  initial: idle
