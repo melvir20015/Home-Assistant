@@ -4009,3 +4009,51 @@
         data:
           title: AC Night
           message: "{{ mensaje_humano }}"
+
+- id: ac_horario_scheduler_matriz_160_night_v1
+  alias: AC Scheduler Matriz 160 + Night
+  description: Activa/desactiva AC-Matriz 160 y AC Night Matriz Contextual con 1 minuto de solape en transiciones.
+  mode: single
+  trigger:
+  - platform: time
+    at: '06:59:00'
+    id: day_on
+  - platform: time
+    at: '07:00:00'
+    id: night_off
+  - platform: time
+    at: '21:59:00'
+    id: night_on
+  - platform: time
+    at: '22:00:00'
+    id: day_off
+  action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: day_on
+      sequence:
+      - service: automation.turn_on
+        target:
+          entity_id: automation.ac_matriz_160
+    - conditions:
+      - condition: trigger
+        id: night_off
+      sequence:
+      - service: automation.turn_off
+        target:
+          entity_id: automation.ac_night_matriz_contextual
+    - conditions:
+      - condition: trigger
+        id: night_on
+      sequence:
+      - service: automation.turn_on
+        target:
+          entity_id: automation.ac_night_matriz_contextual
+    - conditions:
+      - condition: trigger
+        id: day_off
+      sequence:
+      - service: automation.turn_off
+        target:
+          entity_id: automation.ac_matriz_160
