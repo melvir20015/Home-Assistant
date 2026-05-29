@@ -2932,14 +2932,14 @@
         + 1.0 }}{% elif modo_aprendizaje == ''heat'' %}{{ (off_obj_anchor | float(0))
         - 1.0 }}{% else %}{{ on_vigente | float(0) }}{% endif %}'
       rango_dist: '{% if modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
-        %}{{ (tin | float(0)) - (off_vigente | float(0)) }}{% elif modo_aprendizaje
-        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ (on_vigente
-        | float(0)) - (tin | float(0)) }}{% elif modo_aprendizaje == ''heat'' and
-        evento_manual_tipo == ''encendido_manual'' %}{{ (off_vigente | float(0)) -
-        (tin | float(0)) }}{% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
-        == ''apagado_manual'' %}{{ (tin | float(0)) - (on_vigente | float(0)) }}{%
+        %}{{ (tin | float(0)) - (on_vigente | float(0)) }}{% elif modo_aprendizaje
+        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ (tin |
+        float(0)) - (off_vigente | float(0)) }}{% elif modo_aprendizaje == ''heat''
+        and evento_manual_tipo == ''encendido_manual'' %}{{ (tin | float(0)) -
+        (on_vigente | float(0)) }}{% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
+        == ''apagado_manual'' %}{{ (tin | float(0)) - (off_vigente | float(0)) }}{%
         else %}0{% endif %}'
-      delta_tramo: '{% set d = rango_dist | float(0) %}{% if d > 0.7 and d <= 1.0
+      delta_tramo: '{% set d = (rango_dist | float(0)) | abs %}{% if d > 0.7 and d <= 1.0
         %}0.50{% elif d > 0.5 and d <= 0.7 %}0.25{% elif d > 0.2 and d <= 0.5 %}0.10{%
         elif d >= 0 and d < 0.2 %}0.05{% else %}0{% endif %}'
       delta: '{% if evento_manual_tipo not in [''encendido_manual'',''apagado_manual'']
@@ -3302,14 +3302,14 @@
         + 1.0 }}{% elif modo_aprendizaje == ''heat'' %}{{ (off_obj_anchor | float(0))
         - 1.0 }}{% else %}{{ on_vigente | float(0) }}{% endif %}'
       rango_dist: '{% if modo_aprendizaje == ''cool'' and evento_manual_tipo == ''encendido_manual''
-        %}{{ (tin | float(0)) - (off_vigente | float(0)) }}{% elif modo_aprendizaje
-        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ (on_vigente
-        | float(0)) - (tin | float(0)) }}{% elif modo_aprendizaje == ''heat'' and
-        evento_manual_tipo == ''encendido_manual'' %}{{ (off_vigente | float(0)) -
-        (tin | float(0)) }}{% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
-        == ''apagado_manual'' %}{{ (tin | float(0)) - (on_vigente | float(0)) }}{%
+        %}{{ (tin | float(0)) - (on_vigente | float(0)) }}{% elif modo_aprendizaje
+        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ (tin |
+        float(0)) - (off_vigente | float(0)) }}{% elif modo_aprendizaje == ''heat''
+        and evento_manual_tipo == ''encendido_manual'' %}{{ (tin | float(0)) -
+        (on_vigente | float(0)) }}{% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
+        == ''apagado_manual'' %}{{ (tin | float(0)) - (off_vigente | float(0)) }}{%
         else %}0{% endif %}'
-      delta_tramo: '{% set d = rango_dist | float(0) %}{% if d > 0.7 and d <= 1.0
+      delta_tramo: '{% set d = (rango_dist | float(0)) | abs %}{% if d > 0.7 and d <= 1.0
         %}0.50{% elif d > 0.5 and d <= 0.7 %}0.25{% elif d > 0.2 and d <= 0.5 %}0.10{%
         elif d >= 0 and d < 0.2 %}0.05{% else %}0{% endif %}'
       delta: '{% if evento_manual_tipo not in [''encendido_manual'',''apagado_manual'']
@@ -3991,9 +3991,7 @@
       helper_target: "{{ 'input_number.ac_night_offset_cool_col_' ~ col_idx if transicion in ['off->cool','cool->off'] else 'input_number.ac_night_offset_heat_col_' ~ col_idx }}"
       modo: "{{ 'cool' if transicion in ['off->cool','cool->off'] else ('heat' if transicion in ['off->heat','heat->off'] else 'na') }}"
       evento_manual_tipo: "{% if transicion in ['off->cool','off->heat'] %}encendido_manual{% elif transicion in ['cool->off','heat->off'] %}apagado_manual{% else %}ignorado{% endif %}"
-      delta: "{% if transicion == 'off->cool' %}-0.20{% elif transicion == 'cool->off' %}+0.20{% elif transicion == 'off->heat' %}+0.20{% elif transicion == 'heat->off' %}-0.20{% else %}0{% endif %}"
       offset_prev: "{{ states(helper_target) | float(0) if valid_transition else 0 }}"
-      offset_new_delta: "{{ [3.0, [-3.0, (offset_prev + (delta|float(0)))] | max] | min | round(2) if valid_transition else offset_prev }}"
       tin: "{{ ([states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average) | round(2) }}"
       hin: "{{ ([states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average) | round(1) }}"
       tout: "{{ state_attr('weather.openweathermap','temperature')|float(0) }}"
@@ -4031,6 +4029,15 @@
       cool_global_bias: -0.5
       off_cool_base: "{{ [25.7, [22.0, 24.2 + ((tout-24)*-0.05) + ((hout-60)*-0.01) + ((hin-55)*-0.015)] | max] | min | round(2) }}"
       off_heat_base: "{{ [24.0, [17.0, 20.5 + ((12-tout)*0.05) + ((hout-60)*0.005)] | max] | min | round(2) }}"
+      off_cool_vigente: "{{ ([25.7, [22.0, (((off_cool_base | float) + (offset_prev | float) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
+      on_cool_vigente: "{% set off = (off_cool_vigente | float) %}{% set cap = ([25.1, [23.6, (24.95 - ((bochorno_score | float) * 1.1))] | max] | min) %}{% set comfort = ([0.0, [-0.65, (0 - ((bochorno_score | float) * 0.55))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float) + comfort) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([26.0, with_min_gap] | min) | round(2) }}"
+      off_heat_vigente: "{{ ([24.0, [17.0, (((off_heat_base | float) + (offset_prev | float)) | round(2))] | max] | min) | round(2) }}"
+      on_heat_vigente: "{{ ((off_heat_vigente | float) - (hysteresis_eff | float)) | round(2) }}"
+      rango_dist: "{% if transicion == 'off->cool' %}{{ (tin | float(0)) - (on_cool_vigente | float(0)) }}{% elif transicion == 'cool->off' %}{{ (tin | float(0)) - (off_cool_vigente | float(0)) }}{% elif transicion == 'off->heat' %}{{ (tin | float(0)) - (on_heat_vigente | float(0)) }}{% elif transicion == 'heat->off' %}{{ (tin | float(0)) - (off_heat_vigente | float(0)) }}{% else %}0{% endif %}"
+      delta_tramo: "{% set d = (rango_dist | float(0)) | abs %}{% if d > 0.7 and d <= 1.0 %}0.50{% elif d > 0.5 and d <= 0.7 %}0.25{% elif d > 0.2 and d <= 0.5 %}0.10{% elif d >= 0 and d < 0.2 %}0.05{% else %}0{% endif %}"
+      fuera_rango_anchor: "{{ (transicion == 'off->cool' and (tin | float(0)) < (off_cool_vigente | float(0))) or (transicion == 'off->heat' and (tin | float(0)) > (off_heat_vigente | float(0))) }}"
+      delta: "{% if evento_manual_tipo not in ['encendido_manual','apagado_manual'] %}0{% elif transicion == 'off->cool' %}{{ -1 * (delta_tramo | float(0)) }}{% elif transicion == 'cool->off' %}{{ delta_tramo | float(0) }}{% elif transicion == 'off->heat' %}{{ delta_tramo | float(0) }}{% elif transicion == 'heat->off' %}{{ -1 * (delta_tramo | float(0)) }}{% else %}0{% endif %}"
+      offset_new_delta: "{{ [3.0, [-3.0, (offset_prev + (delta|float(0)))] | max] | min | round(2) if valid_transition else offset_prev }}"
       hot_recalc_guard_off_cool: "{{ ([25.7, [22.0, (((off_cool_base | float) + (hot_recalc_guard_offset_new | float(0)) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
       explicit_guard_off_cool: "{{ ([25.7, [22.0, (((off_cool_base | float) + (explicit_guard_offset_new | float(0)) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
       explicit_auto_off_guard_valid: "{{ transicion == 'cool->off' and not marker_valid and explicit_guard_expected == 'cool->off' and explicit_guard_col == (col_idx | string) and (explicit_guard_consumed | int(1)) == 0 and as_timestamp(now())|int <= (explicit_guard_expires_at | int(0)) and ((tin | float(0)) <= (explicit_guard_off_cool | float(0)) or explicit_guard_context_match) }}"
@@ -4040,23 +4047,32 @@
       origen_clasificacion: "{{ 'automatico_night' if marker_valid else 'automatico_night_auto_chain_guard' if auto_chain_guard_valid else 'automatico_night_hot_recalc_guard' if hot_recalc_guard_valid else 'manual_externo' }}"
       offset_for_threshold: "{{ offset_new_delta if origen_clasificacion == 'manual_externo' else hot_recalc_guard_offset_new if (hot_recalc_guard_valid and hot_recalc_guard_offset_new not in ['', 'unknown', 'unavailable']) else explicit_guard_offset_new if (hot_recalc_guard_valid and explicit_guard_offset_new not in ['', 'unknown', 'unavailable']) else offset_prev }}"
       off_cool_actual: "{{ ([25.7, [22.0, (((off_cool_base | float) + (offset_for_threshold | float) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
-      anchor_margin_cool: 0.5
-      cool_manual_on_anchor_needed: "{{ origen_clasificacion == 'manual_externo' and transicion == 'off->cool' and modo == 'cool' and (tin | float(0)) < (off_cool_actual | float(0)) }}"
-      off_cool_anchor_obj: "{{ ((tin | float(0)) - (anchor_margin_cool | float(0.5))) | round(2) }}"
-      offset_anchor_raw: "{{ (((off_cool_anchor_obj | float(0)) - (off_cool_base | float(0)) - (cool_global_bias | float(0))) | round(2)) }}"
-      offset_anchor_clamped: "{{ ([3.0, [-3.0, (offset_anchor_raw | float(0))] | max] | min) | round(2) }}"
-      anchor_limited_by_offset_clamp: "{{ (offset_anchor_raw | float(0)) != (offset_anchor_clamped | float(0)) }}"
-      offset_new: "{{ offset_anchor_clamped if (cool_manual_on_anchor_needed | bool(false)) else offset_new_delta }}"
-      off_cool_resultante: "{{ ([25.7, [22.0, (((off_cool_base | float) + (offset_new | float) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) if origen_clasificacion == 'manual_externo' else off_cool_actual }}"
-      off_cool_limited_by_thermal_clamp: "{{ (((off_cool_base | float) + (offset_new | float) + (cool_global_bias | float)) | round(2)) != (off_cool_resultante | float(0)) }}"
       off_heat_actual: "{{ ([24.0, [17.0, (((off_heat_base | float) + (offset_for_threshold | float)) | round(2))] | max] | min) | round(2) }}"
+      anchor_margin_cool: 0.5
+      anchor_margin_heat: 0.5
+      cool_manual_on_anchor_needed: "{{ origen_clasificacion == 'manual_externo' and transicion == 'off->cool' and modo == 'cool' and (tin | float(0)) < (off_cool_actual | float(0)) }}"
+      heat_manual_on_anchor_needed: "{{ origen_clasificacion == 'manual_externo' and transicion == 'off->heat' and modo == 'heat' and (tin | float(0)) > (off_heat_actual | float(0)) }}"
+      off_cool_anchor_obj: "{{ ((tin | float(0)) - (anchor_margin_cool | float(0.5))) | round(2) }}"
+      off_heat_anchor_obj: "{{ ((tin | float(0)) + (anchor_margin_heat | float(0.5))) | round(2) }}"
+      offset_anchor_raw: "{{ (((off_cool_anchor_obj | float(0)) - (off_cool_base | float(0)) - (cool_global_bias | float(0))) | round(2)) }}"
+      offset_heat_anchor_raw: "{{ (((off_heat_anchor_obj | float(0)) - (off_heat_base | float(0))) | round(2)) }}"
+      offset_anchor_clamped: "{{ ([3.0, [-3.0, (offset_anchor_raw | float(0))] | max] | min) | round(2) }}"
+      offset_heat_anchor_clamped: "{{ ([3.0, [-3.0, (offset_heat_anchor_raw | float(0))] | max] | min) | round(2) }}"
+      anchor_limited_by_offset_clamp: "{{ (offset_anchor_raw | float(0)) != (offset_anchor_clamped | float(0)) }}"
+      heat_anchor_limited_by_offset_clamp: "{{ (offset_heat_anchor_raw | float(0)) != (offset_heat_anchor_clamped | float(0)) }}"
+      offset_new: "{{ offset_anchor_clamped if (cool_manual_on_anchor_needed | bool(false)) else offset_heat_anchor_clamped if (heat_manual_on_anchor_needed | bool(false)) else offset_new_delta }}"
+      off_cool_resultante: "{{ ([25.7, [22.0, (((off_cool_base | float) + (offset_new | float) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) if origen_clasificacion == 'manual_externo' else off_cool_actual }}"
+      off_heat_resultante: "{{ ([24.0, [17.0, (((off_heat_base | float) + (offset_new | float)) | round(2))] | max] | min) | round(2) if origen_clasificacion == 'manual_externo' else off_heat_actual }}"
+      off_cool_limited_by_thermal_clamp: "{{ (((off_cool_base | float) + (offset_new | float) + (cool_global_bias | float)) | round(2)) != (off_cool_resultante | float(0)) }}"
+      off_heat_limited_by_thermal_clamp: "{{ (((off_heat_base | float) + (offset_new | float)) | round(2)) != (off_heat_resultante | float(0)) }}"
       on_cool_actual: "{% set off = (off_cool_actual | float) %}{% set cap = ([25.1, [23.6, (24.95 - ((bochorno_score | float) * 1.1))] | max] | min) %}{% set comfort = ([0.0, [-0.65, (0 - ((bochorno_score | float) * 0.55))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float) + comfort) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([26.0, with_min_gap] | min) | round(2) }}"
       on_cool_resultante: "{% set off = (off_cool_resultante | float) %}{% set cap = ([25.1, [23.6, (24.95 - ((bochorno_score | float) * 1.1))] | max] | min) %}{% set comfort = ([0.0, [-0.65, (0 - ((bochorno_score | float) * 0.55))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float) + comfort) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([26.0, with_min_gap] | min) | round(2) }}"
       on_heat_actual: "{{ ((off_heat_actual | float) - (hysteresis_eff | float)) | round(2) }}"
+      on_heat_resultante: "{{ ((off_heat_resultante | float) - (hysteresis_eff | float)) | round(2) }}"
       auto_off_post_manual_on_threshold_cool: "{{ marker_valid and transicion == 'cool->off' and marker_last_action == 'turn_off' and (marker_auto_event in ['', 'AUTO_OFF_NIGHT_UMBRAL']) and (tin | float(0)) <= (off_cool_resultante | float(0)) }}"
       razon_ignorado_auto: "{{ 'auto_chain_context_parent_match' if auto_chain_guard_valid else 'auto_off_derivado_de_recalculo_caliente' if hot_recalc_guard_valid else 'tin_ya_estaba_por_debajo_de_off_cool' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'origen_automatico_night' }}"
       resultado_ignorado_auto: "{{ 'ignorado_auto_chain_context' if auto_chain_guard_valid else 'ignorado_auto_off_post_hot_recalc' if hot_recalc_guard_valid else 'ignorado_auto_off_post_manual_on' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'ignorado' }}"
-      umbral_termico_humano: "{% if evento_manual_tipo == 'encendido_manual' %}TEMP APAGADO= {{ '%.2f' | format(off_cool_resultante | float) if modo == 'cool' else '%.2f' | format(off_heat_actual | float) if modo == 'heat' else 'n/a' }}°C{% elif evento_manual_tipo == 'apagado_manual' %}TEMP ENCENDIDO= {{ '%.2f' | format(on_cool_resultante | float) if modo == 'cool' else '%.2f' | format(on_heat_actual | float) if modo == 'heat' else 'n/a' }}°C{% else %}TEMP UMBRAL= n/a{% endif %}"
+      umbral_termico_humano: "{% if evento_manual_tipo == 'encendido_manual' %}TEMP APAGADO= {{ '%.2f' | format(off_cool_resultante | float) if modo == 'cool' else '%.2f' | format(off_heat_resultante | float) if modo == 'heat' else 'n/a' }}°C{% elif evento_manual_tipo == 'apagado_manual' %}TEMP ENCENDIDO= {{ '%.2f' | format(on_cool_resultante | float) if modo == 'cool' else '%.2f' | format(on_heat_resultante | float) if modo == 'heat' else 'n/a' }}°C{% else %}TEMP UMBRAL= n/a{% endif %}"
       hora_evento: "{{ now().strftime('%I:%M:%S %p') }}"
       contexto_night: "{{ weather_state }} | {{ estacion }} | Horario {{ franja }}"
       delta_aplicado_real: "{{ ((offset_new | float(0)) - (offset_prev | float(0))) | round(2) if valid_transition else 0 }}"
