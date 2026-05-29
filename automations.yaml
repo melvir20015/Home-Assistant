@@ -3791,7 +3791,7 @@
           - service: input_text.set_value
             target: {entity_id: input_text.ac_night_learning_auto_off_guard_payload}
             data:
-              value: "expected_transition=cool->off|col={{ col_idx }}|offset_new={{ hot_learning_recalc_offset_new }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=hot_recalc_matrix_auto_off|trace={{ hot_learning_recalc_trace }}"
+              value: "expected_transition=cool->off|echo_transition=|col={{ col_idx }}|offset_new={{ hot_learning_recalc_offset_new }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=hot_recalc_matrix_auto_off|trace={{ context.id|default('na') }}"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: notify.mobile_app_samsung_s24
@@ -3970,8 +3970,12 @@
       col_idx: "{% set est=['verano','otono','invierno','primavera'] %}{% set fra=['2200_0059','0100_0359','0400_0559','0600_0700'] %}{% set cli=['despejado','nublado','parcial','lluvia','tormenta','niebla','hielo'] %}{{ (est.index(estacion)*28)+(fra.index(franja)*7)+(cli.index(weather_state))+1 }}"
       signature: "{{ (trigger.to_state.context.id if trigger.to_state is not none else 'na') ~ '|' ~ (as_timestamp(trigger.to_state.last_changed)|int if trigger.to_state is not none else 0) ~ '|' ~ transicion ~ '|col=' ~ col_idx }}"
       last_signature: "{{ states('input_text.ac_night_learning_last_signature') }}"
+      trigger_context_id: "{{ trigger.to_state.context.id if trigger.to_state is not none and trigger.to_state.context is not none else '' }}"
+      trigger_parent_id: "{{ trigger.to_state.context.parent_id if trigger.to_state is not none and trigger.to_state.context is not none and trigger.to_state.context.parent_id is not none else '' }}"
+      trigger_user_id: "{{ trigger.to_state.context.user_id if trigger.to_state is not none and trigger.to_state.context is not none and trigger.to_state.context.user_id is not none else '' }}"
       marker_raw: "{{ states('input_text.ac_night_auto_origin_payload') }}"
       marker_kind: "{{ marker_raw.split('kind=')[1].split('|')[0] if 'kind=' in marker_raw else '' }}"
+      marker_trace_id: "{{ marker_raw.split('trace_id=')[1].split('|')[0] if 'trace_id=' in marker_raw else '' }}"
       marker_expected: "{{ marker_raw.split('expected_transition=')[1].split('|')[0] if 'expected_transition=' in marker_raw else '' }}"
       marker_last_action: "{{ marker_raw.split('last_action=')[1].split('|')[0] if 'last_action=' in marker_raw else '' }}"
       marker_auto_event: "{{ marker_raw.split('auto_event=')[1].split('|')[0] if 'auto_event=' in marker_raw else '' }}"
@@ -3980,6 +3984,10 @@
       marker_consumed: "{{ marker_raw.split('consumed=')[1].split('|')[0] if 'consumed=' in marker_raw else '1' }}"
       marker_consumed_open: "{{ (marker_consumed | int(1)) == 0 }}"
       marker_valid: "{{ marker_kind == 'night_auto' and marker_expected == transicion and (marker_consumed | int(1)) == 0 and as_timestamp(now())|int <= marker_exp }}"
+      marker_chain_ttl_valid: "{{ marker_kind == 'night_auto' and marker_trace_id not in ['', 'unknown', 'unavailable'] and marker_last_action == 'turn_off' and (marker_auto_event in ['', 'AUTO_OFF_NIGHT_UMBRAL']) and as_timestamp(now())|int <= ((marker_exp | int(0)) + 60) }}"
+      marker_expected_echo_transition: "{% if marker_expected == 'cool->off' %}off->cool{% elif marker_expected == 'heat->off' %}off->heat{% else %}{% endif %}"
+      context_match_auto: "{{ trigger_user_id == '' and marker_chain_ttl_valid and (trigger_context_id == marker_trace_id or trigger_parent_id == marker_trace_id) }}"
+      marker_auto_chain_guard_valid: "{{ context_match_auto and transicion in [marker_expected, marker_expected_echo_transition] }}"
       helper_target: "{{ 'input_number.ac_night_offset_cool_col_' ~ col_idx if transicion in ['off->cool','cool->off'] else 'input_number.ac_night_offset_heat_col_' ~ col_idx }}"
       modo: "{{ 'cool' if transicion in ['off->cool','cool->off'] else ('heat' if transicion in ['off->heat','heat->off'] else 'na') }}"
       evento_manual_tipo: "{% if transicion in ['off->cool','off->heat'] %}encendido_manual{% elif transicion in ['cool->off','heat->off'] %}apagado_manual{% else %}ignorado{% endif %}"
@@ -4006,6 +4014,11 @@
       explicit_guard_expires_at: "{{ explicit_guard_raw.split('expires_at=')[1].split('|')[0] | int(0) if 'expires_at=' in explicit_guard_raw else 0 }}"
       explicit_guard_consumed: "{{ explicit_guard_raw.split('consumed=')[1].split('|')[0] if 'consumed=' in explicit_guard_raw else '1' }}"
       explicit_guard_reason: "{{ explicit_guard_raw.split('reason=')[1].split('|')[0] if 'reason=' in explicit_guard_raw else '' }}"
+      explicit_guard_trace: "{{ explicit_guard_raw.split('trace=')[1].split('|')[0] if 'trace=' in explicit_guard_raw else '' }}"
+      explicit_guard_echo_transition: "{{ explicit_guard_raw.split('echo_transition=')[1].split('|')[0] if 'echo_transition=' in explicit_guard_raw else '' }}"
+      explicit_guard_context_match: "{{ trigger_user_id == '' and explicit_guard_trace not in ['', 'unknown', 'unavailable'] and (trigger_context_id == explicit_guard_trace or trigger_parent_id == explicit_guard_trace) }}"
+      explicit_auto_chain_guard_valid: "{{ explicit_guard_context_match and explicit_guard_col == (col_idx | string) and (explicit_guard_consumed | int(1)) == 0 and as_timestamp(now())|int <= (explicit_guard_expires_at | int(0)) and transicion in [explicit_guard_expected, explicit_guard_echo_transition] }}"
+      auto_chain_guard_valid: "{{ marker_auto_chain_guard_valid or explicit_auto_chain_guard_valid }}"
       hysteresis_base: "{{ states('input_number.ac_night_hysteresis_base')|float(0.8) }}"
       bochorno_tin_component: "{{ [1.0, [0.0, ((tin - 23.4) / 1.8)] | max] | min }}"
       bochorno_hin_component: "{{ [1.0, [0.0, ((hin - 52.0) / 13.0)] | max] | min }}"
@@ -4020,18 +4033,19 @@
       off_heat_base: "{{ [24.0, [17.0, 20.5 + ((12-tout)*0.05) + ((hout-60)*0.005)] | max] | min | round(2) }}"
       hot_recalc_guard_off_cool: "{{ ([25.7, [22.0, (((off_cool_base | float) + (hot_recalc_guard_offset_new | float(0)) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
       explicit_guard_off_cool: "{{ ([25.7, [22.0, (((off_cool_base | float) + (explicit_guard_offset_new | float(0)) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
-      explicit_auto_off_guard_valid: "{{ transicion == 'cool->off' and not marker_valid and explicit_guard_expected == 'cool->off' and explicit_guard_col == (col_idx | string) and (explicit_guard_consumed | int(1)) == 0 and as_timestamp(now())|int <= (explicit_guard_expires_at | int(0)) and (tin | float(0)) <= (explicit_guard_off_cool | float(0)) }}"
-      hot_recalc_payload_guard_valid: "{{ transicion == 'cool->off' and not marker_valid and hot_recalc_guard_transition == 'off->cool' and hot_recalc_guard_mode == 'cool' and hot_recalc_guard_col == (col_idx | string) and (as_timestamp(now())|int - (hot_recalc_guard_ts | int(0))) >= 0 and (as_timestamp(now())|int - (hot_recalc_guard_ts | int(0))) <= 60 and (tin | float(0)) <= (hot_recalc_guard_off_cool | float(0)) }}"
+      explicit_auto_off_guard_valid: "{{ transicion == 'cool->off' and not marker_valid and explicit_guard_expected == 'cool->off' and explicit_guard_col == (col_idx | string) and (explicit_guard_consumed | int(1)) == 0 and as_timestamp(now())|int <= (explicit_guard_expires_at | int(0)) and ((tin | float(0)) <= (explicit_guard_off_cool | float(0)) or explicit_guard_context_match) }}"
+      hot_recalc_context_match: "{{ trigger_user_id == '' and hot_recalc_guard_trace not in ['', 'unknown', 'unavailable'] and (trigger_context_id == hot_recalc_guard_trace or trigger_parent_id == hot_recalc_guard_trace) }}"
+      hot_recalc_payload_guard_valid: "{{ transicion == 'cool->off' and not marker_valid and hot_recalc_guard_transition == 'off->cool' and hot_recalc_guard_mode == 'cool' and hot_recalc_guard_col == (col_idx | string) and (as_timestamp(now())|int - (hot_recalc_guard_ts | int(0))) >= 0 and (as_timestamp(now())|int - (hot_recalc_guard_ts | int(0))) <= 60 and ((tin | float(0)) <= (hot_recalc_guard_off_cool | float(0)) or hot_recalc_context_match) }}"
       hot_recalc_guard_valid: "{{ explicit_auto_off_guard_valid or hot_recalc_payload_guard_valid }}"
-      origen_clasificacion: "{{ 'automatico_night' if marker_valid else 'automatico_night_hot_recalc_guard' if hot_recalc_guard_valid else 'manual_externo' }}"
+      origen_clasificacion: "{{ 'automatico_night' if marker_valid else 'automatico_night_auto_chain_guard' if auto_chain_guard_valid else 'automatico_night_hot_recalc_guard' if hot_recalc_guard_valid else 'manual_externo' }}"
       offset_for_threshold: "{{ offset_new if origen_clasificacion == 'manual_externo' else hot_recalc_guard_offset_new if (hot_recalc_guard_valid and hot_recalc_guard_offset_new not in ['', 'unknown', 'unavailable']) else explicit_guard_offset_new if (hot_recalc_guard_valid and explicit_guard_offset_new not in ['', 'unknown', 'unavailable']) else offset_prev }}"
       off_cool_actual: "{{ ([25.7, [22.0, (((off_cool_base | float) + (offset_for_threshold | float) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
       off_heat_actual: "{{ ([24.0, [17.0, (((off_heat_base | float) + (offset_for_threshold | float)) | round(2))] | max] | min) | round(2) }}"
       on_cool_actual: "{% set off = (off_cool_actual | float) %}{% set cap = ([25.1, [23.6, (24.95 - ((bochorno_score | float) * 1.1))] | max] | min) %}{% set comfort = ([0.0, [-0.65, (0 - ((bochorno_score | float) * 0.55))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float) + comfort) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([26.0, with_min_gap] | min) | round(2) }}"
       on_heat_actual: "{{ ((off_heat_actual | float) - (hysteresis_eff | float)) | round(2) }}"
       auto_off_post_manual_on_threshold_cool: "{{ marker_valid and transicion == 'cool->off' and marker_last_action == 'turn_off' and (marker_auto_event in ['', 'AUTO_OFF_NIGHT_UMBRAL']) and (tin | float(0)) <= (off_cool_actual | float(0)) }}"
-      razon_ignorado_auto: "{{ 'auto_off_derivado_de_recalculo_caliente' if hot_recalc_guard_valid else 'tin_ya_estaba_por_debajo_de_off_cool' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'origen_automatico_night' }}"
-      resultado_ignorado_auto: "{{ 'ignorado_auto_off_post_hot_recalc' if hot_recalc_guard_valid else 'ignorado_auto_off_post_manual_on' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'ignorado' }}"
+      razon_ignorado_auto: "{{ 'auto_chain_context_parent_match' if auto_chain_guard_valid else 'auto_off_derivado_de_recalculo_caliente' if hot_recalc_guard_valid else 'tin_ya_estaba_por_debajo_de_off_cool' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'origen_automatico_night' }}"
+      resultado_ignorado_auto: "{{ 'ignorado_auto_chain_context' if auto_chain_guard_valid else 'ignorado_auto_off_post_hot_recalc' if hot_recalc_guard_valid else 'ignorado_auto_off_post_manual_on' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'ignorado' }}"
       umbral_termico_humano: "{% if evento_manual_tipo == 'encendido_manual' %}TEMP APAGADO= {{ '%.2f' | format(off_cool_actual | float) if modo == 'cool' else '%.2f' | format(off_heat_actual | float) if modo == 'heat' else 'n/a' }}°C{% elif evento_manual_tipo == 'apagado_manual' %}TEMP ENCENDIDO= {{ '%.2f' | format(on_cool_actual | float) if modo == 'cool' else '%.2f' | format(on_heat_actual | float) if modo == 'heat' else 'n/a' }}°C{% else %}TEMP UMBRAL= n/a{% endif %}"
       hora_evento: "{{ now().strftime('%I:%M:%S %p') }}"
       contexto_night: "{{ weather_state }} | {{ estacion }} | Horario {{ franja }}"
@@ -4070,6 +4084,15 @@
           target: {entity_id: input_text.ac_night_auto_origin_payload}
           data:
             value: "{{ marker_raw.replace('consumed=' ~ marker_consumed, 'consumed=1', 1) if 'consumed=' in marker_raw else marker_raw }}"
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: "{{ marker_expected in ['cool->off', 'heat->off'] and trigger_context_id not in ['', 'unknown', 'unavailable'] }}"
+            sequence:
+            - service: input_text.set_value
+              target: {entity_id: input_text.ac_night_learning_auto_off_guard_payload}
+              data:
+                value: "expected_transition={{ marker_expected }}|echo_transition={{ marker_expected_echo_transition }}|col={{ col_idx }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=auto_chain_after_marker|trace={{ trigger_context_id }}"
     - choose:
       - conditions:
         - condition: template
@@ -4079,6 +4102,15 @@
           target: {entity_id: input_text.ac_night_learning_auto_off_guard_payload}
           data:
             value: "{{ explicit_guard_raw.replace('consumed=' ~ explicit_guard_consumed, 'consumed=1', 1) if 'consumed=' in explicit_guard_raw else explicit_guard_raw }}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: "{{ auto_chain_guard_valid and trigger_context_id not in ['', 'unknown', 'unavailable'] and explicit_guard_expected in ['cool->off', 'heat->off'] }}"
+        sequence:
+        - service: input_text.set_value
+          target: {entity_id: input_text.ac_night_learning_auto_off_guard_payload}
+          data:
+            value: "expected_transition={{ explicit_guard_expected }}|echo_transition={{ explicit_guard_echo_transition }}|col={{ col_idx }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=auto_chain_refresh|trace={{ trigger_context_id }}"
     - choose:
       - conditions:
         - condition: template
@@ -4095,7 +4127,7 @@
             - service: input_text.set_value
               target: {entity_id: input_text.ac_night_learning_auto_off_guard_payload}
               data:
-                value: "expected_transition=cool->off|col={{ col_idx }}|offset_new={{ '%.2f' | format(offset_new | float(0)) }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=hot_recalc_after_manual_on|trace={{ trace_id }}"
+                value: "expected_transition=cool->off|echo_transition=|col={{ col_idx }}|offset_new={{ '%.2f' | format(offset_new | float(0)) }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=hot_recalc_after_manual_on|trace={{ trace_id }}"
         - service: input_text.set_value
           target: {entity_id: input_text.ac_night_hot_learning_recalc_payload}
           data:
@@ -4116,7 +4148,7 @@
       - service: logbook.log
         data:
           name: AC Night Learning
-          message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | marker_raw={{ marker_raw }} | marker_valid={{ marker_valid }} | marker_consumed={{ marker_consumed }} | marker_consumed_open={{ marker_consumed_open }} | expected_transition={{ marker_expected }} | expires_at={{ marker_exp }} | hot_recalc_guard_valid={{ hot_recalc_guard_valid }} | explicit_auto_off_guard_valid={{ explicit_auto_off_guard_valid }} | hot_recalc_payload_guard_valid={{ hot_recalc_payload_guard_valid }} | explicit_guard_raw={{ explicit_guard_raw }} | hot_recalc_payload={{ hot_recalc_guard_raw }} | hot_recalc_mode={{ hot_recalc_guard_mode }} | hot_recalc_transition={{ hot_recalc_guard_transition }} | hot_recalc_col={{ hot_recalc_guard_col }} | hot_recalc_offset_old={{ hot_recalc_guard_offset_old }} | hot_recalc_offset_new={{ hot_recalc_guard_offset_new }} | hot_recalc_delta={{ hot_recalc_guard_delta }} | hot_recalc_trace={{ hot_recalc_guard_trace }} | hot_recalc_ts={{ hot_recalc_guard_ts }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | tin={{ tin }} | off_cool={{ off_cool_actual }} | resultado_terminal={{ resultado_ignorado_auto }} | razon={{ razon_ignorado_auto }} | notificacion=suprimida_por_origen_automatico"
+          message: "trace_id={{ trace_id }} | context_id={{ trigger_context_id }} | parent_id={{ trigger_parent_id }} | user_id={{ trigger_user_id if trigger_user_id != '' else 'none' }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | marker_raw={{ marker_raw }} | marker_valid={{ marker_valid }} | marker_trace_id={{ marker_trace_id }} | marker_consumed={{ marker_consumed }} | marker_consumed_open={{ marker_consumed_open }} | expected_transition={{ marker_expected }} | expires_at={{ marker_exp }} | context_match_auto={{ context_match_auto }} | auto_chain_guard_valid={{ auto_chain_guard_valid }} | hot_recalc_guard_valid={{ hot_recalc_guard_valid }} | explicit_auto_off_guard_valid={{ explicit_auto_off_guard_valid }} | explicit_guard_context_match={{ explicit_guard_context_match }} | hot_recalc_payload_guard_valid={{ hot_recalc_payload_guard_valid }} | hot_recalc_context_match={{ hot_recalc_context_match }} | explicit_guard_raw={{ explicit_guard_raw }} | hot_recalc_payload={{ hot_recalc_guard_raw }} | hot_recalc_mode={{ hot_recalc_guard_mode }} | hot_recalc_transition={{ hot_recalc_guard_transition }} | hot_recalc_col={{ hot_recalc_guard_col }} | hot_recalc_offset_old={{ hot_recalc_guard_offset_old }} | hot_recalc_offset_new={{ hot_recalc_guard_offset_new }} | hot_recalc_delta={{ hot_recalc_guard_delta }} | hot_recalc_trace={{ hot_recalc_guard_trace }} | hot_recalc_ts={{ hot_recalc_guard_ts }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | tin={{ tin }} | off_cool={{ off_cool_actual }} | resultado_terminal={{ resultado_ignorado_auto }} | razon={{ razon_ignorado_auto }} | offset_protegido=true | notificacion=suprimida_por_origen_automatico"
 
 - id: ac_horario_scheduler_matriz_160_night_v1
   alias: AC Scheduler Matriz 160 + Night
