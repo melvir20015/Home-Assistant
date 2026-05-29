@@ -117,3 +117,8 @@ ac_night_ultimo_resultado:
   name: AC Night Último Resultado
   max: 255
   initial: pendiente
+
+ac_night_hot_learning_recalc_payload:
+  name: AC Night Hot Learning Recalc Payload
+  max: 255
+  initial: sin_recalculo
