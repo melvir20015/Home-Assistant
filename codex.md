@@ -2961,3 +2961,13 @@ Implementación contractual:
 - **Regla de aprendizaje:** si el aprendizaje ve un marcador no expirado, no consumido y con `expected_transition` igual a la transición real, clasifica la transición como `automatico_night`, consume el marcador y no aplica delta ni recálculo caliente manual.
 - **Caso terminal protegido:** para `cool->off` automático con `Tin <= off_cool` inmediatamente después de un encendido manual válido, el aprendizaje registra `resultado_terminal=ignorado_auto_off_post_manual_on` y `razon=tin_ya_estaba_por_debajo_de_off_cool` sin bloquear el apagado real del equipo.
 - **Observabilidad agregada:** el logbook de ignorado automático incluye `marker_raw`, `marker_valid`, `marker_consumed`, `expected_transition`, `expires_at`, `tin` y `off_cool` para auditar por qué una transición fue o no reconocida como automática.
+
+## 61) AC Night — validación robusta de marker automático consumido (2026-05-29)
+
+- **Alcance:** automatización `AC Night - Aprendizaje manual por columna` (`id: ac_night_learning_manual_v1`) en `automations.yaml`.
+- **Causa corregida:** `marker_valid` dependía de comparar `marker_consumed == '0'`. En trazas de Home Assistant el valor puede materializarse como número `0` en vez de cadena `'0'`, por lo que un marker vigente `consumed=0` podía evaluarse como inválido y clasificar un `cool->off` automático como `manual_externo`.
+- **Regla robusta aplicada:** la validación normaliza `marker_consumed` con `marker_consumed | int(1)` y solo considera abierto el marker cuando el valor convertido es `0`.
+- **Consumo del marker:** al reconocer la transición esperada, el aprendizaje reemplaza el valor real encontrado tras `consumed=` por `consumed=1`, no solo el literal exacto `consumed=0`, para tolerar representaciones equivalentes.
+- **Protección funcional:** un apagado automático Night posterior a un encendido manual (`cool->off` con `expected_transition=cool->off`) se clasifica como `automatico_night`, no aplica delta, no reescribe `input_text.ac_night_hot_learning_recalc_payload` y no revierte el offset recién aprendido.
+- **Notificaciones:** las transiciones reconocidas como automáticas quedan solo en logbook y suprimen la notificación móvil de `Apagado Manual`, evitando falsas alertas y ráfagas por recálculo.
+- **Observabilidad:** el logbook de ignorado automático agrega `marker_consumed_open` y `notificacion=suprimida_por_origen_automatico` para auditar la decisión.

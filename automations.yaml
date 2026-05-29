@@ -3965,7 +3965,8 @@
       marker_reason: "{{ marker_raw.split('reason=')[1].split('|')[0] if 'reason=' in marker_raw else '' }}"
       marker_exp: "{{ marker_raw.split('expires_at=')[1].split('|')[0] | int(0) if 'expires_at=' in marker_raw else 0 }}"
       marker_consumed: "{{ marker_raw.split('consumed=')[1].split('|')[0] if 'consumed=' in marker_raw else '1' }}"
-      marker_valid: "{{ marker_kind == 'night_auto' and marker_expected == transicion and marker_consumed == '0' and as_timestamp(now())|int <= marker_exp }}"
+      marker_consumed_open: "{{ (marker_consumed | int(1)) == 0 }}"
+      marker_valid: "{{ marker_kind == 'night_auto' and marker_expected == transicion and (marker_consumed | int(1)) == 0 and as_timestamp(now())|int <= marker_exp }}"
       origen_clasificacion: "{{ 'automatico_night' if marker_valid else 'manual_externo' }}"
       helper_target: "{{ 'input_number.ac_night_offset_cool_col_' ~ col_idx if transicion in ['off->cool','cool->off'] else 'input_number.ac_night_offset_heat_col_' ~ col_idx }}"
       modo: "{{ 'cool' if transicion in ['off->cool','cool->off'] else ('heat' if transicion in ['off->heat','heat->off'] else 'na') }}"
@@ -4034,7 +4035,7 @@
         - service: input_text.set_value
           target: {entity_id: input_text.ac_night_auto_origin_payload}
           data:
-            value: "{{ marker_raw.replace('consumed=0','consumed=1') if 'consumed=0' in marker_raw else marker_raw }}"
+            value: "{{ marker_raw.replace('consumed=' ~ marker_consumed, 'consumed=1', 1) if 'consumed=' in marker_raw else marker_raw }}"
     - choose:
       - conditions:
         - condition: template
@@ -4063,11 +4064,7 @@
       - service: logbook.log
         data:
           name: AC Night Learning
-          message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | marker_raw={{ marker_raw }} | marker_valid={{ marker_valid }} | marker_consumed={{ marker_consumed }} | expected_transition={{ marker_expected }} | expires_at={{ marker_exp }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | tin={{ tin }} | off_cool={{ off_cool_actual }} | resultado_terminal={{ resultado_ignorado_auto }} | razon={{ razon_ignorado_auto }}"
-      - service: notify.mobile_app_samsung_s24
-        data:
-          title: AC Night
-          message: "{{ mensaje_humano }}"
+          message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | marker_raw={{ marker_raw }} | marker_valid={{ marker_valid }} | marker_consumed={{ marker_consumed }} | marker_consumed_open={{ marker_consumed_open }} | expected_transition={{ marker_expected }} | expires_at={{ marker_exp }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | tin={{ tin }} | off_cool={{ off_cool_actual }} | resultado_terminal={{ resultado_ignorado_auto }} | razon={{ razon_ignorado_auto }} | notificacion=suprimida_por_origen_automatico"
 
 - id: ac_horario_scheduler_matriz_160_night_v1
   alias: AC Scheduler Matriz 160 + Night
