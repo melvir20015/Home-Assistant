@@ -2943,3 +2943,12 @@ Implementación contractual:
 - **Garantía operativa:** bajo el contexto concreto `Primavera`, `Parcialmente nublado` (`weather_idx=1`) y franja `04:01 pm - 07:00 pm` (`slot_idx=3`), ambas automatizaciones resuelven `col_idx=24`; por tanto aprendizaje escribe `input_number.ac_matriz_160_offset_<modo>_col_24` y la principal lee ese mismo helper.
 - **Sincronización defensiva:** si aprendizaje detecta que `input_text.ac_matriz_160_columna_activa_idx` conserva una columna previa distinta de la recalculada, actualiza los helpers `input_text` de columna/contexto hacia la columna recalculada antes de aplicar aprendizaje.
 - **Trazabilidad agregada:** los logbook de evaluación principal y aprendizaje manual reportan `season_idx`, `weather_idx`, `slot_idx`, columna calculada, contexto humano y helper de offset leído/escrito para detectar de inmediato cualquier nuevo desfase.
+
+## 59) AC-Matriz 160 — trazabilidad reforzada de coherencia de columnas (2026-05-29)
+
+- **Alcance:** automatizaciones `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) y `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`) en `automations.yaml`.
+- **Objetivo:** dejar evidencias explícitas en logbook para auditar que control principal y aprendizaje manual usan el mismo contrato de columna.
+- **Contrato visible en logs:** ambos flujos registran la fórmula canónica `weather_idx*20 + season_idx*5 + slot_idx + 1` y el esquema de temporada `Primavera=0,Verano=1,Otoño=2,Invierno=3`.
+- **Control principal:** el hito `evaluacion` reporta la columna calculada, el helper de columna activo antes de sincronizar, si estaba desfasado, contexto previo, helpers de offset leídos y offsets vigentes.
+- **Aprendizaje manual:** los hitos de sincronización, aplicación e ignorado reportan columna recalculada, columna previa del helper, helpers de offset resuelto/previo, coherencia del helper usado y los índices `season/weather/slot`.
+- **Caso contractual:** para `Primavera`, `Parcialmente nublado` y franja `04:01 pm - 07:00 pm`, el cálculo debe resolver columna `24` en ambos flujos.
