@@ -122,6 +122,10 @@ ac_night_hot_learning_recalc_payload:
   name: AC Night Hot Learning Recalc Payload
   max: 255
   initial: sin_recalculo
+ac_night_learning_auto_off_guard_payload:
+  name: AC Night Learning Auto OFF Guard Payload
+  max: 255
+  initial: sin_guardia
 ac_night_auto_origin_payload:
   name: AC Night Auto Origin Payload
   max: 255
