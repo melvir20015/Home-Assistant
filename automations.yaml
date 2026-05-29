@@ -3778,7 +3778,7 @@
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
-          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition=cool->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
+          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|auto_event=AUTO_OFF_NIGHT_UMBRAL|expected_transition=cool->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0|reason=tin_ya_estaba_por_debajo_de_off_cool"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: notify.mobile_app_samsung_s24
@@ -3798,7 +3798,7 @@
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
-          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition=heat->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
+          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|auto_event=AUTO_OFF_NIGHT_UMBRAL|expected_transition=heat->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: notify.mobile_app_samsung_s24
@@ -3960,6 +3960,9 @@
       marker_raw: "{{ states('input_text.ac_night_auto_origin_payload') }}"
       marker_kind: "{{ marker_raw.split('kind=')[1].split('|')[0] if 'kind=' in marker_raw else '' }}"
       marker_expected: "{{ marker_raw.split('expected_transition=')[1].split('|')[0] if 'expected_transition=' in marker_raw else '' }}"
+      marker_last_action: "{{ marker_raw.split('last_action=')[1].split('|')[0] if 'last_action=' in marker_raw else '' }}"
+      marker_auto_event: "{{ marker_raw.split('auto_event=')[1].split('|')[0] if 'auto_event=' in marker_raw else '' }}"
+      marker_reason: "{{ marker_raw.split('reason=')[1].split('|')[0] if 'reason=' in marker_raw else '' }}"
       marker_exp: "{{ marker_raw.split('expires_at=')[1].split('|')[0] | int(0) if 'expires_at=' in marker_raw else 0 }}"
       marker_consumed: "{{ marker_raw.split('consumed=')[1].split('|')[0] if 'consumed=' in marker_raw else '1' }}"
       marker_valid: "{{ marker_kind == 'night_auto' and marker_expected == transicion and marker_consumed == '0' and as_timestamp(now())|int <= marker_exp }}"
@@ -3991,6 +3994,9 @@
       off_heat_actual: "{{ ([24.0, [17.0, (((off_heat_base | float) + (offset_for_threshold | float)) | round(2))] | max] | min) | round(2) }}"
       on_cool_actual: "{% set off = (off_cool_actual | float) %}{% set cap = ([25.1, [23.6, (24.95 - ((bochorno_score | float) * 1.1))] | max] | min) %}{% set comfort = ([0.0, [-0.65, (0 - ((bochorno_score | float) * 0.55))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float) + comfort) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([26.0, with_min_gap] | min) | round(2) }}"
       on_heat_actual: "{{ ((off_heat_actual | float) - (hysteresis_eff | float)) | round(2) }}"
+      auto_off_post_manual_on_threshold_cool: "{{ marker_valid and transicion == 'cool->off' and marker_last_action == 'turn_off' and (marker_auto_event in ['', 'AUTO_OFF_NIGHT_UMBRAL']) and (tin | float(0)) <= (off_cool_actual | float(0)) }}"
+      razon_ignorado_auto: "{{ 'tin_ya_estaba_por_debajo_de_off_cool' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'origen_automatico_night' }}"
+      resultado_ignorado_auto: "{{ 'ignorado_auto_off_post_manual_on' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'ignorado' }}"
       umbral_termico_humano: "{% if evento_manual_tipo == 'encendido_manual' %}TEMP APAGADO= {{ '%.2f' | format(off_cool_actual | float) if modo == 'cool' else '%.2f' | format(off_heat_actual | float) if modo == 'heat' else 'n/a' }}°C{% elif evento_manual_tipo == 'apagado_manual' %}TEMP ENCENDIDO= {{ '%.2f' | format(on_cool_actual | float) if modo == 'cool' else '%.2f' | format(on_heat_actual | float) if modo == 'heat' else 'n/a' }}°C{% else %}TEMP UMBRAL= n/a{% endif %}"
       hora_evento: "{{ now().strftime('%I:%M:%S %p') }}"
       contexto_night: "{{ weather_state }} | {{ estacion }} | Horario {{ franja }}"
@@ -4057,7 +4063,7 @@
       - service: logbook.log
         data:
           name: AC Night Learning
-          message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | resultado_terminal=ignorado | razon=origen_automatico_night"
+          message: "trace_id={{ trace_id }} | col_idx={{ col_idx }} | modo={{ modo }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | marker_raw={{ marker_raw }} | marker_valid={{ marker_valid }} | marker_consumed={{ marker_consumed }} | expected_transition={{ marker_expected }} | expires_at={{ marker_exp }} | delta={{ delta }} | offset_anterior={{ offset_prev }} | offset_nuevo={{ offset_prev }} | tin={{ tin }} | off_cool={{ off_cool_actual }} | resultado_terminal={{ resultado_ignorado_auto }} | razon={{ razon_ignorado_auto }}"
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Night

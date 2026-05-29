@@ -2952,3 +2952,12 @@ Implementación contractual:
 - **Control principal:** el hito `evaluacion` reporta la columna calculada, el helper de columna activo antes de sincronizar, si estaba desfasado, contexto previo, helpers de offset leídos y offsets vigentes.
 - **Aprendizaje manual:** los hitos de sincronización, aplicación e ignorado reportan columna recalculada, columna previa del helper, helpers de offset resuelto/previo, coherencia del helper usado y los índices `season/weather/slot`.
 - **Caso contractual:** para `Primavera`, `Parcialmente nublado` y franja `04:01 pm - 07:00 pm`, el cálculo debe resolver columna `24` en ambos flujos.
+
+## 60) AC Night — protección contra reversión falsa por auto-off posterior a encendido manual (2026-05-29)
+
+- **Alcance:** automatizaciones `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) y `AC Night - Aprendizaje manual por columna` (`id: ac_night_learning_manual_v1`) en `automations.yaml`; helpers Night en `helpers/input_text.yaml`.
+- **Causa corregida:** `input_text.ac_night_auto_origin_payload` y `input_text.ac_night_learning_last_signature` eran consumidos por la lógica Night pero no estaban declarados en helpers, por lo que el aprendizaje podía leer `marker_raw=unknown`, calcular `marker_valid=false` y clasificar un `cool->off` automático como `manual_externo`/`apagado_manual`.
+- **Contrato de marcador Night:** antes de ejecutar un apagado automático por umbral, la matriz escribe `kind=night_auto`, `last_action=turn_off`, `auto_event=AUTO_OFF_NIGHT_UMBRAL`, `expected_transition=cool->off`, `expires_at`, `consumed=0` y una razón explícita cuando aplica (`tin_ya_estaba_por_debajo_de_off_cool`).
+- **Regla de aprendizaje:** si el aprendizaje ve un marcador no expirado, no consumido y con `expected_transition` igual a la transición real, clasifica la transición como `automatico_night`, consume el marcador y no aplica delta ni recálculo caliente manual.
+- **Caso terminal protegido:** para `cool->off` automático con `Tin <= off_cool` inmediatamente después de un encendido manual válido, el aprendizaje registra `resultado_terminal=ignorado_auto_off_post_manual_on` y `razon=tin_ya_estaba_por_debajo_de_off_cool` sin bloquear el apagado real del equipo.
+- **Observabilidad agregada:** el logbook de ignorado automático incluye `marker_raw`, `marker_valid`, `marker_consumed`, `expected_transition`, `expires_at`, `tin` y `off_cool` para auditar por qué una transición fue o no reconocida como automática.
