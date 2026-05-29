@@ -2917,3 +2917,29 @@ Implementación contractual:
   - clamp de offset `[-3.0,+3.0]`,
   - histéresis espejo por modo (`+1.0` COOL, `-1.0` HEAT respecto a `off`),
   - terminal obligatorio `aplicado|ignorado|error_controlado` con razón explícita.
+
+## 57) AC-Matriz 160 — Turbo por humedad solo contextual (2026-05-27)
+
+- **Alcance:** automatización `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) en `automations.yaml`.
+- **Decisión operativa:** **Turbo por humedad solo contextual, umbral 60%, sin humedad aislada**.
+- **Regla aplicada en reingreso/presencia (`new_presence_event`):**
+  - Se mantiene `new_presence_event` como gatillo de evaluación.
+  - El ingreso a `turbo_enter_cool` exige además ausencia de bloqueos (`manual_off_block_active`, `cool_block_active`, `turbo_blocked`) y una de dos rutas:
+    1. `desvio_termico_fuerte`: `Tin >= eff_t_on_cool + 1.0`.
+    2. `humedad_alta_contextual`: `Hin >= 60` **y** `Tin >= eff_t_off_cool`.
+- **Garantía funcional:** `Hin >= 60` por sí sola ya no habilita turbo cuando `Tin` está fuera de contexto de frío.
+- **Observabilidad:** `hito=turbo_enter_cool` ahora reporta `motivo=desvio_termico_fuerte` o `motivo=humedad_alta_contextual` y conserva trazabilidad compacta (`Tin`, `Hin`, `T_on`, `T_off`, `col`, `trace`).
+
+## 58) AC-Matriz 160 — coherencia única de columnas entre control principal y aprendizaje manual (2026-05-29)
+
+- **Alcance:** automatizaciones `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) y `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`) en `automations.yaml`.
+- **Causa corregida:** existía un desfase de índice de temporada para `Primavera`: la principal la trataba como índice `1`, mientras aprendizaje la resolvía como índice `0`. En el caso `weather_idx=1`, `slot_idx=3`, eso hacía que la principal leyera columna `29` y aprendizaje escribiera columna `24`.
+- **Fuente única de verdad diurna:** ambas automatizaciones usan el mismo orden de temporada para la matriz 8x4x5:
+  - `Primavera = 0`
+  - `Verano = 1`
+  - `Otoño = 2`
+  - `Invierno = 3`
+- **Fórmula contractual compartida:** `col_idx = (weather_idx * 20) + (season_idx * 5) + slot_idx + 1`.
+- **Garantía operativa:** bajo el contexto concreto `Primavera`, `Parcialmente nublado` (`weather_idx=1`) y franja `04:01 pm - 07:00 pm` (`slot_idx=3`), ambas automatizaciones resuelven `col_idx=24`; por tanto aprendizaje escribe `input_number.ac_matriz_160_offset_<modo>_col_24` y la principal lee ese mismo helper.
+- **Sincronización defensiva:** si aprendizaje detecta que `input_text.ac_matriz_160_columna_activa_idx` conserva una columna previa distinta de la recalculada, actualiza los helpers `input_text` de columna/contexto hacia la columna recalculada antes de aplicar aprendizaje.
+- **Trazabilidad agregada:** los logbook de evaluación principal y aprendizaje manual reportan `season_idx`, `weather_idx`, `slot_idx`, columna calculada, contexto humano y helper de offset leído/escrito para detectar de inmediato cualquier nuevo desfase.

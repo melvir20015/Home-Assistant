@@ -1108,8 +1108,8 @@
       season_name: '{% set m = now().month %}{% if m in [12,1,2] %}Invierno{% elif
         m in [3,4,5] %}Primavera{% elif m in [6,7,8] %}Verano{% else %}Otoño{% endif
         %}'
-      season_idx: '{% set m = now().month %}{% if m in [12,1,2] %}0{% elif m in [3,4,5]
-        %}1{% elif m in [6,7,8] %}2{% else %}3{% endif %}'
+      season_idx: '{% if season_name == ''Primavera'' %}0{% elif season_name == ''Verano''
+        %}1{% elif season_name == ''Otoño'' %}2{% else %}3{% endif %}'
       weather_cat: '{% set s = wx_raw %}{% if ''thunder'' in s %}Tormenta{% elif ''snow''
         in s or ''sleet'' in s or ''ice'' in s %}Nieve - Hielo{% elif ''fog'' in s
         or ''mist'' in s or ''haze'' in s %}Niebla - Neblina{% elif ''heavy'' in s
@@ -1157,10 +1157,12 @@
       t_off_heat_base: '{{ [thermal_boundary_by_season|float(22), [17.0, (base_heat|float(24)
         + adj_clima_heat|float)] | max] | min | round(2) }}'
       t_on_heat_base: '{{ (t_off_heat_base|float - 1.0) | round(2) }}'
-      offset_cool_helper: '{{ states(''input_number.ac_matriz_160_offset_cool_col_''
-        ~ col_idx) | float(0) }}'
-      offset_heat_helper: '{{ states(''input_number.ac_matriz_160_offset_heat_col_''
-        ~ col_idx) | float(0) }}'
+      helper_offset_cool_entity: '{{ ''input_number.ac_matriz_160_offset_cool_col_''
+        ~ col_idx }}'
+      helper_offset_heat_entity: '{{ ''input_number.ac_matriz_160_offset_heat_col_''
+        ~ col_idx }}'
+      offset_cool_helper: '{{ states(helper_offset_cool_entity) | float(0) }}'
+      offset_heat_helper: '{{ states(helper_offset_heat_entity) | float(0) }}'
       t_off_cool_shifted: '{{ (t_off_cool_base|float + offset_cool_helper|float) |
         round(2) }}'
       t_on_cool_shifted: '{{ (t_on_cool_base|float + offset_cool_helper|float) | round(2)
@@ -1456,7 +1458,9 @@
   - data:
       name: AC-Matriz 160
       message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{
-        contexto_firma }} | presencia_real={{ presence_ok }}({{ presence_origin }})
+        contexto_firma }} | indices=season {{ season_idx }},weather {{ weather_idx }},slot {{
+        slot_idx }} | helper_offset_cool={{ helper_offset_cool_entity }} | helper_offset_heat={{
+        helper_offset_heat_entity }} | presencia_real={{ presence_ok }}({{ presence_origin }})
         | override_activo={{ manual_presence_override_active }} | override_until={{
         manual_presence_override_until_raw }} | presencia_efectiva={{ presence_ok_effective
         }} | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base
@@ -2783,9 +2787,10 @@
       col_idx: '{{ states(''input_text.ac_matriz_160_columna_activa_idx'') | int(0)
         }}'
       slot_name_resuelto: '{% set t = now().strftime(''%H:%M'') %}{% if ''07:01''
-        <= t <= ''10:00'' %}Mañana{% elif ''10:01'' <= t <= ''13:00'' %}Media mañana{%
-        elif ''13:01'' <= t <= ''16:00'' %}Mediodía{% elif ''16:01'' <= t <= ''19:00''
-        %}Tarde{% else %}Noche temprana{% endif %}'
+        <= t <= ''10:00'' %}07:01 am - 10:00 am{% elif ''10:01'' <= t <= ''13:00''
+        %}10:01 am - 01:00 pm{% elif ''13:01'' <= t <= ''16:00'' %}01:01 pm - 04:00 pm{% elif ''16:01''
+        <= t <= ''19:00'' %}04:01 pm - 07:00 pm{% else %}07:01 pm - 09:59 pm{% endif
+        %}'
       slot_idx_resuelto: '{% set t = now().strftime(''%H:%M'') %}{% if ''07:01'' <=
         t <= ''10:00'' %}0{% elif ''10:01'' <= t <= ''13:00'' %}1{% elif ''13:01''
         <= t <= ''16:00'' %}2{% elif ''16:01'' <= t <= ''19:00'' %}3{% else %}4{%
@@ -3042,7 +3047,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ col_idx|int <= 0 and col_idx_resuelto|int > 0 }}'
+        value_template: '{{ (col_idx|int <= 0 or col_idx_helper_desfasado) and col_idx_resuelto|int > 0 }}'
       sequence:
       - service: input_text.set_value
         target:
@@ -3057,10 +3062,14 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: hito=learning_manual_columna_fallback_resuelta | col_prev={{ col_idx
-            }} | col_resuelta={{ col_idx_resuelto }} | contexto_resuelto={{ contexto_activo_resuelto
-            }} | weather={{ weather_cat_resuelto }} | season={{ season_name_resuelto
-            }} | slot={{ slot_name_resuelto }} | trace_id={{ marker_trace_id if marker_trace_id|length
+          message: hito=learning_manual_columna_sincronizada | col_prev={{ col_idx
+            }} | col_resuelta={{ col_idx_resuelto }} | col_recalculada={{ col_idx_recalculado
+            }} | col_idx_helper_desfasado={{ col_idx_helper_desfasado }} | contexto_prev={{ contexto
+            }} | contexto_resuelto={{ contexto_activo_resuelto }} | helper_offset_resuelto={{
+            helper_offset_resuelto }} | helper_offset_previo={{ helper_offset_previo }} | weather={{
+            weather_cat_resuelto }} | weather_idx={{ weather_idx_resuelto }} | season={{
+            season_name_resuelto }} | season_idx={{ season_idx_resuelto }} | slot={{ slot_name_resuelto
+            }} | slot_idx={{ slot_idx_resuelto }} | trace_id={{ marker_trace_id if marker_trace_id|length
             > 0 else (evento_context_id ~ '-' ~ evento_last_changed_ts) }}
           entity_id: climate.0200009211c7_climate
     - conditions:
@@ -3441,7 +3450,11 @@
             marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed_inmediata
             }} | marker_transition_observed_final={{ marker_transition_observed_final }} | cierre_compuesto_valido={{ cierre_compuesto_valido }} | transicion_observada_consolidada={{ transicion_observada_consolidada }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
             }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje
-            }} | columna={{ col_idx_resuelto }} | contexto={{ contexto_activo_resuelto
+            }} | columna={{ col_idx_resuelto }} | col_idx_recalculado={{ col_idx_recalculado
+            }} | col_idx_helper={{ col_idx }} | col_idx_helper_desfasado={{ col_idx_helper_desfasado
+            }} | contexto={{ contexto_activo_resuelto }} | helper_offset_resuelto={{
+            helper_offset_resuelto }} | helper_offset_previo={{ helper_offset_previo }} | indices=season {{
+            season_idx_resuelto }},weather {{ weather_idx_resuelto }},slot {{ slot_idx_resuelto
             }} | before={{ offset_actual }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | after={{ offset_nuevo
             }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto }} | ts={{ ts_evento }}
           entity_id: climate.0200009211c7_climate
@@ -3457,7 +3470,11 @@
           }} | marker_transition_observed_final={{ marker_transition_observed_final }} | cierre_compuesto_valido={{ cierre_compuesto_valido }} | transicion_observada_consolidada={{ transicion_observada_consolidada }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
           }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }}
           | final_transition={{ transicion_final_from ~ "->" ~ transicion_final_to
-          }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto
+          }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok }} | col_idx_recalculado={{
+          col_idx_recalculado }} | col_idx_helper={{ col_idx }} | col_idx_helper_desfasado={{
+          col_idx_helper_desfasado }} | contexto={{ contexto_activo_resuelto }} | helper_offset_resuelto={{
+          helper_offset_resuelto }} | helper_offset_previo={{ helper_offset_previo }} | indices=season {{
+          season_idx_resuelto }},weather {{ weather_idx_resuelto }},slot {{ slot_idx_resuelto }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto
           }}
         entity_id: climate.0200009211c7_climate
   - choose:
