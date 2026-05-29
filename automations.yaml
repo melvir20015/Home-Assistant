@@ -1108,8 +1108,8 @@
       season_name: '{% set m = now().month %}{% if m in [12,1,2] %}Invierno{% elif
         m in [3,4,5] %}Primavera{% elif m in [6,7,8] %}Verano{% else %}Otoño{% endif
         %}'
-      season_idx: '{% if season_name == ''Primavera'' %}0{% elif season_name == ''Verano''
-        %}1{% elif season_name == ''Otoño'' %}2{% else %}3{% endif %}'
+      season_idx: '{% set m = now().month %}{% if m in [12,1,2] %}0{% elif m in [3,4,5]
+        %}1{% elif m in [6,7,8] %}2{% else %}3{% endif %}'
       weather_cat: '{% set s = wx_raw %}{% if ''thunder'' in s %}Tormenta{% elif ''snow''
         in s or ''sleet'' in s or ''ice'' in s %}Nieve - Hielo{% elif ''fog'' in s
         or ''mist'' in s or ''haze'' in s %}Niebla - Neblina{% elif ''heavy'' in s
@@ -1124,11 +1124,6 @@
       col_idx: '{{ (weather_idx|int * 20) + (season_idx|int * 5) + (slot_idx|int)
         + 1 }}'
       col_humana: '{{ weather_cat }} | {{ season_name }} | Horario {{ slot_name }}'
-      col_formula_matriz: weather_idx*20 + season_idx*5 + slot_idx + 1
-      season_idx_schema: Primavera=0,Verano=1,Otoño=2,Invierno=3
-      col_idx_helper_previo: '{{ states(''input_text.ac_matriz_160_columna_activa_idx'') | int(0) }}'
-      col_humana_helper_previa: '{{ states(''input_text.ac_matriz_160_columna_activa_humana'') | default(''Contexto no disponible'', true) }}'
-      col_idx_helper_previo_desfasado: '{{ col_idx_helper_previo|int > 0 and (col_idx_helper_previo|int != col_idx|int) }}'
       contexto_firma: '{{ weather_cat }}|{{ season_name }}|{{ slot_name }}|{{ eval_ts
         }}'
       invalid_data: '{{ tin is none or hin is none or tout is none }}'
@@ -1162,12 +1157,10 @@
       t_off_heat_base: '{{ [thermal_boundary_by_season|float(22), [17.0, (base_heat|float(24)
         + adj_clima_heat|float)] | max] | min | round(2) }}'
       t_on_heat_base: '{{ (t_off_heat_base|float - 1.0) | round(2) }}'
-      helper_offset_cool_entity: '{{ ''input_number.ac_matriz_160_offset_cool_col_''
-        ~ col_idx }}'
-      helper_offset_heat_entity: '{{ ''input_number.ac_matriz_160_offset_heat_col_''
-        ~ col_idx }}'
-      offset_cool_helper: '{{ states(helper_offset_cool_entity) | float(0) }}'
-      offset_heat_helper: '{{ states(helper_offset_heat_entity) | float(0) }}'
+      offset_cool_helper: '{{ states(''input_number.ac_matriz_160_offset_cool_col_''
+        ~ col_idx) | float(0) }}'
+      offset_heat_helper: '{{ states(''input_number.ac_matriz_160_offset_heat_col_''
+        ~ col_idx) | float(0) }}'
       t_off_cool_shifted: '{{ (t_off_cool_base|float + offset_cool_helper|float) |
         round(2) }}'
       t_on_cool_shifted: '{{ (t_on_cool_base|float + offset_cool_helper|float) | round(2)
@@ -1359,9 +1352,16 @@
       prev_presence_ok: '{{ is_state(''input_boolean.ac_matriz_160_presencia_valida_disparo'',''on'')
         }}'
       new_presence_event: '{{ presence_ok and not prev_presence_ok }}'
+      tin_in_cool_context_range: '{{ (tin | float) >= (eff_t_off_cool | float) }}'
+      turbo_cool_strong_thermal_deviation: '{{ (tin | float) >= ((eff_t_on_cool | float)
+        + 1.0) }}'
+      turbo_cool_contextual_humidity: '{{ (hin | float) >= 60 and tin_in_cool_context_range
+        }}'
+      turbo_enter_cool_reason: '{% if turbo_cool_strong_thermal_deviation %}desvio_termico_fuerte{% elif turbo_cool_contextual_humidity
+        %}humedad_alta_contextual{% else %}none{% endif %}'
       turbo_enter_cool: '{{ (not manual_off_block_active) and (not cool_block_active)
-        and new_presence_event and (not turbo_blocked) and ((tin|float >= (eff_t_on_cool|float
-        + 1.0)) or (hin|float >= 55)) }}'
+        and (not turbo_blocked) and new_presence_event and (turbo_cool_strong_thermal_deviation
+        or turbo_cool_contextual_humidity) }}'
       turbo_enter_heat: '{{ (not manual_off_block_active) and (not heat_block_active)
         and new_presence_event and (not turbo_blocked) and (tin|float <= (eff_t_on_heat|float
         - 1.0)) }}'
@@ -1463,12 +1463,7 @@
   - data:
       name: AC-Matriz 160
       message: hito=evaluacion | col={{ col_idx }} | contexto={{ col_humana }} | firma={{
-        contexto_firma }} | formula={{ col_formula_matriz }} | esquema_temporada={{
-        season_idx_schema }} | indices=season {{ season_idx }},weather {{ weather_idx }},slot {{
-        slot_idx }} | col_helper_previo={{ col_idx_helper_previo }} | col_helper_previo_desfasado={{
-        col_idx_helper_previo_desfasado }} | contexto_helper_previo={{ col_humana_helper_previa }} | helper_offset_cool={{
-        helper_offset_cool_entity }} | helper_offset_heat={{ helper_offset_heat_entity }} | presencia_real={{
-        presence_ok }}({{ presence_origin }})
+        contexto_firma }} | presencia_real={{ presence_ok }}({{ presence_origin }})
         | override_activo={{ manual_presence_override_active }} | override_until={{
         manual_presence_override_until_raw }} | presencia_efectiva={{ presence_ok_effective
         }} | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base
@@ -1603,12 +1598,12 @@
           name: AC-Matriz 160
           message: hito=turbo_enter_cool | Tin={{ tin }} | Hin={{ hin }} | T_on={{
             eff_t_on_cool }} | T_off={{ eff_t_off_cool }} | mid={{ mid_cool }} | col={{
-            col_humana }} | motivo=llegada_desvio_fuerte
+            col_humana }} | motivo={{ turbo_enter_cool_reason }} | trace={{ auto_origin_trace_id }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - data:
           title: AC-Matriz 160
-          message: Se activó turbo de enfriamiento por llegada con desvío fuerte.
+          message: '{% if turbo_enter_cool_reason == ''humedad_alta_contextual'' %}Se activó turbo de enfriamiento por humedad contextual (Tin/Hin en rango de frío).{% else %}Se activó turbo de enfriamiento por desvío térmico fuerte.{% endif %}'
         action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
@@ -2795,10 +2790,9 @@
       col_idx: '{{ states(''input_text.ac_matriz_160_columna_activa_idx'') | int(0)
         }}'
       slot_name_resuelto: '{% set t = now().strftime(''%H:%M'') %}{% if ''07:01''
-        <= t <= ''10:00'' %}07:01 am - 10:00 am{% elif ''10:01'' <= t <= ''13:00''
-        %}10:01 am - 01:00 pm{% elif ''13:01'' <= t <= ''16:00'' %}01:01 pm - 04:00 pm{% elif ''16:01''
-        <= t <= ''19:00'' %}04:01 pm - 07:00 pm{% else %}07:01 pm - 09:59 pm{% endif
-        %}'
+        <= t <= ''10:00'' %}Mañana{% elif ''10:01'' <= t <= ''13:00'' %}Media mañana{%
+        elif ''13:01'' <= t <= ''16:00'' %}Mediodía{% elif ''16:01'' <= t <= ''19:00''
+        %}Tarde{% else %}Noche temprana{% endif %}'
       slot_idx_resuelto: '{% set t = now().strftime(''%H:%M'') %}{% if ''07:01'' <=
         t <= ''10:00'' %}0{% elif ''10:01'' <= t <= ''13:00'' %}1{% elif ''13:01''
         <= t <= ''16:00'' %}2{% elif ''16:01'' <= t <= ''19:00'' %}3{% else %}4{%
@@ -2824,8 +2818,6 @@
         %}'
       contexto_resuelto: '{{ weather_cat_resuelto }} | {{ season_name_resuelto }}
         | Horario {{ slot_name_resuelto }}'
-      col_formula_matriz_resuelta: weather_idx*20 + season_idx*5 + slot_idx + 1
-      season_idx_schema_resuelto: Primavera=0,Verano=1,Otoño=2,Invierno=3
       col_idx_recalculado: '{{ (weather_idx_resuelto|int * 20) + (season_idx_resuelto|int
         * 5) + (slot_idx_resuelto|int) + 1 }}'
       col_idx_resuelto: '{{ col_idx_recalculado | int(0) }}'
@@ -2880,7 +2872,6 @@
       helper_offset_previo: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje
         ~ ''_col_'' ~ col_idx }}'
       helper_offset: '{{ helper_offset_resuelto }}'
-      helper_offset_coherente: '{{ helper_offset == helper_offset_resuelto }}'
       offset_actual: '{{ states(helper_offset_resuelto) | float(0) if modo_aprendizaje
         in [''cool'',''heat''] else 0 }}'
       horario_aprendizaje_habilitado: '{{ now().strftime(''%H:%M:%S'') >= ''07:01:00''
@@ -3058,7 +3049,7 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ (col_idx|int <= 0 or col_idx_helper_desfasado) and col_idx_resuelto|int > 0 }}'
+        value_template: '{{ col_idx|int <= 0 and col_idx_resuelto|int > 0 }}'
       sequence:
       - service: input_text.set_value
         target:
@@ -3073,16 +3064,11 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: hito=learning_manual_columna_sincronizada | col_prev={{ col_idx
-            }} | col_resuelta={{ col_idx_resuelto }} | col_recalculada={{ col_idx_recalculado
-            }} | col_idx_helper_desfasado={{ col_idx_helper_desfasado }} | contexto_prev={{ contexto
-            }} | contexto_resuelto={{ contexto_activo_resuelto }} | helper_offset_resuelto={{
-            helper_offset_resuelto }} | helper_offset_previo={{ helper_offset_previo }} | weather={{
-            weather_cat_resuelto }} | weather_idx={{ weather_idx_resuelto }} | season={{
-            season_name_resuelto }} | season_idx={{ season_idx_resuelto }} | slot={{ slot_name_resuelto
-            }} | slot_idx={{ slot_idx_resuelto }} | formula={{ col_formula_matriz_resuelta }} | esquema_temporada={{
-            season_idx_schema_resuelto }} | helper_offset_coherente={{ helper_offset_coherente }} | trace_id={{
-            marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ '-' ~ evento_last_changed_ts) }}
+          message: hito=learning_manual_columna_fallback_resuelta | col_prev={{ col_idx
+            }} | col_resuelta={{ col_idx_resuelto }} | contexto_resuelto={{ contexto_activo_resuelto
+            }} | weather={{ weather_cat_resuelto }} | season={{ season_name_resuelto
+            }} | slot={{ slot_name_resuelto }} | trace_id={{ marker_trace_id if marker_trace_id|length
+            > 0 else (evento_context_id ~ '-' ~ evento_last_changed_ts) }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -3096,9 +3082,8 @@
             }} | contexto_resuelto={{ contexto_resuelto }} | weather={{ weather_cat_resuelto
             }} | weather_idx={{ weather_idx_resuelto }} | season={{ season_name_resuelto
             }} | season_idx={{ season_idx_resuelto }} | slot={{ slot_name_resuelto
-            }} | slot_idx={{ slot_idx_resuelto }} | formula={{ col_formula_matriz_resuelta }} | esquema_temporada={{
-            season_idx_schema_resuelto }} | helper_offset_coherente={{ helper_offset_coherente }} | resultado_terminal={{
-            resultado_terminal }} | razon={{ razon }}
+            }} | slot_idx={{ slot_idx_resuelto }} | resultado_terminal={{ resultado_terminal
+            }} | razon={{ razon }}
           entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -3291,7 +3276,6 @@
       helper_offset_previo: '{{ ''input_number.ac_matriz_160_offset_'' ~ modo_aprendizaje
         ~ ''_col_'' ~ col_idx }}'
       helper_offset: '{{ helper_offset_resuelto }}'
-      helper_offset_coherente: '{{ helper_offset == helper_offset_resuelto }}'
       offset_actual: '{{ states(helper_offset_resuelto) | float(0) if modo_aprendizaje
         in [''cool'',''heat''] else 0 }}'
       off_vigente: '{% if modo_aprendizaje == ''cool'' %}{{ helper_t_off_cool | float(24)
@@ -3345,13 +3329,20 @@
         %}'
       ancho_histeresis_nuevo: '{{ ((on_nuevo | float(0)) - (off_nuevo | float(0)))
         | round(2) }}'
-      resultado_terminal: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
+      manual_fan_stuck_case: '{{ transicion_compuesta_inicio_valida and not cierre_compuesto_valido and origen_clasificacion == ''manual_externo'' }}'
+      manual_fan_stuck_trace_id: '{{ trace_id_learning if trace_id_learning is defined else (marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts)) }}'
+      manual_fan_stuck_signature: '{{ manual_fan_stuck_trace_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ estado_tras_10s ~ ''|'' ~ (as_timestamp(now()) | int(0) // 10) }}'
+      manual_fan_stuck_requires_reconcile: '{{ manual_fan_stuck_case and estado_tras_10s in [''fan_only'',''auto''] }}'
+      manual_fan_stuck_cancel_reason: '{% if not manual_fan_stuck_case %}no_aplica {% elif legacy_manual_hold_active %}manual_hold_activo {% elif not horario_aprendizaje_habilitado %}fuera_horario {% elif not (manual_presence_override_active and (s24_home or movimiento_on)) %}sin_presencia_manual_override {% elif not reconcile_dedup_ok %}dedup_reconcile {% else %}none{% endif %}'
+      manual_fan_stuck_reconcile_eligible: '{{ manual_fan_stuck_requires_reconcile and manual_fan_stuck_cancel_reason == ''none'' }}'
+      resultado_terminal: '{% if manual_fan_stuck_case and not manual_fan_stuck_reconcile_eligible %}ignorado {% elif transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
         {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' %}ignorado
         {% elif not horario_aprendizaje_habilitado %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
         %}ignorado {% elif evento_manual_tipo == ''ignorado'' %}ignorado {% elif not dedup_ok %}ignorado
         {% elif not helper_valido %}error_controlado {% else %}aplicado
         {% endif %}'
-      razon: '{% if transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}fan_only_sin_cierre_termico_10s
+      razon: '{% if manual_fan_stuck_case and not manual_fan_stuck_reconcile_eligible %}fan_only_sin_reconciliacion_por_guardas
+        {% elif transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}fan_only_sin_cierre_termico_10s
         {% elif not transicion_hvac_real %}evento_no_transicion {% elif origen_clasificacion
         == ''automatico_ac_matriz_160'' %}origen_automatico_ac_matriz {% elif not
         horario_aprendizaje_habilitado %}out_of_scope_daytime_main {% elif evento_manual_tipo
@@ -3423,6 +3414,75 @@
   - choose:
     - conditions:
       - condition: template
+        value_template: '{{ manual_fan_stuck_reconcile_eligible }}'
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_manual_fan_stuck_marker
+        data:
+          value: trace_id={{ manual_fan_stuck_trace_id }}|ts_origen={{ ts_evento }}|modo_observado={{ estado_tras_10s }}|status=pending
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          hvac_mode: '{{ reconcile_target_mode }}'
+      - delay:
+          seconds: 1
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ reconcile_sp_target | int }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ reconcile_target_mode == ''cool'' }}'
+          sequence:
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              fan_mode: '{{ reconcile_fan_target_final }}'
+      - delay:
+          seconds: 2
+      - variables:
+          manual_fan_stuck_final_mode: '{{ states(''climate.0200009211c7_climate'') | lower }}'
+          manual_fan_stuck_final_sp: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'') | int(-999) }}'
+          manual_fan_stuck_confirmed: '{{ manual_fan_stuck_final_mode == reconcile_target_mode and manual_fan_stuck_final_sp == (reconcile_sp_target | int) }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ manual_fan_stuck_confirmed }}'
+          sequence:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.ac_matriz_160_manual_fan_stuck_marker
+            data:
+              value: trace_id={{ manual_fan_stuck_trace_id }}|ts_origen={{ ts_evento }}|modo_observado={{ estado_tras_10s }}|status=confirmed|final_mode={{ manual_fan_stuck_final_mode }}
+          - service: notify.mobile_app_samsung_s24
+            data:
+              title: AC-Matriz 160
+              message: '{{ hora_evento }} | TIPO= Encendido Manual Asistido | MODO= {{ ''Frío'' if reconcile_target_mode == ''cool'' else ''Calor'' }} | RESULTADO= Confirmado | RAZÓN= fan_only_off_reconciliado | TRACE= {{ manual_fan_stuck_trace_id }} | SP= {{ reconcile_sp_target | int }} | FAN= {{ reconcile_fan_target_final }}'
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=manual_off_fan_only_reconcile_confirmed | trace_id={{ manual_fan_stuck_trace_id }} | from={{ modo_anterior }} | observed={{ estado_tras_10s }} | target_mode={{ reconcile_target_mode }} | final_mode={{ manual_fan_stuck_final_mode }} | sp={{ reconcile_sp_target | int }} | fan={{ reconcile_fan_target_final }} | resultado_terminal=aplicado | razon=fan_only_off_reconciliado
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.ac_matriz_160_manual_fan_stuck_marker
+          data:
+            value: trace_id={{ manual_fan_stuck_trace_id }}|ts_origen={{ ts_evento }}|modo_observado={{ estado_tras_10s }}|status=cancelled|reason=confirmacion_fallida
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: hito=manual_off_fan_only_reconcile_cancelled | trace_id={{ manual_fan_stuck_trace_id }} | from={{ modo_anterior }} | observed={{ estado_tras_10s }} | target_mode={{ reconcile_target_mode }} | final_mode={{ manual_fan_stuck_final_mode }} | final_sp={{ manual_fan_stuck_final_sp }} | resultado_terminal=cancelado | razon=confirmacion_fallida
+            entity_id: climate.0200009211c7_climate
+
+  - choose:
+    - conditions:
+      - condition: template
         value_template: '{{ transicion_hvac_real and resultado_terminal == ''ignorado''
           and razon == ''origen_automatico_ac_matriz'' }}'
       sequence:
@@ -3464,13 +3524,8 @@
             marker_transition_expected }} | marker_transition_observed={{ marker_transition_observed_inmediata
             }} | marker_transition_observed_final={{ marker_transition_observed_final }} | cierre_compuesto_valido={{ cierre_compuesto_valido }} | transicion_observada_consolidada={{ transicion_observada_consolidada }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
             }} | razon={{ razon }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje
-            }} | columna={{ col_idx_resuelto }} | col_idx_recalculado={{ col_idx_recalculado
-            }} | col_idx_helper={{ col_idx }} | col_idx_helper_desfasado={{ col_idx_helper_desfasado
-            }} | contexto={{ contexto_activo_resuelto }} | helper_offset_resuelto={{
-            helper_offset_resuelto }} | helper_offset_previo={{ helper_offset_previo }} | helper_offset_coherente={{
-            helper_offset_coherente }} | formula={{ col_formula_matriz_resuelta }} | esquema_temporada={{
-            season_idx_schema_resuelto }} | indices=season {{ season_idx_resuelto }},weather {{ weather_idx_resuelto
-            }},slot {{ slot_idx_resuelto }} | before={{ offset_actual }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | after={{ offset_nuevo
+            }} | columna={{ col_idx_resuelto }} | contexto={{ contexto_activo_resuelto
+            }} | before={{ offset_actual }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | after={{ offset_nuevo
             }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto }} | ts={{ ts_evento }}
           entity_id: climate.0200009211c7_climate
     default:
@@ -3485,13 +3540,7 @@
           }} | marker_transition_observed_final={{ marker_transition_observed_final }} | cierre_compuesto_valido={{ cierre_compuesto_valido }} | transicion_observada_consolidada={{ transicion_observada_consolidada }} | expires_at={{ marker_expires_raw }} | resultado_terminal={{ resultado_terminal
           }} | razon={{ razon }} | from={{ modo_anterior }} | to={{ modo_nuevo }}
           | final_transition={{ transicion_final_from ~ "->" ~ transicion_final_to
-          }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok }} | col_idx_recalculado={{
-          col_idx_recalculado }} | col_idx_helper={{ col_idx }} | col_idx_helper_desfasado={{
-          col_idx_helper_desfasado }} | contexto={{ contexto_activo_resuelto }} | helper_offset_resuelto={{
-          helper_offset_resuelto }} | helper_offset_previo={{ helper_offset_previo }} | helper_offset_coherente={{
-          helper_offset_coherente }} | formula={{ col_formula_matriz_resuelta }} | esquema_temporada={{
-          season_idx_schema_resuelto }} | indices=season {{ season_idx_resuelto }},weather {{ weather_idx_resuelto
-          }},slot {{ slot_idx_resuelto }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto
+          }} | absorbed={{ intermediate_changes_absorbed }} | dedup_ok={{ dedup_ok }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto
           }}
         entity_id: climate.0200009211c7_climate
   - choose:
@@ -3960,3 +4009,51 @@
         data:
           title: AC Night
           message: "{{ mensaje_humano }}"
+
+- id: ac_horario_scheduler_matriz_160_night_v1
+  alias: AC Scheduler Matriz 160 + Night
+  description: Activa/desactiva AC-Matriz 160 y AC Night Matriz Contextual con 1 minuto de solape en transiciones.
+  mode: single
+  trigger:
+  - platform: time
+    at: '06:59:00'
+    id: day_on
+  - platform: time
+    at: '07:00:00'
+    id: night_off
+  - platform: time
+    at: '21:59:00'
+    id: night_on
+  - platform: time
+    at: '22:00:00'
+    id: day_off
+  action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: day_on
+      sequence:
+      - service: automation.turn_on
+        target:
+          entity_id: automation.ac_matriz_160
+    - conditions:
+      - condition: trigger
+        id: night_off
+      sequence:
+      - service: automation.turn_off
+        target:
+          entity_id: automation.ac_night_matriz_contextual
+    - conditions:
+      - condition: trigger
+        id: night_on
+      sequence:
+      - service: automation.turn_on
+        target:
+          entity_id: automation.ac_night_matriz_contextual
+    - conditions:
+      - condition: trigger
+        id: day_off
+      sequence:
+      - service: automation.turn_off
+        target:
+          entity_id: automation.ac_matriz_160
