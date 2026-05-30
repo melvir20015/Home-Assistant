@@ -3699,28 +3699,32 @@
       weather_label_es: "{% if weather_state == 'despejado' %}Despejado{% elif weather_state == 'parcial' %}Parcial{% elif weather_state == 'nublado' %}Nublado{% elif weather_state == 'lluvia' %}Lluvia{% elif weather_state == 'tormenta' %}Tormenta{% elif weather_state == 'niebla' %}Niebla{% elif weather_state == 'hielo' %}Hielo{% else %}Despejado{% endif %}"
       estacion_label: "{{ estacion | capitalize }}"
       franja_label: "{% if franja == '2200_0059' %}22:00-00:59{% elif franja == '0100_0359' %}01:00-03:59{% elif franja == '0400_0559' %}04:00-05:59{% else %}06:00-07:00{% endif %}"
-      off_cool_base: "{{ [25.7, [22.0, 24.2 + ((tout-24)*-0.05) + ((hout-60)*-0.01) + ((hin-55)*-0.015)] | max] | min | round(2) }}"
+      off_cool_base: 23.5
       off_heat_base: "{{ [24.0, [17.0, 20.5 + ((12-tout)*0.05) + ((hout-60)*0.005)] | max] | min | round(2) }}"
       hysteresis_base: "{{ states('input_number.ac_night_hysteresis_base')|float(0.8) }}"
-      bochorno_tin_component: "{{ [1.0, [0.0, ((tin - 23.4) / 1.8)] | max] | min }}"
-      bochorno_hin_component: "{{ [1.0, [0.0, ((hin - 52.0) / 13.0)] | max] | min }}"
-      bochorno_interior_component: "{{ ((bochorno_tin_component | float * 0.58) + (bochorno_hin_component | float * 0.42)) | round(3) }}"
-      bochorno_exterior_temp_component: "{{ [1.0, [0.0, ((tout - 25.0) / 6.0)] | max] | min }}"
-      bochorno_exterior_hum_component: "{{ [1.0, [0.0, ((hout - 62.0) / 23.0)] | max] | min }}"
-      bochorno_exterior_component: "{{ ((bochorno_exterior_temp_component | float * 0.55) + (bochorno_exterior_hum_component | float * 0.45)) | round(3) }}"
-      bochorno_score: "{{ ((bochorno_interior_component | float * 0.82) + (bochorno_exterior_component | float * 0.18)) | round(2) }}"
-      off_cool_base_plus_offset: "{{ (states('input_number.ac_night_offset_cool_col_' ~ col_idx)|float(0) + off_cool_base) | round(2) }}"
-      cool_global_bias: -0.5
-      off_cool_biased_pre_clamp: "{{ ((off_cool_base_plus_offset|float) + (cool_global_bias|float)) | round(2) }}"
-      off_cool: "{{ ([25.7, [22.0, (off_cool_biased_pre_clamp|float)] | max] | min) | round(2) }}"
+      dew_point_night: "{{ ((tin | float(0)) - ((100 - (hin | float(0))) / 5)) | round(2) }}"
+      temp_pressure_x: "{{ [1.0, [0.0, (((tin | float(0)) - 23.0) / 1.2)] | max] | min }}"
+      temp_pressure: "{{ (((temp_pressure_x | float) * (temp_pressure_x | float) * (3 - (2 * (temp_pressure_x | float)))) | round(3)) }}"
+      hum_pressure_x: "{{ [1.0, [0.0, (((hin | float(0)) - 52.0) / 18.0)] | max] | min }}"
+      hum_pressure: "{{ (((hum_pressure_x | float) * (hum_pressure_x | float) * (3 - (2 * (hum_pressure_x | float)))) | round(3)) }}"
+      dew_pressure_x: "{{ [1.0, [0.0, (((dew_point_night | float(0)) - 13.8) / 4.5)] | max] | min }}"
+      dew_pressure: "{{ (((dew_pressure_x | float) * (dew_pressure_x | float) * (3 - (2 * (dew_pressure_x | float)))) | round(3)) }}"
+      night_comfort_pressure: "{{ ((((temp_pressure | float) * 0.50) + ((hum_pressure | float) * 0.25) + ((dew_pressure | float) * 0.25)) | round(3)) }}"
+      bochorno_score: "{{ night_comfort_pressure }}"
+      exterior_adjust_cool: "{{ ([0.10, [-0.15, (((((tout | float(0)) - 24) * -0.02)) + (((hout | float(60)) - 60) * -0.003))] | max] | min) | round(2) }}"
+      comfort_pull: "{{ ((night_comfort_pressure | float) * 0.45) | round(2) }}"
+      off_cool_base_plus_offset: "{{ ((off_cool_base | float) + (states('input_number.ac_night_offset_cool_col_' ~ col_idx)|float(0)) + (exterior_adjust_cool | float)) | round(2) }}"
+      cool_global_bias: 0
+      off_cool_biased_pre_clamp: "{{ ((off_cool_base_plus_offset | float) - (comfort_pull | float)) | round(2) }}"
+      off_cool: "{{ ([24.2, [22.7, (off_cool_biased_pre_clamp | float)] | max] | min) | round(2) }}"
       off_cool_final_real: "{{ off_cool | float }}"
-      hysteresis_eff: "{{ ([1.15, [0.45, ((hysteresis_base|float) - ((bochorno_score|float) * 0.38))] | max] | min) | round(2) }}"
-      comfort_bias_cool_raw: "{{ (0 - ((bochorno_score|float) * 0.55)) | round(2) }}"
-      comfort_bias_cool: "{{ [0.0, [-0.65, (comfort_bias_cool_raw|float)] | max] | min | round(2) }}"
-      on_cool_cap_night_dynamic: "{{ ([25.1, [23.6, (24.95 - ((bochorno_score|float) * 1.1))] | max] | min) | round(2) }}"
-      on_cool_pre_cap: "{{ (off_cool_final_real + (hysteresis_eff|float) + (comfort_bias_cool|float)) | round(2) }}"
-      on_cool_candidate: "{{ [on_cool_cap_night_dynamic|float, on_cool_pre_cap|float] | min }}"
-      on_cool: "{{ ([26.0, [((off_cool_final_real + 0.35) | round(2)), (on_cool_candidate|float)] | max] | min) | round(2) }}"
+      hysteresis_eff: "{{ ([0.70, [0.42, (0.65 - ((night_comfort_pressure | float) * 0.20))] | max] | min) | round(2) }}"
+      comfort_bias_cool_raw: "{{ (0 - (comfort_pull | float)) | round(2) }}"
+      comfort_bias_cool: "{{ comfort_bias_cool_raw }}"
+      on_cool_cap_night_dynamic: "{{ ([23.95, [23.55, (23.95 - ((night_comfort_pressure | float) * 0.45))] | max] | min) | round(2) }}"
+      on_cool_pre_cap: "{{ ((off_cool_final_real | float) + (hysteresis_eff | float)) | round(2) }}"
+      on_cool_candidate: "{{ [on_cool_cap_night_dynamic | float, on_cool_pre_cap | float] | min }}"
+      on_cool: "{{ ([24.3, [((off_cool_final_real | float) + 0.35), (on_cool_candidate | float)] | max] | min) | round(2) }}"
       off_heat: "{{ ([states('input_number.ac_night_offset_heat_col_' ~ col_idx)|float(0) + off_heat_base, 24.0] | min) | round(2) }}"
       on_heat: "{{ (off_heat - (hysteresis_eff | float)) | round(2) }}"
       hvac_min_sp: "{{ state_attr(climate_ent, 'min_temp') | float(17) | round(0, 'floor') | int }}"
@@ -3768,11 +3772,11 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_SIN_PRESENCIA | MODO= {{ modo_previo_label }} | SP= {{ sp_previo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ temp_apagado_prev }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | cool_global_bias={{ cool_global_bias }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_SIN_PRESENCIA | MODO= {{ modo_previo_label }} | SP= {{ sp_previo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ temp_apagado_prev }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo={{ hvac_mode }} | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | resultado_terminal=turn_off"
+          message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo={{ hvac_mode }} | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | dew_point_night={{ dew_point_night }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | resultado_terminal=turn_off"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and tin <= off_cool }}"
@@ -3801,7 +3805,7 @@
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | resultado_terminal=turn_off"
+          message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | dew_point_night={{ dew_point_night }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | resultado_terminal=turn_off"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'heat' and tin >= off_heat }}"
@@ -3870,11 +3874,11 @@
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP= {{ sp_objetivo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | cool_global_bias={{ cool_global_bias }} | cap_on={{ on_cool_cap_night_dynamic }} | sp_ok={{ sp_confirmado_ok }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP= {{ sp_objetivo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | cap_on={{ on_cool_cap_night_dynamic }} | sp_ok={{ sp_confirmado_ok }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | cool_global_bias={{ cool_global_bias }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_objetivo={{ sp_objetivo }} | sp_reportado_equipo={{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }} | sp_confirmado_ok={{ sp_confirmado_ok }} | resultado_terminal=turn_on_cool"
+          message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_objetivo={{ sp_objetivo }} | sp_reportado_equipo={{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }} | sp_confirmado_ok={{ sp_confirmado_ok }} | resultado_terminal=turn_on_cool"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok }}"
@@ -3924,7 +3928,7 @@
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_hot_learning_recalc_setpoint_reapplied | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | off_cool={{ off_cool }} | on_cool={{ on_cool }} | sp_cool_target={{ sp_cool_target }} | payload={{ hot_learning_recalc_payload }} | resultado_terminal=setpoint_reapplied"
+          message: "hito=night_hot_learning_recalc_setpoint_reapplied | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | off_cool={{ off_cool }} | on_cool={{ on_cool }} | sp_cool_target={{ sp_cool_target }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | payload={{ hot_learning_recalc_payload }} | resultado_terminal=setpoint_reapplied"
     - conditions:
       - condition: template
         value_template: "{{ hot_learning_recalc_requested and hvac_mode == 'heat' }}"
@@ -3940,7 +3944,7 @@
     - service: logbook.log
       data:
         name: AC Night
-        message: "resultado=sin_cambio | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | cool_global_bias={{ cool_global_bias }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_cool_target={{ sp_cool_target }} | sp_heat_target={{ sp_heat_target }} | fan=Low | on_cool={{ on_cool }} | off_cool={{ off_cool }} | on_heat={{ on_heat }} | off_heat={{ off_heat }}"
+        message: "resultado=sin_cambio | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_cool_target={{ sp_cool_target }} | sp_heat_target={{ sp_heat_target }} | fan=Low | on_cool={{ on_cool }} | off_cool={{ off_cool }} | on_heat={{ on_heat }} | off_heat={{ off_heat }}"
 
 
 - id: ac_night_learning_manual_v1
@@ -4018,19 +4022,23 @@
       explicit_auto_chain_guard_valid: "{{ explicit_guard_context_match and explicit_guard_col == (col_idx | string) and (explicit_guard_consumed | int(1)) == 0 and as_timestamp(now())|int <= (explicit_guard_expires_at | int(0)) and transicion in [explicit_guard_expected, explicit_guard_echo_transition] }}"
       auto_chain_guard_valid: "{{ marker_auto_chain_guard_valid or explicit_auto_chain_guard_valid }}"
       hysteresis_base: "{{ states('input_number.ac_night_hysteresis_base')|float(0.8) }}"
-      bochorno_tin_component: "{{ [1.0, [0.0, ((tin - 23.4) / 1.8)] | max] | min }}"
-      bochorno_hin_component: "{{ [1.0, [0.0, ((hin - 52.0) / 13.0)] | max] | min }}"
-      bochorno_interior_component: "{{ ((bochorno_tin_component | float * 0.58) + (bochorno_hin_component | float * 0.42)) | round(3) }}"
-      bochorno_exterior_temp_component: "{{ [1.0, [0.0, ((tout - 25.0) / 6.0)] | max] | min }}"
-      bochorno_exterior_hum_component: "{{ [1.0, [0.0, ((hout - 62.0) / 23.0)] | max] | min }}"
-      bochorno_exterior_component: "{{ ((bochorno_exterior_temp_component | float * 0.55) + (bochorno_exterior_hum_component | float * 0.45)) | round(3) }}"
-      bochorno_score: "{{ ((bochorno_interior_component | float * 0.82) + (bochorno_exterior_component | float * 0.18)) | round(2) }}"
-      hysteresis_eff: "{{ ([1.15, [0.45, ((hysteresis_base|float) - ((bochorno_score|float) * 0.38))] | max] | min) | round(2) }}"
-      cool_global_bias: -0.5
-      off_cool_base: "{{ [25.7, [22.0, 24.2 + ((tout-24)*-0.05) + ((hout-60)*-0.01) + ((hin-55)*-0.015)] | max] | min | round(2) }}"
+      dew_point_night: "{{ ((tin | float(0)) - ((100 - (hin | float(0))) / 5)) | round(2) }}"
+      temp_pressure_x: "{{ [1.0, [0.0, (((tin | float(0)) - 23.0) / 1.2)] | max] | min }}"
+      temp_pressure: "{{ (((temp_pressure_x | float) * (temp_pressure_x | float) * (3 - (2 * (temp_pressure_x | float)))) | round(3)) }}"
+      hum_pressure_x: "{{ [1.0, [0.0, (((hin | float(0)) - 52.0) / 18.0)] | max] | min }}"
+      hum_pressure: "{{ (((hum_pressure_x | float) * (hum_pressure_x | float) * (3 - (2 * (hum_pressure_x | float)))) | round(3)) }}"
+      dew_pressure_x: "{{ [1.0, [0.0, (((dew_point_night | float(0)) - 13.8) / 4.5)] | max] | min }}"
+      dew_pressure: "{{ (((dew_pressure_x | float) * (dew_pressure_x | float) * (3 - (2 * (dew_pressure_x | float)))) | round(3)) }}"
+      night_comfort_pressure: "{{ ((((temp_pressure | float) * 0.50) + ((hum_pressure | float) * 0.25) + ((dew_pressure | float) * 0.25)) | round(3)) }}"
+      bochorno_score: "{{ night_comfort_pressure }}"
+      exterior_adjust_cool: "{{ ([0.10, [-0.15, (((((tout | float(0)) - 24) * -0.02)) + (((hout | float(60)) - 60) * -0.003))] | max] | min) | round(2) }}"
+      comfort_pull: "{{ ((night_comfort_pressure | float) * 0.45) | round(2) }}"
+      hysteresis_eff: "{{ ([0.70, [0.42, (0.65 - ((night_comfort_pressure | float) * 0.20))] | max] | min) | round(2) }}"
+      cool_global_bias: 0
+      off_cool_base: 23.5
       off_heat_base: "{{ [24.0, [17.0, 20.5 + ((12-tout)*0.05) + ((hout-60)*0.005)] | max] | min | round(2) }}"
-      off_cool_vigente: "{{ ([25.7, [22.0, (((off_cool_base | float) + (offset_prev | float) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
-      on_cool_vigente: "{% set off = (off_cool_vigente | float) %}{% set cap = ([25.1, [23.6, (24.95 - ((bochorno_score | float) * 1.1))] | max] | min) %}{% set comfort = ([0.0, [-0.65, (0 - ((bochorno_score | float) * 0.55))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float) + comfort) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([26.0, with_min_gap] | min) | round(2) }}"
+      off_cool_vigente: "{{ ([24.2, [22.7, (((off_cool_base | float) + (offset_prev | float) + (exterior_adjust_cool | float) - (comfort_pull | float)) | round(2))] | max] | min) | round(2) }}"
+      on_cool_vigente: "{% set off = (off_cool_vigente | float) %}{% set cap = ([23.95, [23.55, (23.95 - ((night_comfort_pressure | float) * 0.45))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float)) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([24.3, with_min_gap] | min) | round(2) }}"
       off_heat_vigente: "{{ ([24.0, [17.0, (((off_heat_base | float) + (offset_prev | float)) | round(2))] | max] | min) | round(2) }}"
       on_heat_vigente: "{{ ((off_heat_vigente | float) - (hysteresis_eff | float)) | round(2) }}"
       rango_dist: "{% if transicion == 'off->cool' %}{{ (tin | float(0)) - (on_cool_vigente | float(0)) }}{% elif transicion == 'cool->off' %}{{ (tin | float(0)) - (off_cool_vigente | float(0)) }}{% elif transicion == 'off->heat' %}{{ (tin | float(0)) - (on_heat_vigente | float(0)) }}{% elif transicion == 'heat->off' %}{{ (tin | float(0)) - (off_heat_vigente | float(0)) }}{% else %}0{% endif %}"
@@ -4038,15 +4046,15 @@
       fuera_rango_anchor: "{{ (transicion == 'off->cool' and (tin | float(0)) < (off_cool_vigente | float(0))) or (transicion == 'off->heat' and (tin | float(0)) > (off_heat_vigente | float(0))) }}"
       delta: "{% if evento_manual_tipo not in ['encendido_manual','apagado_manual'] %}0{% elif transicion == 'off->cool' %}{{ -1 * (delta_tramo | float(0)) }}{% elif transicion == 'cool->off' %}{{ delta_tramo | float(0) }}{% elif transicion == 'off->heat' %}{{ delta_tramo | float(0) }}{% elif transicion == 'heat->off' %}{{ -1 * (delta_tramo | float(0)) }}{% else %}0{% endif %}"
       offset_new_delta: "{{ [3.0, [-3.0, (offset_prev + (delta|float(0)))] | max] | min | round(2) if valid_transition else offset_prev }}"
-      hot_recalc_guard_off_cool: "{{ ([25.7, [22.0, (((off_cool_base | float) + (hot_recalc_guard_offset_new | float(0)) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
-      explicit_guard_off_cool: "{{ ([25.7, [22.0, (((off_cool_base | float) + (explicit_guard_offset_new | float(0)) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
+      hot_recalc_guard_off_cool: "{{ ([24.2, [22.7, (((off_cool_base | float) + (hot_recalc_guard_offset_new | float(0)) + (exterior_adjust_cool | float) - (comfort_pull | float)) | round(2))] | max] | min) | round(2) }}"
+      explicit_guard_off_cool: "{{ ([24.2, [22.7, (((off_cool_base | float) + (explicit_guard_offset_new | float(0)) + (exterior_adjust_cool | float) - (comfort_pull | float)) | round(2))] | max] | min) | round(2) }}"
       explicit_auto_off_guard_valid: "{{ transicion == 'cool->off' and not marker_valid and explicit_guard_expected == 'cool->off' and explicit_guard_col == (col_idx | string) and (explicit_guard_consumed | int(1)) == 0 and as_timestamp(now())|int <= (explicit_guard_expires_at | int(0)) and ((tin | float(0)) <= (explicit_guard_off_cool | float(0)) or explicit_guard_context_match) }}"
       hot_recalc_context_match: "{{ trigger_user_id == '' and hot_recalc_guard_trace not in ['', 'unknown', 'unavailable'] and (trigger_context_id == hot_recalc_guard_trace or trigger_parent_id == hot_recalc_guard_trace) }}"
       hot_recalc_payload_guard_valid: "{{ transicion == 'cool->off' and not marker_valid and hot_recalc_guard_transition == 'off->cool' and hot_recalc_guard_mode == 'cool' and hot_recalc_guard_col == (col_idx | string) and (as_timestamp(now())|int - (hot_recalc_guard_ts | int(0))) >= 0 and (as_timestamp(now())|int - (hot_recalc_guard_ts | int(0))) <= 60 and ((tin | float(0)) <= (hot_recalc_guard_off_cool | float(0)) or hot_recalc_context_match) }}"
       hot_recalc_guard_valid: "{{ explicit_auto_off_guard_valid or hot_recalc_payload_guard_valid }}"
       origen_clasificacion: "{{ 'automatico_night' if marker_valid else 'automatico_night_auto_chain_guard' if auto_chain_guard_valid else 'automatico_night_hot_recalc_guard' if hot_recalc_guard_valid else 'manual_externo' }}"
       offset_for_threshold: "{{ offset_new_delta if origen_clasificacion == 'manual_externo' else hot_recalc_guard_offset_new if (hot_recalc_guard_valid and hot_recalc_guard_offset_new not in ['', 'unknown', 'unavailable']) else explicit_guard_offset_new if (hot_recalc_guard_valid and explicit_guard_offset_new not in ['', 'unknown', 'unavailable']) else offset_prev }}"
-      off_cool_actual: "{{ ([25.7, [22.0, (((off_cool_base | float) + (offset_for_threshold | float) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) }}"
+      off_cool_actual: "{{ ([24.2, [22.7, (((off_cool_base | float) + (offset_for_threshold | float) + (exterior_adjust_cool | float) - (comfort_pull | float)) | round(2))] | max] | min) | round(2) }}"
       off_heat_actual: "{{ ([24.0, [17.0, (((off_heat_base | float) + (offset_for_threshold | float)) | round(2))] | max] | min) | round(2) }}"
       anchor_margin_cool: 0.5
       anchor_margin_heat: 0.5
@@ -4054,19 +4062,19 @@
       heat_manual_on_anchor_needed: "{{ origen_clasificacion == 'manual_externo' and transicion == 'off->heat' and modo == 'heat' and (tin | float(0)) > (off_heat_actual | float(0)) }}"
       off_cool_anchor_obj: "{{ ((tin | float(0)) - (anchor_margin_cool | float(0.5))) | round(2) }}"
       off_heat_anchor_obj: "{{ ((tin | float(0)) + (anchor_margin_heat | float(0.5))) | round(2) }}"
-      offset_anchor_raw: "{{ (((off_cool_anchor_obj | float(0)) - (off_cool_base | float(0)) - (cool_global_bias | float(0))) | round(2)) }}"
+      offset_anchor_raw: "{{ (((off_cool_anchor_obj | float(0)) - (off_cool_base | float(0)) - (exterior_adjust_cool | float(0)) + (comfort_pull | float(0))) | round(2)) }}"
       offset_heat_anchor_raw: "{{ (((off_heat_anchor_obj | float(0)) - (off_heat_base | float(0))) | round(2)) }}"
       offset_anchor_clamped: "{{ ([3.0, [-3.0, (offset_anchor_raw | float(0))] | max] | min) | round(2) }}"
       offset_heat_anchor_clamped: "{{ ([3.0, [-3.0, (offset_heat_anchor_raw | float(0))] | max] | min) | round(2) }}"
       anchor_limited_by_offset_clamp: "{{ (offset_anchor_raw | float(0)) != (offset_anchor_clamped | float(0)) }}"
       heat_anchor_limited_by_offset_clamp: "{{ (offset_heat_anchor_raw | float(0)) != (offset_heat_anchor_clamped | float(0)) }}"
       offset_new: "{{ offset_anchor_clamped if (cool_manual_on_anchor_needed | bool(false)) else offset_heat_anchor_clamped if (heat_manual_on_anchor_needed | bool(false)) else offset_new_delta }}"
-      off_cool_resultante: "{{ ([25.7, [22.0, (((off_cool_base | float) + (offset_new | float) + (cool_global_bias | float)) | round(2))] | max] | min) | round(2) if origen_clasificacion == 'manual_externo' else off_cool_actual }}"
+      off_cool_resultante: "{{ ([24.2, [22.7, (((off_cool_base | float) + (offset_new | float) + (exterior_adjust_cool | float) - (comfort_pull | float)) | round(2))] | max] | min) | round(2) if origen_clasificacion == 'manual_externo' else off_cool_actual }}"
       off_heat_resultante: "{{ ([24.0, [17.0, (((off_heat_base | float) + (offset_new | float)) | round(2))] | max] | min) | round(2) if origen_clasificacion == 'manual_externo' else off_heat_actual }}"
-      off_cool_limited_by_thermal_clamp: "{{ (((off_cool_base | float) + (offset_new | float) + (cool_global_bias | float)) | round(2)) != (off_cool_resultante | float(0)) }}"
+      off_cool_limited_by_thermal_clamp: "{{ (((off_cool_base | float) + (offset_new | float) + (exterior_adjust_cool | float) - (comfort_pull | float)) | round(2)) != (off_cool_resultante | float(0)) }}"
       off_heat_limited_by_thermal_clamp: "{{ (((off_heat_base | float) + (offset_new | float)) | round(2)) != (off_heat_resultante | float(0)) }}"
-      on_cool_actual: "{% set off = (off_cool_actual | float) %}{% set cap = ([25.1, [23.6, (24.95 - ((bochorno_score | float) * 1.1))] | max] | min) %}{% set comfort = ([0.0, [-0.65, (0 - ((bochorno_score | float) * 0.55))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float) + comfort) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([26.0, with_min_gap] | min) | round(2) }}"
-      on_cool_resultante: "{% set off = (off_cool_resultante | float) %}{% set cap = ([25.1, [23.6, (24.95 - ((bochorno_score | float) * 1.1))] | max] | min) %}{% set comfort = ([0.0, [-0.65, (0 - ((bochorno_score | float) * 0.55))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float) + comfort) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([26.0, with_min_gap] | min) | round(2) }}"
+      on_cool_actual: "{% set off = (off_cool_actual | float) %}{% set cap = ([23.95, [23.55, (23.95 - ((night_comfort_pressure | float) * 0.45))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float)) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([24.3, with_min_gap] | min) | round(2) }}"
+      on_cool_resultante: "{% set off = (off_cool_resultante | float) %}{% set cap = ([23.95, [23.55, (23.95 - ((night_comfort_pressure | float) * 0.45))] | max] | min) %}{% set pre = (off + (hysteresis_eff | float)) %}{% set bounded_pre = ([cap, pre] | min) %}{% set with_min_gap = ([off + 0.35, bounded_pre] | max) %}{{ ([24.3, with_min_gap] | min) | round(2) }}"
       on_heat_actual: "{{ ((off_heat_actual | float) - (hysteresis_eff | float)) | round(2) }}"
       on_heat_resultante: "{{ ((off_heat_resultante | float) - (hysteresis_eff | float)) | round(2) }}"
       auto_off_post_manual_on_threshold_cool: "{{ marker_valid and transicion == 'cool->off' and marker_last_action == 'turn_off' and (marker_auto_event in ['', 'AUTO_OFF_NIGHT_UMBRAL']) and (tin | float(0)) <= (off_cool_resultante | float(0)) }}"

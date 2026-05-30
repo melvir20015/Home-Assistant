@@ -2860,7 +2860,8 @@ Implementación contractual:
 
 ## 54) Night — bias global COOL de confort (-0.5 °C) en baseline nocturno (2026-05-26)
 
-- **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) en `automations.yaml`.
+- **Estado actual:** reemplazado por la sección 66; `cool_global_bias` ya no es parche activo y queda en `0` solo por compatibilidad de trazas.
+- **Alcance histórico:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) en `automations.yaml`.
 - **Objetivo operativo:** adelantar reacción de frío nocturno para reducir bochorno/sudoración, aplicando un ajuste global únicamente al flujo COOL de Night.
 - **Fórmula aplicada (COOL Night):**
   - `cool_global_bias = -0.5`
@@ -2996,10 +2997,10 @@ Implementación contractual:
 
 - **Alcance:** automatización `AC Night - Aprendizaje manual por columna` (`id: ac_night_learning_manual_v1`) en `automations.yaml`.
 - **Condición estricta de activación:** el anchor solo aplica cuando la clasificación final es `origen_clasificacion=manual_externo`, la transición real es `off->cool`, el modo aprendido es `cool` y `Tin < off_cool_actual` calculado con el delta nocturno normal. Si la transición pertenece a cadenas automáticas Night, recálculo caliente, guardias por `context/parent`, eco post apagado automático o cualquier origen distinto de `manual_externo`, se conserva el comportamiento de protección y no se aplica anchor.
-- **Fórmula del objetivo:** para un encendido manual real en frío cuando la habitación ya estaba por debajo del umbral de apagado, el sistema interpreta intención de enfriar antes y calcula `off_cool_objetivo = Tin - 0.5`. Ese objetivo se transforma a offset con `offset_anchor_raw = off_cool_objetivo - off_cool_base - cool_global_bias`.
+- **Fórmula del objetivo:** para un encendido manual real en frío cuando la habitación ya estaba por debajo del umbral de apagado, el sistema interpreta intención de enfriar antes y calcula `off_cool_objetivo = Tin - 0.5`. Desde la sección 66 ese objetivo se transforma a offset con `offset_anchor_raw = off_cool_objetivo - off_cool_base - exterior_adjust_cool + comfort_pull`, porque `cool_global_bias` queda en `0` y ya no participa como parche activo.
 - **Resolución del offset:** el cálculo histórico de delta fijo se conserva como `offset_new_delta`. El offset final `offset_new` usa `offset_anchor_clamped` únicamente si `cool_manual_on_anchor_needed=true`; en cualquier otro caso usa `offset_new_delta`.
-- **Clamps respetados:** el anchor respeta el clamp de offset `[-3.0,+3.0]` mediante `offset_anchor_clamped` y mantiene los límites térmicos nocturnos existentes para `off_cool_resultante` (`[22.0,25.7]`). La telemetría diferencia si el objetivo fue limitado por clamp de offset (`anchor_limited_by_offset_clamp`) y conserva el umbral resultante para auditoría.
-- **Histéresis dinámica nocturna:** `on_cool_resultante` se recalcula desde `off_cool_resultante` usando la histéresis dinámica Night (`hysteresis_eff`), el sesgo de confort por bochorno y los caps nocturnos existentes. No se usa una regla fija `ON = OFF + 1.0`.
+- **Clamps respetados:** el anchor respeta el clamp de offset `[-3.0,+3.0]` mediante `offset_anchor_clamped` y mantiene los límites térmicos nocturnos vigentes para `off_cool_resultante` (`[22.7,24.2]` desde la sección 66). La telemetría diferencia si el objetivo fue limitado por clamp de offset (`anchor_limited_by_offset_clamp`) y conserva el umbral resultante para auditoría.
+- **Histéresis dinámica nocturna:** `on_cool_resultante` se recalcula desde `off_cool_resultante` usando la histéresis dinámica Night (`hysteresis_eff`) y el cap dinámico continuo de `night_comfort_pressure`. No se usa una regla fija `ON = OFF + 1.0`.
 - **Trazabilidad:** el payload caliente y los logs de `AC Night Learning` exponen diagnóstico de anchor (`anchor_aplicado`, `off_cool_anchor_obj`, `offset_anchor_raw`, `offset_anchor_clamped`, `anchor_limited_by_offset_clamp`, `hysteresis_eff`, `off_cool_resultante`, `on_cool_resultante`) para poder reconstruir si el aprendizaje fue delta normal o anchor manual real.
 
 ## 65) AC — aprendizaje manual por columna contra el umbral que debió actuar (2026-05-29)
@@ -3010,3 +3011,19 @@ Implementación contractual:
 - **Magnitud dinámica:** `delta_tramo` se calcula con la magnitud absoluta de `rango_dist`, mientras que el signo del ajuste queda centralizado en `delta`: COOL encendido baja offset, COOL apagado sube offset, HEAT encendido sube offset y HEAT apagado baja offset.
 - **Anchors fuera de rango:** se conserva el comportamiento especial de `fuera_rango_anchor` para encendidos manuales fuera del rango ON/OFF. En Night se mantiene el anchor existente de COOL y se agrega su espejo para HEAT cuando un encendido manual ocurre por encima del `OFF` de calor vigente.
 - **Intención operativa:** el aprendizaje deja de medir contra el umbral contrario de la histéresis cuando Tin está dentro de la banda; ahora mide contra el umbral que debió haber actuado automáticamente.
+
+## 66) AC Night — fórmula predictiva continua de confort nocturno COOL (2026-05-30)
+
+- **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) y espejo de cálculo térmico en `AC Night - Aprendizaje manual por columna` para conservar compatibilidad de umbrales, anchors y recálculo caliente.
+- **Eliminación del parche fijo:** `cool_global_bias` deja de ser un sesgo operativo de `-0.5`; se conserva únicamente como variable de compatibilidad con valor `0` para no romper trazas históricas o plantillas que todavía la inspeccionen.
+- **Base nocturna nueva:** `off_cool_base` queda centrado en `23.5 °C`. El umbral final `off_cool` ya no nace de una base exterior alta, sino de `23.5 + offset_cool_col + exterior_adjust_cool - comfort_pull` con clamp nocturno `[22.7, 24.2]`.
+- **Modelo continuo y predictivo:** el confort nocturno de frío usa `Tin`, `Hin` y un punto de rocío aproximado robusto sin `ln()` (`dew_point_night = Tin - ((100 - Hin) / 5)`). Cada señal se normaliza con `smoothstep(x)=x*x*(3-2*x)` para evitar saltos duros:
+  - `temp_pressure`: empieza cerca de `23.0 °C` y llega fuerte cerca de `24.2 °C`.
+  - `hum_pressure`: empieza cerca de `52%` y crece gradualmente hacia `70%`.
+  - `dew_pressure`: empieza cerca de `13.8 °C` y crece hacia `18.3 °C`.
+  - `night_comfort_pressure = 0.50*temp_pressure + 0.25*hum_pressure + 0.25*dew_pressure`.
+- **Contrato de umbrales COOL:** `bochorno_score` queda como alias de `night_comfort_pressure`; `comfort_pull = night_comfort_pressure * 0.45`; `hysteresis_eff = clamp(0.65 - night_comfort_pressure*0.20, 0.42, 0.70)`; `on_cool_cap_night_dynamic = clamp(23.95 - night_comfort_pressure*0.45, 23.55, 23.95)`; `on_cool = max(off_cool + 0.35, min(off_cool + hysteresis_eff, on_cool_cap_night_dynamic))` con tope nocturno razonable.
+- **Ajuste exterior secundario:** `exterior_adjust_cool = clamp(((Tout - 24) * -0.02) + ((Hout - 60) * -0.003), -0.15, 0.10)`. El exterior modula suavemente, pero el confort interior domina la decisión.
+- **Aprendizaje por columna preservado:** el offset aprendido sigue entrando mediante `input_number.ac_night_offset_cool_col_<col_idx>`. El espejo en aprendizaje manual usa la misma base/pull/ajuste exterior para que `off_cool_vigente`, anchors manuales y `off_cool_resultante` representen el mismo contrato térmico que la matriz nocturna.
+- **Recálculo caliente preservado:** el trigger por `input_text.ac_night_hot_learning_recalc_payload` sigue intacto. Cuando el aprendizaje modifica un offset en caliente, la matriz recalcula inmediatamente `off_cool`, `on_cool` y `sp_cool_target` con el nuevo contrato sin cambiar markers ni guardias causales.
+- **Observabilidad:** logs de `AC Night` agregan diagnóstico compacto de `dew_point_night`, `temp_pressure`, `hum_pressure`, `dew_pressure`, `night_comfort_pressure`, `comfort_pull` y `exterior_adjust_cool`; las notificaciones móviles mantienen una versión corta para no crecer demasiado.
