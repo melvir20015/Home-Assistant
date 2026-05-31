@@ -3027,3 +3027,12 @@ Implementación contractual:
 - **Aprendizaje por columna preservado:** el offset aprendido sigue entrando mediante `input_number.ac_night_offset_cool_col_<col_idx>`. El espejo en aprendizaje manual usa la misma base/pull/ajuste exterior para que `off_cool_vigente`, anchors manuales y `off_cool_resultante` representen el mismo contrato térmico que la matriz nocturna.
 - **Recálculo caliente preservado:** el trigger por `input_text.ac_night_hot_learning_recalc_payload` sigue intacto. Cuando el aprendizaje modifica un offset en caliente, la matriz recalcula inmediatamente `off_cool`, `on_cool` y `sp_cool_target` con el nuevo contrato sin cambiar markers ni guardias causales.
 - **Observabilidad:** logs de `AC Night` agregan diagnóstico compacto de `dew_point_night`, `temp_pressure`, `hum_pressure`, `dew_pressure`, `night_comfort_pressure`, `comfort_pull` y `exterior_adjust_cool`; las notificaciones móviles mantienen una versión corta para no crecer demasiado.
+
+## 67) AC Night — aprendizaje manual COOL con anchor previo al delta (2026-05-31)
+
+- **Alcance:** automatización `AC Night - Aprendizaje manual por columna` (`id: ac_night_learning_manual_v1`) en `automations.yaml`.
+- **Prioridad corregida para `off->cool` manual externo:** la decisión se toma contra los umbrales vigentes previos al aprendizaje (`off_cool_vigente` y `on_cool_vigente`), no contra umbrales recalculados con `offset_new_delta`.
+- **Anchor bajo OFF:** si `Tin < off_cool_vigente`, se usa la rama `anchor_below_off`; `off_cool_anchor_obj = Tin - 0.50` y el offset final guardado es el valor absoluto `offset_anchor_clamped`, no `offset_prev + offset_anchor_raw` ni el delta por tramo.
+- **Delta variable dentro de banda:** si `off_cool_vigente <= Tin < on_cool_vigente`, se usa `variable_delta_inside_band` con `distancia_a_on = on_cool_vigente - Tin` y deltas negativos de `-0.05`, `-0.10`, `-0.25` o `-0.50` según la distancia al ON automático.
+- **Caso anómalo en o sobre ON:** si `Tin >= on_cool_vigente`, se usa `anomalous_at_or_above_on`; no se aplica anchor ni aprendizaje agresivo y el delta queda en `0` para preservar el offset.
+- **Observabilidad:** los logs y el payload de recálculo caliente exponen `decision_branch`, `distancia_a_on`, `delta_tramo`, `delta_aplicado_real`, `off_cool_vigente`, `on_cool_vigente`, `offset_new`, `anchor_aplicado`, `anchor_limited_by_offset_clamp` y `off_cool_limited_by_thermal_clamp` para auditar clamps y distinguir anchor absoluto de delta gradual.
