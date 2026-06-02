@@ -3662,7 +3662,8 @@
   alias: AC Night Matriz Contextual
   trace:
     stored_traces: 200
-  mode: restart
+  mode: queued
+  max: 10
   trigger:
   - platform: time_pattern
     minutes: "/5"
@@ -3735,6 +3736,15 @@
       sp_heat_target_base: 24
       sp_heat_target: "{{ [hvac_max_sp|int, [hvac_min_sp|int, (sp_heat_target_base|int)] | max] | min | int }}"
       hvac_mode: "{{ states(climate_ent) }}"
+      auto_off_pending_raw: "{{ states('input_text.ac_night_auto_off_pending_payload') }}"
+      auto_off_pending_kind: "{{ auto_off_pending_raw.split('kind=')[1].split('|')[0] if 'kind=' in auto_off_pending_raw else '' }}"
+      auto_off_pending_climate: "{{ auto_off_pending_raw.split('climate=')[1].split('|')[0] if 'climate=' in auto_off_pending_raw else '' }}"
+      auto_off_pending_event: "{{ auto_off_pending_raw.split('event=')[1].split('|')[0] if 'event=' in auto_off_pending_raw else '' }}"
+      auto_off_pending_col: "{{ auto_off_pending_raw.split('col=')[1].split('|')[0] if 'col=' in auto_off_pending_raw else '' }}"
+      auto_off_pending_exp: "{{ auto_off_pending_raw.split('exp=')[1].split('|')[0] if 'exp=' in auto_off_pending_raw else '0' }}"
+      auto_off_pending_trace: "{{ auto_off_pending_raw.split('trace=')[1].split('|')[0] if 'trace=' in auto_off_pending_raw else '' }}"
+      auto_off_pending_result: "{{ auto_off_pending_raw.split('result=')[1].split('|')[0] if 'result=' in auto_off_pending_raw else '' }}"
+      auto_off_pending_recent: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) and auto_off_pending_result not in ['confirmed','failed','suppressed'] }}"
       trigger_entity: "{{ trigger.entity_id if trigger is defined and trigger.platform == 'state' else '' }}"
       hot_learning_recalc_requested: "{{ trigger_entity == 'input_text.ac_night_hot_learning_recalc_payload' }}"
       hot_learning_recalc_payload: "{{ states('input_text.ac_night_hot_learning_recalc_payload') }}"
@@ -3779,14 +3789,28 @@
           message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo={{ hvac_mode }} | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | dew_point_night={{ dew_point_night }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | resultado_terminal=turn_off"
     - conditions:
       - condition: template
+        value_template: "{{ hvac_mode == 'cool' and tin <= off_cool and auto_off_pending_recent }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_auto_off_suppressed | trace_id={{ context.id|default('na') }} | pending_trace={{ auto_off_pending_trace }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo_previo={{ hvac_mode }} | modo_actual={{ states(climate_ent) }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | pending_result={{ auto_off_pending_result }} | motivo=apagado_pendiente_reciente_mismo_contexto | resultado_terminal=suppressed"
+    - conditions:
+      - condition: template
         value_template: "{{ hvac_mode == 'cool' and tin <= off_cool }}"
       sequence:
       - variables:
           modo_previo_label: Frío
+          estado_previo: "{{ states(climate_ent) }}"
+          auto_off_pending_exp_new: "{{ (as_timestamp(now()) + 45) | int }}"
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_auto_off_pending_payload}
+        data:
+          value: "kind=night_auto_off_pending|event=AUTO_OFF_NIGHT_UMBRAL|climate={{ climate_ent }}|col={{ col_idx }}|trace={{ context.id|default('na') }}|exp={{ auto_off_pending_exp_new }}|result=sent"
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
-          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|auto_event=AUTO_OFF_NIGHT_UMBRAL|expected_transition=cool->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0|reason=tin_ya_estaba_por_debajo_de_off_cool"
+          value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|auto_event=AUTO_OFF_NIGHT_UMBRAL|expected_transition=cool->off|expires_at={{ (as_timestamp(now()) + 45) | int }}|consumed=0|reason=tin_bajo_off_cool_confirm_pending"
       - choose:
         - conditions:
           - condition: template
@@ -3798,14 +3822,40 @@
               value: "expected_transition=cool->off|echo_transition=|col={{ col_idx }}|offset_new={{ hot_learning_recalc_offset_new }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=hot_recalc_matrix_auto_off|trace={{ context.id|default('na') }}"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
-      - service: notify.mobile_app_samsung_s24
+      - wait_template: "{{ states(climate_ent) == 'off' }}"
+        timeout: "00:00:08"
+        continue_on_timeout: true
+      - variables:
+          estado_posterior: "{{ states(climate_ent) }}"
+          off_confirmado: "{{ states(climate_ent) == 'off' }}"
+          resultado_confirmacion: "{{ 'confirmed' if off_confirmado else 'pending_timeout' }}"
+          auto_off_pending_exp_terminal: "{{ (as_timestamp(now()) + 30) | int }}"
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_auto_off_pending_payload}
         data:
-          title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_UMBRAL | MODO= {{ modo_previo_label }} | SP= {{ sp_cool_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
-      - service: logbook.log
-        data:
-          name: AC Night
-          message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | dew_point_night={{ dew_point_night }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | resultado_terminal=turn_off"
+          value: "kind=night_auto_off_pending|event=AUTO_OFF_NIGHT_UMBRAL|climate={{ climate_ent }}|col={{ col_idx }}|trace={{ context.id|default('na') }}|exp={{ auto_off_pending_exp_terminal }}|result={{ resultado_confirmacion }}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ off_confirmado }}"
+          sequence:
+          - service: notify.mobile_app_samsung_s24
+            data:
+              title: AC Night Matriz Contextual
+              message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_UMBRAL | MODO= {{ modo_previo_label }} | SP= {{ sp_cool_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | CONFIRMADO= off | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          - service: logbook.log
+            data:
+              name: AC Night
+              message: "hito=night_auto_off_confirmed_notified | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo=cool | estado_previo={{ estado_previo }} | estado_posterior={{ estado_posterior }} | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | dew_point_night={{ dew_point_night }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | resultado_confirmacion={{ resultado_confirmacion }} | resultado_terminal=turn_off_confirmed"
+        default:
+        - service: notify.mobile_app_samsung_s24
+          data:
+            title: AC Night Matriz Contextual
+            message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_UMBRAL_PENDIENTE | MODO= {{ modo_previo_label }} | INTERIOR= {{ tin }}°C | TEMP APAGADO= {{ off_cool }}°C | ESTADO_PREVIO= {{ estado_previo }} | ESTADO_ACTUAL= {{ estado_posterior }} | CONTEXTO= Columna {{ col_idx }}"
+        - service: logbook.log
+          data:
+            name: AC Night
+            message: "hito=night_auto_off_pending_timeout | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo=cool | estado_previo={{ estado_previo }} | estado_posterior={{ estado_posterior }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | resultado_confirmacion={{ resultado_confirmacion }} | resultado_terminal=turn_off_pending"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'heat' and tin >= off_heat }}"

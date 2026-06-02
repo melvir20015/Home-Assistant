@@ -130,6 +130,10 @@ ac_night_auto_origin_payload:
   name: AC Night Auto Origin Payload
   max: 255
   initial: sin_marker
+ac_night_auto_off_pending_payload:
+  name: AC Night Auto OFF Pending Payload
+  max: 255
+  initial: sin_pending
 ac_night_learning_last_signature:
   name: AC Night Learning Last Signature
   max: 255
