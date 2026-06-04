@@ -194,28 +194,34 @@ ac_night_reporte_diagnostico:
           {% elif w in ['snowy', 'snow', 'snowy-rainy'] %}Nevando
           {% else %}Condición no disponible
           {% endif %}
-        off_cool_base: "{{ [25.7, [22.0, 24.2 + ((tout|float(0)-24)*-0.05) + ((hout|float(60)-60)*-0.01) + ((hin|float(0)-55)*-0.015)] | max] | min | round(2) }}"
+        off_cool_base: 23.5
         off_heat_base: "{{ [24.0, [17.0, 20.5 + ((12-(tout|float(0)))*0.05) + (((hout|float(60))-60)*0.005)] | max] | min | round(2) }}"
         hysteresis_base: "{{ states('input_number.ac_night_hysteresis_base')|float(0.8) }}"
-        bochorno_tin_component: "{{ [1.0, [0.0, ((tin|float(0) - 23.4) / 1.8)] | max] | min }}"
-        bochorno_hin_component: "{{ [1.0, [0.0, ((hin|float(0) - 52.0) / 13.0)] | max] | min }}"
-        bochorno_interior_component: "{{ ((bochorno_tin_component | float * 0.58) + (bochorno_hin_component | float * 0.42)) | round(3) }}"
-        bochorno_exterior_temp_component: "{{ [1.0, [0.0, (((tout|float(0)) - 25.0) / 6.0)] | max] | min }}"
-        bochorno_exterior_hum_component: "{{ [1.0, [0.0, (((hout|float(60)) - 62.0) / 23.0)] | max] | min }}"
-        bochorno_exterior_component: "{{ ((bochorno_exterior_temp_component | float * 0.55) + (bochorno_exterior_hum_component | float * 0.45)) | round(3) }}"
-        bochorno_score: "{{ ((bochorno_interior_component | float * 0.82) + (bochorno_exterior_component | float * 0.18)) | round(2) }}"
-        off_cool_base_plus_offset: "{{ (states('input_number.ac_night_offset_cool_col_' ~ col_idx)|float(0) + off_cool_base|float) | round(2) }}"
-        cool_global_bias: -0.5
-        off_cool_biased_pre_clamp: "{{ ((off_cool_base_plus_offset|float) + (cool_global_bias|float)) | round(2) }}"
-        off_cool: "{{ ([25.7, [22.0, (off_cool_biased_pre_clamp|float)] | max] | min) | round(2) }}"
+        dew_point_night: "{{ ((tin | float(0)) - ((100 - (hin | float(0))) / 5)) | round(2) }}"
+        temp_pressure_x: "{{ [1.0, [0.0, (((tin | float(0)) - 23.0) / 1.2)] | max] | min }}"
+        temp_pressure: "{{ (((temp_pressure_x | float) * (temp_pressure_x | float) * (3 - (2 * (temp_pressure_x | float)))) | round(3)) }}"
+        hum_pressure_x: "{{ [1.0, [0.0, (((hin | float(0)) - 52.0) / 18.0)] | max] | min }}"
+        hum_pressure: "{{ (((hum_pressure_x | float) * (hum_pressure_x | float) * (3 - (2 * (hum_pressure_x | float)))) | round(3)) }}"
+        dew_pressure_x: "{{ [1.0, [0.0, (((dew_point_night | float(0)) - 13.8) / 4.5)] | max] | min }}"
+        dew_pressure: "{{ (((dew_pressure_x | float) * (dew_pressure_x | float) * (3 - (2 * (dew_pressure_x | float)))) | round(3)) }}"
+        night_comfort_pressure: "{{ ((((temp_pressure | float) * 0.50) + ((hum_pressure | float) * 0.25) + ((dew_pressure | float) * 0.25)) | round(3)) }}"
+        bochorno_score: "{{ night_comfort_pressure }}"
+        exterior_adjust_cool: "{{ ([0.10, [-0.15, (((((tout | float(0)) - 24) * -0.02)) + (((hout | float(60)) - 60) * -0.003))] | max] | min) | round(2) }}"
+        comfort_pull: "{{ ((night_comfort_pressure | float) * 0.45) | round(2) }}"
+        offset_cool_col_entity: "{{ 'input_number.ac_night_offset_cool_col_' ~ col_idx }}"
+        offset_cool_col_value: "{{ states(offset_cool_col_entity) | float(0) }}"
+        off_cool_base_plus_offset: "{{ ((off_cool_base | float) + (offset_cool_col_value | float(0)) + (exterior_adjust_cool | float)) | round(2) }}"
+        cool_global_bias: 0
+        off_cool_biased_pre_clamp: "{{ ((off_cool_base_plus_offset | float) - (comfort_pull | float)) | round(2) }}"
+        off_cool: "{{ ([24.2, [22.7, (off_cool_biased_pre_clamp | float)] | max] | min) | round(2) }}"
         off_cool_final_real: "{{ off_cool | float }}"
-        hysteresis_eff: "{{ ([1.15, [0.45, ((hysteresis_base|float) - ((bochorno_score|float) * 0.38))] | max] | min) | round(2) }}"
-        comfort_bias_cool_raw: "{{ (0 - ((bochorno_score|float) * 0.55)) | round(2) }}"
-        comfort_bias_cool: "{{ [0.0, [-0.65, (comfort_bias_cool_raw|float)] | max] | min | round(2) }}"
-        on_cool_cap_night_dynamic: "{{ ([25.1, [23.6, (24.95 - ((bochorno_score|float) * 1.1))] | max] | min) | round(2) }}"
-        on_cool_pre_cap: "{{ (off_cool_final_real|float + (hysteresis_eff|float) + (comfort_bias_cool|float)) | round(2) }}"
-        on_cool_candidate: "{{ [on_cool_cap_night_dynamic|float, on_cool_pre_cap|float] | min }}"
-        on_cool: "{{ ([26.0, [((off_cool_final_real|float + 0.35) | round(2)), (on_cool_candidate|float)] | max] | min) | round(2) }}"
+        hysteresis_eff: "{{ ([0.70, [0.42, (0.65 - ((night_comfort_pressure | float) * 0.20))] | max] | min) | round(2) }}"
+        comfort_bias_cool_raw: "{{ (0 - (comfort_pull | float)) | round(2) }}"
+        comfort_bias_cool: "{{ comfort_bias_cool_raw }}"
+        on_cool_cap_night_dynamic: "{{ ([23.95, [23.55, (23.95 - ((night_comfort_pressure | float) * 0.45))] | max] | min) | round(2) }}"
+        on_cool_pre_cap: "{{ ((off_cool_final_real | float) + (hysteresis_eff | float)) | round(2) }}"
+        on_cool_candidate: "{{ [on_cool_cap_night_dynamic | float, on_cool_pre_cap | float] | min }}"
+        on_cool: "{{ ([24.3, [((off_cool_final_real | float) + 0.35), (on_cool_candidate | float)] | max] | min) | round(2) }}"
         off_heat: "{{ ([states('input_number.ac_night_offset_heat_col_' ~ col_idx)|float(0) + off_heat_base|float, 24.0] | min) | round(2) }}"
         on_heat: "{{ (off_heat|float - (hysteresis_eff | float)) | round(2) }}"
         cool_off: "{{ off_cool }}"
@@ -241,11 +247,15 @@ ac_night_reporte_diagnostico:
             {% if tin_comp_umbral is not none and (tin|float <= tin_comp_umbral|float) %}<{% else %}>{% endif %}
           {% endif %}
         umbral_fmt: "{{ '%.2f' | format(tin_comp_umbral|float) if tin_comp_umbral is not none else 'sin umbral calculado' }}"
+        off_cool_fmt: "{{ '%.2f' | format(off_cool|float) }}"
+        on_cool_fmt: "{{ '%.2f' | format(on_cool|float) }}"
+        hysteresis_eff_fmt: "{{ '%.2f' | format(hysteresis_eff|float) }}"
+        offset_cool_col_fmt: "{{ '%.2f' | format(offset_cool_col_value|float) }}"
         resultado_reporte: "{{ 'off_solo_no_encendido' if hvac_mode == 'off' else 'on_con_evaluacion_apagado' }}"
     - service: logbook.log
       data:
         name: AC Night
-        message: "hito=night_diagnostico_bajo_demanda_reporte | modo_demandado={{ modo_demandado }} | hvac_state={{ hvac_mode }} | resultado_reporte={{ resultado_reporte }}"
+        message: "hito=night_diagnostico_bajo_demanda_reporte | modo_demandado={{ modo_demandado }} | hvac_state={{ hvac_mode }} | resultado_reporte={{ resultado_reporte }} | col_idx={{ col_idx }} | offset_cool_entity={{ offset_cool_col_entity }} | offset_cool={{ offset_cool_col_fmt }} | off_cool_real_matriz={{ off_cool_fmt }} | on_cool_matriz={{ on_cool_fmt }} | bochorno_score={{ bochorno_score }} | night_comfort_pressure={{ night_comfort_pressure }} | hysteresis_eff={{ hysteresis_eff_fmt }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }}"
     - service: notify.mobile_app_samsung_s24
       data:
         title: "AC Night · Reporte diagnóstico"
@@ -254,6 +264,8 @@ ac_night_reporte_diagnostico:
           Condiciones: {{ clima_actual }} | Tin: {{ trend_tin }}{{ tin_fmt }}°C | Hin: {{ trend_hin }}{{ hin_fmt }}% | Tout: {{ trend_tout }}{{ tout_fmt }}°C | Hout: {{ trend_hout }}{{ hout_fmt }}%
 
           Demanda: {{ demanda_label }} | Tin: {{ tin_fmt }}°C {{ comp_operador }} {{ umbral_tipo }}: {{ umbral_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }}
+          OFF real matriz: {{ off_cool_fmt }}°C | ON matriz: {{ on_cool_fmt }}°C | H={{ hysteresis_eff_fmt }} | cap_on={{ on_cool_cap_night_dynamic }}
+          Columna {{ col_idx }} | offset usado: {{ offset_cool_col_entity }}={{ offset_cool_col_fmt }} | bochorno={{ bochorno_score }} | comfort={{ night_comfort_pressure }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }}
     - service: input_text.set_value
       target:
         entity_id: input_text.ac_night_diag_demanda_snapshot
