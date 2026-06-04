@@ -2984,29 +2984,40 @@
         if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
       legacy_manual_hold_active: '{{ states(''input_text.ac_matriz_160_manual_legacy_hold'')
         == ''on'' }}'
+      umbral_off_cool_operacional: '{% if resultado_terminal == ''aplicado'' and
+        modo_aprendizaje == ''cool'' %}{{ off_nuevo | float(0) }}{% else %}{{ helper_t_off_cool
+        | float(24) }}{% endif %}'
+      umbral_on_cool_operacional: '{{ ((umbral_off_cool_operacional | float(0)) +
+        1.0) | round(2) }}'
+      umbral_off_heat_operacional: '{% if resultado_terminal == ''aplicado'' and
+        modo_aprendizaje == ''heat'' %}{{ off_nuevo | float(0) }}{% else %}{{ helper_t_off_heat
+        | float(22) }}{% endif %}'
+      umbral_on_heat_operacional: '{{ ((umbral_off_heat_operacional | float(0)) -
+        1.0) | round(2) }}'
       mensaje_humano: '{% set tipo_humano = ''Encendido Manual'' if evento_manual_tipo
         == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual''
         else ''Sin Transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje
         == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de
         Alcance'' %} {% set envio_humano = ''Emitida'' if envio_estado == ''emitida''
         else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado''
-        %} {% set temp_apagado_valor = states(''input_number.ac_matriz_160_t_off_cool'')
-        | float(24) if modo_aprendizaje == ''cool'' else states(''input_number.ac_matriz_160_t_off_heat'')
+        %} {% set temp_apagado_valor = umbral_off_cool_operacional
+        | float(24) if modo_aprendizaje == ''cool'' else umbral_off_heat_operacional
         | float(22) if modo_aprendizaje == ''heat'' else 0 %} {% set temp_apagado_fmt
         = ''%.2f'' | format(temp_apagado_valor | float(0)) %} {{ hora_evento }} |
         TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto
         }} ({{ contexto_activo_resuelto }}) | DELTA_REAL= {{ (''+'' if (delta_aplicado_real | float(0)) >= 0 else '''') ~ ((delta_aplicado_real | float(0)) | round(2)) }} | DELTA_OBJ= {{ (''+'' if (delta | float(0)) >= 0 else '''') ~ ((delta | float(0)) | round(2)) }} | OFFSET= {{ offset_nuevo
         if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano
         }} | TEMP APAGADO= {{ temp_apagado_fmt }}'
-      reconcile_target_mode: '{% set tin_v = tin | float(0) %} {% if tin_v >= helper_t_on_cool
-        | float(25) %}cool {% elif tin_v <= helper_t_on_heat | float(21) %}heat {%
-        elif (tin_v - helper_t_off_cool | float(24)) | abs <= (tin_v - helper_t_off_heat
-        | float(22)) | abs %}cool {% else %}heat {% endif %}'
+      reconcile_target_mode: '{% set tin_v = tin | float(0) %} {% if tin_v >= umbral_on_cool_operacional
+        | float(25) %}cool {% elif tin_v <= umbral_on_heat_operacional | float(21)
+        %}heat {% elif (tin_v - umbral_off_cool_operacional | float(24)) | abs <=
+        (tin_v - umbral_off_heat_operacional | float(22)) | abs %}cool {% else %}heat
+        {% endif %}'
       reconcile_sp_target: '{% if reconcile_target_mode == ''cool'' %} {{ [hvac_max_sp|int,
-        [hvac_min_sp|int, ((helper_t_off_cool | float(24)) | round(0, ''floor'') |
-        int - 1)] | max] | min | int }} {% else %}28{% endif %}'
-      reconcile_cool_delta: '{{ (tin|float(0) - helper_t_off_cool|float(24)) | round(2)
-        }}'
+        [hvac_min_sp|int, ((umbral_off_cool_operacional | float(24)) | round(0, ''floor'')
+        | int - 1)] | max] | min | int }} {% else %}28{% endif %}'
+      reconcile_cool_delta: '{{ (tin|float(0) - umbral_off_cool_operacional|float(24))
+        | round(2) }}'
       reconcile_fan_internal: "{% if reconcile_target_mode == 'cool' %}\n  {% if reconcile_cool_delta|float
         >= 2.0 %}high\n  {% elif reconcile_cool_delta|float >= 1.0 %}medium\n  {%
         else %}low\n  {% endif %}\n{% else %}high{% endif %}"
@@ -3030,9 +3041,12 @@
         == ''cool'' and (state_attr(''climate.0200009211c7_climate'',''temperature'')
         | int(-999) != reconcile_sp_target|int)) or (modo_nuevo == ''heat'' and (state_attr(''climate.0200009211c7_climate'',''temperature'')
         | int(-999) != reconcile_sp_target|int))) }}'
+      reconcile_inconsistent_fan: '{{ modo_nuevo == ''cool'' and reconcile_fan_target_final
+        in reconcile_fan_modes_supported and (state_attr(''climate.0200009211c7_climate'',
+        ''fan_mode'') | string) != (reconcile_fan_target_final | string) }}'
       reconcile_apply: '{{ origen_clasificacion == ''manual_externo'' and transicion_real
-        and (reconcile_inconsistent_mode or reconcile_inconsistent_contract) and (not
-        legacy_manual_hold_active) and reconcile_dedup_ok }}'
+        and (reconcile_inconsistent_mode or reconcile_inconsistent_contract or reconcile_inconsistent_fan)
+        and (not legacy_manual_hold_active) and reconcile_dedup_ok }}'
       manual_presence_override_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_presence_override_until'')
         | trim }}'
       manual_presence_override_until_ts: '{% if manual_presence_override_until_raw
@@ -3162,8 +3176,8 @@
           message: hito=reconcile_manual_post_on_applied | origen={{ origen_clasificacion
             }} | modo_heredado={{ modo_nuevo }} | modo_objetivo={{ reconcile_target_mode
             }} | columna={{ col_idx_resuelto }} | contexto={{ contexto_activo_resuelto
-            }} | sp_objetivo={{ reconcile_sp_target }} | fan_objetivo={{ reconcile_fan_target_final
-            }} | dedup_ok={{ reconcile_dedup_ok }}
+            }} | off_previo={{ off_vigente }} | off_nuevo={{ umbral_off_cool_operacional if reconcile_target_mode == 'cool' else umbral_off_heat_operacional }} | sp_objetivo={{ reconcile_sp_target }} | fan_objetivo={{ reconcile_fan_target_final
+            }} | anchor_aplicado={{ fuera_rango_anchor }} | delta_aplicado_real={{ delta_aplicado_real }} | dedup_ok={{ reconcile_dedup_ok }}
           entity_id: climate.0200009211c7_climate
     default:
     - service: logbook.log
@@ -3171,12 +3185,12 @@
         name: AC-Matriz 160
         message: hito=reconcile_manual_post_on_skip | origen={{ origen_clasificacion
           }} | modo_heredado={{ modo_nuevo }} | modo_objetivo={{ reconcile_target_mode
-          }} | columna={{ col_idx_resuelto }} | sp_objetivo={{ reconcile_sp_target
-          }} | fan_objetivo={{ reconcile_fan_target_final }} | hold={{ legacy_manual_hold_active
+          }} | columna={{ col_idx_resuelto }} | off_previo={{ off_vigente }} | off_nuevo={{ umbral_off_cool_operacional if reconcile_target_mode == 'cool' else umbral_off_heat_operacional }} | sp_objetivo={{ reconcile_sp_target
+          }} | fan_objetivo={{ reconcile_fan_target_final }} | anchor_aplicado={{ fuera_rango_anchor }} | delta_aplicado_real={{ delta_aplicado_real }} | hold={{ legacy_manual_hold_active
           }} | dedup_ok={{ reconcile_dedup_ok }} | razon={{ 'origen_no_manual' if
           origen_clasificacion != 'manual_externo' else 'hold_manual_fan_auto' if
           legacy_manual_hold_active else 'sin_inconsistencia' if not (reconcile_inconsistent_mode
-          or reconcile_inconsistent_contract) else 'dedup_evento' if not reconcile_dedup_ok
+          or reconcile_inconsistent_contract or reconcile_inconsistent_fan) else 'dedup_evento' if not reconcile_dedup_ok
           else 'no_aplica' }}
         entity_id: climate.0200009211c7_climate
   - choose:
@@ -3361,14 +3375,24 @@
         {% endif %}'
       envio_estado: '{{ ''emitida'' if resultado_terminal == ''aplicado'' else ''fallback''
         if resultado_terminal == ''ignorado'' else ''error_controlado'' }}'
+      umbral_off_cool_operacional: '{% if resultado_terminal == ''aplicado'' and
+        modo_aprendizaje == ''cool'' %}{{ off_nuevo | float(0) }}{% else %}{{ helper_t_off_cool
+        | float(24) }}{% endif %}'
+      umbral_on_cool_operacional: '{{ ((umbral_off_cool_operacional | float(0)) +
+        1.0) | round(2) }}'
+      umbral_off_heat_operacional: '{% if resultado_terminal == ''aplicado'' and
+        modo_aprendizaje == ''heat'' %}{{ off_nuevo | float(0) }}{% else %}{{ helper_t_off_heat
+        | float(22) }}{% endif %}'
+      umbral_on_heat_operacional: '{{ ((umbral_off_heat_operacional | float(0)) -
+        1.0) | round(2) }}'
       mensaje_humano: '{% set tipo_humano = ''Encendido manual detectado por transición compuesta (apagado → ventilación → frío/calor)'' if cierre_compuesto_valido else ''Encendido Manual'' if evento_manual_tipo
         == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual''
         else ''Sin Transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje
         == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de
         Alcance'' %} {% set envio_humano = ''Emitida'' if envio_estado == ''emitida''
         else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado''
-        %} {% set temp_apagado_valor = states(''input_number.ac_matriz_160_t_off_cool'')
-        | float(24) if modo_aprendizaje == ''cool'' else states(''input_number.ac_matriz_160_t_off_heat'')
+        %} {% set temp_apagado_valor = umbral_off_cool_operacional
+        | float(24) if modo_aprendizaje == ''cool'' else umbral_off_heat_operacional
         | float(22) if modo_aprendizaje == ''heat'' else 0 %} {% set temp_apagado_fmt
         = ''%.2f'' | format(temp_apagado_valor | float(0)) %} {{ hora_evento }} |
         TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto
@@ -3418,6 +3442,17 @@
         | int - 1)] | max] | min | int }} {% else %}28{% endif %}'
       reconcile_cool_delta: '{{ (tin|float(0) - umbral_off_cool_operacional|float(24))
         | round(2) }}'
+      reconcile_fan_internal: "{% if reconcile_target_mode == 'cool' %}\n  {% if reconcile_cool_delta|float
+        >= 2.0 %}high\n  {% elif reconcile_cool_delta|float >= 1.0 %}medium\n  {%
+        else %}low\n  {% endif %}\n{% else %}high{% endif %}"
+      reconcile_fan_candidate_label: '{% if reconcile_fan_internal == ''low'' %}Low{%
+        elif reconcile_fan_internal in [''medium'',''med''] %}Med{% elif reconcile_fan_internal
+        == ''high'' %}High{% elif reconcile_fan_internal == ''auto'' %}Auto{% else
+        %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{%
+        endif %}'
+      reconcile_fan_target_final: '{% if reconcile_fan_candidate_label in reconcile_fan_modes_supported
+        %}{{ reconcile_fan_candidate_label }}{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'')
+        | string }}{% endif %}'
   - choose:
     - conditions:
       - condition: template
