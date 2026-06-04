@@ -3063,3 +3063,13 @@ Implementación contractual:
 - **Notificación coherente:** `TEMP APAGADO` en `mensaje_humano` muestra el umbral operativo usado por el flujo actual, no necesariamente el valor persistido todavía en el helper global.
 - **Aplicación al climate:** la reconciliación de un encendido manual externo puede aplicar `set_temperature` y `set_fan_mode` cuando el contrato resultante difiere por setpoint o por fan, aunque el modo HVAC ya sea `cool`.
 - **Observabilidad:** el log `reconcile_manual_post_on_applied` expone `off_previo`, `off_nuevo`, `sp_objetivo`, `fan_objetivo`, `anchor_aplicado` y `delta_aplicado_real` para auditar que el climate recibió el contrato calculado con el nuevo offset.
+
+## 71) AC-Matriz 160 — reconcile operativo fan_only → modo térmico (2026-06-04)
+
+- **Alcance:** automatización `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`) en `automations.yaml`.
+- **Problema corregido:** una transición inmediata `fan_only->cool` o `fan_only->heat` quedaba clasificada como `sin_transicion_real`, lo cual es correcto para no aprender offset, pero también bloqueaba el reconcile operativo de setpoint y ventilador.
+- **Separación explícita:** se conserva la definición de `transicion_hvac_real` para aprendizaje de offset; se añade una elegibilidad independiente `reconcile_manual_thermal_from_fan` solo para reconcile operativo cuando el evento viene de `fan_only`, termina en `cool`/`heat` y no existe marcador automático compatible.
+- **Protección anti-auto:** `reconcile_fan_to_thermal_marker_compatible` trata como automático compatible un marker vigente `off->cool`/`off->heat` observado como cierre `fan_only->cool`/`fan_only->heat`, evitando confundir acciones de AC-Matriz con acciones manuales.
+- **Contrato operativo:** `reconcile_apply` ahora permite actuar si el evento es `manual_externo` o si cumple `reconcile_manual_thermal_from_fan`, siempre con `legacy_manual_hold_active` inactivo, dedup por `reconcile_last_signature`, y trabajo real de contrato (`SP`, `FAN`, modo inconsistente o garantía operativa fan→térmico).
+- **Aprendizaje preservado:** si el único motivo es `fan_only->cool`/`fan_only->heat`, `resultado_terminal` puede seguir en `ignorado` y no se modifica ningún offset.
+- **Observabilidad:** el reconcile aplicado en este caso registra `hito=reconcile_manual_fan_to_thermal_applied`, `from`, `to`, `sp_objetivo`, `fan_objetivo`, `fan_soportado`, `guarantee` y `razon=fan_only_to_<modo>_manual_reconcile`. Los skips exponen `reconcile_skip_reason`, `auto_marker_fan_to_thermal`, `fan_from_fan_only_eligible`, inconsistencias, hold, dedup y soporte de fan para diagnosticar por qué no actuó.
