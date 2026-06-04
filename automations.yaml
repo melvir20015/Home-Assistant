@@ -3195,7 +3195,7 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: hito={{ 'reconcile_manual_fan_to_thermal_applied' if reconcile_manual_thermal_from_fan else 'reconcile_manual_post_on_applied' }} | origen={{ origen_clasificacion
+          message: hito={{ 'reconcile_manual_fan_to_thermal_applied' if reconcile_manual_thermal_from_fan else 'reconcile_manual_pre_learning_applied' }} | contrato=pre_learning | origen={{ origen_clasificacion
             }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo_heredado={{ modo_nuevo
             }} | modo_objetivo={{ reconcile_target_mode }} | columna={{ col_idx_resuelto
             }} | contexto={{ contexto_activo_resuelto }} | off_previo={{ off_vigente }} | off_nuevo={{ umbral_off_cool_operacional if reconcile_target_mode == 'cool' else umbral_off_heat_operacional }} | sp_objetivo={{ reconcile_sp_target }} | fan_objetivo={{ reconcile_fan_target_final
@@ -3206,7 +3206,7 @@
     - service: logbook.log
       data:
         name: AC-Matriz 160
-        message: hito=reconcile_manual_post_on_skip | origen={{ origen_clasificacion
+        message: hito=reconcile_manual_pre_learning_skip | contrato=pre_learning | origen={{ origen_clasificacion
           }} | modo_heredado={{ modo_nuevo }} | modo_objetivo={{ reconcile_target_mode
           }} | columna={{ col_idx_resuelto }} | off_previo={{ off_vigente }} | off_nuevo={{ umbral_off_cool_operacional if reconcile_target_mode == 'cool' else umbral_off_heat_operacional }} | sp_objetivo={{ reconcile_sp_target
           }} | fan_objetivo={{ reconcile_fan_target_final }} | fan_soportado={{ reconcile_fan_candidate_supported }} | fan_candidate={{ reconcile_fan_candidate_label }} | fan_modes={{ reconcile_fan_modes_supported }} | fan_from_fan_only_eligible={{ reconcile_manual_thermal_from_fan }} | auto_marker_fan_to_thermal={{ reconcile_fan_to_thermal_marker_compatible }} | guarantee={{ reconcile_contract_guarantee_required }} | anchor_aplicado={{ fuera_rango_anchor }} | delta_aplicado_real={{ delta_aplicado_real }} | hold={{ legacy_manual_hold_active
@@ -3589,6 +3589,103 @@
             }} | before={{ offset_actual }} | delta={{ delta }} | delta_aplicado={{ delta_aplicado_real }} | after={{ offset_nuevo
             }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | col_idx={{ col_idx_resuelto }} | ts={{ ts_evento }}
           entity_id: climate.0200009211c7_climate
+      - variables:
+          post_learning_target_mode: '{%- set tin_v = tin | float(0) -%}{%- if tin_v >= umbral_on_cool_operacional
+            | float(25) -%}cool{%- elif tin_v <= umbral_on_heat_operacional | float(21)
+            -%}heat{%- elif (tin_v - umbral_off_cool_operacional | float(24)) | abs <=
+            (tin_v - umbral_off_heat_operacional | float(22)) | abs -%}cool{%- else -%}heat{%- endif -%}'
+          post_learning_sp_target: '{%- if post_learning_target_mode == ''cool'' -%}{{ [hvac_max_sp|int,
+            [hvac_min_sp|int, ((umbral_off_cool_operacional | float(24)) | round(0, ''floor'')
+            | int - 1)] | max] | min | int }}{%- else -%}28{%- endif -%}'
+          post_learning_cool_delta: '{{ (tin|float(0) - umbral_off_cool_operacional|float(24))
+            | round(2) }}'
+          post_learning_fan_internal: "{%- if post_learning_target_mode == 'cool' -%}{%- if post_learning_cool_delta|float
+            >= 2.0 -%}high{%- elif post_learning_cool_delta|float >= 1.0 -%}medium{%- else -%}low{%- endif -%}{%- else -%}high{%- endif -%}"
+          post_learning_fan_candidate_label: '{% if post_learning_fan_internal == ''low'' %}Low{%
+            elif post_learning_fan_internal in [''medium'',''med''] %}Med{% elif post_learning_fan_internal
+            == ''high'' %}High{% elif post_learning_fan_internal == ''auto'' %}Auto{% else
+            %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{%
+            endif %}'
+          post_learning_fan_modes_supported: '{{ (state_attr(''climate.0200009211c7_climate'',
+            ''fan_modes'') or []) | list }}'
+          post_learning_fan_candidate_supported: '{{ post_learning_fan_candidate_label in post_learning_fan_modes_supported
+            }}'
+          post_learning_fan_target_final: '{% if post_learning_fan_candidate_supported
+            %}{{ post_learning_fan_candidate_label }}{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'')
+            | string }}{% endif %}'
+          post_learning_current_mode: '{{ states(''climate.0200009211c7_climate'') | lower }}'
+          post_learning_current_sp: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'')
+            | int(-999) }}'
+          post_learning_current_fan: '{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'')
+            | string }}'
+          post_learning_mode_diff: '{{ post_learning_current_mode != post_learning_target_mode }}'
+          post_learning_sp_diff: '{{ post_learning_current_sp | int(-999) != post_learning_sp_target
+            | int }}'
+          post_learning_fan_diff: '{{ post_learning_target_mode == ''cool'' and post_learning_fan_candidate_supported
+            and post_learning_current_fan != post_learning_fan_target_final }}'
+          post_learning_eligible: '{{ resultado_terminal == ''aplicado'' and evento_manual_tipo
+            == ''encendido_manual'' and modo_aprendizaje in [''cool'',''heat''] and origen_clasificacion
+            == ''manual_externo'' and not marker_compatible_final and not reconcile_fan_to_thermal_marker_compatible
+            and not legacy_manual_hold_active and dedup_ok }}'
+          post_learning_has_work: '{{ post_learning_mode_diff or post_learning_sp_diff or post_learning_fan_diff }}'
+          post_learning_apply: '{{ post_learning_eligible and post_learning_has_work }}'
+          post_learning_skip_reason: '{% if not post_learning_eligible %}{% if resultado_terminal
+            != ''aplicado'' %}resultado_no_aplicado{% elif evento_manual_tipo != ''encendido_manual''
+            %}evento_no_encendido_manual{% elif modo_aprendizaje not in [''cool'',''heat'']
+            %}modo_fuera_alcance{% elif origen_clasificacion != ''manual_externo'' %}origen_no_manual_externo{%
+            elif marker_compatible_final or reconcile_fan_to_thermal_marker_compatible %}origen_automatico{%
+            elif legacy_manual_hold_active %}hold_manual_activo{% elif not dedup_ok %}dedup{%
+            else %}no_elegible{% endif %}{% elif not post_learning_has_work %}sin_diferencia_sp_fan{%
+            elif post_learning_target_mode == ''cool'' and not post_learning_fan_candidate_supported
+            and not (post_learning_mode_diff or post_learning_sp_diff) %}fan_no_soportado{% else %}no_aplica{% endif %}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ post_learning_apply }}'
+          sequence:
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ post_learning_mode_diff }}'
+              sequence:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  hvac_mode: '{{ post_learning_target_mode }}'
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ post_learning_sp_diff }}'
+              sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  temperature: '{{ post_learning_sp_target | int }}'
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ post_learning_fan_diff }}'
+              sequence:
+              - service: climate.set_fan_mode
+                target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  fan_mode: '{{ post_learning_fan_target_final }}'
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=reconcile_manual_post_learning_applied | contrato=post_learning
+                | trace_id={{ trace_id_learning }} | origen={{ origen_clasificacion }} | evento={{ evento_manual_tipo }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo_actual={{ post_learning_current_mode }} | modo_objetivo={{ post_learning_target_mode }} | columna={{ col_idx_resuelto }} | contexto={{ contexto_activo_resuelto }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | umbral_off_cool_operacional={{ umbral_off_cool_operacional }} | umbral_on_cool_operacional={{ umbral_on_cool_operacional }} | sp_actual={{ post_learning_current_sp }} | sp_objetivo={{ post_learning_sp_target }} | fan_actual={{ post_learning_current_fan }} | fan_objetivo={{ post_learning_fan_target_final }} | fan_soportado={{ post_learning_fan_candidate_supported }} | mode_diff={{ post_learning_mode_diff }} | sp_diff={{ post_learning_sp_diff }} | fan_diff={{ post_learning_fan_diff }} | anchor_aplicado={{ fuera_rango_anchor }} | delta_aplicado_real={{ delta_aplicado_real }} | offset_nuevo={{ offset_nuevo }} | razon=manual_externo_post_learning_reconcile
+              entity_id: climate.0200009211c7_climate
+        default:
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: hito=reconcile_manual_post_learning_skip | contrato=post_learning
+              | trace_id={{ trace_id_learning }} | origen={{ origen_clasificacion }} | evento={{ evento_manual_tipo }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo_actual={{ post_learning_current_mode }} | modo_objetivo={{ post_learning_target_mode }} | columna={{ col_idx_resuelto }} | off_previo={{ off_vigente }} | on_previo={{ on_vigente }} | off_nuevo={{ off_nuevo }} | on_nuevo={{ on_nuevo }} | sp_actual={{ post_learning_current_sp }} | sp_objetivo={{ post_learning_sp_target }} | fan_actual={{ post_learning_current_fan }} | fan_objetivo={{ post_learning_fan_target_final }} | fan_soportado={{ post_learning_fan_candidate_supported }} | marker_compatible_final={{ marker_compatible_final }} | auto_marker_fan_to_thermal={{ reconcile_fan_to_thermal_marker_compatible }} | hold={{ legacy_manual_hold_active }} | dedup_ok={{ dedup_ok }} | mode_diff={{ post_learning_mode_diff }} | sp_diff={{ post_learning_sp_diff }} | fan_diff={{ post_learning_fan_diff }} | razon={{ post_learning_skip_reason }}
+            entity_id: climate.0200009211c7_climate
     default:
     - service: logbook.log
       data:
