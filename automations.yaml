@@ -3744,7 +3744,10 @@
       auto_off_pending_exp: "{{ auto_off_pending_raw.split('exp=')[1].split('|')[0] if 'exp=' in auto_off_pending_raw else '0' }}"
       auto_off_pending_trace: "{{ auto_off_pending_raw.split('trace=')[1].split('|')[0] if 'trace=' in auto_off_pending_raw else '' }}"
       auto_off_pending_result: "{{ auto_off_pending_raw.split('result=')[1].split('|')[0] if 'result=' in auto_off_pending_raw else '' }}"
-      auto_off_pending_recent: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) and auto_off_pending_result not in ['confirmed','failed','suppressed'] }}"
+      auto_off_pending_retry: "{{ auto_off_pending_raw.split('retry=')[1].split('|')[0] if 'retry=' in auto_off_pending_raw else '0' }}"
+      auto_off_pending_same_context: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) }}"
+      auto_off_pending_timeout_retry_allowed: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) and auto_off_pending_result == 'pending_timeout' and (auto_off_pending_retry | int(0)) < 1 and hvac_mode == 'cool' and tin <= off_cool }}"
+      auto_off_pending_recent: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) and auto_off_pending_result not in ['confirmed','failed','suppressed'] and not (auto_off_pending_result == 'pending_timeout' and (auto_off_pending_retry | int(0)) < 1 and hvac_mode == 'cool' and tin <= off_cool) }}"
       trigger_entity: "{{ trigger.entity_id if trigger is defined and trigger.platform == 'state' else '' }}"
       hot_learning_recalc_requested: "{{ trigger_entity == 'input_text.ac_night_hot_learning_recalc_payload' }}"
       hot_learning_recalc_payload: "{{ states('input_text.ac_night_hot_learning_recalc_payload') }}"
@@ -3794,7 +3797,7 @@
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_auto_off_suppressed | trace_id={{ context.id|default('na') }} | pending_trace={{ auto_off_pending_trace }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo_previo={{ hvac_mode }} | modo_actual={{ states(climate_ent) }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | pending_result={{ auto_off_pending_result }} | motivo=apagado_pendiente_reciente_mismo_contexto | resultado_terminal=suppressed"
+          message: "hito=night_auto_off_suppressed | trace_id={{ context.id|default('na') }} | pending_trace={{ auto_off_pending_trace }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo_previo={{ hvac_mode }} | modo_actual={{ states(climate_ent) }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | pending_result={{ auto_off_pending_result }} | pending_retry={{ auto_off_pending_retry }} | retry_allowed={{ auto_off_pending_timeout_retry_allowed }} | motivo=apagado_pendiente_reciente_mismo_contexto | resultado_terminal=suppressed"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and tin <= off_cool }}"
@@ -3803,10 +3806,11 @@
           modo_previo_label: Frío
           estado_previo: "{{ states(climate_ent) }}"
           auto_off_pending_exp_new: "{{ (as_timestamp(now()) + 45) | int }}"
+          auto_off_pending_retry_new: "{{ (auto_off_pending_retry | int(0)) + 1 if (auto_off_pending_timeout_retry_allowed | bool(false)) else 0 }}"
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_off_pending_payload}
         data:
-          value: "kind=night_auto_off_pending|event=AUTO_OFF_NIGHT_UMBRAL|climate={{ climate_ent }}|col={{ col_idx }}|trace={{ context.id|default('na') }}|exp={{ auto_off_pending_exp_new }}|result=sent"
+          value: "kind=night_auto_off_pending|event=AUTO_OFF_NIGHT_UMBRAL|climate={{ climate_ent }}|col={{ col_idx }}|trace={{ context.id|default('na') }}|exp={{ auto_off_pending_exp_new }}|result=sent|retry={{ auto_off_pending_retry_new }}"
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
@@ -3833,7 +3837,7 @@
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_off_pending_payload}
         data:
-          value: "kind=night_auto_off_pending|event=AUTO_OFF_NIGHT_UMBRAL|climate={{ climate_ent }}|col={{ col_idx }}|trace={{ context.id|default('na') }}|exp={{ auto_off_pending_exp_terminal }}|result={{ resultado_confirmacion }}"
+          value: "kind=night_auto_off_pending|event=AUTO_OFF_NIGHT_UMBRAL|climate={{ climate_ent }}|col={{ col_idx }}|trace={{ context.id|default('na') }}|exp={{ auto_off_pending_exp_terminal }}|result={{ resultado_confirmacion }}|retry={{ auto_off_pending_retry_new }}"
       - choose:
         - conditions:
           - condition: template
@@ -3846,7 +3850,7 @@
           - service: logbook.log
             data:
               name: AC Night
-              message: "hito=night_auto_off_confirmed_notified | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo=cool | estado_previo={{ estado_previo }} | estado_posterior={{ estado_posterior }} | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | dew_point_night={{ dew_point_night }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | resultado_confirmacion={{ resultado_confirmacion }} | resultado_terminal=turn_off_confirmed"
+              message: "hito=night_auto_off_confirmed_notified | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo=cool | estado_previo={{ estado_previo }} | estado_posterior={{ estado_posterior }} | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | dew_point_night={{ dew_point_night }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | resultado_confirmacion={{ resultado_confirmacion }} | retry={{ auto_off_pending_retry_new }} | resultado_terminal=turn_off_confirmed"
         default:
         - service: notify.mobile_app_samsung_s24
           data:
@@ -3855,7 +3859,7 @@
         - service: logbook.log
           data:
             name: AC Night
-            message: "hito=night_auto_off_pending_timeout | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo=cool | estado_previo={{ estado_previo }} | estado_posterior={{ estado_posterior }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | resultado_confirmacion={{ resultado_confirmacion }} | resultado_terminal=turn_off_pending"
+            message: "hito=night_auto_off_pending_timeout | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo=cool | estado_previo={{ estado_previo }} | estado_posterior={{ estado_posterior }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | resultado_confirmacion={{ resultado_confirmacion }} | retry={{ auto_off_pending_retry_new }} | resultado_terminal=turn_off_pending"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'heat' and tin >= off_heat }}"
