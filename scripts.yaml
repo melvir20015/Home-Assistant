@@ -156,7 +156,8 @@ ac_night_reporte_diagnostico:
             - stop: "Reporte nocturno fuera de horario"
       default: []
     - variables:
-        hvac_mode: "{{ states('climate.0200009211c7_climate') }}"
+        climate_ent: climate.0200009211c7_climate
+        hvac_mode: "{{ states(climate_ent) }}"
         tin: "{{ [states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average | round(2) }}"
         hin: "{{ [states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average | round(2) }}"
         tout: "{{ state_attr('weather.openweathermap','temperature') | float(none) }}"
@@ -169,6 +170,15 @@ ac_night_reporte_diagnostico:
         estacion: "{% if month in [12,1,2] %}invierno{% elif month in [3,4,5] %}primavera{% elif month in [6,7,8] %}verano{% else %}otono{% endif %}"
         franja: "{% set h=now().hour %}{% if h in [22,23,0] %}2200_0059{% elif h in [1,2,3] %}0100_0359{% elif h in [4,5] %}0400_0559{% else %}0600_0700{% endif %}"
         col_idx: "{% set est=['verano','otono','invierno','primavera'] %}{% set fra=['2200_0059','0100_0359','0400_0559','0600_0700'] %}{% set cli=['despejado','nublado','parcial','lluvia','tormenta','niebla','hielo'] %}{{ (est.index(estacion)*28)+(fra.index(franja)*7)+(cli.index(weather_state))+1 }}"
+        presencia_ok: "{{ is_state('binary_sensor.presencia_ok_estable','on') }}"
+        auto_off_pending_raw: "{{ states('input_text.ac_night_auto_off_pending_payload') }}"
+        auto_off_pending_kind: "{{ auto_off_pending_raw.split('kind=')[1].split('|')[0] if 'kind=' in auto_off_pending_raw else '' }}"
+        auto_off_pending_climate: "{{ auto_off_pending_raw.split('climate=')[1].split('|')[0] if 'climate=' in auto_off_pending_raw else '' }}"
+        auto_off_pending_event: "{{ auto_off_pending_raw.split('event=')[1].split('|')[0] if 'event=' in auto_off_pending_raw else '' }}"
+        auto_off_pending_col: "{{ auto_off_pending_raw.split('col=')[1].split('|')[0] if 'col=' in auto_off_pending_raw else '' }}"
+        auto_off_pending_exp: "{{ auto_off_pending_raw.split('exp=')[1].split('|')[0] if 'exp=' in auto_off_pending_raw else '0' }}"
+        auto_off_pending_result: "{{ auto_off_pending_raw.split('result=')[1].split('|')[0] if 'result=' in auto_off_pending_raw else '' }}"
+        auto_off_pending_recent: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) and auto_off_pending_result not in ['confirmed','failed','suppressed'] }}"
         prev_diag_snapshot_raw: "{{ states('input_text.ac_night_diag_demanda_snapshot') }}"
         prev_diag_parts: "{{ prev_diag_snapshot_raw.split('|') if prev_diag_snapshot_raw not in ['unknown','unavailable','none','','sin_snapshot'] else [] }}"
         prev_tin: "{{ prev_diag_parts[0] | float(tin) if prev_diag_parts | count > 0 else tin }}"
@@ -215,6 +225,7 @@ ac_night_reporte_diagnostico:
         off_cool_biased_pre_clamp: "{{ ((off_cool_base_plus_offset | float) - (comfort_pull | float)) | round(2) }}"
         off_cool: "{{ ([24.2, [22.7, (off_cool_biased_pre_clamp | float)] | max] | min) | round(2) }}"
         off_cool_final_real: "{{ off_cool | float }}"
+        off_cool_real: "{{ off_cool_final_real }}"
         hysteresis_eff: "{{ ([0.70, [0.42, (0.65 - ((night_comfort_pressure | float) * 0.20))] | max] | min) | round(2) }}"
         comfort_bias_cool_raw: "{{ (0 - (comfort_pull | float)) | round(2) }}"
         comfort_bias_cool: "{{ comfort_bias_cool_raw }}"
@@ -251,19 +262,23 @@ ac_night_reporte_diagnostico:
         on_cool_fmt: "{{ '%.2f' | format(on_cool|float) }}"
         hysteresis_eff_fmt: "{{ '%.2f' | format(hysteresis_eff|float) }}"
         offset_cool_col_fmt: "{{ '%.2f' | format(offset_cool_col_value|float) }}"
+        off_cool_real_fmt: "{{ '%.2f' | format(off_cool_real|float) }}"
+        columna_activa: "{{ (col_idx | int(0)) >= 1 and (col_idx | int(0)) <= 112 and states(offset_cool_col_entity) not in ['unknown','unavailable','none',''] }}"
+        auto_off_real_apagaria: "{{ hvac_mode == 'cool' and (tin | float) <= (off_cool_real | float) and presencia_ok and not auto_off_pending_recent and columna_activa }}"
         resultado_reporte: "{{ 'off_solo_no_encendido' if hvac_mode == 'off' else 'on_con_evaluacion_apagado' }}"
     - service: logbook.log
       data:
         name: AC Night
-        message: "hito=night_diagnostico_bajo_demanda_reporte | modo_demandado={{ modo_demandado }} | hvac_state={{ hvac_mode }} | resultado_reporte={{ resultado_reporte }} | col_idx={{ col_idx }} | offset_cool_entity={{ offset_cool_col_entity }} | offset_cool={{ offset_cool_col_fmt }} | off_cool_real_matriz={{ off_cool_fmt }} | on_cool_matriz={{ on_cool_fmt }} | bochorno_score={{ bochorno_score }} | night_comfort_pressure={{ night_comfort_pressure }} | hysteresis_eff={{ hysteresis_eff_fmt }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }}"
+        message: "hito=night_diagnostico_bajo_demanda_reporte | modo_demandado={{ modo_demandado }} | hvac_state={{ hvac_mode }} | resultado_reporte={{ resultado_reporte }} | col_idx={{ col_idx }} | offset_cool_entity={{ offset_cool_col_entity }} | offset_cool={{ offset_cool_col_fmt }} | off_cool_real_matriz={{ off_cool_real_fmt }} | on_cool_matriz={{ on_cool_fmt }} | decision_auto_off_real={{ auto_off_real_apagaria }} | presencia_ok={{ presencia_ok }} | auto_off_pending_recent={{ auto_off_pending_recent }} | columna_activa={{ columna_activa }} | bochorno_score={{ bochorno_score }} | night_comfort_pressure={{ night_comfort_pressure }} | hysteresis_eff={{ hysteresis_eff_fmt }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }}"
     - service: notify.mobile_app_samsung_s24
       data:
         title: "AC Night · Reporte diagnóstico"
         message: |-
-          Estado HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
+          Estado HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }} | HVAC={{ hvac_mode }}
           Condiciones: {{ clima_actual }} | Tin: {{ trend_tin }}{{ tin_fmt }}°C | Hin: {{ trend_hin }}{{ hin_fmt }}% | Tout: {{ trend_tout }}{{ tout_fmt }}°C | Hout: {{ trend_hout }}{{ hout_fmt }}%
 
           Demanda: {{ demanda_label }} | Tin: {{ tin_fmt }}°C {{ comp_operador }} {{ umbral_tipo }}: {{ umbral_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }}
+          Decisión auto-off real: {{ 'APAGARÍA' if auto_off_real_apagaria else 'NO apagaría' }} | hvac_mode==cool={{ hvac_mode == 'cool' }} | Tin<=off_cool_real={{ (tin | float) <= (off_cool_real | float) }} ({{ tin_fmt }} <= {{ off_cool_real_fmt }}) | presencia_ok={{ presencia_ok }} | auto_off_pending_recent={{ auto_off_pending_recent }} (debe ser false) | columna_activa={{ columna_activa }}
           OFF real matriz: {{ off_cool_fmt }}°C | ON matriz: {{ on_cool_fmt }}°C | H={{ hysteresis_eff_fmt }} | cap_on={{ on_cool_cap_night_dynamic }}
           Columna {{ col_idx }} | offset usado: {{ offset_cool_col_entity }}={{ offset_cool_col_fmt }} | bochorno={{ bochorno_score }} | comfort={{ night_comfort_pressure }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }}
     - service: input_text.set_value
