@@ -2037,6 +2037,14 @@ La firma de notificación usa `evento|modo|columna|timestamp` y se aplica ventan
 - **Antioscilación de fan:** helper `input_datetime.ac_matriz_160_last_fan_change_ts` con ventana mínima de `240 s` para evitar escrituras en cada ciclo.
 - **Precedencia contractual:** `turbo > normal` en el mismo ciclo. Si `turbo_enter_cool=true`, se conserva `SP=18` y `fan=high`; al registrarse `turbo_exit_to_normal`, los ciclos siguientes pueden aplicar `sp_cool_normal` y `fan_cool_normal_target`.
 
+#### Salida contextual de Turbo COOL (2026-06-10)
+- La entrada a Turbo COOL conserva sus dos motivos trazables: `desvio_termico_fuerte` por `Tin >= T_on_cool + 1.0` y `humedad_alta_contextual` por `Hin >= 60` con `Tin >= T_off_cool`.
+- El motivo de entrada se persiste en `input_text.ac_matriz_160_turbo_cool_motivo` para que ciclos posteriores distingan la salida aplicable.
+- Si Turbo COOL entró por temperatura, la salida mantiene el contrato histórico: volver a `normal` cuando `Tin <= mid_cool`, registrando `motivo=cruce_punto_medio_histeresis`.
+- Si Turbo COOL entró por humedad contextual, también puede volver a `normal` cuando `Hin <= 59`, registrando `motivo=humedad_normalizada`.
+- Al salir de Turbo COOL debe aplicarse inmediatamente el setpoint normal contextual `sp_cool_normal`, abandonando el setpoint turbo `18°C` en la misma transición.
+- El fan normal post-turbo respeta la ventana anti-oscilación vigente: si la ventana permite el cambio se aplica `fan_target_final_label`; si no, se registra `hito=fan_normal_post_turbo_pendiente_por_ventana` y el ciclo normal posterior recalcula/aplica el fan cuando la ventana lo permita.
+
 
 ## Mantenimiento y depuración operativa (2026-05-17)
 

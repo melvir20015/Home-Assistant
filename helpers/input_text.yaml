@@ -50,6 +50,10 @@ ac_matriz_160_fase_ciclo:
   name: AC Matriz 160 Fase Ciclo
   max: 40
   initial: idle
+ac_matriz_160_turbo_cool_motivo:
+  name: AC Matriz 160 Turbo Cool Motivo
+  max: 80
+  initial: none
 
 
 ac_matriz_160_learning_last_signature:

@@ -1393,6 +1393,8 @@
         }}'
       now_ts: '{{ as_timestamp(now()) | float(0) }}'
       turbo_phase: '{{ states(''input_text.ac_matriz_160_fase_ciclo'') | lower }}'
+      turbo_cool_motivo_persistido: '{{ states(''input_text.ac_matriz_160_turbo_cool_motivo'')
+        | lower | trim }}'
       turbo_blocked: '{{ is_state(''input_boolean.ac_matriz_160_turbo_reentrada_bloqueada'',''on'')
         }}'
       prev_presence_ok: '{{ is_state(''input_boolean.ac_matriz_160_presencia_valida_disparo'',''on'')
@@ -1411,8 +1413,15 @@
       turbo_enter_heat: '{{ (not manual_off_block_active) and (not heat_block_active)
         and new_presence_event and (not turbo_blocked) and (tin|float <= (eff_t_on_heat|float
         - 1.0)) }}'
-      turbo_exit_cool: '{{ turbo_phase == ''turbo_cool'' and tin|float <= mid_cool|float
+      turbo_exit_cool_by_midpoint: '{{ turbo_phase == ''turbo_cool'' and tin|float
+        <= mid_cool|float }}'
+      turbo_exit_cool_by_humidity: '{{ turbo_phase == ''turbo_cool'' and turbo_cool_motivo_persistido
+        == ''humedad_alta_contextual'' and hin|float <= 59 }}'
+      turbo_exit_cool: '{{ turbo_exit_cool_by_midpoint or turbo_exit_cool_by_humidity
         }}'
+      turbo_exit_cool_motivo: '{% if turbo_exit_cool_by_midpoint %}cruce_punto_medio_histeresis{%
+        elif turbo_exit_cool_by_humidity %}humedad_normalizada{% else %}none{% endif
+        %}'
       turbo_exit_heat: '{{ turbo_phase == ''turbo_heat'' and tin|float >= mid_heat|float
         }}'
       action_target_base: '{% if invalid_data %}none{% elif climate_mode == ''cool''
@@ -1601,6 +1610,11 @@
           value: turbo_cool
         action: input_text.set_value
       - target:
+          entity_id: input_text.ac_matriz_160_turbo_cool_motivo
+        data:
+          value: '{{ turbo_enter_cool_reason }}'
+        action: input_text.set_value
+      - target:
           entity_id: input_text.ac_matriz_160_auto_origin_kind
         data:
           value: '{{ auto_origin_kind }}'
@@ -1674,6 +1688,11 @@
           entity_id: input_text.ac_matriz_160_fase_ciclo
         data:
           value: turbo_heat
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_matriz_160_turbo_cool_motivo
+        data:
+          value: none
         action: input_text.set_value
       - target:
           entity_id: input_text.ac_matriz_160_auto_origin_kind
@@ -1751,6 +1770,11 @@
         data:
           value: normal
         action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_matriz_160_turbo_cool_motivo
+        data:
+          value: none
+        action: input_text.set_value
       - data:
           name: AC-Matriz 160
           message: hito=normal_without_turbo | Tin={{ tin }} | Hin={{ hin }} | T_on_cool={{
@@ -1782,14 +1806,70 @@
       - target:
           entity_id: input_boolean.ac_matriz_160_turbo_reentrada_bloqueada
         action: input_boolean.turn_on
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ turbo_exit_cool }}'
+          sequence:
+          - target:
+              entity_id: climate.0200009211c7_climate
+            data:
+              temperature: '{{ sp_cool_normal }}'
+            action: climate.set_temperature
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ fan_target_valid and fan_dynamic_real_change_required
+                  and fan_change_window_ok }}'
+              sequence:
+              - target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  fan_mode: '{{ fan_target_final_label }}'
+                action: climate.set_fan_mode
+              - target:
+                  entity_id: input_datetime.ac_matriz_160_last_fan_change_ts
+                data:
+                  datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+                action: input_datetime.set_datetime
+              - data:
+                  name: AC-Matriz 160
+                  message: hito=fan_normal_post_turbo_apply | fan_actual={{ fan_mode_actual
+                    }} | fan_objetivo={{ fan_target_final_label }} | change_direction={{
+                    fan_change_direction }} | window_required_s={{ fan_window_required_s
+                    }} | window_ok={{ fan_change_window_ok }} | motivo={{ turbo_exit_cool_motivo
+                    }} | col={{ col_humana }}
+                  entity_id: climate.0200009211c7_climate
+                action: logbook.log
+            - conditions:
+              - condition: template
+                value_template: '{{ fan_target_valid and fan_dynamic_real_change_required
+                  and (not fan_change_window_ok) }}'
+              sequence:
+              - data:
+                  name: AC-Matriz 160
+                  message: hito=fan_normal_post_turbo_pendiente_por_ventana | fan_actual={{
+                    fan_mode_actual }} | fan_objetivo={{ fan_target_final_label }} |
+                    change_direction={{ fan_change_direction }} | window_required_s={{
+                    fan_window_required_s }} | window_elapsed_s={{ fan_window_elapsed_s
+                    }} | window_ok={{ fan_change_window_ok }} | motivo={{ turbo_exit_cool_motivo
+                    }} | col={{ col_humana }}
+                  entity_id: climate.0200009211c7_climate
+                action: logbook.log
       - data:
           name: AC-Matriz 160
           message: hito=turbo_exit_to_normal | Tin={{ tin }} | Hin={{ hin }} | T_on={{
             eff_t_on_cool if turbo_exit_cool else eff_t_on_heat }} | T_off={{ eff_t_off_cool
             if turbo_exit_cool else eff_t_off_heat }} | mid={{ mid_cool if turbo_exit_cool
-            else mid_heat }} | col={{ col_humana }} | motivo=cruce_punto_medio_histeresis
+            else mid_heat }} | col={{ col_humana }} | motivo={{ turbo_exit_cool_motivo
+            if turbo_exit_cool else 'cruce_punto_medio_histeresis' }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
+      - target:
+          entity_id: input_text.ac_matriz_160_turbo_cool_motivo
+        data:
+          value: none
+        action: input_text.set_value
   - choose:
     - conditions:
       - condition: template
@@ -1799,6 +1879,11 @@
           entity_id: input_text.ac_matriz_160_fase_ciclo
         data:
           value: idle
+        action: input_text.set_value
+      - target:
+          entity_id: input_text.ac_matriz_160_turbo_cool_motivo
+        data:
+          value: none
         action: input_text.set_value
       - target:
           entity_id: input_boolean.ac_matriz_160_turbo_reentrada_bloqueada
