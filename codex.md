@@ -3073,3 +3073,15 @@ Implementación contractual:
 - **Contrato operativo:** `reconcile_apply` ahora permite actuar si el evento es `manual_externo` o si cumple `reconcile_manual_thermal_from_fan`, siempre con `legacy_manual_hold_active` inactivo, dedup por `reconcile_last_signature`, y trabajo real de contrato (`SP`, `FAN`, modo inconsistente o garantía operativa fan→térmico).
 - **Aprendizaje preservado:** si el único motivo es `fan_only->cool`/`fan_only->heat`, `resultado_terminal` puede seguir en `ignorado` y no se modifica ningún offset.
 - **Observabilidad:** el reconcile aplicado en este caso registra `hito=reconcile_manual_fan_to_thermal_applied`, `from`, `to`, `sp_objetivo`, `fan_objetivo`, `fan_soportado`, `guarantee` y `razon=fan_only_to_<modo>_manual_reconcile`. Los skips exponen `reconcile_skip_reason`, `auto_marker_fan_to_thermal`, `fan_from_fan_only_eligible`, inconsistencias, hold, dedup y soporte de fan para diagnosticar por qué no actuó.
+
+### AC-Matriz 160 — Contrato de presencia/ausencia robusto
+
+- **Sensor crudo de movimiento**: `binary_sensor.tze204_gkfbdvyx_ts0601`. Es la fuente instantánea para ausencia real, ráfagas y validación de encendidos por movimiento.
+- **Sensor estable de movimiento**: `binary_sensor.presencia_movimiento_estable`. Mantiene filtrado de continuidad para presencia estable; no debe usarse para sumar otra ventana de ausencia de 30 minutos.
+- **Apagado por ausencia 10 min**: `AC-Matriz 160 - Presencia/Ausencia` apaga solo si S24 pasa a `not_home`, el movimiento crudo está `off`, transcurren 10 minutos y siguen S24 fuera, movimiento crudo `off`, sin override manual activo y el HVAC en `cool` o `heat`. Hito: `turn_off_por_ausencia_10m_s24_away`.
+- **Apagado por ausencia 30 min**: la misma automatización apaga si el movimiento crudo lleva `off` 30 minutos, S24 no está `home`, no hay override manual activo y el HVAC está en `cool` o `heat`. Hito: `turn_off_por_ausencia_30m_movimiento_off`.
+- **Exclusión de `fan_only`**: la ausencia nunca apaga desde `fan_only`; solo opera sobre `cool` o `heat`.
+- **Marcador automático obligatorio**: antes de cada apagado por ausencia se escriben `input_text.ac_matriz_160_auto_origin_kind`, `trace`, `expires_at`, `last_action=turn_off` y `consumed=false` para que `AC-Matriz 160 - Aprendizaje manual por columna` clasifique el cambio como `automatico_ac_matriz_160` y no aprenda un apagado manual falso.
+- **Encendido por presencia efectiva**: la automatización principal permite encendido por S24/home, override manual activo, movimiento estable de 5 minutos o ráfagas válidas.
+- **Ráfagas válidas**: se cuentan detecciones del sensor crudo terminadas en los últimos 15 minutos, con duración mínima de 60 segundos; se requiere más de 3 detecciones (4 o más) y el sensor crudo debe estar `on` en el instante de evaluación para habilitar encendidos basados en movimiento.
+- **Persistencia de ráfagas**: `input_text.ac_matriz_160_motion_burst_payload` guarda timestamps depurados de eventos válidos y `input_datetime.ac_matriz_160_motion_burst_last_ts` registra la última actualización del payload.

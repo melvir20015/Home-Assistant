@@ -102,6 +102,11 @@ ac_matriz_160_no_presencia_firma:
   max: 255
   initial: sin_firma_no_presencia
 
+ac_matriz_160_motion_burst_payload:
+  name: AC Matriz 160 Motion Burst Payload
+  max: 255
+  initial: sin_eventos
+
 ac_night_contexto_firma_activa:
   name: AC Night Contexto Firma Activa
   max: 255

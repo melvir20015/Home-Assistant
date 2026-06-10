@@ -1059,6 +1059,7 @@
     - sensor.lumi_lumi_weather_coco_humedad
     - weather.openweathermap
     - binary_sensor.presencia_movimiento_estable
+    - binary_sensor.tze204_gkfbdvyx_ts0601
     - device_tracker.samsung_s24
     - person.ivan
   conditions:
@@ -1082,11 +1083,44 @@
         }}'
       hout: '{{ hout_raw if hout_raw is not none else 60 }}'
       wx_raw: '{{ states(''weather.openweathermap'') | lower }}'
-      presence_motion: '{{ is_state(''binary_sensor.presencia_movimiento_estable'',''on'')
+      presence_motion_stable: '{{ is_state(''binary_sensor.presencia_movimiento_estable'',''on'')
+        }}'
+      presence_motion_raw: '{{ is_state(''binary_sensor.tze204_gkfbdvyx_ts0601'',''on'')
+        }}'
+      motion_burst_payload_raw: '{{ states(''input_text.ac_matriz_160_motion_burst_payload'')
+        | default('''', true) | trim }}'
+      motion_burst_current_event_valid: '{{ trigger is defined and (trigger.entity_id | default(''''))
+        == ''binary_sensor.tze204_gkfbdvyx_ts0601'' and trigger.to_state is not none
+        and trigger.to_state.state == ''off'' and trigger.from_state is not none and
+        trigger.from_state.state == ''on'' and (as_timestamp(trigger.to_state.last_changed,
+        default=0) - as_timestamp(trigger.from_state.last_changed, default=0)) >= 60 }}'
+      motion_burst_payload_effective: >-
+        {% set cutoff = as_timestamp(now()) - 900 %}
+        {% set ns = namespace(items=[]) %}
+        {% for raw_ts in motion_burst_payload_raw.split(',') if raw_ts | trim != '' and raw_ts | trim != 'sin_eventos' %}
+          {% set ts = raw_ts | trim | float(0) %}
+          {% if ts >= cutoff %}
+            {% set ns.items = ns.items + [ts | int] %}
+          {% endif %}
+        {% endfor %}
+        {% if motion_burst_current_event_valid %}
+          {% set ns.items = ns.items + [as_timestamp(now()) | int] %}
+        {% endif %}
+        {{ ns.items | unique | list | join(',') }}
+      motion_burst_count_15m: '{{ motion_burst_payload_effective.split('','') | reject(''equalto'',
+        '''') | list | count }}'
+      motion_burst_ongoing_event_valid: '{{ presence_motion_raw and (as_timestamp(now())
+        - as_timestamp(states.binary_sensor.tze204_gkfbdvyx_ts0601.last_changed, default=0))
+        >= 60 }}'
+      motion_burst_count_effective_15m: '{{ (motion_burst_count_15m | int(0))
+        + (1 if motion_burst_ongoing_event_valid else 0) }}'
+      presence_motion_burst_valid: '{{ (motion_burst_count_effective_15m | int(0))
+        >= 4 }}'
+      presence_motion: '{{ presence_motion_raw and (presence_motion_stable or presence_motion_burst_valid)
         }}'
       presence_s24: '{{ is_state(''device_tracker.samsung_s24'',''home'') or is_state(''person.ivan'',''home'')
         }}'
-      presence_ok: '{{ presence_motion or presence_s24 }}'
+      presence_ok: '{{ presence_s24 or presence_motion }}'
       manual_presence_override_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_presence_override_until'')
         }}'
       manual_presence_override_until_ts: '{% if manual_presence_override_until_raw
@@ -1094,9 +1128,16 @@
         default=0) }}{% endif %}'
       manual_presence_override_active: '{{ as_timestamp(now()) < (manual_presence_override_until_ts
         | float(0)) }}'
-      presence_ok_effective: '{{ presence_ok or manual_presence_override_active }}'
-      presence_origin: '{% if presence_motion and presence_s24 %}ambos{% elif presence_motion
-        %}movimiento{% elif presence_s24 %}s24{% else %}sin_presencia{% endif %}'
+      presence_ok_effective: '{{ presence_s24 or manual_presence_override_active or presence_motion }}'
+      presence_origin: >-
+        {% if manual_presence_override_active and presence_s24 %}override+s24
+        {% elif manual_presence_override_active and presence_motion %}override+movimiento
+        {% elif manual_presence_override_active %}override_manual
+        {% elif presence_motion and presence_s24 %}ambos
+        {% elif presence_s24 %}s24
+        {% elif presence_motion_stable and presence_motion_raw %}movimiento_estable
+        {% elif presence_motion_burst_valid and presence_motion_raw %}movimiento_rafagas
+        {% else %}sin_presencia{% endif %}
       slot_name: '{% set t = now().strftime(''%H:%M'') %}{% if ''07:01'' <= t <= ''10:00''
         %}07:01 am - 10:00 am{% elif ''10:01'' <= t <= ''13:00'' %}10:01 am - 01:00
         pm{% elif ''13:01'' <= t <= ''16:00'' %}01:01 pm - 04:00 pm{% elif ''16:01''
@@ -1356,7 +1397,7 @@
         }}'
       prev_presence_ok: '{{ is_state(''input_boolean.ac_matriz_160_presencia_valida_disparo'',''on'')
         }}'
-      new_presence_event: '{{ presence_ok and not prev_presence_ok }}'
+      new_presence_event: '{{ presence_ok_effective and not prev_presence_ok }}'
       tin_in_cool_context_range: '{{ (tin | float) >= (eff_t_off_cool | float) }}'
       turbo_cool_strong_thermal_deviation: '{{ (tin | float) >= ((eff_t_on_cool | float)
         + 1.0) }}'
@@ -1465,6 +1506,21 @@
     data:
       value: '{{ presence_origin }}'
     action: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ motion_burst_payload_effective != motion_burst_payload_raw }}'
+      sequence:
+      - target:
+          entity_id: input_text.ac_matriz_160_motion_burst_payload
+        data:
+          value: '{{ motion_burst_payload_effective if motion_burst_payload_effective | trim != '''' else ''sin_eventos'' }}'
+        action: input_text.set_value
+      - target:
+          entity_id: input_datetime.ac_matriz_160_motion_burst_last_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
   - data:
       name: AC-Matriz 160
       message: hito=evaluacion | col={{ col_idx }} | col_helper_previo={{ col_idx_helper_previo }} | helper_desfasado={{ col_idx_helper_desfasado }} | formula={{ col_formula }} | esquema_temporada={{ season_index_schema }} | season={{ season_name }} | season_idx={{ season_idx }} | weather={{ weather_cat }} | weather_idx={{ weather_idx }} | slot={{ slot_name }} | slot_idx={{ slot_idx }} | contexto={{ col_humana }} | contexto_helper_previo={{ col_humana_helper_previa }} | offset_cool_helper_entity={{ offset_cool_helper_entity }} | offset_heat_helper_entity={{ offset_heat_helper_entity }} | firma={{
@@ -2376,9 +2432,9 @@
     stored_traces: 200
 - id: ac_matriz_160_presencia_ausencia_v1
   alias: AC-Matriz 160 - Presencia/Ausencia
-  description: Gestión dedicada de apagado por no presencia (S24+movimiento), desacoplada
-    de la lógica térmica principal.
-  mode: restart
+  description: Gestión dedicada de apagado por ausencia usando S24 y movimiento crudo, desacoplada de la lógica térmica principal.
+  mode: queued
+  max: 5
   trace:
     stored_traces: 50
   triggers:
@@ -2395,45 +2451,32 @@
     to: home
     id: person_home
   - trigger: state
-    entity_id: climate.0200009211c7_climate
-    id: hvac_mode_changed
+    entity_id: binary_sensor.tze204_gkfbdvyx_ts0601
+    to: 'off'
+    for: 00:30:00
+    id: movimiento_crudo_off_30m
   conditions: []
   actions:
   - variables:
-      trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') ~ ''-np'' }}'
+      trace_id: '{{ now().strftime(''%Y%m%d%H%M%S%f'') ~ ''-pa'' }}'
       s24_state: '{{ states(''device_tracker.samsung_s24'') }}'
-      movimiento_state: '{{ states(''binary_sensor.presencia_movimiento_estable'')
-        }}'
+      movimiento_crudo_state: '{{ states(''binary_sensor.tze204_gkfbdvyx_ts0601'') }}'
+      movimiento_estable_state: '{{ states(''binary_sensor.presencia_movimiento_estable'') }}'
       hvac_mode: '{{ states(''climate.0200009211c7_climate'') }}'
       hvac_scope_ok: '{{ hvac_mode in [''cool'',''heat''] }}'
-      manual_off_block_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_off_block_until'')
-        }}'
-      manual_off_block_until_ts: '{% if manual_off_block_until_raw in [''unknown'',''unavailable'',''none'','''']
-        %}{{ 0 }}{% else %}{{ as_timestamp(manual_off_block_until_raw, default=0)
-        }}{% endif %}'
-      manual_off_block_active: '{{ as_timestamp(now()) < (manual_off_block_until_ts
-        | float(0)) }}'
-      override_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_presence_override_until'')
-        }}'
-      override_until_ts: '{% if override_until_raw in [''unknown'',''unavailable'',''none'','''']
-        %}{{ 0 }}{% else %}{{ as_timestamp(override_until_raw, default=0) }}{% endif
-        %}'
-      manual_presence_override_active: '{{ as_timestamp(now()) < (override_until_ts
-        | float(0)) }}'
-      event_signature: '{{ trigger.id ~ ''|'' ~ s24_state ~ ''|'' ~ movimiento_state
-        ~ ''|'' ~ hvac_mode ~ ''|'' ~ now().strftime(''%Y-%m-%d %H:%M'') }}'
+      override_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_presence_override_until'') }}'
+      override_until_ts: >-
+        {% if override_until_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(override_until_raw, default=0) }}{% endif %}
+      manual_presence_override_active: '{{ as_timestamp(now()) < (override_until_ts | float(0)) }}'
+      auto_origin_expires_at: '{{ (now() + timedelta(seconds=30)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      event_signature: '{{ trigger.id ~ ''|'' ~ s24_state ~ ''|'' ~ movimiento_crudo_state ~ ''|'' ~ hvac_mode ~ ''|'' ~ now().strftime(''%Y-%m-%d %H:%M'') }}'
       dedup_window_s: 90
-      dedup_last_signature: '{{ states(''input_text.ac_matriz_160_no_presencia_firma'')
-        | default('''', true) | trim }}'
-      dedup_last_ts_raw: '{{ states(''input_datetime.ac_matriz_160_no_presencia_firma_ts'')
-        }}'
-      dedup_last_ts: '{% if dedup_last_ts_raw in [''unknown'',''unavailable'',''none'','''']
-        %}{{ 0 }}{% else %}{{ as_timestamp(dedup_last_ts_raw, default=0) }}{% endif
-        %}'
-      dedup_in_window: '{{ (as_timestamp(now()) - (dedup_last_ts | float(0))) < (dedup_window_s
-        | float(90)) }}'
-      dedup_ok: '{{ event_signature != dedup_last_signature or not dedup_in_window
-        }}'
+      dedup_last_signature: '{{ states(''input_text.ac_matriz_160_no_presencia_firma'') | default('''', true) | trim }}'
+      dedup_last_ts_raw: '{{ states(''input_datetime.ac_matriz_160_no_presencia_firma_ts'') }}'
+      dedup_last_ts: >-
+        {% if dedup_last_ts_raw in ['unknown','unavailable','none',''] %}{{ 0 }}{% else %}{{ as_timestamp(dedup_last_ts_raw, default=0) }}{% endif %}
+      dedup_in_window: '{{ (as_timestamp(now()) - (dedup_last_ts | float(0))) < (dedup_window_s | float(90)) }}'
+      dedup_ok: '{{ event_signature != dedup_last_signature or not dedup_in_window }}'
   - choose:
     - conditions:
       - condition: template
@@ -2442,23 +2485,7 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }}
-            | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_state={{
-            movimiento_state }} | resultado_terminal=cancelado | razon=s24_en_casa
-            | override_activo={{ manual_presence_override_active }} | override_until={{
-            override_until_raw }}
-          entity_id: climate.0200009211c7_climate
-    - conditions:
-      - condition: template
-        value_template: '{{ trigger.id == ''hvac_mode_changed'' and states(''climate.0200009211c7_climate'')
-          not in [''cool'',''heat''] }}'
-      sequence:
-      - service: logbook.log
-        data:
-          name: AC-Matriz 160
-          message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }}
-            | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_state={{
-            movimiento_state }} | resultado_terminal=cancelado | razon=hvac_fuera_de_alcance
+          message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_crudo_state={{ movimiento_crudo_state }} | movimiento_estable_state={{ movimiento_estable_state }} | resultado_terminal=cancelado | razon=s24_en_casa | override_activo={{ manual_presence_override_active }} | override_until={{ override_until_raw }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
@@ -2467,15 +2494,20 @@
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: hito=auto_off_no_presencia_cancelado_por_override | trace_id={{
-            trace_id }} | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }}
-            | movimiento_state={{ movimiento_state }} | override_until={{ override_until_raw
-            }} | resultado_terminal=cancelado | razon=override_activo
+          message: hito=auto_off_no_presencia_cancelado_por_override | trace_id={{ trace_id }} | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_crudo_state={{ movimiento_crudo_state }} | resultado_terminal=cancelado | razon=override_activo | override_until={{ override_until_raw }}
           entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ trigger.id == ''s24_away'' and dedup_ok and hvac_scope_ok
-          }}'
+        value_template: '{{ trigger.id == ''s24_away'' and not dedup_ok }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_crudo_state={{ movimiento_crudo_state }} | resultado_terminal=cancelado | razon=dedup_ventana
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id == ''s24_away'' and dedup_ok }}'
       sequence:
       - service: input_text.set_value
         target:
@@ -2489,269 +2521,103 @@
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
       - choose:
         - conditions:
-          - condition: state
-            entity_id: binary_sensor.presencia_movimiento_estable
-            state: 'off'
+          - condition: template
+            value_template: '{{ movimiento_crudo_state == ''off'' }}'
           sequence:
           - delay: 00:10:00
           - variables:
               modo_previo: '{{ states(''climate.0200009211c7_climate'') }}'
-              s24_guard_ok: '{{ states(''device_tracker.samsung_s24'') == ''not_home''
-                }}'
-              motion_guard_ok: '{{ states(''binary_sensor.presencia_movimiento_estable'')
-                == ''off'' }}'
+              s24_guard_ok: '{{ states(''device_tracker.samsung_s24'') == ''not_home'' }}'
+              motion_guard_ok: '{{ states(''binary_sensor.tze204_gkfbdvyx_ts0601'') == ''off'' }}'
               hvac_guard_ok: '{{ modo_previo in [''cool'',''heat''] }}'
-              security_guard_ok: '{{ not (as_timestamp(now()) < (manual_off_block_until_ts
-                | float(0))) and not manual_presence_override_active }}'
+              override_guard_ok: >-
+                {% set raw = states('input_datetime.ac_matriz_160_manual_presence_override_until') %}
+                {% set ts = 0 if raw in ['unknown','unavailable','none',''] else as_timestamp(raw, default=0) %}
+                {{ as_timestamp(now()) >= (ts | float(0)) }}
+              auto_origin_expires_at: '{{ (now() + timedelta(seconds=30)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+              hito_apagado: turn_off_por_ausencia_10m_s24_away
+              razon_apagado: s24_fuera_y_movimiento_crudo_off_10m
           - choose:
             - conditions:
               - condition: template
-                value_template: '{{ s24_guard_ok and motion_guard_ok and hvac_guard_ok
-                  and security_guard_ok }}'
-              sequence:
-              - choose:
-                - conditions:
-                  - condition: template
-                    value_template: '{{ modo_previo == ''cool'' }}'
-                  sequence:
-                  - service: logbook.log
-                    data:
-                      name: AC-Matriz 160
-                      message: hito=post_cool_dry_start | trace_id={{ trace_id }}
-                        | modo_previo={{ modo_previo }} | resultado_terminal=en_progreso
-                        | razon=auto_off_no_presencia_10m
-                      entity_id: climate.0200009211c7_climate
-                  - service: climate.set_hvac_mode
-                    target:
-                      entity_id: climate.0200009211c7_climate
-                    data:
-                      hvac_mode: fan_only
-                  - wait_template: '{{ states(''climate.0200009211c7_climate'') ==
-                      ''fan_only'' }}'
-                    timeout: 00:00:08
-                    continue_on_timeout: true
-                  - variables:
-                      post_cool_fan_only_ok_1: '{{ states(''climate.0200009211c7_climate'')
-                        == ''fan_only'' }}'
-                  - choose:
-                    - conditions:
-                      - condition: template
-                        value_template: '{{ not post_cool_fan_only_ok_1 }}'
-                      sequence:
-                      - service: climate.set_hvac_mode
-                        target:
-                          entity_id: climate.0200009211c7_climate
-                        data:
-                          hvac_mode: fan_only
-                      - wait_template: '{{ states(''climate.0200009211c7_climate'')
-                          == ''fan_only'' }}'
-                        timeout: 00:00:08
-                        continue_on_timeout: true
-                  - variables:
-                      post_cool_fan_only_ok: '{{ (post_cool_fan_only_ok_1 | default(false)) or states(''climate.0200009211c7_climate'')
-                        == ''fan_only'' }}'
-                  - choose:
-                    - conditions:
-                      - condition: template
-                        value_template: '{{ post_cool_fan_only_ok }}'
-                      sequence:
-                      - service: climate.set_fan_mode
-                        target:
-                          entity_id: climate.0200009211c7_climate
-                        data:
-                          fan_mode: Low
-                      - delay: 00:02:00
-                      - service: climate.turn_off
-                        target:
-                          entity_id: climate.0200009211c7_climate
-                      - service: logbook.log
-                        data:
-                          name: AC-Matriz 160
-                          message: hito=post_cool_dry_completed | trace_id={{ trace_id
-                            }} | modo_previo={{ modo_previo }} | resultado_terminal=off
-                            | razon=secado_2m_completado
-                          entity_id: climate.0200009211c7_climate
-                    default:
-                    - service: climate.set_hvac_mode
-                      target:
-                        entity_id: climate.0200009211c7_climate
-                      data:
-                        hvac_mode: 'off'
-                    - service: logbook.log
-                      data:
-                        name: AC-Matriz 160
-                        message: hito=post_cool_dry_fallback_off | trace_id={{ trace_id
-                          }} | modo_previo={{ modo_previo }} | resultado_terminal=off
-                          | razon=fan_only_no_disponible_tras_reintento
-                        entity_id: climate.0200009211c7_climate
-                default:
-                - service: climate.turn_off
-                  target:
-                    entity_id: climate.0200009211c7_climate
+                value_template: '{{ s24_guard_ok and motion_guard_ok and hvac_guard_ok and override_guard_ok }}'
+              sequence: &ac_matriz_160_apagado_ausencia
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.ac_matriz_160_auto_origin_kind
+                data:
+                  value: automatico_ac_matriz_160
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.ac_matriz_160_auto_origin_trace
+                data:
+                  value: '{{ trace_id }}'
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.ac_matriz_160_auto_origin_expires_at
+                data:
+                  value: '{{ auto_origin_expires_at }}'
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.ac_matriz_160_auto_origin_last_action
+                data:
+                  value: turn_off
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.ac_matriz_160_auto_origin_consumed
+                data:
+                  value: 'false'
+              - service: climate.turn_off
+                target:
+                  entity_id: climate.0200009211c7_climate
               - service: notify.mobile_app_samsung_s24
                 data:
-                  title: AC-Matriz 160 · Apagado por no presencia
-                  message: 'Se apagó el AC ({{ modo_previo }}) por no presencia: S24
-                    fuera y sin movimiento durante 10 min.'
+                  title: AC-Matriz 160 · Apagado por ausencia
+                  message: 'Se apagó el AC ({{ modo_previo }}) por ausencia confirmada. Trace={{ trace_id }}.'
               - service: logbook.log
                 data:
                   name: AC-Matriz 160
-                  message: hito=auto_off_no_presencia_10m | trace_id={{ trace_id }}
-                    | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24')
-                    }} | movimiento_state={{ states('binary_sensor.presencia_movimiento_estable')
-                    }} | resultado_terminal=aplicado | razon=s24_fuera_y_10m_sin_movimiento
+                  message: hito={{ hito_apagado }} | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24') }} | movimiento_crudo_state={{ states('binary_sensor.tze204_gkfbdvyx_ts0601') }} | movimiento_estable_state={{ states('binary_sensor.presencia_movimiento_estable') }} | auto_origin=automatico_ac_matriz_160 | resultado_terminal=aplicado | razon={{ razon_apagado }}
                   entity_id: climate.0200009211c7_climate
             default:
             - service: logbook.log
               data:
                 name: AC-Matriz 160
-                message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id
-                  }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24')
-                  }} | movimiento_state={{ states('binary_sensor.presencia_movimiento_estable')
-                  }} | resultado_terminal=cancelado | razon={{ 'override_activo' if
-                  manual_presence_override_active else 'guardas_no_cumplidas_10m'
-                  }} | override_activo={{ manual_presence_override_active }} | override_until={{
-                  override_until_raw }}
+                message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24') }} | movimiento_crudo_state={{ states('binary_sensor.tze204_gkfbdvyx_ts0601') }} | resultado_terminal=cancelado | razon=guardas_no_cumplidas_10m | override_activo={{ not override_guard_ok }}
                 entity_id: climate.0200009211c7_climate
         default:
-        - wait_for_trigger:
-          - trigger: state
-            entity_id: binary_sensor.presencia_movimiento_estable
-            to: 'off'
-            for: 00:30:00
-          timeout: 86400
-          continue_on_timeout: false
-        - variables:
-            modo_previo: '{{ states(''climate.0200009211c7_climate'') }}'
-            s24_guard_ok: '{{ states(''device_tracker.samsung_s24'') == ''not_home''
-              }}'
-            motion_guard_ok: '{{ states(''binary_sensor.presencia_movimiento_estable'')
-              == ''off'' }}'
-            hvac_guard_ok: '{{ modo_previo in [''cool'',''heat''] }}'
-            security_guard_ok: '{{ not (as_timestamp(now()) < (manual_off_block_until_ts
-              | float(0))) and not manual_presence_override_active }}'
-        - choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ s24_guard_ok and motion_guard_ok and hvac_guard_ok
-                and security_guard_ok }}'
-            sequence:
-            - choose:
-              - conditions:
-                - condition: template
-                  value_template: '{{ modo_previo == ''cool'' }}'
-                sequence:
-                - service: logbook.log
-                  data:
-                    name: AC-Matriz 160
-                    message: hito=post_cool_dry_start | trace_id={{ trace_id }} |
-                      modo_previo={{ modo_previo }} | resultado_terminal=en_progreso
-                      | razon=auto_off_no_presencia_30m
-                    entity_id: climate.0200009211c7_climate
-                - service: climate.set_hvac_mode
-                  target:
-                    entity_id: climate.0200009211c7_climate
-                  data:
-                    hvac_mode: fan_only
-                - wait_template: '{{ states(''climate.0200009211c7_climate'') == ''fan_only''
-                    }}'
-                  timeout: 00:00:08
-                  continue_on_timeout: true
-                - variables:
-                    post_cool_fan_only_ok_1: '{{ states(''climate.0200009211c7_climate'')
-                      == ''fan_only'' }}'
-                - choose:
-                  - conditions:
-                    - condition: template
-                      value_template: '{{ not post_cool_fan_only_ok_1 }}'
-                    sequence:
-                    - service: climate.set_hvac_mode
-                      target:
-                        entity_id: climate.0200009211c7_climate
-                      data:
-                        hvac_mode: fan_only
-                    - wait_template: '{{ states(''climate.0200009211c7_climate'')
-                        == ''fan_only'' }}'
-                      timeout: 00:00:08
-                      continue_on_timeout: true
-                - variables:
-                    post_cool_fan_only_ok: '{{ (post_cool_fan_only_ok_1 | default(false)) or states(''climate.0200009211c7_climate'')
-                      == ''fan_only'' }}'
-                - choose:
-                  - conditions:
-                    - condition: template
-                      value_template: '{{ post_cool_fan_only_ok }}'
-                    sequence:
-                    - service: climate.set_fan_mode
-                      target:
-                        entity_id: climate.0200009211c7_climate
-                      data:
-                        fan_mode: Low
-                    - delay: 00:02:00
-                    - service: climate.turn_off
-                      target:
-                        entity_id: climate.0200009211c7_climate
-                    - service: logbook.log
-                      data:
-                        name: AC-Matriz 160
-                        message: hito=post_cool_dry_completed | trace_id={{ trace_id
-                          }} | modo_previo={{ modo_previo }} | resultado_terminal=off
-                          | razon=secado_2m_completado
-                        entity_id: climate.0200009211c7_climate
-                  default:
-                  - service: climate.set_hvac_mode
-                    target:
-                      entity_id: climate.0200009211c7_climate
-                    data:
-                      hvac_mode: 'off'
-                  - service: logbook.log
-                    data:
-                      name: AC-Matriz 160
-                      message: hito=post_cool_dry_fallback_off | trace_id={{ trace_id
-                        }} | modo_previo={{ modo_previo }} | resultado_terminal=off
-                        | razon=fan_only_no_disponible_tras_reintento
-                      entity_id: climate.0200009211c7_climate
-              default:
-              - service: climate.turn_off
-                target:
-                  entity_id: climate.0200009211c7_climate
-            - service: notify.mobile_app_samsung_s24
-              data:
-                title: AC-Matriz 160 · Apagado por no presencia
-                message: 'Se apagó el AC ({{ modo_previo }}) por no presencia: S24
-                  fuera y 30 min continuos sin movimiento.'
-            - service: logbook.log
-              data:
-                name: AC-Matriz 160
-                message: hito=auto_off_no_presencia_30m | trace_id={{ trace_id }}
-                  | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24')
-                  }} | movimiento_state={{ states('binary_sensor.presencia_movimiento_estable')
-                  }} | resultado_terminal=aplicado | razon=s24_fuera_y_30m_continuos_sin_movimiento
-                entity_id: climate.0200009211c7_climate
-          default:
-          - service: logbook.log
-            data:
-              name: AC-Matriz 160
-              message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id
-                }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24')
-                }} | movimiento_state={{ states('binary_sensor.presencia_movimiento_estable')
-                }} | resultado_terminal=cancelado | razon={{ 'override_activo' if
-                manual_presence_override_active else 'guardas_no_cumplidas_30m' }}
-                | override_activo={{ manual_presence_override_active }} | override_until={{
-                override_until_raw }}
-              entity_id: climate.0200009211c7_climate
-  - choose:
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_crudo_state={{ movimiento_crudo_state }} | resultado_terminal=cancelado | razon=movimiento_crudo_activo_en_s24_away
+            entity_id: climate.0200009211c7_climate
     - conditions:
       - condition: template
-        value_template: '{{ trigger.id == ''s24_away'' and (not dedup_ok) }}'
+        value_template: '{{ trigger.id == ''movimiento_crudo_off_30m'' }}'
       sequence:
-      - service: logbook.log
-        data:
-          name: AC-Matriz 160
-          message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }}
-            | modo_previo={{ hvac_mode }} | s24_state={{ s24_state }} | movimiento_state={{
-            movimiento_state }} | resultado_terminal=cancelado | razon=dedup_ventana
-          entity_id: climate.0200009211c7_climate
+      - variables:
+          modo_previo: '{{ states(''climate.0200009211c7_climate'') }}'
+          s24_guard_ok: '{{ states(''device_tracker.samsung_s24'') != ''home'' }}'
+          motion_guard_ok: '{{ states(''binary_sensor.tze204_gkfbdvyx_ts0601'') == ''off'' }}'
+          hvac_guard_ok: '{{ modo_previo in [''cool'',''heat''] }}'
+          override_guard_ok: >-
+            {% set raw = states('input_datetime.ac_matriz_160_manual_presence_override_until') %}
+            {% set ts = 0 if raw in ['unknown','unavailable','none',''] else as_timestamp(raw, default=0) %}
+            {{ as_timestamp(now()) >= (ts | float(0)) }}
+          auto_origin_expires_at: '{{ (now() + timedelta(seconds=30)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+          hito_apagado: turn_off_por_ausencia_30m_movimiento_off
+          razon_apagado: movimiento_crudo_off_30m_y_s24_fuera
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ s24_guard_ok and motion_guard_ok and hvac_guard_ok and override_guard_ok }}'
+          sequence: *ac_matriz_160_apagado_ausencia
+        default:
+        - service: logbook.log
+          data:
+            name: AC-Matriz 160
+            message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24') }} | movimiento_crudo_state={{ states('binary_sensor.tze204_gkfbdvyx_ts0601') }} | resultado_terminal=cancelado | razon=guardas_no_cumplidas_30m | override_activo={{ not override_guard_ok }}
+            entity_id: climate.0200009211c7_climate
 - id: ac_matriz_160_learning_manual_v1
   alias: AC-Matriz 160 - Aprendizaje manual por columna
   description: Aprende offset por columna y modo desde ON/OFF manual con clasificación
