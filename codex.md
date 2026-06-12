@@ -3093,3 +3093,11 @@ Implementación contractual:
 - **Encendido por presencia efectiva**: la automatización principal permite encendido por S24/home, override manual activo, movimiento estable de 5 minutos o ráfagas válidas.
 - **Ráfagas válidas**: se cuentan detecciones del sensor crudo terminadas en los últimos 15 minutos, con duración mínima de 60 segundos; se requiere más de 3 detecciones (4 o más) y el sensor crudo debe estar `on` en el instante de evaluación para habilitar encendidos basados en movimiento.
 - **Persistencia de ráfagas**: `input_text.ac_matriz_160_motion_burst_payload` guarda timestamps depurados de eventos válidos y `input_datetime.ac_matriz_160_motion_burst_last_ts` registra la última actualización del payload.
+
+## 72) AC-Matriz 160 — llegada real para turbo por humedad contextual (2026-06-12)
+
+- **Alcance:** automatización principal `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) en `automations.yaml`.
+- **Presencia efectiva actual:** `presence_motion` vuelve a respetar el `delay_off` de `binary_sensor.presencia_movimiento_estable`; un `off` corto del sensor crudo ya no derriba presencia mientras el sensor estable siga `on`. Las ráfagas siguen exigiendo sensor crudo `on`.
+- **Llegada elegible para turbo:** se separa `new_presence_event` de `turbo_arrival_real_eligible`. El turbo por `humedad_alta_contextual` ahora requiere una llegada confiable reciente por S24/persona, transición reciente del movimiento estable, o ráfagas válidas sin presencia estable continua.
+- **Bloqueo anti-rebote:** si `Hin >= 60` y `Tin` está en rango contextual, pero la señal corresponde a presencia estable continua, rebote del movimiento crudo u override manual sin llegada real, `turbo_cool_contextual_humidity_allowed` queda falso y no entra a `turbo_cool` por humedad contextual.
+- **Observabilidad:** los logs de evaluación exponen `llegada_turbo`, `llegada_razon`, `hum_contextual` y `hum_contextual_allowed`. Cuando se bloquea el caso de humedad contextual se registra `hito=turbo_cool_contextual_humidity_blocked` con origen de presencia, estados de movimiento y motivo del bloqueo.

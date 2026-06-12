@@ -1116,7 +1116,7 @@
         + (1 if motion_burst_ongoing_event_valid else 0) }}'
       presence_motion_burst_valid: '{{ (motion_burst_count_effective_15m | int(0))
         >= 4 }}'
-      presence_motion: '{{ presence_motion_raw and (presence_motion_stable or presence_motion_burst_valid)
+      presence_motion: '{{ presence_motion_stable or (presence_motion_raw and presence_motion_burst_valid)
         }}'
       presence_s24: '{{ is_state(''device_tracker.samsung_s24'',''home'') or is_state(''person.ivan'',''home'')
         }}'
@@ -1400,16 +1400,40 @@
       prev_presence_ok: '{{ is_state(''input_boolean.ac_matriz_160_presencia_valida_disparo'',''on'')
         }}'
       new_presence_event: '{{ presence_ok_effective and not prev_presence_ok }}'
+      motion_stable_on_age_s: '{{ (as_timestamp(now()) - as_timestamp(states.binary_sensor.presencia_movimiento_estable.last_changed,
+        default=0)) if presence_motion_stable else 999999 }}'
+      s24_home_arrival_recent: >-
+        {% set s24_age = (as_timestamp(now()) - as_timestamp(states.device_tracker.samsung_s24.last_changed, default=0)) if is_state('device_tracker.samsung_s24','home') else 999999 %}
+        {% set person_age = (as_timestamp(now()) - as_timestamp(states.person.ivan.last_changed, default=0)) if is_state('person.ivan','home') else 999999 %}
+        {{ presence_s24 and ([s24_age, person_age] | min) <= 900 }}
+      motion_stable_arrival_recent: '{{ presence_motion_stable and (motion_stable_on_age_s
+        | float(999999)) <= 900 }}'
+      motion_burst_arrival_recent: '{{ presence_motion_raw and presence_motion_burst_valid
+        and not presence_motion_stable }}'
+      turbo_arrival_real_eligible: '{{ new_presence_event and (s24_home_arrival_recent
+        or motion_stable_arrival_recent or motion_burst_arrival_recent) }}'
+      turbo_arrival_block_reason: >-
+        {% if not new_presence_event %}sin_evento_nueva_presencia
+        {% elif s24_home_arrival_recent %}permitido_llegada_s24_reciente
+        {% elif motion_stable_arrival_recent %}permitido_llegada_movimiento_estable_reciente
+        {% elif motion_burst_arrival_recent %}permitido_llegada_rafagas_movimiento
+        {% elif presence_motion_stable and presence_motion_raw %}bloqueado_presencia_estable_continua
+        {% elif presence_motion_stable and not presence_motion_raw %}bloqueado_presencia_estable_sin_movimiento_crudo
+        {% elif presence_motion_raw %}bloqueado_rebote_movimiento_sin_llegada_estable
+        {% elif manual_presence_override_active %}bloqueado_override_manual_sin_llegada_real
+        {% else %}bloqueado_sin_llegada_confiable{% endif %}
       tin_in_cool_context_range: '{{ (tin | float) >= (eff_t_off_cool | float) }}'
       turbo_cool_strong_thermal_deviation: '{{ (tin | float) >= ((eff_t_on_cool | float)
         + 1.0) }}'
       turbo_cool_contextual_humidity: '{{ (hin | float) >= 60 and tin_in_cool_context_range
         }}'
-      turbo_enter_cool_reason: '{% if turbo_cool_strong_thermal_deviation %}desvio_termico_fuerte{% elif turbo_cool_contextual_humidity
+      turbo_cool_contextual_humidity_allowed: '{{ turbo_cool_contextual_humidity
+        and turbo_arrival_real_eligible }}'
+      turbo_enter_cool_reason: '{% if turbo_cool_strong_thermal_deviation %}desvio_termico_fuerte{% elif turbo_cool_contextual_humidity_allowed
         %}humedad_alta_contextual{% else %}none{% endif %}'
       turbo_enter_cool: '{{ (not manual_off_block_active) and (not cool_block_active)
         and (not turbo_blocked) and new_presence_event and (turbo_cool_strong_thermal_deviation
-        or turbo_cool_contextual_humidity) }}'
+        or turbo_cool_contextual_humidity_allowed) }}'
       turbo_enter_heat: '{{ (not manual_off_block_active) and (not heat_block_active)
         and new_presence_event and (not turbo_blocked) and (tin|float <= (eff_t_on_heat|float
         - 1.0)) }}'
@@ -1536,7 +1560,9 @@
         contexto_firma }} | presencia_real={{ presence_ok }}({{ presence_origin }})
         | override_activo={{ manual_presence_override_active }} | override_until={{
         manual_presence_override_until_raw }} | presencia_efectiva={{ presence_ok_effective
-        }} | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base
+        }} | llegada_turbo={{ turbo_arrival_real_eligible }} | llegada_razon={{ turbo_arrival_block_reason
+        }} | hum_contextual={{ turbo_cool_contextual_humidity }} | hum_contextual_allowed={{
+        turbo_cool_contextual_humidity_allowed }} | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base
         }},cool_off_no_slot {{ t_off_cool_base_no_slot }},slot_adj {{ slot_cool_adjust
         }},adj_tout {{ adj_tout_cool }},adj_hout {{ adj_hout_cool }},adj_clima {{
         adj_clima_cool }},heat_adj_tout {{ adj_tout_heat }},heat_adj_hout {{ adj_hout_heat
@@ -1673,7 +1699,8 @@
           name: AC-Matriz 160
           message: hito=turbo_enter_cool | Tin={{ tin }} | Hin={{ hin }} | T_on={{
             eff_t_on_cool }} | T_off={{ eff_t_off_cool }} | mid={{ mid_cool }} | col={{
-            col_humana }} | motivo={{ turbo_enter_cool_reason }} | trace={{ auto_origin_trace_id }}
+            col_humana }} | motivo={{ turbo_enter_cool_reason }} | llegada_razon={{
+            turbo_arrival_block_reason }} | trace={{ auto_origin_trace_id }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - data:
@@ -1763,7 +1790,8 @@
     - conditions:
       - condition: template
         value_template: '{{ new_presence_event and (not turbo_enter_cool) and (not
-          turbo_enter_heat) }}'
+          turbo_enter_heat) and not (turbo_cool_contextual_humidity and not turbo_cool_contextual_humidity_allowed
+          and not turbo_cool_strong_thermal_deviation) }}'
       sequence:
       - target:
           entity_id: input_text.ac_matriz_160_fase_ciclo
@@ -1779,7 +1807,26 @@
           name: AC-Matriz 160
           message: hito=normal_without_turbo | Tin={{ tin }} | Hin={{ hin }} | T_on_cool={{
             eff_t_on_cool }} | T_on_heat={{ eff_t_on_heat }} | col={{ col_humana }}
-            | motivo=sin_desvio_inicial
+            | motivo=sin_desvio_inicial | llegada_razon={{ turbo_arrival_block_reason }}
+            | hum_contextual={{ turbo_cool_contextual_humidity }} | hum_contextual_allowed={{
+            turbo_cool_contextual_humidity_allowed }}
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+    - conditions:
+      - condition: template
+        value_template: '{{ new_presence_event and turbo_cool_contextual_humidity and
+          not turbo_cool_contextual_humidity_allowed and not turbo_cool_strong_thermal_deviation
+          }}'
+      sequence:
+      - data:
+          name: AC-Matriz 160
+          message: hito=turbo_cool_contextual_humidity_blocked | Tin={{ tin }} | Hin={{ hin }} | T_on_cool={{
+            eff_t_on_cool }} | T_off_cool={{ eff_t_off_cool }} | col={{ col_humana
+            }} | llegada_razon={{ turbo_arrival_block_reason }} | presencia_origen={{
+            presence_origin }} | movimiento_crudo={{ 'on' if presence_motion_raw else 'off'
+            }} | movimiento_estable={{ 'on' if presence_motion_stable else 'off' }}
+            | motion_stable_on_age_s={{ motion_stable_on_age_s }} | resultado=bloqueado
+            | razon=humedad_contextual_requiere_llegada_real
           entity_id: climate.0200009211c7_climate
         action: logbook.log
     - conditions:
