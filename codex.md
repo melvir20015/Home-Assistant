@@ -3101,3 +3101,13 @@ Implementación contractual:
 - **Llegada elegible para turbo:** se separa `new_presence_event` de `turbo_arrival_real_eligible`. El turbo por `humedad_alta_contextual` ahora requiere una llegada confiable reciente por S24/persona, transición reciente del movimiento estable, o ráfagas válidas sin presencia estable continua.
 - **Bloqueo anti-rebote:** si `Hin >= 60` y `Tin` está en rango contextual, pero la señal corresponde a presencia estable continua, rebote del movimiento crudo u override manual sin llegada real, `turbo_cool_contextual_humidity_allowed` queda falso y no entra a `turbo_cool` por humedad contextual.
 - **Observabilidad:** los logs de evaluación exponen `llegada_turbo`, `llegada_razon`, `hum_contextual` y `hum_contextual_allowed`. Cuando se bloquea el caso de humedad contextual se registra `hito=turbo_cool_contextual_humidity_blocked` con origen de presencia, estados de movimiento y motivo del bloqueo.
+
+---
+
+## Nota operativa: AC-Matriz 160 · frío normal contextual
+
+- `eff_t_off_cool` sigue siendo la meta/fuente de verdad para el apagado en frío; los ajustes de setpoint no modifican esa temperatura de apagado.
+- Durante un ciclo activo en `cool` normal, si cambia el contexto/columna y el nuevo `sp_cool_normal` calculado desde el `eff_t_off_cool` vigente queda por debajo del setpoint actual del climate, la automatización puede bajar el SP para re-sincronizarlo con el contexto más exigente.
+- La re-sincronización contextual es solo descendente durante el ciclo: no sube el SP si el nuevo `sp_cool_normal` es mayor que el SP actual.
+- Si pasan 40 minutos acumulados en frío normal y `Tin` sigue por encima de `eff_t_off_cool` (con margen de 0.2 °C), puede aplicarse una sola vez por ciclo un refuerzo temporal de `SP actual - 1`, respetando el `min_temp` del climate.
+- La fase `turbo_cool` no cuenta para ese temporizador y no ejecuta ni re-sincronización contextual ni refuerzo de 40 minutos; al salir de turbo hacia `cool` normal empieza un conteo nuevo desde cero.

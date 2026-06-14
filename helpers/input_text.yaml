@@ -55,6 +55,11 @@ ac_matriz_160_turbo_cool_motivo:
   max: 80
   initial: none
 
+ac_matriz_160_cool_sp_adjust_reason:
+  name: AC Matriz 160 Cool SP Adjust Reason
+  max: 255
+  initial: sin_ajuste
+
 
 ac_matriz_160_learning_last_signature:
   name: AC Matriz 160 Learning Last Signature

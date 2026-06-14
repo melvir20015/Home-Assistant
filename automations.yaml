@@ -1062,6 +1062,8 @@
     - binary_sensor.tze204_gkfbdvyx_ts0601
     - device_tracker.samsung_s24
     - person.ivan
+    - climate.0200009211c7_climate
+    - input_text.ac_matriz_160_fase_ciclo
   conditions:
   - condition: time
     after: 07:01:00
@@ -1271,6 +1273,15 @@
       sp_objetivo: '{{ (off_entero | int) - 1 }}'
       sp_cool_normal: '{{ [hvac_max_sp|int, [hvac_min_sp|int, (sp_objetivo|int)] |
         max] | min | int }}'
+      sp_actual: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'') | float(none) }}'
+      cool_normal_cycle_started_raw: '{{ states(''input_datetime.ac_matriz_160_cool_normal_cycle_started_ts'') }}'
+      cool_normal_cycle_started_ts: '{% if cool_normal_cycle_started_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(cool_normal_cycle_started_raw, default=0) }}{% endif %}'
+      cool_normal_cycle_ts_active: '{{ (cool_normal_cycle_started_ts | float(0)) > 0 }}'
+      cool_normal_active: '{{ climate_mode == ''cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' }}'
+      cool_normal_elapsed_min: '{{ (((as_timestamp(now()) | float(0)) - (cool_normal_cycle_started_ts | float(0))) / 60) | round(1) if cool_normal_cycle_ts_active else 0 }}'
+      cool_contextual_downsync_needed: '{{ cool_normal_active and sp_actual is not none and (sp_cool_normal | float) < (sp_actual | float) }}'
+      cool_aggressive_40m_needed: '{{ cool_normal_active and cool_normal_cycle_ts_active and (cool_normal_elapsed_min | float(0)) >= 40 and is_state(''input_boolean.ac_matriz_160_cool_aggressive_sp_applied'',''off'') and (tin | float(0)) >= ((eff_t_off_cool | float(0)) + 0.2) and sp_actual is not none and (sp_actual | float(0)) > (hvac_min_sp | float(17)) }}'
+      sp_cool_aggressive: '{{ [hvac_min_sp | float(17), (sp_actual | float(0)) - 1] | max | round(0, ''floor'') | int }}'
       fan_cool_normal_base: '{% if cool_delta_real|float >= 2.0 %}high{% elif cool_delta_real|float
         >= 1.0 %}medium{% else %}low{% endif %}'
       fan_cool_normal_target: '{% if hin|float >= 65 and fan_cool_normal_base == ''high''
@@ -1554,6 +1565,57 @@
         data:
           datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
         action: input_datetime.set_datetime
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ climate_mode != ''cool'' }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_matriz_160_cool_normal_cycle_started_ts
+        data:
+          datetime: '1970-01-01 00:00:00'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_boolean.ac_matriz_160_cool_aggressive_sp_applied
+        action: input_boolean.turn_off
+      - target:
+          entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+        data:
+          value: ciclo_frio_normal_inactivo
+        action: input_text.set_value
+    - conditions:
+      - condition: template
+        value_template: '{{ climate_mode == ''cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') == ''turbo_cool'' }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_matriz_160_cool_normal_cycle_started_ts
+        data:
+          datetime: '1970-01-01 00:00:00'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+        data:
+          value: turbo_cool_no_cuenta_tiempo_normal
+        action: input_text.set_value
+    - conditions:
+      - condition: template
+        value_template: '{{ cool_normal_active and not cool_normal_cycle_ts_active }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_matriz_160_cool_normal_cycle_started_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+        data:
+          value: ciclo_frio_normal_iniciado
+        action: input_text.set_value
+      - data:
+          name: AC-Matriz 160
+          message: hito=cool_normal_cycle_start | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | col={{ col_humana }} | razon=climate_cool_normal_sin_timestamp
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
   - data:
       name: AC-Matriz 160
       message: hito=evaluacion | col={{ col_idx }} | col_helper_previo={{ col_idx_helper_previo }} | helper_desfasado={{ col_idx_helper_desfasado }} | formula={{ col_formula }} | esquema_temporada={{ season_index_schema }} | season={{ season_name }} | season_idx={{ season_idx }} | weather={{ weather_cat }} | weather_idx={{ weather_idx }} | slot={{ slot_name }} | slot_idx={{ slot_idx }} | contexto={{ col_humana }} | contexto_helper_previo={{ col_humana_helper_previa }} | offset_cool_helper_entity={{ offset_cool_helper_entity }} | offset_heat_helper_entity={{ offset_heat_helper_entity }} | firma={{
@@ -1634,6 +1696,16 @@
           entity_id: input_text.ac_matriz_160_fase_ciclo
         data:
           value: turbo_cool
+        action: input_text.set_value
+      - target:
+          entity_id: input_datetime.ac_matriz_160_cool_normal_cycle_started_ts
+        data:
+          datetime: '1970-01-01 00:00:00'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+        data:
+          value: turbo_cool_no_cuenta_tiempo_normal
         action: input_text.set_value
       - target:
           entity_id: input_text.ac_matriz_160_turbo_cool_motivo
@@ -1850,6 +1922,24 @@
         data:
           value: normal
         action: input_text.set_value
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ turbo_exit_cool and states(''climate.0200009211c7_climate'') == ''cool'' }}'
+          sequence:
+          - target:
+              entity_id: input_datetime.ac_matriz_160_cool_normal_cycle_started_ts
+            data:
+              datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+            action: input_datetime.set_datetime
+          - target:
+              entity_id: input_boolean.ac_matriz_160_cool_aggressive_sp_applied
+            action: input_boolean.turn_off
+          - target:
+              entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+            data:
+              value: ciclo_frio_normal_iniciado_post_turbo
+            action: input_text.set_value
       - target:
           entity_id: input_boolean.ac_matriz_160_turbo_reentrada_bloqueada
         action: input_boolean.turn_on
@@ -2229,6 +2319,19 @@
         data:
           value: 'false'
         action: input_text.set_value
+      - target:
+          entity_id: input_datetime.ac_matriz_160_cool_normal_cycle_started_ts
+        data:
+          datetime: '1970-01-01 00:00:00'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_boolean.ac_matriz_160_cool_aggressive_sp_applied
+        action: input_boolean.turn_off
+      - target:
+          entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+        data:
+          value: ciclo_frio_normal_finalizado_por_turn_off
+        action: input_text.set_value
       - choose:
         - conditions:
           - condition: template
@@ -2422,6 +2525,49 @@
           entity_id: climate.0200009211c7_climate
         action: logbook.log
     default: []
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ action_target == ''none'' and cool_contextual_downsync_needed }}'
+      sequence:
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ sp_cool_normal }}'
+        action: climate.set_temperature
+      - target:
+          entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+        data:
+          value: contexto_mas_exigente
+        action: input_text.set_value
+      - data:
+          name: AC-Matriz 160
+          message: hito=sp_contextual_downsync_apply | sp_actual={{ sp_actual }} | sp_contextual={{ sp_cool_normal }} | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | col={{ col_humana }} | razon=contexto_mas_exigente
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ action_target == ''none'' and (not cool_contextual_downsync_needed) and cool_aggressive_40m_needed }}'
+      sequence:
+      - target:
+          entity_id: climate.0200009211c7_climate
+        data:
+          temperature: '{{ sp_cool_aggressive }}'
+        action: climate.set_temperature
+      - target:
+          entity_id: input_boolean.ac_matriz_160_cool_aggressive_sp_applied
+        action: input_boolean.turn_on
+      - target:
+          entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+        data:
+          value: sp_agresivo_40m
+        action: input_text.set_value
+      - data:
+          name: AC-Matriz 160
+          message: hito=sp_agresivo_40m_apply | elapsed_min={{ cool_normal_elapsed_min }} | sp_actual={{ sp_actual }} | sp_agresivo={{ sp_cool_aggressive }} | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | col={{ col_humana }}
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
   - choose:
     - conditions:
       - condition: template

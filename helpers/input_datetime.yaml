@@ -50,6 +50,10 @@ ac_matriz_160_last_fan_change_ts:
   name: AC Matriz 160 Último cambio de fan
   has_date: true
   has_time: true
+ac_matriz_160_cool_normal_cycle_started_ts:
+  name: AC Matriz 160 Inicio ciclo frío normal
+  has_date: true
+  has_time: true
 ac_matriz_160_no_presencia_firma_ts:
   name: AC Matriz 160 No Presencia Firma Timestamp
   has_date: true
