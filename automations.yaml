@@ -1224,6 +1224,26 @@
         | max] | min | round(2) }}'
       t_on_heat: '{{ (t_off_heat|float - 1.0) | round(2) }}'
       climate_mode: '{{ states(''climate.0200009211c7_climate'') }}'
+      climate_trigger_entity_id: '{{ trigger.entity_id | default('''') if trigger is defined else '''' }}'
+      climate_trigger_is_target: '{{ climate_trigger_entity_id == ''climate.0200009211c7_climate'' }}'
+      climate_trigger_from: '{{ trigger.from_state.state | default(''unknown'') if trigger is defined and trigger.from_state is defined and trigger.from_state is not none else ''unknown'' }}'
+      climate_trigger_to: '{{ trigger.to_state.state | default(''unknown'') if trigger is defined and trigger.to_state is defined and trigger.to_state is not none else ''unknown'' }}'
+      climate_trigger_transition: '{{ climate_trigger_from }}->{{ climate_trigger_to }}'
+      climate_trigger_context_id: '{{ trigger.to_state.context.id | default(''none'') if trigger is defined and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.context is defined else ''none'' }}'
+      climate_trigger_parent_id: '{{ trigger.to_state.context.parent_id | default(''none'') if trigger is defined and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.context is defined else ''none'' }}'
+      climate_trigger_real_off_transition: '{{ climate_trigger_is_target and climate_trigger_from in [''cool'',''heat''] and climate_trigger_to == ''off'' }}'
+      immediate_marker_kind: '{{ states(''input_text.ac_matriz_160_auto_origin_kind'') | trim }}'
+      immediate_marker_trace: '{{ states(''input_text.ac_matriz_160_auto_origin_trace'') | trim }}'
+      immediate_marker_expires_at_raw: '{{ states(''input_text.ac_matriz_160_auto_origin_expires_at'') | trim }}'
+      immediate_marker_consumed_raw: '{{ states(''input_text.ac_matriz_160_auto_origin_consumed'') | trim | lower }}'
+      immediate_marker_last_action: '{{ states(''input_text.ac_matriz_160_auto_origin_last_action'') | trim }}'
+      immediate_marker_expires_ts: '{% if immediate_marker_expires_at_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(immediate_marker_expires_at_raw, default=0) }}{% endif %}'
+      immediate_marker_not_consumed: '{{ immediate_marker_consumed_raw not in [''true'',''1'',''yes'',''si'',''sí'',''consumed''] }}'
+      immediate_marker_vigente: '{{ immediate_marker_kind == ''automatico_ac_matriz_160'' and immediate_marker_not_consumed and (as_timestamp(now()) | float(0)) <= (immediate_marker_expires_ts | float(0)) }}'
+      immediate_marker_expected_transition: '{% if immediate_marker_last_action == ''turn_on_cool'' %}off->cool{% elif immediate_marker_last_action == ''turn_on_heat'' %}off->heat{% elif immediate_marker_last_action == ''turn_off'' %}*->off{% else %}none{% endif %}'
+      immediate_marker_compatible: '{{ immediate_marker_vigente and immediate_marker_last_action == ''turn_off'' and climate_trigger_to == ''off'' and climate_trigger_from in [''cool'',''heat''] and immediate_marker_expected_transition in [climate_trigger_transition, ''*->off''] }}'
+      manual_off_trigger_immediate: '{{ climate_trigger_real_off_transition and not immediate_marker_compatible }}'
+      manual_off_trigger_immediate_block_until: '{{ (now() + timedelta(minutes=5)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       helper_firma: '{{ states(''input_text.ac_matriz_160_contexto_firma_activa'')
         | trim }}'
       helper_off_cool_raw: '{{ states(''input_number.ac_matriz_160_t_off_cool'') }}'
@@ -1474,7 +1494,7 @@
         %}none{% elif climate_mode == ''off'' and (cool_on_gate_met or turbo_enter_cool)
         %}turn_on_cool{% elif climate_mode == ''off'' and (tin|float <= eff_t_on_heat|float
         or turbo_enter_heat) %}turn_on_heat{% else %}none{% endif %}'
-      action_target: '{% if (manual_off_block_active or manual_off_rebound_active)
+      action_target: '{% if (manual_off_trigger_immediate or manual_off_block_active or manual_off_rebound_active)
         and action_target_base in [''turn_on_cool'',''turn_on_heat''] %}none{% elif
         heat_block_active and action_target_base == ''turn_on_heat'' %}none{% elif
         cool_block_active and action_target_base == ''turn_on_cool'' %}none{% else
@@ -1648,14 +1668,29 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ manual_off_block_active and action_target_base in [''turn_on_cool'',''turn_on_heat'']
+        value_template: '{{ manual_off_trigger_immediate }}'
+      sequence:
+      - target:
+          entity_id: input_datetime.ac_matriz_160_manual_off_block_until
+        data:
+          datetime: '{{ manual_off_trigger_immediate_block_until }}'
+        action: input_datetime.set_datetime
+      - data:
+          name: AC-Matriz 160
+          message: hito=manual_off_detectado_inmediato | from={{ climate_trigger_from }} | to={{ climate_trigger_to }} | context_id={{ climate_trigger_context_id }} | parent_id={{ climate_trigger_parent_id }} | marker_vigente={{ immediate_marker_vigente }} | marker_compatible={{ immediate_marker_compatible }} | marker_kind={{ immediate_marker_kind }} | marker_trace={{ immediate_marker_trace }} | marker_last_action={{ immediate_marker_last_action }} | marker_expected={{ immediate_marker_expected_transition }} | marker_consumed={{ immediate_marker_consumed_raw }} | marker_expires_at={{ immediate_marker_expires_at_raw }} | block_until={{ manual_off_trigger_immediate_block_until }}
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ (manual_off_trigger_immediate or manual_off_block_active) and action_target_base in [''turn_on_cool'',''turn_on_heat'']
           }}'
       sequence:
       - data:
           name: AC-Matriz 160
-          message: hito=auto_on_bloqueado_post_manual_off | block_until={{ manual_off_block_until_raw
-            }} | now_ts={{ now_ts }} | block_active={{ manual_off_block_active }}
-            | action_intento={{ action_target_base }} | resultado=blocked | contexto={{
+          message: hito=auto_on_bloqueado_post_manual_off | block_until={{ manual_off_trigger_immediate_block_until if manual_off_trigger_immediate else manual_off_block_until_raw
+            }} | now_ts={{ now_ts }} | block_active={{ manual_off_trigger_immediate or manual_off_block_active }}
+            | action_intento={{ action_target_base }} | resultado=blocked | razon={{ 'trigger_manual_off_inmediato' if manual_off_trigger_immediate else 'manual_off_block_persistente' }} | contexto={{
             col_humana }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
