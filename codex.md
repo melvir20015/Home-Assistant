@@ -3142,3 +3142,34 @@ Implementación contractual:
 - **Conversión GE/SmartHQ:** la entidad local declara Fahrenheit porque el ERD del equipo opera en Fahrenheit. Cuando Home Assistant recibe una solicitud Celsius, la convierte a Fahrenheit con decimales (por ejemplo 21 °C ≈ 69.8 °F). La integración normaliza con `ceil()` antes de enviar el ERD entero para que las solicitudes 18–23 °C no caigan sistemáticamente al Celsius inferior por truncamiento descendente (`int()`).
 - **Confirmación del refuerzo agresivo:** el hito `sp_agresivo_40m_apply` ya no marca `input_boolean.ac_matriz_160_cool_aggressive_sp_applied` apenas solicita el cambio. Primero envía `sp_cool_aggressive`, espera unos segundos y confirma que el SP reportado por `climate.0200009211c7_climate` coincide con tolerancia `0.2 °C`. Si no coincide, reintenta una vez. Solo si la lectura final confirma el SP se enciende el flag y se guarda `sp_agresivo_40m_aplicado`; si tampoco confirma tras el reintento, el flag queda apagado, se guarda `sp_agresivo_40m_no_confirmado` y el siguiente ciclo de evaluación puede volver a intentarlo.
 - **Observabilidad:** los logs de resincronización contextual y refuerzo agresivo exponen `trace_id`, `sp_contractual`, `sp_cool_normal`, `sp_cool_aggressive`, `sp_solicitado`, lecturas reportadas y motivo/contexto para auditar si el contrato o la lectura del equipo explica cada ajuste. El refuerzo agresivo registra internamente `resultado_terminal=aplicado`, `resultado_terminal=aplicado_tras_reintento` o `resultado_terminal=no_aplicado_controlado`, sin notificaciones móviles ni persistentes.
+
+---
+
+## Contrato causal AC-Matriz 160: aprendizaje manual por columna sin doble aprendizaje
+
+### Alcance
+- Aplica a `AC-Matriz 160 - Aprendizaje manual por columna` (`id: ac_matriz_160_learning_manual_v1`).
+- El objetivo es que una sola intención manual `cool -> off` produzca como máximo un aprendizaje y una notificación, aunque el dispositivo emita o confirme una cadena `cool -> off -> cool -> off` y las ejecuciones se procesen tarde por `mode: queued`.
+
+### Contrato de clasificación causal
+- Cada transición captura desde el `trigger` su `context.id`, `parent_id`, `user_id`, contexto anterior, `last_changed`, transición observada y una raíz causal (`parent_id` cuando existe; si no, `context.id`).
+- La firma causal de evento usa `modo|columna|raíz_causal|transición` y complementa la firma exacta previa; no la reemplaza.
+- Un marcador automático compatible no solo se consume: también se persiste como contexto automático aceptado con `context_id`, `parent_id`, `root_id`, transición, columna, modo y `marker_trace_id`.
+- Un evento posterior se ignora aunque `ac_matriz_160_auto_origin_consumed=true` si comparte `context_id`, `parent_id` o raíz causal con una transición automática aceptada.
+- Un apagado posterior se ignora como rebote post apagado manual solo si comparte raíz causal, modo y columna con el último apagado manual aplicado y la ventana corta `manual_off_rebound_until` sigue activa.
+- `manual_off_block_until` queda como guarda operativa anti auto-ON y no es un bloqueo global de aprendizaje: no debe impedir por sí solo un apagado manual legítimo con raíz causal independiente.
+
+### Escenarios obligatorios A-G
+- **Caso A — `cool -> off` manual normal:** si no hay marcador automático compatible ni coincidencia causal automática/manual previa, clasifica `apagado_manual_real`, aplica un aprendizaje, emite una notificación y registra firma causal manual.
+- **Caso B — `cool -> off -> cool -> off`:** solo aprende el primer `cool -> off`; el `off -> cool` derivado automático se ignora y el `cool -> off` posterior con la misma cadena causal se ignora como derivado/rebote causal.
+- **Caso C — `cool -> off` automático con marcador compatible:** clasifica como automático, no aprende, no notifica aprendizaje manual y persiste el contexto automático aceptado.
+- **Caso D — `off -> cool` automático con confirmaciones tardías:** no aprende si coincide con marcador automático o con contexto automático aceptado, incluso si el helper mutable ya fue consumido al salir de la cola.
+- **Caso E — segundo apagado manual legítimo con nueva raíz causal:** sí puede aprender aunque esté temporalmente cerca, siempre que no comparta raíz causal con la cadena automática aceptada ni con la firma manual reciente.
+- **Caso F — ejecuciones en cola:** la decisión debe depender de los datos capturados desde `trigger` y de firmas/contextos causales persistidos, por lo que debe ser equivalente a una ejecución sin cola.
+- **Caso G — dos `cool -> off` cercanos con contextos independientes:** no se deduplican solo por proximidad temporal; si la raíz causal cambia y no hay coincidencia automática, el segundo apagado puede ser manual válido.
+
+### Resultado esperado para la traza crítica
+- Primer `cool -> off`: manual válido, `delta +0.50`, offset final `0.45`, notificación emitida.
+- `off -> cool`: automático, ignorado, sin cambio de offset ni notificación manual.
+- Segundo `cool -> off`: derivado/rebote causal, ignorado, sin delta, sin cambio de offset y sin segunda notificación.
+- El resultado final esperado es `offset_cool_col_7 = 0.45`, `off_cool = 24.16` y `on_cool = 25.16`; no debe terminar en `offset_cool_col_7 = 0.55`, `off_cool = 24.26` y `on_cool = 25.26`.

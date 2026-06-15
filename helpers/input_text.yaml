@@ -68,6 +68,10 @@ ac_matriz_160_learning_last_signature:
 ac_matriz_160_learning_manual_evento_firma:
   name: AC Matriz 160 Learning Manual Evento Firma
   max: 255
+ac_matriz_160_learning_manual_causal_signature:
+  name: AC Matriz 160 Learning Manual Causal Signature
+  max: 255
+  initial: sin_firma_causal
 
 ac_matriz_160_learning_error_last_signature:
   name: AC Matriz 160 Learning Error Last Signature
@@ -94,6 +98,10 @@ ac_matriz_160_auto_origin_consumed:
   name: AC Matriz 160 Auto Origin Consumed
   max: 10
   initial: false
+ac_matriz_160_auto_origin_chain_context:
+  name: AC Matriz 160 Auto Origin Chain Context
+  max: 255
+  initial: sin_contexto_auto
 ac_matriz_160_manual_presence_override_trace:
   name: AC Matriz 160 Manual Presence Override Trace
   max: 255
