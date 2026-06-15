@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import List, Optional
 
 from homeassistant.components.climate import ClimateEntity
@@ -185,8 +186,11 @@ class GeClimate(GeEntity, ClimateEntity):
         if temperature is None:
             return
         
-        #convert to int (setting can only handle ints)
-        temperature = int(temperature)
+        # GE/SmartHQ accepts integer Fahrenheit values. Home Assistant converts
+        # Celsius UI requests into Fahrenheit floats because this entity exposes
+        # Fahrenheit internally. Use ceil instead of int() so 18-23 °C requests
+        # never become the next-lower Celsius value after Fahrenheit truncation.
+        temperature = math.ceil(float(temperature))
 
         _LOGGER.debug(f"Setting temperature from {self.target_temperature} to {temperature}")
         if self.target_temperature != temperature:

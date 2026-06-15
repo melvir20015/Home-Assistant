@@ -1274,14 +1274,18 @@
       sp_cool_normal: '{{ [hvac_max_sp|int, [hvac_min_sp|int, (sp_objetivo|int)] |
         max] | min | int }}'
       sp_actual: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'') | float(none) }}'
+      sp_contractual: '{{ sp_cool_normal }}'
+      sp_cool_aggressive: '{{ [hvac_max_sp | int, [hvac_min_sp | int, (sp_cool_normal | int) - 1] | max] | min | int }}'
+      sp_delta_reportado_normal: '{{ ((sp_actual | float(0)) - (sp_cool_normal | float(0))) | round(1) if sp_actual is not none else ''none'' }}'
+      sp_delta_reportado_aggressive: '{{ ((sp_actual | float(0)) - (sp_cool_aggressive | float(0))) | round(1) if sp_actual is not none else ''none'' }}'
       cool_normal_cycle_started_raw: '{{ states(''input_datetime.ac_matriz_160_cool_normal_cycle_started_ts'') }}'
       cool_normal_cycle_started_ts: '{% if cool_normal_cycle_started_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(cool_normal_cycle_started_raw, default=0) }}{% endif %}'
-      cool_normal_cycle_ts_active: '{{ (cool_normal_cycle_started_ts | float(0)) > 0 }}'
+      cool_normal_cycle_valid_after_ts: '{{ as_timestamp(''2000-01-01 00:00:00'', default=946684800) | float(946684800) }}'
+      cool_normal_cycle_ts_active: '{{ (cool_normal_cycle_started_ts | float(0)) >= (cool_normal_cycle_valid_after_ts | float(946684800)) and (cool_normal_cycle_started_ts | float(0)) <= (as_timestamp(now()) | float(0)) }}'
       cool_normal_active: '{{ climate_mode == ''cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' }}'
       cool_normal_elapsed_min: '{{ (((as_timestamp(now()) | float(0)) - (cool_normal_cycle_started_ts | float(0))) / 60) | round(1) if cool_normal_cycle_ts_active else 0 }}'
       cool_contextual_downsync_needed: '{{ cool_normal_active and sp_actual is not none and (sp_cool_normal | float) < (sp_actual | float) }}'
-      cool_aggressive_40m_needed: '{{ cool_normal_active and cool_normal_cycle_ts_active and (cool_normal_elapsed_min | float(0)) >= 40 and is_state(''input_boolean.ac_matriz_160_cool_aggressive_sp_applied'',''off'') and (tin | float(0)) >= ((eff_t_off_cool | float(0)) + 0.2) and sp_actual is not none and (sp_actual | float(0)) > (hvac_min_sp | float(17)) }}'
-      sp_cool_aggressive: '{{ [hvac_min_sp | float(17), (sp_actual | float(0)) - 1] | max | round(0, ''floor'') | int }}'
+      cool_aggressive_40m_needed: '{{ cool_normal_active and cool_normal_cycle_ts_active and (cool_normal_elapsed_min | float(0)) >= 40 and is_state(''input_boolean.ac_matriz_160_cool_aggressive_sp_applied'',''off'') and (tin | float(0)) >= ((eff_t_off_cool | float(0)) + 0.2) and sp_actual is not none and (sp_actual | float(0)) > (sp_cool_aggressive | float(0)) }}'
       fan_cool_normal_base: '{% if cool_delta_real|float >= 2.0 %}high{% elif cool_delta_real|float
         >= 1.0 %}medium{% else %}low{% endif %}'
       fan_cool_normal_target: '{% if hin|float >= 65 and fan_cool_normal_base == ''high''
@@ -1618,7 +1622,7 @@
         action: input_text.set_value
       - data:
           name: AC-Matriz 160
-          message: hito=cool_normal_cycle_start | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | col={{ col_humana }} | razon=climate_cool_normal_sin_timestamp
+          message: hito=cool_normal_cycle_start | trace_id={{ auto_origin_trace_id }} | cycle_ts_previous={{ cool_normal_cycle_started_raw }} | cycle_ts_active={{ cool_normal_cycle_ts_active }} | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | sp_contractual={{ sp_contractual }} | sp_cool_normal={{ sp_cool_normal }} | sp_reportado={{ sp_actual }} | col={{ col_humana }} | razon=climate_cool_normal_sin_timestamp_o_invalido
           entity_id: climate.0200009211c7_climate
         action: logbook.log
   - data:
@@ -2135,6 +2139,19 @@
         data:
           hvac_mode: cool
         action: climate.set_hvac_mode
+      - target:
+          entity_id: input_datetime.ac_matriz_160_cool_normal_cycle_started_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        action: input_datetime.set_datetime
+      - target:
+          entity_id: input_boolean.ac_matriz_160_cool_aggressive_sp_applied
+        action: input_boolean.turn_off
+      - target:
+          entity_id: input_text.ac_matriz_160_cool_sp_adjust_reason
+        data:
+          value: ciclo_frio_normal_iniciado_auto_on
+        action: input_text.set_value
       - choose:
         - conditions:
           - condition: template
@@ -2587,7 +2604,7 @@
         action: input_text.set_value
       - data:
           name: AC-Matriz 160
-          message: hito=sp_contextual_downsync_apply | sp_actual={{ sp_actual }} | sp_contextual={{ sp_cool_normal }} | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | col={{ col_humana }} | razon=contexto_mas_exigente
+          message: hito=sp_contextual_downsync_apply | trace_id={{ auto_origin_trace_id }} | sp_contractual={{ sp_contractual }} | sp_cool_normal={{ sp_cool_normal }} | sp_cool_aggressive={{ sp_cool_aggressive }} | sp_solicitado={{ sp_cool_normal }} | sp_reportado={{ sp_actual }} | delta_reportado={{ sp_delta_reportado_normal }} | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | col={{ col_humana }} | razon=contexto_mas_exigente | contexto={{ col_humana }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
   - choose:
@@ -2610,7 +2627,7 @@
         action: input_text.set_value
       - data:
           name: AC-Matriz 160
-          message: hito=sp_agresivo_40m_apply | elapsed_min={{ cool_normal_elapsed_min }} | sp_actual={{ sp_actual }} | sp_agresivo={{ sp_cool_aggressive }} | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | col={{ col_humana }}
+          message: hito=sp_agresivo_40m_apply | trace_id={{ auto_origin_trace_id }} | elapsed_min={{ cool_normal_elapsed_min }} | cycle_ts={{ cool_normal_cycle_started_raw }} | sp_contractual={{ sp_contractual }} | sp_cool_normal={{ sp_cool_normal }} | sp_cool_aggressive={{ sp_cool_aggressive }} | sp_solicitado={{ sp_cool_aggressive }} | sp_reportado={{ sp_actual }} | delta_reportado={{ sp_delta_reportado_aggressive }} | Tin={{ tin }} | OFF={{ eff_t_off_cool }} | col={{ col_humana }} | razon=sp_agresivo_40m | contexto={{ col_humana }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
   - choose:
