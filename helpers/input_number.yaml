@@ -3857,3 +3857,9 @@ ac_night_offset_heat_col_112:
   step: 0.1
   mode: box
   unit_of_measurement: °C
+ac_night_cool_reinforcement_count:
+  name: AC Night Cool Refuerzos Ciclo
+  min: 0
+  max: 3
+  step: 1
+  mode: box

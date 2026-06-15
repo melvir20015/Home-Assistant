@@ -4008,6 +4008,9 @@
   trigger:
   - platform: time_pattern
     minutes: "/5"
+  - platform: time
+    at: '07:00:00'
+    id: night_end
   - platform: state
     entity_id:
     - weather.openweathermap
@@ -4016,13 +4019,13 @@
     - sensor.lumi_lumi_weather_cuarto_humedad
     - sensor.lumi_lumi_weather_coco_humedad
     - binary_sensor.presencia_ok_estable
+    - climate.0200009211c7_climate
   - platform: state
     entity_id: input_text.ac_night_hot_learning_recalc_payload
     id: hot_learning_recalc
   condition:
-  - condition: time
-    after: '22:00:00'
-    before: '07:00:00'
+  - condition: template
+    value_template: "{{ (trigger is defined and trigger.id|default('') == 'night_end') or (now().hour >= 22 or now().hour < 7) }}"
   action:
   - variables:
       climate_ent: climate.0200009211c7_climate
@@ -4077,6 +4080,19 @@
       sp_heat_target_base: 24
       sp_heat_target: "{{ [hvac_max_sp|int, [hvac_min_sp|int, (sp_heat_target_base|int)] | max] | min | int }}"
       hvac_mode: "{{ states(climate_ent) }}"
+      fan_mode_actual: "{{ state_attr(climate_ent, 'fan_mode') | default('', true) }}"
+      sp_reportado_actual: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+      night_trigger_id: "{{ trigger.id | default('') if trigger is defined else '' }}"
+      night_cycle_started_ts: "{{ as_timestamp(states('input_datetime.ac_night_cool_cycle_started_ts'), 0) }}"
+      night_cycle_active: "{{ (night_cycle_started_ts | int(0)) > 0 }}"
+      night_cycle_elapsed_min: "{{ (((as_timestamp(now()) | int) - (night_cycle_started_ts | int(0))) / 60) | round(1) if (night_cycle_started_ts | int(0)) > 0 else 0 }}"
+      night_reinforcement_count: "{{ states('input_number.ac_night_cool_reinforcement_count') | int(0) }}"
+      night_reinforcement_due_count: "{{ [3, ((night_cycle_elapsed_min | float(0)) // 30) | int] | min }}"
+      sp_cool_effective: "{{ [hvac_min_sp | int, ((sp_cool_target | int) - (night_reinforcement_count | int(0)))] | max }}"
+      sp_cool_reinforced_next: "{{ [hvac_min_sp | int, ((sp_cool_target | int) - (night_reinforcement_due_count | int(0)))] | max }}"
+      night_contract_signature: "sp={{ sp_cool_target }}|off={{ off_cool }}|on={{ on_cool }}|col={{ col_idx }}|franja={{ franja }}|clima={{ weather_state }}|comfort={{ night_comfort_pressure }}"
+      night_resync_sp_needed: "{{ hvac_mode == 'cool' and presencia_ok and sp_reportado_actual is not none and (sp_reportado_actual | float) != (sp_cool_effective | float) }}"
+      night_resync_fan_needed: "{{ hvac_mode == 'cool' and presencia_ok and fan_mode_actual != 'Low' }}"
       auto_off_pending_raw: "{{ states('input_text.ac_night_auto_off_pending_payload') }}"
       auto_off_pending_kind: "{{ auto_off_pending_raw.split('kind=')[1].split('|')[0] if 'kind=' in auto_off_pending_raw else '' }}"
       auto_off_pending_climate: "{{ auto_off_pending_raw.split('climate=')[1].split('|')[0] if 'climate=' in auto_off_pending_raw else '' }}"
@@ -4123,6 +4139,15 @@
           value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition={{ hvac_mode }}->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
+        data: {datetime: '1970-01-01 00:00:00'}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+        data: {value: 0}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: sin_ciclo}
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Night Matriz Contextual
@@ -4167,6 +4192,15 @@
               value: "expected_transition=cool->off|echo_transition=|col={{ col_idx }}|offset_new={{ hot_learning_recalc_offset_new }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=hot_recalc_matrix_auto_off|trace={{ context.id|default('na') }}"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
+        data: {datetime: '1970-01-01 00:00:00'}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+        data: {value: 0}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: sin_ciclo}
       - wait_template: "{{ states(climate_ent) == 'off' }}"
         timeout: "00:00:08"
         continue_on_timeout: true
@@ -4203,6 +4237,97 @@
             message: "hito=night_auto_off_pending_timeout | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo=cool | estado_previo={{ estado_previo }} | estado_posterior={{ estado_posterior }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | resultado_confirmacion={{ resultado_confirmacion }} | retry={{ auto_off_pending_retry_new }} | resultado_terminal=turn_off_pending"
     - conditions:
       - condition: template
+        value_template: "{{ night_trigger_id == 'night_end' and night_cycle_active }}"
+      sequence:
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
+        data: {datetime: '1970-01-01 00:00:00'}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+        data: {value: 0}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: sin_ciclo}
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_cool_cycle_reset | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=salida_horario_nocturno | resultado_terminal=reset"
+    - conditions:
+      - condition: template
+        value_template: "{{ hvac_mode == 'cool' and presencia_ok and not night_cycle_active }}"
+      sequence:
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+        data: {value: 0}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: "{{ night_contract_signature }}"}
+      - service: climate.set_temperature
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {temperature: "{{ sp_cool_target }}"}
+      - service: climate.set_fan_mode
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {fan_mode: Low}
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_target }} | refuerzos=0 | minutos_ciclo=0 | motivo=ciclo_cool_nocturno_detectado_o_nuevo | fan_resync=true | contrato={{ night_contract_signature }} | resultado_terminal=resync"
+    - conditions:
+      - condition: template
+        value_template: "{{ hvac_mode == 'cool' and presencia_ok and tin > off_cool and (night_reinforcement_due_count | int(0)) > (night_reinforcement_count | int(0)) and (night_reinforcement_count | int(0)) < 3 }}"
+      sequence:
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+        data: {value: "{{ night_reinforcement_due_count }}"}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: "{{ night_contract_signature }}"}
+      - service: climate.set_temperature
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {temperature: "{{ sp_cool_reinforced_next }}"}
+      - service: climate.set_fan_mode
+        target: {entity_id: "{{ climate_ent }}"}
+        data: {fan_mode: Low}
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_sp_progressive_reinforcement | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_reinforced_next }} | refuerzos={{ night_reinforcement_due_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=30m_sin_llegar_a_off_cool | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal=reinforcement"
+    - conditions:
+      - condition: template
+        value_template: "{{ hvac_mode == 'cool' and presencia_ok and (night_resync_sp_needed or night_resync_fan_needed) }}"
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ night_resync_sp_needed }}"
+          sequence:
+          - service: climate.set_temperature
+            target: {entity_id: "{{ climate_ent }}"}
+            data: {temperature: "{{ sp_cool_effective }}"}
+          - service: logbook.log
+            data:
+              name: AC Night
+              message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | sp_reportado={{ sp_reportado_actual }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=contrato_nocturno_o_sp_desalineado | contrato={{ night_contract_signature }} | resultado_terminal=resync"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ night_resync_fan_needed }}"
+          sequence:
+          - service: climate.set_fan_mode
+            target: {entity_id: "{{ climate_ent }}"}
+            data: {fan_mode: Low}
+          - service: logbook.log
+            data:
+              name: AC Night
+              message: "hito=night_fan_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=fan_nocturno_desalineado | fan_previo={{ fan_mode_actual }} | fan=Low | resultado_terminal=resync"
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: "{{ night_contract_signature }}"}
+    - conditions:
+      - condition: template
         value_template: "{{ hvac_mode == 'heat' and tin >= off_heat }}"
       sequence:
       - variables:
@@ -4233,6 +4358,15 @@
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
           value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_on_cool|expected_transition=off->cool|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+        data: {value: 0}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: "{{ night_contract_signature }}"}
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: cool}
@@ -4313,6 +4447,23 @@
         data:
           name: AC Night
           message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=heat | col_idx={{ col_idx }} | resultado_terminal=turn_on_heat"
+    - conditions:
+      - condition: template
+        value_template: "{{ hvac_mode != 'cool' and night_cycle_active }}"
+      sequence:
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
+        data: {datetime: '1970-01-01 00:00:00'}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+        data: {value: 0}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: sin_ciclo}
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_cool_cycle_reset | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=hvac_dejo_de_estar_en_cool | hvac_mode={{ hvac_mode }} | resultado_terminal=reset"
     - conditions:
       - condition: template
         value_template: "{{ hot_learning_recalc_requested and hvac_mode == 'cool' }}"

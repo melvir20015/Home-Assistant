@@ -75,3 +75,7 @@ ac_night_cool_block_until:
   name: AC Night Bloqueo Cool anti-reversa
   has_date: true
   has_time: true
+ac_night_cool_cycle_started_ts:
+  name: AC Night Inicio ciclo frío activo
+  has_date: true
+  has_time: true
