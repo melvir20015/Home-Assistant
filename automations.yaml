@@ -1953,6 +1953,46 @@
             data:
               temperature: '{{ sp_cool_normal }}'
             action: climate.set_temperature
+          - delay: 00:00:03
+          - variables:
+              sp_normal_post_turbo_after_apply: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'')
+                }}'
+              sp_normal_post_turbo_match: '{{ ((sp_normal_post_turbo_after_apply
+                | float(-999)) - (sp_cool_normal | float(-998))) | abs <= 0.2 }}'
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ not sp_normal_post_turbo_match }}'
+              sequence:
+              - target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  temperature: '{{ sp_cool_normal }}'
+                action: climate.set_temperature
+              - delay: 00:00:03
+              - variables:
+                  sp_normal_post_turbo_after_retry: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'')
+                    }}'
+                  sp_normal_post_turbo_retry_match: '{{ ((sp_normal_post_turbo_after_retry
+                    | float(-999)) - (sp_cool_normal | float(-998))) | abs <= 0.2 }}'
+              - data:
+                  name: AC-Matriz 160
+                  message: hito=sp_normal_post_turbo_check | sp_objetivo={{ sp_cool_normal
+                    }} | sp_final={{ sp_normal_post_turbo_after_retry }} | resultado={{
+                    'aplicado_tras_reintento' if sp_normal_post_turbo_retry_match else
+                    'no_aplicado_controlado' }} | motivo={{ turbo_exit_cool_motivo }}
+                    | Tin={{ tin }} | col={{ col_humana }}
+                  entity_id: climate.0200009211c7_climate
+                action: logbook.log
+            default:
+            - data:
+                name: AC-Matriz 160
+                message: hito=sp_normal_post_turbo_check | sp_objetivo={{ sp_cool_normal
+                  }} | sp_final={{ sp_normal_post_turbo_after_apply }} | resultado=aplicado
+                  | motivo={{ turbo_exit_cool_motivo }} | Tin={{ tin }} | col={{ col_humana
+                  }}
+                entity_id: climate.0200009211c7_climate
+              action: logbook.log
           - choose:
             - conditions:
               - condition: template
