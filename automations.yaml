@@ -4337,42 +4337,96 @@
       - service: input_datetime.set_datetime
         target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
         data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
-      - service: input_number.set_value
-        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
-        data: {value: 0}
-      - service: input_text.set_value
-        target: {entity_id: input_text.ac_night_cool_cycle_signature}
-        data: {value: "{{ night_contract_signature }}"}
+      - variables:
+          sp_contractual: "{{ sp_cool_target | int }}"
+          sp_solicitado: "{{ sp_cool_target | int }}"
+          sp_reportado_antes: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
       - service: climate.set_temperature
         target: {entity_id: "{{ climate_ent }}"}
-        data: {temperature: "{{ sp_cool_target }}"}
+        data: {temperature: "{{ sp_solicitado }}"}
+      - delay: "00:00:03"
+      - variables:
+          sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+          sp_intento: 1
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ not sp_confirmado }}"
+          sequence:
+          - service: climate.set_temperature
+            target: {entity_id: "{{ climate_ent }}"}
+            data: {temperature: "{{ sp_solicitado }}"}
+          - delay: "00:00:03"
+          - variables:
+              sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+              sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+              sp_intento: 2
       - service: climate.set_fan_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {fan_mode: Low}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ sp_confirmado }}"
+          sequence:
+          - service: input_number.set_value
+            target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+            data: {value: 0}
+          - service: input_text.set_value
+            target: {entity_id: input_text.ac_night_cool_cycle_signature}
+            data: {value: "{{ night_contract_signature }}"}
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_target }} | refuerzos=0 | minutos_ciclo=0 | motivo=ciclo_cool_nocturno_detectado_o_nuevo | fan_resync=true | contrato={{ night_contract_signature }} | resultado_terminal=resync"
+          message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos=0 | minutos_ciclo=0 | motivo=ciclo_cool_nocturno_detectado_o_nuevo | fan_resync=true | contrato={{ night_contract_signature }} | resultado_terminal={{ 'resync' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and presencia_ok and tin > off_cool and (night_reinforcement_due_count | int(0)) > (night_reinforcement_count | int(0)) and (night_reinforcement_count | int(0)) < 3 }}"
       sequence:
-      - service: input_number.set_value
-        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
-        data: {value: "{{ night_reinforcement_due_count }}"}
-      - service: input_text.set_value
-        target: {entity_id: input_text.ac_night_cool_cycle_signature}
-        data: {value: "{{ night_contract_signature }}"}
+      - variables:
+          sp_contractual: "{{ sp_cool_target | int }}"
+          sp_solicitado: "{{ sp_cool_reinforced_next | int }}"
+          sp_reportado_antes: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
       - service: climate.set_temperature
         target: {entity_id: "{{ climate_ent }}"}
-        data: {temperature: "{{ sp_cool_reinforced_next }}"}
+        data: {temperature: "{{ sp_solicitado }}"}
+      - delay: "00:00:03"
+      - variables:
+          sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+          sp_intento: 1
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ not sp_confirmado }}"
+          sequence:
+          - service: climate.set_temperature
+            target: {entity_id: "{{ climate_ent }}"}
+            data: {temperature: "{{ sp_solicitado }}"}
+          - delay: "00:00:03"
+          - variables:
+              sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+              sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+              sp_intento: 2
       - service: climate.set_fan_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {fan_mode: Low}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ sp_confirmado }}"
+          sequence:
+          - service: input_number.set_value
+            target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+            data: {value: "{{ night_reinforcement_due_count }}"}
+          - service: input_text.set_value
+            target: {entity_id: input_text.ac_night_cool_cycle_signature}
+            data: {value: "{{ night_contract_signature }}"}
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_sp_progressive_reinforcement | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_reinforced_next }} | refuerzos={{ night_reinforcement_due_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=30m_sin_llegar_a_off_cool | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal=reinforcement"
+          message: "hito=night_sp_progressive_reinforcement | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos={{ night_reinforcement_due_count if sp_confirmado else night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=30m_sin_llegar_a_off_cool | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal={{ 'reinforcement' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and presencia_ok and (night_resync_sp_needed or night_resync_fan_needed) }}"
@@ -4382,13 +4436,35 @@
           - condition: template
             value_template: "{{ night_resync_sp_needed }}"
           sequence:
+          - variables:
+              sp_contractual: "{{ sp_cool_target | int }}"
+              sp_solicitado: "{{ sp_cool_effective | int }}"
+              sp_reportado_antes: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
           - service: climate.set_temperature
             target: {entity_id: "{{ climate_ent }}"}
-            data: {temperature: "{{ sp_cool_effective }}"}
+            data: {temperature: "{{ sp_solicitado }}"}
+          - delay: "00:00:03"
+          - variables:
+              sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+              sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+              sp_intento: 1
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{{ not sp_confirmado }}"
+              sequence:
+              - service: climate.set_temperature
+                target: {entity_id: "{{ climate_ent }}"}
+                data: {temperature: "{{ sp_solicitado }}"}
+              - delay: "00:00:03"
+              - variables:
+                  sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+                  sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+                  sp_intento: 2
           - service: logbook.log
             data:
               name: AC Night
-              message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | sp_reportado={{ sp_reportado_actual }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=contrato_nocturno_o_sp_desalineado | contrato={{ night_contract_signature }} | resultado_terminal=resync"
+              message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=contrato_nocturno_o_sp_desalineado | contrato={{ night_contract_signature }} | resultado_terminal={{ 'resync' if sp_confirmado else 'sp_no_confirmado' }}"
       - choose:
         - conditions:
           - condition: template
@@ -4401,9 +4477,14 @@
             data:
               name: AC Night
               message: "hito=night_fan_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=fan_nocturno_desalineado | fan_previo={{ fan_mode_actual }} | fan=Low | resultado_terminal=resync"
-      - service: input_text.set_value
-        target: {entity_id: input_text.ac_night_cool_cycle_signature}
-        data: {value: "{{ night_contract_signature }}"}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ (not night_resync_sp_needed) or (sp_confirmado | default(false)) }}"
+          sequence:
+          - service: input_text.set_value
+            target: {entity_id: input_text.ac_night_cool_cycle_signature}
+            data: {value: "{{ night_contract_signature }}"}
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'heat' and tin >= off_heat }}"
@@ -4429,9 +4510,12 @@
         value_template: "{{ hvac_mode != 'cool' and tin >= on_cool and presencia_ok }}"
       sequence:
       - variables:
+          sp_contractual: "{{ sp_cool_target | int }}"
           sp_objetivo: "{{ sp_cool_target | int }}"
-          sp_reportado_equipo: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_reportado_antes: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_reportado_equipo: "{{ sp_reportado_antes }}"
           sp_confirmado_ok: "{{ sp_reportado_equipo is not none and (sp_reportado_equipo | float) == (sp_objetivo | float) }}"
+          sp_intento: 0
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
@@ -4439,12 +4523,6 @@
       - service: input_datetime.set_datetime
         target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
         data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
-      - service: input_number.set_value
-        target: {entity_id: input_number.ac_night_cool_reinforcement_count}
-        data: {value: 0}
-      - service: input_text.set_value
-        target: {entity_id: input_text.ac_night_cool_cycle_signature}
-        data: {value: "{{ night_contract_signature }}"}
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: cool}
@@ -4455,6 +4533,7 @@
       - variables:
           sp_reportado_equipo: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
           sp_confirmado_ok: "{{ sp_reportado_equipo is not none and (sp_reportado_equipo | float) == (sp_objetivo | float) }}"
+          sp_intento: 1
       - service: logbook.log
         data:
           name: AC Night
@@ -4471,6 +4550,7 @@
           - variables:
               sp_reportado_equipo: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
               sp_confirmado_ok: "{{ sp_reportado_equipo is not none and (sp_reportado_equipo | float) == (sp_objetivo | float) }}"
+              sp_intento: 2
           - service: logbook.log
             data:
               name: AC Night
@@ -4478,14 +4558,25 @@
       - service: climate.set_fan_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {fan_mode: Low}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ sp_confirmado_ok }}"
+          sequence:
+          - service: input_number.set_value
+            target: {entity_id: input_number.ac_night_cool_reinforcement_count}
+            data: {value: 0}
+          - service: input_text.set_value
+            target: {entity_id: input_text.ac_night_cool_cycle_signature}
+            data: {value: "{{ night_contract_signature }}"}
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP= {{ sp_objetivo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | cap_on={{ on_cool_cap_night_dynamic }} | sp_ok={{ sp_confirmado_ok }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP_SOLICITADO= {{ sp_objetivo }}°C | SP_REPORTADO= {{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | cap_on={{ on_cool_cap_night_dynamic }} | sp_ok={{ sp_confirmado_ok }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_objetivo={{ sp_objetivo }} | sp_reportado_equipo={{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }} | sp_confirmado_ok={{ sp_confirmado_ok }} | resultado_terminal=turn_on_cool"
+          message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_objetivo }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado_ok }} | sp_efectivo={{ sp_reportado_equipo if sp_confirmado_ok else 'none' }} | resultado_terminal={{ 'turn_on_cool' if sp_confirmado_ok else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok }}"
@@ -4546,13 +4637,35 @@
       - condition: template
         value_template: "{{ hot_learning_recalc_requested and hvac_mode == 'cool' }}"
       sequence:
+      - variables:
+          sp_contractual: "{{ sp_cool_target | int }}"
+          sp_solicitado: "{{ sp_cool_target | int }}"
+          sp_reportado_antes: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
       - service: climate.set_temperature
         target: {entity_id: "{{ climate_ent }}"}
-        data: {temperature: "{{ sp_cool_target }}"}
+        data: {temperature: "{{ sp_solicitado }}"}
+      - delay: "00:00:03"
+      - variables:
+          sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+          sp_intento: 1
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ not sp_confirmado }}"
+          sequence:
+          - service: climate.set_temperature
+            target: {entity_id: "{{ climate_ent }}"}
+            data: {temperature: "{{ sp_solicitado }}"}
+          - delay: "00:00:03"
+          - variables:
+              sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+              sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+              sp_intento: 2
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_hot_learning_recalc_setpoint_reapplied | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | off_cool={{ off_cool }} | on_cool={{ on_cool }} | sp_cool_target={{ sp_cool_target }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | payload={{ hot_learning_recalc_payload }} | resultado_terminal=setpoint_reapplied"
+          message: "hito=night_hot_learning_recalc_setpoint_reapplied | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | off_cool={{ off_cool }} | on_cool={{ on_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | payload={{ hot_learning_recalc_payload }} | resultado_terminal={{ 'setpoint_reapplied' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
         value_template: "{{ hot_learning_recalc_requested and hvac_mode == 'heat' }}"
