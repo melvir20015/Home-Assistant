@@ -1351,8 +1351,13 @@
         | int(0) }}'
       fan_change_window_ok: '{{ (last_fan_change_ts | float(0)) == 0 or fan_window_elapsed_s
         >= (fan_window_required_s | int(0)) }}'
+      fan_contextual_upshift_override: '{{ cool_contextual_downsync_needed and cool_normal_active
+        and fan_change_direction == ''upshift'' and fan_needs_change and fan_target_valid
+        and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' }}'
+      fan_change_window_effective_ok: '{{ fan_change_window_ok or fan_contextual_upshift_override
+        }}'
       fan_should_apply_dynamic: '{{ fan_should_apply and fan_change_direction in [''downshift'',''upshift'']
-        and fan_change_window_ok }}'
+        and fan_change_window_effective_ok }}'
       fan_auto_on_first_set: '{{ action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'')
         != ''turbo_cool'' and fan_should_apply }}'
       fan_apply_allowed_dynamic: '{{ fan_call_allowed and fan_should_apply_dynamic
@@ -1365,7 +1370,7 @@
       fan_dynamic_skip_reason: '{% if climate_mode != ''cool'' %}modo_no_cool {% elif
         states(''input_text.ac_matriz_160_fase_ciclo'') == ''turbo_cool'' %}turbo_activo
         {% elif not fan_target_valid %}target_no_soportado {% elif not fan_dynamic_real_change_required
-        %}sin_cambio_requerido {% elif not fan_change_window_ok %}bloqueado_por_ventana
+        %}sin_cambio_requerido {% elif not fan_change_window_effective_ok %}bloqueado_por_ventana
         {% else %}ok {% endif %}'
       validation_reason: '{% if helper_invalid_state %}recalculado_helper_no_disponible{%
         elif not firma_match %}contexto_recalculado_por_cambio_columna{% elif not
@@ -1997,7 +2002,7 @@
             - conditions:
               - condition: template
                 value_template: '{{ fan_target_valid and fan_dynamic_real_change_required
-                  and fan_change_window_ok }}'
+                  and fan_change_window_effective_ok }}'
               sequence:
               - target:
                   entity_id: climate.0200009211c7_climate
@@ -2021,7 +2026,7 @@
             - conditions:
               - condition: template
                 value_template: '{{ fan_target_valid and fan_dynamic_real_change_required
-                  and (not fan_change_window_ok) }}'
+                  and (not fan_change_window_effective_ok) }}'
               sequence:
               - data:
                   name: AC-Matriz 160
@@ -2244,14 +2249,14 @@
                 action: logbook.log
             - conditions:
               - condition: template
-                value_template: '{{ fan_should_apply and (not fan_change_window_ok)
+                value_template: '{{ fan_should_apply and (not fan_change_window_effective_ok)
                   and (not fan_auto_on_first_set) }}'
               sequence:
               - data:
                   name: AC-Matriz 160
                   message: hito=fan_mode_skip_window_240s | fan_target={{ fan_target_final_label
                     }} | fan_mode_actual={{ fan_mode_actual }} | fan_window_ok={{
-                    fan_change_window_ok }} | col={{ col_humana }}
+                    fan_change_window_ok }} | window_effective_ok={{ fan_change_window_effective_ok }} | override_contextual={{ fan_contextual_upshift_override }} | col={{ col_humana }}
                   entity_id: climate.0200009211c7_climate
                 action: logbook.log
           - data:
@@ -2619,7 +2624,7 @@
           message: hito=fan_dynamic_cycle_eval | delta={{ cool_delta_real }} | fan_actual={{
             fan_mode_actual }} | fan_objetivo={{ fan_target_final_label }} | change_direction={{
             fan_change_direction }} | window_required_s={{ fan_window_required_s }}
-            | window_ok={{ fan_change_window_ok }} | col={{ col_humana }}
+            | window_ok={{ fan_change_window_ok }} | window_effective_ok={{ fan_change_window_effective_ok }} | override_contextual={{ fan_contextual_upshift_override }} | col={{ col_humana }}
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - choose:
@@ -2642,8 +2647,9 @@
               message: hito=fan_dynamic_cycle_apply | delta={{ cool_delta_real }}
                 | fan_actual={{ fan_mode_actual }} | fan_objetivo={{ fan_target_final_label
                 }} | change_direction={{ fan_change_direction }} | window_required_s={{
-                fan_window_required_s }} | window_ok={{ fan_change_window_ok }} |
-                razon=aplicado | col={{ col_humana }}
+                fan_window_required_s }} | window_ok_original={{ fan_change_window_ok }} |
+                window_ok_effective={{ fan_change_window_effective_ok }} | override_contextual={{ fan_contextual_upshift_override }} |
+                razon={{ 'contexto_mas_exigente_upshift' if fan_contextual_upshift_override else 'aplicado' }} | col={{ col_humana }}
               entity_id: climate.0200009211c7_climate
             action: logbook.log
         default:
@@ -2652,8 +2658,8 @@
             message: hito=fan_dynamic_cycle_skip | delta={{ cool_delta_real }} | fan_actual={{
               fan_mode_actual }} | fan_objetivo={{ fan_target_final_label }} | change_direction={{
               fan_change_direction }} | window_required_s={{ fan_window_required_s
-              }} | window_ok={{ fan_change_window_ok }} | razon={{ fan_dynamic_skip_reason
-              }} | col={{ col_humana }}
+              }} | window_ok_original={{ fan_change_window_ok }} | window_ok_effective={{ fan_change_window_effective_ok }} | override_contextual={{ fan_contextual_upshift_override }} | razon={{ fan_dynamic_skip_reason
+              }} | target_valid={{ fan_target_valid }} | needs_change={{ fan_needs_change }} | cool_normal_active={{ cool_normal_active }} | turbo_activo={{ states('input_text.ac_matriz_160_fase_ciclo') == 'turbo_cool' }} | col={{ col_humana }}
             entity_id: climate.0200009211c7_climate
           action: logbook.log
   - choose:

@@ -3111,3 +3111,12 @@ Implementación contractual:
 - La re-sincronización contextual es solo descendente durante el ciclo: no sube el SP si el nuevo `sp_cool_normal` es mayor que el SP actual.
 - Si pasan 40 minutos acumulados en frío normal y `Tin` sigue por encima de `eff_t_off_cool` (con margen de 0.2 °C), puede aplicarse una sola vez por ciclo un refuerzo temporal de `SP actual - 1`, respetando el `min_temp` del climate.
 - La fase `turbo_cool` no cuenta para ese temporizador y no ejecuta ni re-sincronización contextual ni refuerzo de 40 minutos; al salir de turbo hacia `cool` normal empieza un conteo nuevo desde cero.
+
+## 73) AC-Matriz 160 — override contextual de upshift dinámico de fan (2026-06-15)
+
+- **Alcance:** automatización principal `AC-Matriz 160` (`id: ac_matriz_160_main_v1`) en `automations.yaml`.
+- **Problema corregido:** después de una re-sincronización contextual descendente de setpoint (`sp_contextual_downsync_apply`), el ventilador dinámico podía quedar bloqueado por la ventana normal de upshift de 240 segundos aunque el nuevo contexto exigiera más capacidad de enfriamiento.
+- **Nueva señal:** `fan_contextual_upshift_override` se activa solo cuando ya existe `cool_contextual_downsync_needed`, el ciclo normal de frío está activo, el cálculo dinámico pide `upshift`, el cambio real de fan es necesario, el target es soportado y la fase no es `turbo_cool`.
+- **Ventana efectiva:** `fan_change_window_effective_ok` conserva la ventana normal (`fan_change_window_ok`) y agrega la excepción contextual únicamente para upshift. Los downshift siguen respetando `fan_downshift_min_window_s` para evitar oscilaciones.
+- **Aplicación dinámica:** las decisiones de aplicación y bloqueo del fan dinámico usan la ventana efectiva, sin modificar la lógica de SP contextual ni el refuerzo agresivo de 40 minutos.
+- **Observabilidad:** los logs `fan_dynamic_cycle_eval`, `fan_dynamic_cycle_apply`, `fan_dynamic_cycle_skip` y el skip por ventana exponen ventana original, ventana efectiva y override contextual. Cuando aplica por esta excepción, la razón queda como `contexto_mas_exigente_upshift`.
