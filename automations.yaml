@@ -1159,8 +1159,8 @@
         and ''rain'' in s %}Lluvia fuerte{% elif ''rain'' in s or ''drizzle'' in s
         %}Lluvia suave{% elif ''cloud'' in s and (''few'' in s or ''scattered'' in
         s or ''partly'' in s) %}Parcialmente nublado{% elif ''cloud'' in s %}Nublado{%
-        else %}Soleado - Despejado{% endif %}'
-      weather_idx: '{% set c = weather_cat %}{% if c == ''Soleado - Despejado'' %}0{%
+        else %}Despejado{% endif %}'
+      weather_idx: '{% set c = weather_cat %}{% if c == ''Despejado'' %}0{%
         elif c == ''Parcialmente nublado'' %}1{% elif c == ''Nublado'' %}2{% elif
         c == ''Lluvia suave'' %}3{% elif c == ''Lluvia fuerte'' %}4{% elif c == ''Tormenta''
         %}5{% elif c == ''Niebla - Neblina'' %}6{% else %}7{% endif %}'
@@ -1820,8 +1820,8 @@
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - data:
-          title: AC-Matriz 160
-          message: '{% if turbo_enter_cool_reason == ''humedad_alta_contextual'' %}Se activó turbo de enfriamiento por humedad contextual (Tin/Hin en rango de frío).{% else %}Se activó turbo de enfriamiento por desvío térmico fuerte.{% endif %}'
+          title: AC-Matriz Diurna
+          message: '{{ now().strftime(''%I:%M %p'') }} — Frío encendido automáticamente\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %{% if tout is not none %}\nExterior: {{ tout }} °C{% endif %}\nAjuste de temp.: 18 °C\nUmbral de apagado: {{ eff_t_off_cool }} °C\nContexto: Columna {{ col_idx }} ({{ col_humana }})'
         action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
@@ -1900,8 +1900,8 @@
           entity_id: climate.0200009211c7_climate
         action: logbook.log
       - data:
-          title: AC-Matriz 160
-          message: Se activó turbo de calefacción por llegada con desvío fuerte.
+          title: AC-Matriz Diurna
+          message: '{{ now().strftime(''%I:%M %p'') }} — Calor encendido automáticamente\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %{% if tout is not none %}\nExterior: {{ tout }} °C{% endif %}\nAjuste de temp.: 30 °C\nUmbral de apagado: {{ eff_t_off_heat }} °C\nContexto: Columna {{ col_idx }} ({{ col_humana }})'
         action: notify.mobile_app_samsung_s24
     - conditions:
       - condition: template
@@ -2576,11 +2576,8 @@
             entity_id: climate.0200009211c7_climate
           action: logbook.log
         - data:
-            title: AC-Matriz 160
-            message: '{{ now().strftime(''%I:%M %p'') }} | EVENTO= Fallo de apagado
-              (3 intentos) | MODO ACTUAL= {{ states(''climate.0200009211c7_climate'')
-              }} | INTERIOR= {{ tin }}°C/{{ hin }}% | CONTEXTO= Columna {{ col_idx
-              }} ({{ col_humana }})'
+            title: AC-Matriz Diurna
+            message: '{{ now().strftime(''%I:%M %p'') }} — Fallo de apagado automático\nModo actual: {{ states(''climate.0200009211c7_climate'') }}\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %\nContexto: Columna {{ col_idx }} ({{ col_humana }})'
           action: notify.mobile_app_samsung_s24
       - choose:
         - conditions:
@@ -2795,33 +2792,14 @@
           == ''off'')) }}'
       sequence:
       - data:
-          title: AC-Matriz 160
-          message: '{% set modo_final = ''Frío'' if action_target == ''turn_on_cool''
-            else ''Calor'' if action_target == ''turn_on_heat'' else ''Apagado'' %}
-            {% set include_detalle_operacion = action_target != ''turn_off'' %} {%
-            set sp_real = state_attr(''climate.0200009211c7_climate'',''temperature'')
-            %} {% set sp_notif = sp_cool_normal if action_target == ''turn_on_cool''
-            and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool''
-            else sp_real %} {% set sp_msg = ''SP= '' ~ sp_notif ~ ''°C'' if action_target
-            == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'')
-            != ''turbo_cool'' else ''SP= 18°C (Turbo)'' if action_target == ''turn_on_cool''
-            else '''' %} {% set fan_real = state_attr(''climate.0200009211c7_climate'',''fan_mode'')
-            | string %} {% set fan_es = ''Bajo'' if fan_real|lower == ''low'' else
-            ''Medio'' if fan_real|lower in [''med'',''medium''] else ''Alto'' if fan_real|lower
-            == ''high'' else fan_real %} {% set fan_msg = ''FAN= '' ~ fan_es if action_target
-            == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'')
-            != ''turbo_cool'' else ''FAN= Alto (Turbo)'' if action_target == ''turn_on_cool''
-            else '''' %} {% set temp_apagado = eff_t_off_cool if action_target in
-            [''turn_on_cool'',''turn_off''] and climate_mode == ''cool'' else eff_t_off_heat
-            if action_target in [''turn_on_heat'',''turn_off''] and climate_mode ==
-            ''heat'' else eff_t_off_cool if action_target == ''turn_on_cool'' else
-            eff_t_off_heat if action_target == ''turn_on_heat'' else eff_t_off_cool
-            %} {{ now().strftime(''%I:%M %p'') }} | EVENTO= {{ ''Encendido'' if action_target
-            in [''turn_on_cool'',''turn_on_heat''] else ''Apagado'' }}{% if include_detalle_operacion
-            %} | MODO= {{ modo_final }} | {{ sp_msg }} | {{ fan_msg }}{% endif %}
-            | INTERIOR= {{ tin }}°C/{{ hin }}% | EXTERIOR= {{ tout if tout is not
-            none else ''No disponible'' }}°C/{{ hout }}% | TEMP APAGADO= {{ temp_apagado
-            }} | CONTEXTO= Columna {{ col_idx }} ({{ col_humana }})'
+          title: AC-Matriz Diurna
+          message: '{% set modo_final = ''Frío'' if action_target == ''turn_on_cool'' else ''Calor'' if action_target == ''turn_on_heat'' else ''Equipo'' %} {% set temp_apagado = eff_t_off_cool if action_target in [''turn_on_cool'',''turn_off''] and climate_mode == ''cool'' else eff_t_off_heat if action_target in [''turn_on_heat'',''turn_off''] and climate_mode == ''heat'' else eff_t_off_cool if action_target == ''turn_on_cool'' else eff_t_off_heat if action_target == ''turn_on_heat'' else eff_t_off_cool %} {% set ajuste_temp = sp_cool_normal if action_target == ''turn_on_cool'' and states(''input_text.ac_matriz_160_fase_ciclo'') != ''turbo_cool'' else 18 if action_target == ''turn_on_cool'' else state_attr(''climate.0200009211c7_climate'',''temperature'') %} {{ now().strftime(''%I:%M %p'') }} — {{ modo_final }} {{ ''encendido automáticamente'' if action_target in [''turn_on_cool'',''turn_on_heat''] else ''apagado automáticamente'' }}
+Interior: {{ tin }} °C
+Humedad interior: {{ hin }} %{% if tout is not none %}
+Exterior: {{ tout }} °C{% endif %}{% if action_target != ''turn_off'' %}
+Ajuste de temp.: {{ ajuste_temp }} °C{% endif %}
+Umbral de apagado: {{ temp_apagado }} °C
+Contexto: Columna {{ col_idx }} ({{ col_humana }})'
         action: notify.mobile_app_samsung_s24
       - target:
           entity_id: input_text.ac_matriz_160_ultima_firma_notificacion
@@ -2900,6 +2878,23 @@
       movimiento_crudo_state: '{{ states(''binary_sensor.tze204_gkfbdvyx_ts0601'') }}'
       movimiento_estable_state: '{{ states(''binary_sensor.presencia_movimiento_estable'') }}'
       hvac_mode: '{{ states(''climate.0200009211c7_climate'') }}'
+      t1: '{{ states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(none) }}'
+      t2: '{{ states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(none) }}'
+      h1: '{{ states(''sensor.lumi_lumi_weather_cuarto_humedad'')|float(none) }}'
+      h2: '{{ states(''sensor.lumi_lumi_weather_coco_humedad'')|float(none) }}'
+      tin: '{% if t1 is not none and t2 is not none %}{{ ((t1 + t2) / 2) | round(2) }}{% elif t1 is not none %}{{ t1 | round(2) }}{% elif t2 is not none %}{{ t2 | round(2) }}{% else %}{{ none }}{% endif %}'
+      hin: '{% if h1 is not none and h2 is not none %}{{ ((h1 + h2) / 2) | round(1) }}{% elif h1 is not none %}{{ h1 | round(1) }}{% elif h2 is not none %}{{ h2 | round(1) }}{% else %}{{ none }}{% endif %}'
+      tout: '{{ state_attr(''weather.openweathermap'',''temperature'')|float(none) }}'
+      wx_raw: '{{ states(''weather.openweathermap'') | lower }}'
+      slot_name: '{% set t = now().strftime(''%H:%M'') %}{% if ''07:01'' <= t <= ''10:00'' %}07:01 am - 10:00 am{% elif ''10:01'' <= t <= ''13:00'' %}10:01 am - 01:00 pm{% elif ''13:01'' <= t <= ''16:00'' %}01:01 pm - 04:00 pm{% elif ''16:01'' <= t <= ''19:00'' %}04:01 pm - 07:00 pm{% else %}07:01 pm - 09:59 pm{% endif %}'
+      slot_idx: '{% set t = now().strftime(''%H:%M'') %}{% if ''07:01'' <= t <= ''10:00'' %}0{% elif ''10:01'' <= t <= ''13:00'' %}1{% elif ''13:01'' <= t <= ''16:00'' %}2{% elif ''16:01'' <= t <= ''19:00'' %}3{% else %}4{% endif %}'
+      season_name: '{% set m = now().month %}{% if m in [12,1,2] %}Invierno{% elif m in [3,4,5] %}Primavera{% elif m in [6,7,8] %}Verano{% else %}Otoño{% endif %}'
+      season_idx: '{% set m = now().month %}{% if m in [3,4,5] %}0{% elif m in [6,7,8] %}1{% elif m in [9,10,11] %}2{% else %}3{% endif %}'
+      weather_cat: '{% set s = wx_raw %}{% if ''thunder'' in s %}Tormenta{% elif ''snow'' in s or ''sleet'' in s or ''ice'' in s %}Nieve - Hielo{% elif ''fog'' in s or ''mist'' in s or ''haze'' in s %}Niebla - Neblina{% elif ''heavy'' in s and ''rain'' in s %}Lluvia fuerte{% elif ''rain'' in s or ''drizzle'' in s %}Lluvia suave{% elif ''cloud'' in s and (''few'' in s or ''scattered'' in s or ''partly'' in s) %}Parcialmente nublado{% elif ''cloud'' in s %}Nublado{% else %}Despejado{% endif %}'
+      weather_idx: '{% set c = weather_cat %}{% if c == ''Despejado'' %}0{% elif c == ''Parcialmente nublado'' %}1{% elif c == ''Nublado'' %}2{% elif c == ''Lluvia suave'' %}3{% elif c == ''Lluvia fuerte'' %}4{% elif c == ''Tormenta'' %}5{% elif c == ''Niebla - Neblina'' %}6{% else %}7{% endif %}'
+      col_idx: '{{ (weather_idx|int * 20) + (season_idx|int * 5) + (slot_idx|int) + 1 }}'
+      col_humana: '{{ weather_cat }} | {{ season_name }} | Horario {{ slot_name }}'
+      ajuste_temp_previo: '{{ state_attr(''climate.0200009211c7_climate'',''temperature'') }}'
       hvac_scope_ok: '{{ hvac_mode in [''cool'',''heat''] }}'
       override_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_presence_override_until'') }}'
       override_until_ts: >-
@@ -3009,8 +3004,8 @@
                   entity_id: climate.0200009211c7_climate
               - service: notify.mobile_app_samsung_s24
                 data:
-                  title: AC-Matriz 160 · Apagado por ausencia
-                  message: 'Se apagó el AC ({{ modo_previo }}) por ausencia confirmada. Trace={{ trace_id }}.'
+                  title: AC-Matriz Diurna
+                  message: '{{ now().strftime(''%I:%M %p'') }} — Equipo apagado automáticamente\nMotivo: No hay presencia válida\nModo anterior: {{ ''Frío'' if modo_previo == ''cool'' else ''Calor'' if modo_previo == ''heat'' else modo_previo }}\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %{% if tout is not none %}\nExterior: {{ tout }} °C{% endif %}\nAjuste de temp. anterior: {{ ajuste_temp_previo }} °C\nContexto: Columna {{ col_idx }} ({{ col_humana }})'
               - service: logbook.log
                 data:
                   name: AC-Matriz 160
@@ -3118,9 +3113,8 @@
         in s and ''rain'' in s %}Lluvia fuerte{% elif ''rain'' in s or ''drizzle''
         in s %}Lluvia suave{% elif ''cloud'' in s and (''few'' in s or ''scattered''
         in s or ''partly'' in s) %}Parcialmente nublado{% elif ''cloud'' in s %}Nublado{%
-        else %}Soleado - Despejado{% endif %}'
-      weather_idx_resuelto: '{% set c = weather_cat_resuelto %}{% if c == ''Soleado
-        - Despejado'' %}0{% elif c == ''Parcialmente nublado'' %}1{% elif c == ''Nublado''
+        else %}Despejado{% endif %}'
+      weather_idx_resuelto: '{% set c = weather_cat_resuelto %}{% if c == ''Despejado'' %}0{% elif c == ''Parcialmente nublado'' %}1{% elif c == ''Nublado''
         %}2{% elif c == ''Lluvia suave'' %}3{% elif c == ''Lluvia fuerte'' %}4{% elif
         c == ''Tormenta'' %}5{% elif c == ''Niebla - Neblina'' %}6{% else %}7{% endif
         %}'
@@ -3318,20 +3312,14 @@
         | float(22) }}{% endif %}'
       umbral_on_heat_operacional: '{{ ((umbral_off_heat_operacional | float(0)) -
         1.0) | round(2) }}'
-      mensaje_humano: '{% set tipo_humano = ''Encendido Manual'' if evento_manual_tipo
-        == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual''
-        else ''Sin Transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje
-        == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de
-        Alcance'' %} {% set envio_humano = ''Emitida'' if envio_estado == ''emitida''
-        else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado''
-        %} {% set temp_apagado_valor = umbral_off_cool_operacional
-        | float(24) if modo_aprendizaje == ''cool'' else umbral_off_heat_operacional
-        | float(22) if modo_aprendizaje == ''heat'' else 0 %} {% set temp_apagado_fmt
-        = ''%.2f'' | format(temp_apagado_valor | float(0)) %} {{ hora_evento }} |
-        TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto
-        }} ({{ contexto_activo_resuelto }}) | DELTA_REAL= {{ (''+'' if (delta_aplicado_real | float(0)) >= 0 else '''') ~ ((delta_aplicado_real | float(0)) | round(2)) }} | DELTA_OBJ= {{ (''+'' if (delta | float(0)) >= 0 else '''') ~ ((delta | float(0)) | round(2)) }} | OFFSET= {{ offset_nuevo
-        if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano
-        }} | TEMP APAGADO= {{ temp_apagado_fmt }} | ANCHOR= {{ fuera_rango_anchor }} | TIPO_ANCHOR= {{ tipo_anchor }} | ON_OBJ= {{ on_obj_anchor }} | OFF_OBJ= {{ off_obj_anchor }} | DELTA_ANCHOR= {{ delta_anchor }} | OFFSET_ANTES= {{ offset_actual }} | OFFSET_DESPUÉS= {{ offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual }} | OFF_NUEVO= {{ off_nuevo }} | ON_NUEVO= {{ on_nuevo }} | ANCHOR_CLAMP= {{ anchor_limitado_por_clamp }}'
+      mensaje_humano: '{% set tipo_humano = ''Encendido manual'' if evento_manual_tipo == ''encendido_manual'' else ''Apagado manual'' if evento_manual_tipo == ''apagado_manual'' else ''Sin transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de alcance'' %} {% set temp_apagado_valor = umbral_off_cool_operacional | float(24) if modo_aprendizaje == ''cool'' else umbral_off_heat_operacional | float(22) if modo_aprendizaje == ''heat'' else 0 %} {{ hora_evento }} — Aprendizaje aplicado
+Tipo: {{ tipo_humano }}
+Modo: {{ modo_humano }}
+Contexto: Columna {{ col_idx_resuelto }} ({{ contexto_activo_resuelto }})
+Ajuste aplicado: {{ (''+'' if (delta_aplicado_real | float(0)) >= 0 else '''') ~ (''%.2f'' | format(delta_aplicado_real | float(0))) }}
+Compensación actualizada: {{ (''+'' if ((offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual) | float(0)) >= 0 else '''') ~ (''%.2f'' | format((offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual) | float(0))) }}
+Nuevo umbral de apagado: {{ ''%.2f'' | format(temp_apagado_valor | float(0)) }} °C{% if fuera_rango_anchor | bool(false) %}
+Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       reconcile_target_mode: '{% set tin_v = tin | float(0) %} {% if tin_v >= umbral_on_cool_operacional
         | float(25) %}cool {% elif tin_v <= umbral_on_heat_operacional | float(21)
         %}heat {% elif (tin_v - umbral_off_cool_operacional | float(24)) | abs <=
@@ -3745,20 +3733,14 @@
         | float(22) }}{% endif %}'
       umbral_on_heat_operacional: '{{ ((umbral_off_heat_operacional | float(0)) -
         1.0) | round(2) }}'
-      mensaje_humano: '{% set tipo_humano = ''Encendido manual detectado por transición compuesta (apagado → ventilación → frío/calor)'' if cierre_compuesto_valido else ''Encendido Manual'' if evento_manual_tipo
-        == ''encendido_manual'' else ''Apagado Manual'' if evento_manual_tipo == ''apagado_manual''
-        else ''Sin Transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje
-        == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de
-        Alcance'' %} {% set envio_humano = ''Emitida'' if envio_estado == ''emitida''
-        else ''Fallback'' if envio_estado == ''fallback'' else ''Error Controlado''
-        %} {% set temp_apagado_valor = umbral_off_cool_operacional
-        | float(24) if modo_aprendizaje == ''cool'' else umbral_off_heat_operacional
-        | float(22) if modo_aprendizaje == ''heat'' else 0 %} {% set temp_apagado_fmt
-        = ''%.2f'' | format(temp_apagado_valor | float(0)) %} {{ hora_evento }} |
-        TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx_resuelto
-        }} ({{ contexto_activo_resuelto }}) | DELTA_REAL= {{ (''+'' if (delta_aplicado_real | float(0)) >= 0 else '''') ~ ((delta_aplicado_real | float(0)) | round(2)) }} | DELTA_OBJ= {{ (''+'' if (delta | float(0)) >= 0 else '''') ~ ((delta | float(0)) | round(2)) }} | OFFSET= {{ offset_nuevo
-        if resultado_terminal == ''aplicado'' else offset_actual }} | ENVÍO= {{ envio_humano
-        }} | TEMP APAGADO= {{ temp_apagado_fmt }} | ANCHOR= {{ fuera_rango_anchor }} | TIPO_ANCHOR= {{ tipo_anchor }} | ON_OBJ= {{ on_obj_anchor }} | OFF_OBJ= {{ off_obj_anchor }} | DELTA_ANCHOR= {{ delta_anchor }} | OFFSET_ANTES= {{ offset_actual }} | OFFSET_DESPUÉS= {{ offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual }} | OFF_NUEVO= {{ off_nuevo }} | ON_NUEVO= {{ on_nuevo }} | ANCHOR_CLAMP= {{ anchor_limitado_por_clamp }}'
+      mensaje_humano: '{% set tipo_humano = ''Encendido manual'' if evento_manual_tipo == ''encendido_manual'' else ''Apagado manual'' if evento_manual_tipo == ''apagado_manual'' else ''Sin transición'' %} {% set modo_humano = ''Frío'' if modo_aprendizaje == ''cool'' else ''Calor'' if modo_aprendizaje == ''heat'' else ''Fuera de alcance'' %} {% set temp_apagado_valor = umbral_off_cool_operacional | float(24) if modo_aprendizaje == ''cool'' else umbral_off_heat_operacional | float(22) if modo_aprendizaje == ''heat'' else 0 %} {{ hora_evento }} — Aprendizaje aplicado
+Tipo: {{ tipo_humano }}
+Modo: {{ modo_humano }}
+Contexto: Columna {{ col_idx_resuelto }} ({{ contexto_activo_resuelto }})
+Ajuste aplicado: {{ (''+'' if (delta_aplicado_real | float(0)) >= 0 else '''') ~ (''%.2f'' | format(delta_aplicado_real | float(0))) }}
+Compensación actualizada: {{ (''+'' if ((offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual) | float(0)) >= 0 else '''') ~ (''%.2f'' | format((offset_nuevo if resultado_terminal == ''aplicado'' else offset_actual) | float(0))) }}
+Nuevo umbral de apagado: {{ ''%.2f'' | format(temp_apagado_valor | float(0)) }} °C{% if fuera_rango_anchor | bool(false) %}
+Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
   - variables:
       estado_actual_estabilizacion: '{{ states(''climate.0200009211c7_climate'') |
         lower }}'
@@ -3863,8 +3845,8 @@
               value: trace_id={{ manual_fan_stuck_trace_id }}|ts_origen={{ ts_evento }}|modo_observado={{ estado_tras_10s }}|status=confirmed|final_mode={{ manual_fan_stuck_final_mode }}
           - service: notify.mobile_app_samsung_s24
             data:
-              title: AC-Matriz 160
-              message: '{{ hora_evento }} | TIPO= Encendido Manual Asistido | MODO= {{ ''Frío'' if reconcile_target_mode == ''cool'' else ''Calor'' }} | RESULTADO= Confirmado | RAZÓN= fan_only_off_reconciliado | TRACE= {{ manual_fan_stuck_trace_id }} | SP= {{ reconcile_sp_target | int }} | FAN= {{ reconcile_fan_target_final }}'
+              title: AC-Matriz Diurna
+              message: '{{ hora_evento }} — Encendido manual asistido\nModo: {{ ''Frío'' if reconcile_target_mode == ''cool'' else ''Calor'' }}\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %\nAjuste de temp.: {{ reconcile_sp_target | int }} °C'
           - service: logbook.log
             data:
               name: AC-Matriz 160
@@ -3924,7 +3906,7 @@
           value: '{{ offset_nuevo }}'
       - service: notify.mobile_app_samsung_s24
         data:
-          title: AC-Matriz 160
+          title: AC-Matriz Diurna
           message: '{{ mensaje_humano }}'
       - service: logbook.log
         data:
@@ -4100,10 +4082,11 @@
         value_template: '{{ resultado_terminal == ''error_controlado'' and notificacion_error_dedup_ok
           }}'
       sequence:
-      - service: notify.mobile_app_samsung_s24
+      - service: logbook.log
         data:
-          title: AC-Matriz 160 aprendizaje manual
-          message: Error controlado en aprendizaje manual. Revisa logbook.
+          name: AC-Matriz 160
+          message: hito=error_controlado_learning_notificacion_suprimida | trace_id={{ trace_id_learning }} | resultado_terminal=error_controlado | razon={{ razon }}
+          entity_id: climate.0200009211c7_climate
       - service: input_text.set_value
         target:
           entity_id: input_text.ac_matriz_160_learning_error_last_signature
@@ -4325,8 +4308,8 @@
         data: {value: sin_ciclo}
       - service: notify.mobile_app_samsung_s24
         data:
-          title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_SIN_PRESENCIA | MODO= {{ modo_previo_label }} | SP= {{ sp_previo }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ temp_apagado_prev }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          title: AC-Matriz Nocturna
+          message: "{{ now().strftime('%I:%M %p') }} — Equipo apagado automáticamente\nMotivo: No hay presencia válida\nModo anterior: {{ modo_previo_label }}\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %\nAjuste de temp. anterior: {{ sp_previo }} °C\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
@@ -4395,8 +4378,8 @@
           sequence:
           - service: notify.mobile_app_samsung_s24
             data:
-              title: AC Night Matriz Contextual
-              message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_UMBRAL | MODO= {{ modo_previo_label }} | SP= {{ sp_cool_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | CONFIRMADO= off | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+              title: AC-Matriz Nocturna
+              message: "{{ now().strftime('%I:%M %p') }} — Equipo apagado automáticamente\nMotivo: Se alcanzó la temperatura de apagado\nModo anterior: {{ modo_previo_label }}\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %\nExterior: {{ tout }} °C\nAjuste de temp. anterior: {{ sp_cool_target }} °C\nUmbral de apagado: {{ off_cool }} °C\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
           - service: logbook.log
             data:
               name: AC Night
@@ -4404,8 +4387,8 @@
         default:
         - service: notify.mobile_app_samsung_s24
           data:
-            title: AC Night Matriz Contextual
-            message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_UMBRAL_PENDIENTE | MODO= {{ modo_previo_label }} | INTERIOR= {{ tin }}°C | TEMP APAGADO= {{ off_cool }}°C | ESTADO_PREVIO= {{ estado_previo }} | ESTADO_ACTUAL= {{ estado_posterior }} | CONTEXTO= Columna {{ col_idx }}"
+            title: AC-Matriz Nocturna
+            message: "{{ now().strftime('%I:%M %p') }} — Apagado automático pendiente\nModo anterior: {{ modo_previo_label }}\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %\nUmbral de apagado: {{ off_cool }} °C\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
         - service: logbook.log
           data:
             name: AC Night
@@ -4608,8 +4591,8 @@
         target: {entity_id: "{{ climate_ent }}"}
       - service: notify.mobile_app_samsung_s24
         data:
-          title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_OFF_NIGHT_UMBRAL | MODO= {{ modo_previo_label }} | SP= {{ sp_heat_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_heat }}°C | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          title: AC-Matriz Nocturna
+          message: "{{ now().strftime('%I:%M %p') }} — Equipo apagado automáticamente\nMotivo: Se alcanzó la temperatura de apagado\nModo anterior: {{ modo_previo_label }}\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %\nExterior: {{ tout }} °C\nAjuste de temp. anterior: {{ sp_heat_target }} °C\nUmbral de apagado: {{ off_heat }} °C\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
@@ -4688,8 +4671,8 @@
             data: {value: "{{ night_contract_signature }}"}
       - service: notify.mobile_app_samsung_s24
         data:
-          title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_COOL | MODO= Frío | SP_SOLICITADO= {{ sp_objetivo }}°C | SP_REPORTADO= {{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_cool }}°C | bochorno={{ bochorno_score }} | H={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | cap_on={{ on_cool_cap_night_dynamic }} | sp_ok={{ sp_confirmado_ok }} | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          title: AC-Matriz Nocturna
+          message: "{{ now().strftime('%I:%M %p') }} — Frío encendido automáticamente\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %\nExterior: {{ tout }} °C\nAjuste de temp.: {{ sp_objetivo }} °C\nUmbral de apagado: {{ off_cool }} °C\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
@@ -4727,8 +4710,8 @@
             message: "resultado=fan_heat_no_soportado | fan=Low | col={{ col_idx }} | tin={{ tin }} | hvac_mode={{ hvac_mode }}"
       - service: notify.mobile_app_samsung_s24
         data:
-          title: AC Night Matriz Contextual
-          message: "{{ now().strftime('%I:%M %p') }} | EVENTO= AUTO_ON_NIGHT_HEAT | MODO= Calor | SP= {{ sp_heat_target }}°C | FAN= Bajo | INTERIOR= {{ tin }}°C | EXTERIOR= {{ tout }}°C | TEMP APAGADO= {{ off_heat }}°C | CONTEXTO= Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          title: AC-Matriz Nocturna
+          message: "{{ now().strftime('%I:%M %p') }} — Calor encendido automáticamente\nInterior: {{ tin }} °C\nHumedad interior: {{ hin }} %\nExterior: {{ tout }} °C\nAjuste de temp.: {{ sp_heat_target }} °C\nUmbral de apagado: {{ off_heat }} °C\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
@@ -4939,12 +4922,12 @@
       auto_off_post_manual_on_threshold_cool: "{{ marker_valid and transicion == 'cool->off' and marker_last_action == 'turn_off' and (marker_auto_event in ['', 'AUTO_OFF_NIGHT_UMBRAL']) and (tin | float(0)) <= (off_cool_resultante | float(0)) }}"
       razon_ignorado_auto: "{{ 'auto_chain_context_parent_match' if auto_chain_guard_valid else 'auto_off_derivado_de_recalculo_caliente' if hot_recalc_guard_valid else 'tin_ya_estaba_por_debajo_de_off_cool' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'origen_automatico_night' }}"
       resultado_ignorado_auto: "{{ 'ignorado_auto_chain_context' if auto_chain_guard_valid else 'ignorado_auto_off_post_hot_recalc' if hot_recalc_guard_valid else 'ignorado_auto_off_post_manual_on' if (auto_off_post_manual_on_threshold_cool | bool(false)) else 'ignorado' }}"
-      umbral_termico_humano: "{% if evento_manual_tipo == 'encendido_manual' %}TEMP APAGADO= {{ '%.2f' | format(off_cool_resultante | float) if modo == 'cool' else '%.2f' | format(off_heat_resultante | float) if modo == 'heat' else 'n/a' }}°C{% elif evento_manual_tipo == 'apagado_manual' %}TEMP ENCENDIDO= {{ '%.2f' | format(on_cool_resultante | float) if modo == 'cool' else '%.2f' | format(on_heat_resultante | float) if modo == 'heat' else 'n/a' }}°C{% else %}TEMP UMBRAL= n/a{% endif %}"
+      umbral_termico_humano: "Nuevo umbral de apagado: {{ '%.2f' | format(off_cool_resultante | float) if modo == 'cool' else '%.2f' | format(off_heat_resultante | float) if modo == 'heat' else 'n/a' }} °C"
       hora_evento: "{{ now().strftime('%I:%M:%S %p') }}"
-      contexto_night: "{{ weather_state }} | {{ estacion }} | Horario {{ franja }}"
+      contexto_night: "{{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }}"
       delta_aplicado_real: "{{ ((offset_new | float(0)) - (offset_prev | float(0))) | round(2) if valid_transition else 0 }}"
       envio_estado: "{{ 'Emitida' if (valid_transition and signature != last_signature and origen_clasificacion == 'manual_externo') else 'Fallback' if (valid_transition and signature != last_signature) else 'Suprimida' }}"
-      mensaje_humano: "{% set tipo_humano = 'Encendido Manual' if evento_manual_tipo == 'encendido_manual' else 'Apagado Manual' if evento_manual_tipo == 'apagado_manual' else 'Sin Transición' %} {% set modo_humano = 'Frío' if modo == 'cool' else 'Calor' if modo == 'heat' else 'Fuera de Alcance' %} {{ hora_evento }} | TIPO= {{ tipo_humano }} | MODO= {{ modo_humano }} | COLUMNA= {{ col_idx }} ({{ contexto_night }}) | DELTA= {{ ('+' if (delta_aplicado_real | float(0)) >= 0 else '') ~ ('%.2f' | format(delta_aplicado_real | float(0))) }} | OFFSET= {{ '%.2f' | format((offset_new if origen_clasificacion == 'manual_externo' else offset_prev) | float(0)) }} | ENVÍO= {{ envio_estado }} | {{ umbral_termico_humano }}"
+      mensaje_humano: "{% set tipo_humano = 'Encendido manual' if evento_manual_tipo == 'encendido_manual' else 'Apagado manual' if evento_manual_tipo == 'apagado_manual' else 'Sin transición' %} {% set modo_humano = 'Frío' if modo == 'cool' else 'Calor' if modo == 'heat' else 'Fuera de alcance' %} {{ hora_evento }} — Aprendizaje nocturno aplicado\nTipo: {{ tipo_humano }}\nModo: {{ modo_humano }}\nContexto: Columna {{ col_idx }} ({{ contexto_night }})\nAjuste aplicado: {{ ('+' if (delta_aplicado_real | float(0)) >= 0 else '') ~ ('%.2f' | format(delta_aplicado_real | float(0))) }}\nCompensación actualizada: {{ ('+' if ((offset_new if origen_clasificacion == 'manual_externo' else offset_prev) | float(0)) >= 0 else '') ~ ('%.2f' | format((offset_new if origen_clasificacion == 'manual_externo' else offset_prev) | float(0))) }}\n{{ umbral_termico_humano }}{% if fuera_rango_anchor | bool(false) or cool_manual_on_anchor_needed | bool(false) or heat_manual_on_anchor_needed | bool(false) %}\nAjuste especial: temperatura fuera del rango esperado.{% endif %}"
       trace_id: "{{ trigger.to_state.context.id if trigger.to_state is not none else context.id|default('na') }}"
       hot_recalc_payload: "mode={{ modo }}|transition={{ transicion }}|col={{ col_idx }}|tin={{ '%.2f' | format(tin | float(0)) }}|off_cool_vigente={{ '%.2f' | format(off_cool_vigente | float(0)) }}|on_cool_vigente={{ '%.2f' | format(on_cool_vigente | float(0)) }}|decision_branch={{ decision_branch }}|distancia_a_on={{ distancia_a_on }}|delta_tramo={{ '%.2f' | format(delta_tramo | float(0)) }}|offset_old={{ '%.2f' | format(offset_prev | float(0)) }}|offset_new={{ '%.2f' | format(offset_new | float(0)) }}|delta={{ '%.2f' | format(delta_aplicado_real | float(0)) }}|anchor={{ 1 if (cool_manual_on_anchor_needed | bool(false)) else 0 }}|off_anchor_obj={{ '%.2f' | format(off_cool_anchor_obj | float(0)) }}|anchor_clamped={{ 1 if (anchor_limited_by_offset_clamp | bool(false)) else 0 }}|thermal_clamped={{ 1 if (off_cool_limited_by_thermal_clamp | bool(false)) else 0 }}|trace={{ trace_id }}|ts={{ as_timestamp(now()) | int }}"
   - choose:
@@ -5047,7 +5030,7 @@
             message: "trace_id={{ trace_id }} | transicion={{ transicion }} | origen_clasificacion={{ origen_clasificacion }} | col_idx={{ col_idx }} | modo={{ modo }} | Tin={{ tin }} | off_cool_vigente={{ off_cool_vigente }} | on_cool_vigente={{ on_cool_vigente }} | offset_prev={{ offset_prev }} | decision_branch={{ decision_branch }} | distancia_a_on={{ distancia_a_on }} | delta_tramo={{ delta_tramo }} | delta={{ delta }} | delta_aplicado_real={{ delta_aplicado_real }} | offset_new={{ offset_new }} | anchor_aplicado={{ cool_manual_on_anchor_needed }} | off_cool_anchor_obj={{ off_cool_anchor_obj }} | offset_anchor_raw={{ offset_anchor_raw }} | offset_anchor_clamped={{ offset_anchor_clamped }} | anchor_limited_by_offset_clamp={{ anchor_limited_by_offset_clamp }} | off_cool_limited_by_thermal_clamp={{ off_cool_limited_by_thermal_clamp }} | hysteresis_eff={{ hysteresis_eff }} | off_cool_resultante={{ off_cool_resultante }} | on_cool_resultante={{ on_cool_resultante }} | resultado_terminal=aplicado | razon=manual_externo_aplicado"
         - service: notify.mobile_app_samsung_s24
           data:
-            title: AC Night
+            title: AC-Matriz Nocturna
             message: "{{ mensaje_humano }}"
       default:
       - service: logbook.log

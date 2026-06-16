@@ -3198,3 +3198,37 @@ Implementación contractual:
 - **Regla anti-regresión:** no reintroducir `round(celsius / 2) * 2` ni cualquier normalización a múltiplos de `2 °C`; los valores impares como `19 °C`, `21 °C` y `23 °C` deben conservarse como enteros comparables.
 - **Escritura de setpoint:** `async_set_temperature()` mantiene `math.ceil()` sobre la solicitud Fahrenheit ya convertida por Home Assistant para evitar truncamiento hacia abajo al Fahrenheit entero inferior. La comparación de cambio se hace contra el ERD bruto actual, no contra la lectura normalizada para UI.
 - **Semántica operativa:** `temperature` es el setpoint objetivo usado para confirmar refuerzos y resincronizaciones; `current_temperature` es la lectura actual/interna del HVAC presentada con la misma normalización métrica entera.
+
+---
+
+## Contrato de notificaciones HVAC móviles
+
+Las notificaciones móviles de HVAC son un **resumen humano y breve**, no un log técnico. La telemetría diagnóstica, estados internos, trazas, confirmaciones y cálculos auxiliares deben permanecer en `logbook.log` cuando sean necesarios para depuración.
+
+### Títulos visibles
+- Control diurno: `AC-Matriz Diurna`.
+- Control nocturno: `AC-Matriz Nocturna`.
+
+### Vocabulario visible obligatorio
+- Usar `Ajuste de temp.` para la temperatura configurada del equipo.
+- Usar `Compensación actualizada` para el nuevo ajuste aprendido.
+- Usar `Ajuste especial` solo bajo la regla indicada abajo.
+- Incluir `Humedad interior` en las notificaciones HVAC relevantes.
+
+### Contexto obligatorio
+Toda notificación móvil HVAC que muestre contexto de columna debe usar exactamente el patrón:
+
+`Columna N (Condición externa | Estación del año | Horario HH:MM-HH:MM)`
+
+No se deben usar contextos genéricos como `Noche`; siempre debe mostrarse la franja horaria concreta.
+
+### Aprendizaje y ajuste especial
+- Las notificaciones móviles de aprendizaje se envían solo cuando el aprendizaje queda aplicado.
+- Los aprendizajes ignorados, descartados, deduplicados o bloqueados no envían notificación móvil; se registran solo en logs.
+- La línea `Ajuste especial: temperatura fuera del rango esperado.` se muestra únicamente cuando exista anchor/ajuste especial aplicado.
+- Si no aplica ajuste especial, no se muestra ninguna línea relacionada.
+- La palabra técnica `anchor` y sus campos internos no deben aparecer en notificaciones móviles.
+
+### Condición clara
+- Usar `Despejado` como etiqueta visible de condición clara.
+- No usar `Soleado - Despejado` en textos visibles.
