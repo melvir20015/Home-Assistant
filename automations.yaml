@@ -29,7 +29,7 @@
           entity_id: climate.0200009211c7_climate
         data:
           fan_mode: Low
-      - delay: 00:10:00
+      - delay: 00:02:00
   - service: climate.turn_off
     target:
       entity_id: climate.0200009211c7_climate

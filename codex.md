@@ -52,7 +52,7 @@ Todos los helpers listados aquí son de uso exclusivo y no deben compartirse con
 - `input_number.hvac_context_setpoint` — setpoint aprendido por contexto.
 - `input_text.hvac_context_key` — clave de contexto activa.
 - `input_datetime.hvac_last_manual_action` — trazabilidad de última acción manual.
-- `timer.hvac_post_cool_dry` — secado post-cool (3 min).
+- `timer.hvac_post_cool_dry` — secado post-cool (2 min).
 
 ---
 
@@ -326,7 +326,7 @@ Para evitar cruces entre corridas concurrentes de `Manual ON`, la confirmación 
 
 ## 8. Secado post-cool
 
-Al terminar ciclo de `cool`, activar `fan_only` por **3 minutos** para secado post-cool y reducción de humedad residual del sistema.
+Al terminar ciclo de `cool`, activar `fan_only` por **2 minutos** para secado post-cool y reducción de humedad residual del sistema.
 
 - Inicio: transición de salida de `cool`.
 - Fin: expiración de `timer.hvac_post_cool_dry`.
