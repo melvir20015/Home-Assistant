@@ -2866,7 +2866,7 @@
     action: logbook.log
   mode: single
   trace:
-    stored_traces: 200
+    stored_traces: 300
 - id: ac_matriz_160_presencia_ausencia_v1
   alias: AC-Matriz 160 - Presencia/Ausencia
   description: Gestión dedicada de apagado por ausencia usando S24 y movimiento crudo, desacoplada de la lógica térmica principal.
@@ -3062,7 +3062,7 @@
   mode: queued
   max: 20
   trace:
-    stored_traces: 200
+    stored_traces: 250
   triggers:
   - trigger: state
     entity_id: climate.0200009211c7_climate
@@ -4163,7 +4163,7 @@
 - id: ac_night_matrix_v1
   alias: AC Night Matriz Contextual
   trace:
-    stored_traces: 200
+    stored_traces: 300
   mode: queued
   max: 10
   trigger:
@@ -4804,7 +4804,7 @@
 - id: ac_night_learning_manual_v1
   alias: AC Night - Aprendizaje manual por columna
   trace:
-    stored_traces: 200
+    stored_traces: 250
   mode: queued
   trigger:
   - platform: state
@@ -5080,25 +5080,33 @@
       sequence:
       - service: automation.turn_on
         target:
-          entity_id: automation.ac_matriz_160
+          entity_id:
+          - automation.ac_matriz_160
+          - automation.ac_matriz_160_aprendizaje_manual_por_columna
     - conditions:
       - condition: trigger
         id: night_off
       sequence:
       - service: automation.turn_off
         target:
-          entity_id: automation.ac_night_matriz_contextual
+          entity_id:
+          - automation.ac_night_matriz_contextual
+          - automation.ac_night_aprendizaje_manual_por_columna
     - conditions:
       - condition: trigger
         id: night_on
       sequence:
       - service: automation.turn_on
         target:
-          entity_id: automation.ac_night_matriz_contextual
+          entity_id:
+          - automation.ac_night_matriz_contextual
+          - automation.ac_night_aprendizaje_manual_por_columna
     - conditions:
       - condition: trigger
         id: day_off
       sequence:
       - service: automation.turn_off
         target:
-          entity_id: automation.ac_matriz_160
+          entity_id:
+          - automation.ac_matriz_160
+          - automation.ac_matriz_160_aprendizaje_manual_por_columna
