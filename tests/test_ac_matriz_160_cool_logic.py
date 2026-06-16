@@ -141,19 +141,19 @@ def test_ge_smart_hq_celsius_setpoints_do_not_round_down_systematically() -> Non
         assert celsius_reported_from_ge_erd(erd_f) >= requested_c
 
 
-def ge_climate_target_temperature_property_erd_read(fahrenheit: int, metric_display: bool = True) -> float:
-    """Mirror GeClimate.target_temperature: read raw Fahrenheit ERD without metric bucketing."""
-    return float(fahrenheit)
+def ge_climate_metric_reported_native_fahrenheit(fahrenheit: int) -> float:
+    """Mirror GeClimate metric reporting: whole Celsius, returned in native Fahrenheit."""
+    rounded_celsius = round(celsius_reported_from_ge_erd(fahrenheit))
+    return (rounded_celsius * 9 / 5) + 32
 
 
-def ha_celsius_display_from_ge_fahrenheit(fahrenheit: int) -> int:
-    """Approximate HA whole-degree Celsius display for a Fahrenheit climate entity."""
+def ha_celsius_display_from_ge_native_fahrenheit(fahrenheit: float) -> int:
+    """Approximate HA Celsius attribute from the climate entity's native Fahrenheit value."""
     return round(celsius_reported_from_ge_erd(fahrenheit))
 
 
-def test_ge_smart_hq_metric_target_read_keeps_odd_celsius_setpoints() -> None:
+def test_ge_smart_hq_metric_target_read_reports_integer_celsius_setpoints() -> None:
     expected_round_trip = {
-        18: 65,
         19: 67,
         20: 68,
         21: 70,
@@ -164,16 +164,19 @@ def test_ge_smart_hq_metric_target_read_keeps_odd_celsius_setpoints() -> None:
     for requested_c, expected_erd_f in expected_round_trip.items():
         erd_f = ge_smart_hq_erd_temperature_from_celsius(requested_c)
         assert erd_f == expected_erd_f
-        raw_f = ge_climate_target_temperature_property_erd_read(erd_f)
-        assert raw_f == expected_erd_f
-        assert ha_celsius_display_from_ge_fahrenheit(int(raw_f)) == requested_c
+        normalized_native_f = ge_climate_metric_reported_native_fahrenheit(erd_f)
+        assert normalized_native_f == (requested_c * 9 / 5) + 32
+        assert ha_celsius_display_from_ge_native_fahrenheit(normalized_native_f) == requested_c
 
 
-def test_ge_smart_hq_metric_target_read_does_not_bucket_21c_to_22c() -> None:
+def test_ge_smart_hq_metric_target_read_does_not_report_decimal_or_bucket_21c() -> None:
     erd_f = ge_smart_hq_erd_temperature_from_celsius(21)
     assert erd_f == 70
-    assert ha_celsius_display_from_ge_fahrenheit(erd_f) == 21
-    assert ha_celsius_display_from_ge_fahrenheit(erd_f) != 22
+    normalized_native_f = ge_climate_metric_reported_native_fahrenheit(erd_f)
+    assert normalized_native_f == 69.8
+    assert celsius_reported_from_ge_erd(erd_f) != 21
+    assert ha_celsius_display_from_ge_native_fahrenheit(normalized_native_f) == 21
+    assert ha_celsius_display_from_ge_native_fahrenheit(normalized_native_f) != 22
 
 
 def test_reinforcement_retry_cooldown_blocks_same_failed_step_until_retry_at() -> None:

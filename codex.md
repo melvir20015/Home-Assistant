@@ -3189,3 +3189,12 @@ Implementación contractual:
 - Se agrega memoria operativa en `input_text.ac_night_cool_reinforcement_pending_payload` con climate, columna, refuerzo debido, setpoint solicitado, resultado, expiración y `retry_at`.
 - Si un refuerzo no confirma, la matriz registra un cooldown de 600 segundos antes de reintentar el mismo paso (`due` + `sp`) para evitar tormentas por triggers inmediatos, incluyendo cambios de `current_temperature` del climate.
 - El log `night_sp_progressive_reinforcement` ahora incluye `trigger_entity`, setpoint contractual, setpoint solicitado, setpoint reportado antes/final, `current_temperature` antes/después, refuerzos actuales/debidos, resultado de confirmación, cooldown aplicado y próxima hora de reintento.
+
+## 2026-06-16 — GE/SmartHQ: reporte métrico entero para HVAC Fahrenheit interno
+
+- **Alcance:** integración local `custom_components/ge_home/entities/common/ge_climate.py`.
+- **Contrato interno del equipo:** los ERD del HVAC GE/SmartHQ siguen siendo Fahrenheit enteros y la entidad conserva `temperature_unit = UnitOfTemperature.FAHRENHEIT` para que Home Assistant mantenga el flujo nativo correcto.
+- **Reporte en Home Assistant métrico:** cuando `ErdCode.TEMPERATURE_UNIT` está en `METRIC`, `target_temperature` y `current_temperature` convierten el Fahrenheit ERD a Celsius, aplican redondeo entero normal con `round(celsius)` y devuelven el equivalente Fahrenheit de ese Celsius entero. Así Home Assistant expone atributos métricos enteros como `19`, `21` o `22`, sin decimales físicos (`19.4`, `21.1`, `22.2`) y sin buckets artificiales de `2 °C`.
+- **Regla anti-regresión:** no reintroducir `round(celsius / 2) * 2` ni cualquier normalización a múltiplos de `2 °C`; los valores impares como `19 °C`, `21 °C` y `23 °C` deben conservarse como enteros comparables.
+- **Escritura de setpoint:** `async_set_temperature()` mantiene `math.ceil()` sobre la solicitud Fahrenheit ya convertida por Home Assistant para evitar truncamiento hacia abajo al Fahrenheit entero inferior. La comparación de cambio se hace contra el ERD bruto actual, no contra la lectura normalizada para UI.
+- **Semántica operativa:** `temperature` es el setpoint objetivo usado para confirmar refuerzos y resincronizaciones; `current_temperature` es la lectura actual/interna del HVAC presentada con la misma normalización métrica entera.

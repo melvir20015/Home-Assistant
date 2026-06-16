@@ -8,7 +8,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.components.climate import ClimateEntityFeature, HVACMode
-from gehomesdk import ErdCode, ErdCodeType, ErdOnOff
+from gehomesdk import ErdCode, ErdCodeType, ErdMeasurementUnits, ErdOnOff
 from ...const import DOMAIN
 from ...devices import ApplianceApi
 from .ge_erd_entity import GeEntity
@@ -103,19 +103,15 @@ class GeClimate(GeEntity, ClimateEntity):
 
     @property
     def target_temperature(self) -> Optional[float]:
-        # GE/SmartHQ ERDs report Fahrenheit values even when the appliance UI is
-        # configured for metric display. Keep the raw Fahrenheit setpoint here
-        # and let Home Assistant convert it for Celsius users. Rounding the
-        # converted Celsius value to artificial 2 °C buckets makes odd Celsius
-        # setpoints (for example 21 °C ~= 70 °F) report as the wrong target.
-        return float(self.appliance.get_erd_value(self.target_temperature_erd_code))
+        return self._normalize_reported_temperature(
+            self.appliance.get_erd_value(self.target_temperature_erd_code)
+        )
 
     @property
     def current_temperature(self) -> Optional[float]:
-        # Same contract as target_temperature: expose the raw Fahrenheit ERD so
-        # Home Assistant owns user-facing Celsius conversion without local
-        # rounding or bucketing.
-        return float(self.appliance.get_erd_value(self.current_temperature_erd_code))
+        return self._normalize_reported_temperature(
+            self.appliance.get_erd_value(self.current_temperature_erd_code)
+        )
 
     @property
     def min_temp(self) -> float:
@@ -189,8 +185,9 @@ class GeClimate(GeEntity, ClimateEntity):
         # never become the next-lower Celsius value after Fahrenheit truncation.
         temperature = math.ceil(float(temperature))
 
-        _LOGGER.debug(f"Setting temperature from {self.target_temperature} to {temperature}")
-        if self.target_temperature != temperature:
+        current_target = self.appliance.get_erd_value(self.target_temperature_erd_code)
+        _LOGGER.debug(f"Setting temperature from {current_target} to {temperature}")
+        if current_target != temperature:
             await self.appliance.async_set_erd_value(self.target_temperature_erd_code, temperature)
 
     async def async_turn_on(self):
@@ -198,6 +195,23 @@ class GeClimate(GeEntity, ClimateEntity):
 
     async def async_turn_off(self):
         await self.appliance.async_set_erd_value(self.power_status_erd_code, ErdOnOff.OFF)
+
+    def _normalize_reported_temperature(self, temperature_f: int) -> float:
+        # GE/SmartHQ HVAC ERDs are integer Fahrenheit values even when the
+        # appliance is configured for metric display. In metric mode, normalize
+        # those readings to whole Celsius degrees, then convert that whole-degree
+        # value back to the entity's declared Fahrenheit native unit so Home
+        # Assistant reports standard integer Celsius attributes instead of
+        # physical decimals (21.1 °C) or the old artificial 2 °C buckets.
+        try:
+            measurement_system = self.appliance.get_erd_value(ErdCode.TEMPERATURE_UNIT)
+        except KeyError:
+            measurement_system = ErdMeasurementUnits.Imperial
+
+        if measurement_system == ErdMeasurementUnits.METRIC:
+            celsius = round((float(temperature_f) - 32.0) * (5 / 9))
+            return (celsius * 9 / 5) + 32
+        return float(temperature_f)
 
     def _convert_temp(self, temperature_f: int):
         if self.temperature_unit == UnitOfTemperature.FAHRENHEIT:
