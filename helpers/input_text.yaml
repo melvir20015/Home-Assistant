@@ -156,6 +156,10 @@ ac_night_auto_off_pending_payload:
   name: AC Night Auto OFF Pending Payload
   max: 255
   initial: sin_pending
+ac_night_cool_reinforcement_pending_payload:
+  name: AC Night Cool Reinforcement Pending Payload
+  max: 255
+  initial: sin_pending
 ac_night_learning_last_signature:
   name: AC Night Learning Last Signature
   max: 255

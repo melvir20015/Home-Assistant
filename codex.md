@@ -3173,3 +3173,19 @@ Implementación contractual:
 - `off -> cool`: automático, ignorado, sin cambio de offset ni notificación manual.
 - Segundo `cool -> off`: derivado/rebote causal, ignorado, sin delta, sin cambio de offset y sin segunda notificación.
 - El resultado final esperado es `offset_cool_col_7 = 0.45`, `off_cool = 24.16` y `on_cool = 25.16`; no debe terminar en `offset_cool_col_7 = 0.55`, `off_cool = 24.26` y `on_cool = 25.26`.
+
+---
+
+## 2026-06-16 — Corrección GE/SmartHQ Celsius impar y anti-loop de refuerzo nocturno
+
+### GE/SmartHQ y contrato de temperatura
+- La integración local `custom_components/ge_home` trata los ERD de temperatura del equipo GE/SmartHQ como valores Fahrenheit internos. Home Assistant es responsable de convertir esos Fahrenheit a Celsius cuando la instancia se muestra en unidades métricas.
+- `target_temperature` no debe convertir el ERD Fahrenheit a Celsius para redondearlo a múltiplos artificiales de `2 °C` ni reconvertirlo a Fahrenheit. Ese bucketing hacía que un setpoint enviado como `21 °C` (`70 °F` por normalización segura) se reportara como `22 °C` y bloqueaba la confirmación de setpoint.
+- `current_temperature` se conserva como lectura diagnóstica/interna del equipo y tampoco debe aplicar redondeos locales en Celsius. La lectura contractual para confirmar setpoint sigue siendo el atributo `temperature`, no `current_temperature`.
+- `async_set_temperature()` sigue normalizando solicitudes Celsius convertidas por Home Assistant a Fahrenheit entero con `math.ceil()`, para evitar truncar hacia abajo valores como `21 °C ≈ 69.8 °F`.
+
+### Protección anti-loop del refuerzo progresivo Night
+- `AC Night Matriz Contextual` mantiene `input_number.ac_night_cool_reinforcement_count` como contador de refuerzos confirmados. Si el setpoint solicitado no confirma contra `state_attr(climate_ent, 'temperature')`, el contador no se marca como aplicado.
+- Se agrega memoria operativa en `input_text.ac_night_cool_reinforcement_pending_payload` con climate, columna, refuerzo debido, setpoint solicitado, resultado, expiración y `retry_at`.
+- Si un refuerzo no confirma, la matriz registra un cooldown de 600 segundos antes de reintentar el mismo paso (`due` + `sp`) para evitar tormentas por triggers inmediatos, incluyendo cambios de `current_temperature` del climate.
+- El log `night_sp_progressive_reinforcement` ahora incluye `trigger_entity`, setpoint contractual, setpoint solicitado, setpoint reportado antes/final, `current_temperature` antes/después, refuerzos actuales/debidos, resultado de confirmación, cooldown aplicado y próxima hora de reintento.

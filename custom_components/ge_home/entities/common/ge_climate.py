@@ -8,8 +8,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.components.climate import ClimateEntityFeature, HVACMode
-from homeassistant.components.water_heater import WaterHeaterEntityFeature
-from gehomesdk import ErdCode, ErdCodeType, ErdMeasurementUnits, ErdOnOff
+from gehomesdk import ErdCode, ErdCodeType, ErdOnOff
 from ...const import DOMAIN
 from ...devices import ApplianceApi
 from .ge_erd_entity import GeEntity
@@ -104,20 +103,18 @@ class GeClimate(GeEntity, ClimateEntity):
 
     @property
     def target_temperature(self) -> Optional[float]:
-        measurement_system = self.appliance.get_erd_value(ErdCode.TEMPERATURE_UNIT)
-        if measurement_system == ErdMeasurementUnits.METRIC:
-            targ = float(self.appliance.get_erd_value(self.target_temperature_erd_code))
-            targ = round( ((targ - 32.0) * (5/9)) / 2 ) * 2 
-            return (9 * targ) / 5 + 32
+        # GE/SmartHQ ERDs report Fahrenheit values even when the appliance UI is
+        # configured for metric display. Keep the raw Fahrenheit setpoint here
+        # and let Home Assistant convert it for Celsius users. Rounding the
+        # converted Celsius value to artificial 2 °C buckets makes odd Celsius
+        # setpoints (for example 21 °C ~= 70 °F) report as the wrong target.
         return float(self.appliance.get_erd_value(self.target_temperature_erd_code))
 
     @property
     def current_temperature(self) -> Optional[float]:
-        measurement_system = self.appliance.get_erd_value(ErdCode.TEMPERATURE_UNIT)
-        if measurement_system == ErdMeasurementUnits.METRIC:
-            current = float(self.appliance.get_erd_value(self.current_temperature_erd_code))
-            current = round( (current - 32.0) * (5/9)) 
-            return (9 * current) / 5 + 32
+        # Same contract as target_temperature: expose the raw Fahrenheit ERD so
+        # Home Assistant owns user-facing Celsius conversion without local
+        # rounding or bucketing.
         return float(self.appliance.get_erd_value(self.current_temperature_erd_code))
 
     @property

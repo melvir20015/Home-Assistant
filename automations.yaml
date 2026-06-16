@@ -4266,6 +4266,17 @@
       auto_off_pending_same_context: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) }}"
       auto_off_pending_timeout_retry_allowed: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) and auto_off_pending_result == 'pending_timeout' and (auto_off_pending_retry | int(0)) < 1 and hvac_mode == 'cool' and tin <= off_cool }}"
       auto_off_pending_recent: "{{ auto_off_pending_kind == 'night_auto_off_pending' and auto_off_pending_climate == climate_ent and auto_off_pending_event == 'AUTO_OFF_NIGHT_UMBRAL' and auto_off_pending_col == (col_idx | string) and as_timestamp(now())|int <= (auto_off_pending_exp | int(0)) and auto_off_pending_result not in ['confirmed','failed','suppressed'] and not (auto_off_pending_result == 'pending_timeout' and (auto_off_pending_retry | int(0)) < 1 and hvac_mode == 'cool' and tin <= off_cool) }}"
+      reinforcement_pending_raw: "{{ states('input_text.ac_night_cool_reinforcement_pending_payload') }}"
+      reinforcement_pending_kind: "{{ reinforcement_pending_raw.split('kind=')[1].split('|')[0] if 'kind=' in reinforcement_pending_raw else '' }}"
+      reinforcement_pending_climate: "{{ reinforcement_pending_raw.split('climate=')[1].split('|')[0] if 'climate=' in reinforcement_pending_raw else '' }}"
+      reinforcement_pending_col: "{{ reinforcement_pending_raw.split('col=')[1].split('|')[0] if 'col=' in reinforcement_pending_raw else '' }}"
+      reinforcement_pending_due: "{{ reinforcement_pending_raw.split('due=')[1].split('|')[0] if 'due=' in reinforcement_pending_raw else '0' }}"
+      reinforcement_pending_sp: "{{ reinforcement_pending_raw.split('sp=')[1].split('|')[0] if 'sp=' in reinforcement_pending_raw else '' }}"
+      reinforcement_pending_exp: "{{ reinforcement_pending_raw.split('exp=')[1].split('|')[0] if 'exp=' in reinforcement_pending_raw else '0' }}"
+      reinforcement_pending_retry_at: "{{ reinforcement_pending_raw.split('retry_at=')[1].split('|')[0] if 'retry_at=' in reinforcement_pending_raw else '0' }}"
+      reinforcement_pending_result: "{{ reinforcement_pending_raw.split('result=')[1].split('|')[0] if 'result=' in reinforcement_pending_raw else '' }}"
+      reinforcement_pending_same_step: "{{ reinforcement_pending_kind == 'night_reinforcement_pending' and reinforcement_pending_climate == climate_ent and reinforcement_pending_col == (col_idx | string) and (reinforcement_pending_due | int(0)) == (night_reinforcement_due_count | int(0)) and (reinforcement_pending_sp | string) == (sp_cool_reinforced_next | string) and as_timestamp(now())|int <= (reinforcement_pending_exp | int(0)) }}"
+      reinforcement_retry_allowed: "{{ not reinforcement_pending_same_step or as_timestamp(now())|int >= (reinforcement_pending_retry_at | int(0)) }}"
       trigger_entity: "{{ trigger.entity_id if trigger is defined and trigger.platform == 'state' else '' }}"
       hot_learning_recalc_requested: "{{ trigger_entity == 'input_text.ac_night_hot_learning_recalc_payload' }}"
       hot_learning_recalc_payload: "{{ states('input_text.ac_night_hot_learning_recalc_payload') }}"
@@ -4468,12 +4479,16 @@
           message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos=0 | minutos_ciclo=0 | motivo=ciclo_cool_nocturno_detectado_o_nuevo | fan_resync=true | contrato={{ night_contract_signature }} | resultado_terminal={{ 'resync' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
-        value_template: "{{ hvac_mode == 'cool' and presencia_ok and tin > off_cool and (night_reinforcement_due_count | int(0)) > (night_reinforcement_count | int(0)) and (night_reinforcement_count | int(0)) < 3 }}"
+        value_template: "{{ hvac_mode == 'cool' and presencia_ok and tin > off_cool and (night_reinforcement_due_count | int(0)) > (night_reinforcement_count | int(0)) and (night_reinforcement_count | int(0)) < 3 and reinforcement_retry_allowed }}"
       sequence:
       - variables:
           sp_contractual: "{{ sp_cool_target | int }}"
           sp_solicitado: "{{ sp_cool_reinforced_next | int }}"
           sp_reportado_antes: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          current_temperature_antes: "{{ state_attr(climate_ent, 'current_temperature') | float(none) }}"
+          reinforcement_cooldown_seconds: 600
+          reinforcement_retry_at_ts: "{{ (as_timestamp(now()) | int) + 600 }}"
+          reinforcement_retry_at_human: "{{ as_datetime(reinforcement_retry_at_ts | int).strftime('%Y-%m-%d %H:%M:%S') }}"
       - service: climate.set_temperature
         target: {entity_id: "{{ climate_ent }}"}
         data: {temperature: "{{ sp_solicitado }}"}
@@ -4498,6 +4513,14 @@
       - service: climate.set_fan_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {fan_mode: Low}
+      - variables:
+          current_temperature_despues: "{{ state_attr(climate_ent, 'current_temperature') | float(none) }}"
+          reinforcement_result: "{{ 'confirmed' if sp_confirmado else 'sp_no_confirmado' }}"
+          reinforcement_payload_exp: "{{ (as_timestamp(now()) | int) + reinforcement_cooldown_seconds }}"
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_reinforcement_pending_payload}
+        data:
+          value: "kind=night_reinforcement_pending|climate={{ climate_ent }}|col={{ col_idx }}|due={{ night_reinforcement_due_count }}|sp={{ sp_solicitado }}|trace={{ context.id|default('na') }}|result={{ reinforcement_result }}|exp={{ reinforcement_payload_exp }}|retry_at={{ 0 if sp_confirmado else reinforcement_retry_at_ts }}"
       - choose:
         - conditions:
           - condition: template
@@ -4512,7 +4535,7 @@
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_sp_progressive_reinforcement | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos={{ night_reinforcement_due_count if sp_confirmado else night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=30m_sin_llegar_a_off_cool | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal={{ 'reinforcement' if sp_confirmado else 'sp_no_confirmado' }}"
+          message: "hito=night_sp_progressive_reinforcement | trace_id={{ context.id|default('na') }} | trigger_entity={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | current_temperature_antes={{ current_temperature_antes if current_temperature_antes is not none else 'none' }} | current_temperature_despues={{ current_temperature_despues if current_temperature_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | cooldown_seconds={{ reinforcement_cooldown_seconds if not sp_confirmado else 0 }} | retry_at={{ reinforcement_retry_at_human if not sp_confirmado else 'none' }} | pending_previous_result={{ reinforcement_pending_result if reinforcement_pending_result != '' else 'none' }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos_actuales={{ night_reinforcement_count }} | refuerzos_debidos={{ night_reinforcement_due_count }} | refuerzos={{ night_reinforcement_due_count if sp_confirmado else night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=30m_sin_llegar_a_off_cool | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal={{ 'reinforcement' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and presencia_ok and (night_resync_sp_needed or night_resync_fan_needed) }}"

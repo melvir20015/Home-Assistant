@@ -139,3 +139,66 @@ def test_ge_smart_hq_celsius_setpoints_do_not_round_down_systematically() -> Non
     for requested_c in (18, 19, 20, 21, 22, 23):
         erd_f = ge_smart_hq_erd_temperature_from_celsius(requested_c)
         assert celsius_reported_from_ge_erd(erd_f) >= requested_c
+
+
+def ge_climate_target_temperature_property_erd_read(fahrenheit: int, metric_display: bool = True) -> float:
+    """Mirror GeClimate.target_temperature: read raw Fahrenheit ERD without metric bucketing."""
+    return float(fahrenheit)
+
+
+def ha_celsius_display_from_ge_fahrenheit(fahrenheit: int) -> int:
+    """Approximate HA whole-degree Celsius display for a Fahrenheit climate entity."""
+    return round(celsius_reported_from_ge_erd(fahrenheit))
+
+
+def test_ge_smart_hq_metric_target_read_keeps_odd_celsius_setpoints() -> None:
+    expected_round_trip = {
+        18: 65,
+        19: 67,
+        20: 68,
+        21: 70,
+        22: 72,
+        23: 74,
+        24: 76,
+    }
+    for requested_c, expected_erd_f in expected_round_trip.items():
+        erd_f = ge_smart_hq_erd_temperature_from_celsius(requested_c)
+        assert erd_f == expected_erd_f
+        raw_f = ge_climate_target_temperature_property_erd_read(erd_f)
+        assert raw_f == expected_erd_f
+        assert ha_celsius_display_from_ge_fahrenheit(int(raw_f)) == requested_c
+
+
+def test_ge_smart_hq_metric_target_read_does_not_bucket_21c_to_22c() -> None:
+    erd_f = ge_smart_hq_erd_temperature_from_celsius(21)
+    assert erd_f == 70
+    assert ha_celsius_display_from_ge_fahrenheit(erd_f) == 21
+    assert ha_celsius_display_from_ge_fahrenheit(erd_f) != 22
+
+
+def test_reinforcement_retry_cooldown_blocks_same_failed_step_until_retry_at() -> None:
+    now_ts = 1_718_400_000
+    retry_at = now_ts + 600
+
+    def retry_allowed(*, due: int, sp: int, payload_due: int, payload_sp: int, exp: int, retry_at_ts: int, now: int) -> bool:
+        same_step = due == payload_due and sp == payload_sp and now <= exp
+        return (not same_step) or now >= retry_at_ts
+
+    assert not retry_allowed(
+        due=1,
+        sp=21,
+        payload_due=1,
+        payload_sp=21,
+        exp=now_ts + 600,
+        retry_at_ts=retry_at,
+        now=now_ts + 120,
+    )
+    assert retry_allowed(
+        due=1,
+        sp=21,
+        payload_due=1,
+        payload_sp=21,
+        exp=now_ts + 600,
+        retry_at_ts=retry_at,
+        now=retry_at,
+    )
