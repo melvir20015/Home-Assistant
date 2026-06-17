@@ -3232,3 +3232,12 @@ No se deben usar contextos genéricos como `Noche`; siempre debe mostrarse la fr
 ### Condición clara
 - Usar `Despejado` como etiqueta visible de condición clara.
 - No usar `Soleado - Despejado` en textos visibles.
+
+
+## 2026-06-17 — AC Night: validación de ciclo nocturno contra helpers restaurados
+
+- **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) en `automations.yaml`.
+- **Problema corregido:** `input_datetime.ac_night_cool_cycle_started_ts` podía restaurarse con un valor epoch/local (`1970-01-01`, observado como `28800`) o de una noche anterior. La automatización lo trataba como ciclo activo por ser mayor que cero, calculaba millones de minutos transcurridos y aplicaba hasta 3 refuerzos nocturnos de golpe al entrar en `2200_0059`.
+- **Contrato nuevo:** el inicio del ciclo solo es válido si pertenece a la ventana nocturna operativa actual (22:00-07:00), no está en el futuro salvo tolerancia corta y la ejecución todavía está dentro de esa ventana. Valores epoch, vacíos, restaurados, futuros o de noches anteriores se descartan como `sin_ciclo`.
+- **Refuerzos:** si el ciclo restaurado no es válido, `night_cycle_elapsed_min`, `night_reinforcement_count` y `night_reinforcement_due_count` se fuerzan a `0`; por tanto el primer refuerzo solo puede vencer después de 30 minutos reales desde un inicio válido de la noche actual.
+- **Limpieza transaccional:** al iniciar un ciclo limpio o resetearlo se limpia `input_text.ac_night_cool_reinforcement_pending_payload`, evitando que un payload de refuerzo viejo condicione el resync o el cooldown del ciclo nuevo.

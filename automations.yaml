@@ -4227,11 +4227,16 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       fan_mode_actual: "{{ state_attr(climate_ent, 'fan_mode') | default('', true) }}"
       sp_reportado_actual: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
       night_trigger_id: "{{ trigger.id | default('') if trigger is defined else '' }}"
-      night_cycle_started_ts: "{{ as_timestamp(states('input_datetime.ac_night_cool_cycle_started_ts'), 0) }}"
+      night_cycle_started_ts_raw: "{{ as_timestamp(states('input_datetime.ac_night_cool_cycle_started_ts'), 0) | int(0) }}"
+      night_window_start_ts: "{% set h = now().hour %}{% if h >= 22 %}{{ as_timestamp(now().replace(hour=22, minute=0, second=0, microsecond=0)) | int }}{% else %}{{ (as_timestamp(now().replace(hour=22, minute=0, second=0, microsecond=0)) | int) - 86400 }}{% endif %}"
+      night_window_end_ts: "{{ (night_window_start_ts | int(0)) + 32400 }}"
+      night_cycle_started_ts: "{{ night_cycle_started_ts_raw | int(0) if (night_cycle_started_ts_raw | int(0)) >= (night_window_start_ts | int(0)) and (night_cycle_started_ts_raw | int(0)) <= ((as_timestamp(now()) | int) + 60) and (as_timestamp(now()) | int) < (night_window_end_ts | int(0)) else 0 }}"
+      night_cycle_invalid: "{{ (night_cycle_started_ts_raw | int(0)) > 0 and (night_cycle_started_ts | int(0)) == 0 }}"
       night_cycle_active: "{{ (night_cycle_started_ts | int(0)) > 0 }}"
-      night_cycle_elapsed_min: "{{ (((as_timestamp(now()) | int) - (night_cycle_started_ts | int(0))) / 60) | round(1) if (night_cycle_started_ts | int(0)) > 0 else 0 }}"
-      night_reinforcement_count: "{{ states('input_number.ac_night_cool_reinforcement_count') | int(0) }}"
-      night_reinforcement_due_count: "{{ [3, ((night_cycle_elapsed_min | float(0)) // 30) | int] | min }}"
+      night_cycle_elapsed_min: "{{ ([0, (((as_timestamp(now()) | int) - (night_cycle_started_ts | int(0))) / 60)] | max) | round(1) if night_cycle_active else 0 }}"
+      night_reinforcement_count_raw: "{{ states('input_number.ac_night_cool_reinforcement_count') | int(0) }}"
+      night_reinforcement_count: "{{ night_reinforcement_count_raw | int(0) if night_cycle_active else 0 }}"
+      night_reinforcement_due_count: "{{ [3, ((night_cycle_elapsed_min | float(0)) // 30) | int] | min if night_cycle_active else 0 }}"
       sp_cool_effective: "{{ [hvac_min_sp | int, ((sp_cool_target | int) - (night_reinforcement_count | int(0)))] | max }}"
       sp_cool_reinforced_next: "{{ [hvac_min_sp | int, ((sp_cool_target | int) - (night_reinforcement_due_count | int(0)))] | max }}"
       night_contract_signature: "sp={{ sp_cool_target }}|off={{ off_cool }}|on={{ on_cool }}|col={{ col_idx }}|franja={{ franja }}|clima={{ weather_state }}|comfort={{ night_comfort_pressure }}"
@@ -4306,6 +4311,9 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_cool_cycle_signature}
         data: {value: sin_ciclo}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_reinforcement_pending_payload}
+        data: {value: sin_pending}
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC-Matriz Nocturna
@@ -4359,6 +4367,9 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_cool_cycle_signature}
         data: {value: sin_ciclo}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_reinforcement_pending_payload}
+        data: {value: sin_pending}
       - wait_template: "{{ states(climate_ent) == 'off' }}"
         timeout: "00:00:08"
         continue_on_timeout: true
@@ -4406,6 +4417,9 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_cool_cycle_signature}
         data: {value: sin_ciclo}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_reinforcement_pending_payload}
+        data: {value: sin_pending}
       - service: logbook.log
         data:
           name: AC Night
@@ -4456,10 +4470,13 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           - service: input_text.set_value
             target: {entity_id: input_text.ac_night_cool_cycle_signature}
             data: {value: "{{ night_contract_signature }}"}
+          - service: input_text.set_value
+            target: {entity_id: input_text.ac_night_cool_reinforcement_pending_payload}
+            data: {value: sin_pending}
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos=0 | minutos_ciclo=0 | motivo=ciclo_cool_nocturno_detectado_o_nuevo | fan_resync=true | contrato={{ night_contract_signature }} | resultado_terminal={{ 'resync' if sp_confirmado else 'sp_no_confirmado' }}"
+          message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos=0 | minutos_ciclo=0 | motivo={{ 'ciclo_invalido_descartado_e_inicio_limpio' if night_cycle_invalid else 'ciclo_cool_nocturno_detectado_o_nuevo' }} | cycle_started_raw={{ night_cycle_started_ts_raw }} | night_cycle_invalid={{ night_cycle_invalid }} | night_window_start={{ night_window_start_ts }} | fan_resync=true | contrato={{ night_contract_signature }} | resultado_terminal={{ 'resync' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and presencia_ok and tin > off_cool and (night_reinforcement_due_count | int(0)) > (night_reinforcement_count | int(0)) and (night_reinforcement_count | int(0)) < 3 and reinforcement_retry_allowed }}"
@@ -4669,6 +4686,9 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           - service: input_text.set_value
             target: {entity_id: input_text.ac_night_cool_cycle_signature}
             data: {value: "{{ night_contract_signature }}"}
+          - service: input_text.set_value
+            target: {entity_id: input_text.ac_night_cool_reinforcement_pending_payload}
+            data: {value: sin_pending}
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC-Matriz Nocturna
@@ -4729,6 +4749,9 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_cool_cycle_signature}
         data: {value: sin_ciclo}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_reinforcement_pending_payload}
+        data: {value: sin_pending}
       - service: logbook.log
         data:
           name: AC Night
