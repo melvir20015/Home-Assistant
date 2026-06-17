@@ -3259,11 +3259,12 @@ Contexto: Columna {{ col_idx }} ({{ col_humana }})'
         elif d >= 0 and d < 0.2 %}0.05{% else %}0{% endif %}'
       delta: '{% if evento_manual_tipo not in [''encendido_manual'',''apagado_manual'']
         %}0 {% elif fuera_rango_anchor %}{{ delta_anchor | float(0) }} {% elif modo_aprendizaje
-        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ delta_tramo
+        == ''cool'' and evento_manual_tipo == ''encendido_manual'' %}{{ -1 * (delta_tramo
+        | float(0)) }} {% elif modo_aprendizaje == ''cool'' and evento_manual_tipo
+        == ''apagado_manual'' %}{{ delta_tramo | float(0) }} {% elif modo_aprendizaje
+        == ''heat'' and evento_manual_tipo == ''encendido_manual'' %}{{ delta_tramo
         | float(0) }} {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
-        == ''encendido_manual'' %}{{ delta_tramo | float(0) }} {% elif modo_aprendizaje
-        == ''heat'' and evento_manual_tipo == ''apagado_manual'' %}{{ -1 * (delta_tramo
-        | float(0)) }} {% else %}0{% endif %}'
+        == ''apagado_manual'' %}{{ -1 * (delta_tramo | float(0)) }} {% else %}0{% endif %}'
       helper_valido: '{{ col_idx_resuelto|int > 0 and modo_aprendizaje in [''cool'',''heat'']
         and states(helper_offset_resuelto) not in [''unknown'',''unavailable'',''none'','''']
         }}'
@@ -3680,11 +3681,12 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         elif d >= 0 and d < 0.2 %}0.05{% else %}0{% endif %}'
       delta: '{% if evento_manual_tipo not in [''encendido_manual'',''apagado_manual'']
         %}0 {% elif fuera_rango_anchor %}{{ delta_anchor | float(0) }} {% elif modo_aprendizaje
-        == ''cool'' and evento_manual_tipo == ''apagado_manual'' %}{{ delta_tramo
+        == ''cool'' and evento_manual_tipo == ''encendido_manual'' %}{{ -1 * (delta_tramo
+        | float(0)) }} {% elif modo_aprendizaje == ''cool'' and evento_manual_tipo
+        == ''apagado_manual'' %}{{ delta_tramo | float(0) }} {% elif modo_aprendizaje
+        == ''heat'' and evento_manual_tipo == ''encendido_manual'' %}{{ delta_tramo
         | float(0) }} {% elif modo_aprendizaje == ''heat'' and evento_manual_tipo
-        == ''encendido_manual'' %}{{ delta_tramo | float(0) }} {% elif modo_aprendizaje
-        == ''heat'' and evento_manual_tipo == ''apagado_manual'' %}{{ -1 * (delta_tramo
-        | float(0)) }} {% else %}0{% endif %}'
+        == ''apagado_manual'' %}{{ -1 * (delta_tramo | float(0)) }} {% else %}0{% endif %}'
       helper_valido: '{{ col_idx_resuelto|int > 0 and modo_aprendizaje in [''cool'',''heat'']
         and states(helper_offset_resuelto) not in [''unknown'',''unavailable'',''none'','''']
         }}'
