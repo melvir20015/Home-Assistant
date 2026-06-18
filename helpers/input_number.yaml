@@ -3863,3 +3863,39 @@ ac_night_cool_reinforcement_count:
   max: 3
   step: 1
   mode: box
+
+ac_matriz_160_tout_1h_ago:
+  name: AC Matriz 160 Tout 1h Ago
+  min: -30
+  max: 60
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_matriz_160_tin_30m_ago:
+  name: AC Matriz 160 Tin 30m Ago
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_matriz_160_forecast_max_temp_2h:
+  name: AC Matriz 160 Forecast Max Temp 2h
+  min: -30
+  max: 60
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_matriz_160_forecast_rain_probability_2h:
+  name: AC Matriz 160 Forecast Rain Probability 2h
+  min: 0
+  max: 100
+  step: 1
+  mode: box
+  unit_of_measurement: "%"
+ac_matriz_160_forecast_rain_amount_2h:
+  name: AC Matriz 160 Forecast Rain Amount 2h
+  min: 0
+  max: 200
+  step: 0.1
+  mode: box
+  unit_of_measurement: mm

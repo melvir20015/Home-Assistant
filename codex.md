@@ -3247,3 +3247,57 @@ No se deben usar contextos genéricos como `Noche`; siempre debe mostrarse la fr
 - **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) en `automations.yaml`.
 - **Ajuste operativo:** los refuerzos nocturnos de setpoint COOL ahora vencen a los **20/50/80 minutos** desde el inicio válido del ciclo nocturno, manteniendo el máximo de 3 refuerzos por ciclo y conservando la validación de helpers restaurados.
 - **Observabilidad:** el motivo técnico del hito `night_sp_progressive_reinforcement` queda neutral como `refuerzo_progresivo_sin_llegar_a_off_cool`, sin referirse al umbral antiguo del primer refuerzo.
+
+---
+
+## AC-Matriz 160: mejora contextual COOL con memoria térmica y forecast
+
+### Alcance exacto del cambio
+Esta intervención mejora únicamente la **base contextual de COOL** de `AC-Matriz 160` (`id: ac_matriz_160_main_v1`). No cambia el aprendizaje manual, anchors, clasificación manual/automático, markers transaccionales, offsets aprendidos ni los helpers `input_number.ac_matriz_160_offset_cool_col_*` / `input_number.ac_matriz_160_offset_heat_col_*`.
+
+La secuencia contractual se conserva: primero se calcula la base contextual (`t_off_cool_base` y `t_on_cool_base`) y después se aplica el offset aprendido de la columna (`offset_cool_helper`) para obtener `t_off_cool_shifted`, `t_on_cool_shifted`, `t_off_cool` y `t_on_cool`. La regla final sigue siendo que `t_on_cool = t_off_cool + 1.0`.
+
+### Helpers auxiliares agregados
+Los insumos auxiliares son técnicos, exclusivos de `AC-Matriz 160`, y no forman parte del aprendizaje:
+
+- `input_number.ac_matriz_160_tout_1h_ago`: muestra exterior persistente para estimar tendencia de 1 hora.
+- `input_number.ac_matriz_160_tin_30m_ago`: muestra interior persistente para estimar inercia de 30 minutos.
+- `input_number.ac_matriz_160_forecast_max_temp_2h`: máxima temperatura prevista en las próximas 2 horas.
+- `input_number.ac_matriz_160_forecast_rain_probability_2h`: probabilidad máxima de lluvia en próximas 2 horas.
+- `input_number.ac_matriz_160_forecast_rain_amount_2h`: lluvia acumulada prevista en próximas 2 horas cuando la fuente la entrega.
+- `input_datetime.ac_matriz_160_tout_memory_updated_ts`: timestamp de memoria exterior.
+- `input_datetime.ac_matriz_160_tin_memory_updated_ts`: timestamp de memoria interior.
+- `input_datetime.ac_matriz_160_forecast_updated_ts`: timestamp del forecast auxiliar.
+- `input_text.ac_matriz_160_contextual_reliability`: resumen operativo (`ok`, `parcial`, `sin_forecast`, `sin_historial`, `error_controlado` o combinaciones parciales).
+
+La automatización `AC-Matriz 160 - Memoria contextual y forecast` actualiza estos helpers periódicamente, lee `weather.openweathermap` y los mismos sensores internos que la matriz principal, y no cambia modo HVAC ni setpoint.
+
+### Grupos de ajuste COOL
+La base mantiene `base_cool = 24.0`, histéresis fija de `1.0` y el ajuste de franja existente. Sobre esa base se agrupan tres bloques:
+
+1. **Clima actual (`adj_weather_now`)**: combina temperatura exterior, humedad exterior, punto de rocío y sensación térmica. Si punto de rocío o sensación térmica no existen, su aporte es `0`.
+2. **Clima futuro (`adj_weather_future`)**: combina tendencia exterior de 1 hora, forecast de máxima temperatura en 2 horas y lluvia contextual.
+3. **Carga real del apartamento (`adj_apartment_load`)**: combina diferencia interior-exterior e inercia térmica interior de 30 minutos.
+
+El ajuste total se calcula como `adj_contextual_total = clamp(slot_cool_adjust + adj_weather_now + adj_weather_future + adj_apartment_load, -1.40, +0.80)`.
+
+### Protecciones y degradación segura
+Los clamps principales son:
+
+- `adj_weather_now` en `[-1.00, +0.60]`.
+- `adj_weather_future` en `[-0.60, +0.35]`.
+- `adj_apartment_load` en `[-0.50, +0.30]`.
+- `adj_contextual_total` en `[-1.40, +0.80]`.
+- `t_off_cool_base` entre `thermal_boundary_by_season` y `26.0`.
+- `t_off_cool` final conserva los límites contractuales existentes y `t_on_cool` se recalcula siempre como `t_off_cool + 1.0`.
+
+Si faltan forecast, OWM, memoria madura o datos numéricos, el aporte afectado se fuerza a `0` y la automatización continúa. Esto permite operar después de reinicios o fallos temporales de integración sin romper YAML/Jinja ni bloquear la evaluación normal.
+
+### Validación operativa recomendada
+Para validar en operación:
+
+1. Revisar logbook de `AC-Matriz 160` y confirmar que aparecen `adj_weather_now`, `adj_weather_future`, `adj_apartment_load`, `adj_contextual_total`, `adj_tout`, `adj_hout`, `adj_dew`, `adj_feels`, `adj_trend`, `adj_forecast`, `adj_rain`, `adj_delta_io`, `adj_inertia` y `confiabilidad_contextual`.
+2. Confirmar que los helpers de memoria maduran tras aproximadamente 1 hora exterior y 30 minutos interior.
+3. Confirmar que, sin forecast o sin historial maduro, la confiabilidad queda parcial y los ajustes dependientes permanecen en `0`.
+4. Confirmar en los helpers efectivos que `input_number.ac_matriz_160_t_on_cool = input_number.ac_matriz_160_t_off_cool + 1.0`.
+5. Probar escenarios manuales: día caliente/húmedo baja el umbral, tarde fresca con exterior bajando relaja el umbral, apartamento calentándose rápido anticipa encendido y ausencia de datos externos no causa errores.

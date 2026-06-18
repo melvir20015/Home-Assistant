@@ -1182,18 +1182,102 @@
       slot_cool_adjust: '{% set si = slot_idx | int(0) %} {% if si == 0 %}0.30 {%
         elif si == 1 %}-0.20 {% elif si == 2 %}-0.30 {% elif si == 3 %}-0.10 {% else
         %}0.20 {% endif %}'
-      adj_tout_cool: "{% if tout is none %}\n  0\n{% else %}\n  {% set raw = (tout
-        | float - 24) * -0.05 %}\n  {{ [0.40, [-0.40, raw] | max] | min | round(2)
-        }}\n{% endif %}"
-      adj_hout_cool: '{% set raw = (hout | float(60) - 60) * -0.01 %} {{ [0.20, [-0.20,
-        raw] | max] | min | round(2) }}'
-      adj_clima_cool: '{% set raw = (adj_tout_cool | float(0)) + (adj_hout_cool |
-        float(0)) %} {{ [0.50, [-0.50, raw] | max] | min | round(2) }}'
+      dew_point_raw: '{{ state_attr(''weather.openweathermap'',''dew_point'') | float(none) }}'
+      feels_like_raw: '{{ state_attr(''weather.openweathermap'',''apparent_temperature'') | float(none) }}'
+      tout_1h_ago_raw: '{{ states(''input_number.ac_matriz_160_tout_1h_ago'') | float(none) }}'
+      tin_30m_ago_raw: '{{ states(''input_number.ac_matriz_160_tin_30m_ago'') | float(none) }}'
+      forecast_max_temp_2h_raw: '{{ states(''input_number.ac_matriz_160_forecast_max_temp_2h'') | float(none) }}'
+      forecast_rain_probability_2h_raw: '{{ states(''input_number.ac_matriz_160_forecast_rain_probability_2h'') | float(none) }}'
+      forecast_rain_amount_2h_raw: '{{ states(''input_number.ac_matriz_160_forecast_rain_amount_2h'') | float(none) }}'
+      contextual_reliability: '{{ states(''input_text.ac_matriz_160_contextual_reliability'') | default(''sin_historial'', true) }}'
+      memory_external_fresh: >-
+        {% set ts_raw = states('input_datetime.ac_matriz_160_tout_memory_updated_ts') %}
+        {% set ts = as_timestamp(ts_raw, default=0) if ts_raw not in ['unknown','unavailable','none',''] else 0 %}
+        {{ ts > 0 and (as_timestamp(now()) - ts) >= 3300 }}
+      memory_internal_fresh: >-
+        {% set ts_raw = states('input_datetime.ac_matriz_160_tin_memory_updated_ts') %}
+        {% set ts = as_timestamp(ts_raw, default=0) if ts_raw not in ['unknown','unavailable','none',''] else 0 %}
+        {{ ts > 0 and (as_timestamp(now()) - ts) >= 1500 }}
+      forecast_fresh: >-
+        {% set ts_raw = states('input_datetime.ac_matriz_160_forecast_updated_ts') %}
+        {% set ts = as_timestamp(ts_raw, default=0) if ts_raw not in ['unknown','unavailable','none',''] else 0 %}
+        {{ ts > 0 and (as_timestamp(now()) - ts) <= 5400 and forecast_max_temp_2h_raw is not none }}
+      adj_tout_cool: >-
+        {% if tout is none %}
+          0
+        {% else %}
+          {% set raw = (tout | float - 24) * -0.08 %}
+          {{ [0.50, [-0.70, raw] | max] | min | round(2) }}
+        {% endif %}
+      adj_hout_cool: >-
+        {% set raw = (hout | float(60) - 60) * -0.01 %}
+        {{ [0.20, [-0.20, raw] | max] | min | round(2) }}
+      adj_dew_cool: >-
+        {% if dew_point_raw is none %}
+          0
+        {% else %}
+          {% set raw = (dew_point_raw | float - 18) * -0.04 %}
+          {{ [0.20, [-0.35, raw] | max] | min | round(2) }}
+        {% endif %}
+      adj_feels_cool: >-
+        {% if feels_like_raw is none or tout is none %}
+          0
+        {% else %}
+          {% set raw = ((feels_like_raw | float) - (tout | float)) * -0.04 %}
+          {{ [0.10, [-0.30, raw] | max] | min | round(2) }}
+        {% endif %}
+      adj_weather_now: >-
+        {% set raw = (adj_tout_cool | float(0)) + (adj_hout_cool | float(0)) + (adj_dew_cool | float(0)) + (adj_feels_cool | float(0)) %}
+        {{ [0.60, [-1.00, raw] | max] | min | round(2) }}
+      adj_clima_cool: '{{ adj_weather_now }}'
+      tout_trend_1h: >-
+        {% if tout is none or tout_1h_ago_raw is none or not (memory_external_fresh | bool(false)) %}0{% else %}{{ ((tout | float) - (tout_1h_ago_raw | float)) | round(2) }}{% endif %}
+      adj_tout_trend_cool: >-
+        {% set raw = (tout_trend_1h | float(0)) * -0.08 %}
+        {{ [0.30, [-0.30, raw] | max] | min | round(2) }}
+      adj_forecast_cool: >-
+        {% if tout is none or not (forecast_fresh | bool(false)) %}
+          0
+        {% else %}
+          {% set raw = ((forecast_max_temp_2h_raw | float) - (tout | float)) * -0.06 %}
+          {{ [0.20, [-0.35, raw] | max] | min | round(2) }}
+        {% endif %}
+      adj_rain_cool: >-
+        {% if not (forecast_fresh | bool(false)) %}
+          0
+        {% else %}
+          {% set rain_prob = forecast_rain_probability_2h_raw | float(0) %}
+          {% set rain_amount = forecast_rain_amount_2h_raw | float(0) %}
+          {% set probable = rain_prob >= 55 or rain_amount >= 1.0 %}
+          {% set hot_humid = (tout | float(0)) >= 26 and (hout | float(60)) >= 65 %}
+          {% set cooling_drop = ((forecast_max_temp_2h_raw | float(0)) - (tout | float(0))) <= -1.0 %}
+          {% if probable and hot_humid %}-0.15{% elif probable and cooling_drop %}0.10{% else %}0.00{% endif %}
+        {% endif %}
+      adj_weather_future: >-
+        {% set raw = (adj_tout_trend_cool | float(0)) + (adj_forecast_cool | float(0)) + (adj_rain_cool | float(0)) %}
+        {{ [0.35, [-0.60, raw] | max] | min | round(2) }}
+      adj_delta_io_cool: >-
+        {% if tout is none or tin is none %}
+          0
+        {% else %}
+          {% set raw = ((tout | float) - (tin | float)) * -0.03 %}
+          {{ [0.20, [-0.25, raw] | max] | min | round(2) }}
+        {% endif %}
+      tin_trend_30m: >-
+        {% if tin is none or tin_30m_ago_raw is none or not (memory_internal_fresh | bool(false)) %}0{% else %}{{ ((tin | float) - (tin_30m_ago_raw | float)) | round(2) }}{% endif %}
+      adj_inertia_cool: >-
+        {% set raw = (tin_trend_30m | float(0)) * -0.25 %}
+        {{ [0.20, [-0.35, raw] | max] | min | round(2) }}
+      adj_apartment_load: >-
+        {% set raw = (adj_delta_io_cool | float(0)) + (adj_inertia_cool | float(0)) %}
+        {{ [0.30, [-0.50, raw] | max] | min | round(2) }}
+      adj_contextual_total: >-
+        {% set raw = (slot_cool_adjust | float(0)) + (adj_weather_now | float(0)) + (adj_weather_future | float(0)) + (adj_apartment_load | float(0)) %}
+        {{ [0.80, [-1.40, raw] | max] | min | round(2) }}
       t_off_cool_base_no_slot: '{{ [26.0, [thermal_boundary_by_season|float(22), (base_cool|float(24))]
         | max] | min | round(2) }}'
-      t_off_cool_base: '{{ [26.0, [thermal_boundary_by_season|float(22), (t_off_cool_base_no_slot|float
-        + slot_cool_adjust|float + adj_clima_cool|float)] | max] | min | round(2)
-        }}'
+      t_off_cool_base: '{{ [26.0, [thermal_boundary_by_season|float(22), (base_cool|float(24)
+        + adj_contextual_total|float(0))] | max] | min | round(2) }}'
       t_on_cool_base: '{{ (t_off_cool_base|float + 1.0) | round(2) }}'
       adj_tout_heat: "{% if tout is none %}\n  0\n{% else %}\n  {% set raw = (tout
         | float - 12) * -0.04 %}\n  {{ [0.35, [-0.35, raw] | max] | min | round(2)
@@ -1655,7 +1739,12 @@
         }} | hum_contextual={{ turbo_cool_contextual_humidity }} | hum_contextual_allowed={{
         turbo_cool_contextual_humidity_allowed }} | umbrales_base=cool_on {{ t_on_cool_base }},cool_off {{ t_off_cool_base
         }},cool_off_no_slot {{ t_off_cool_base_no_slot }},slot_adj {{ slot_cool_adjust
-        }},adj_tout {{ adj_tout_cool }},adj_hout {{ adj_hout_cool }},adj_clima {{
+        }},adj_weather_now {{ adj_weather_now }},adj_weather_future {{ adj_weather_future
+        }},adj_apartment_load {{ adj_apartment_load }},adj_contextual_total {{ adj_contextual_total
+        }},adj_tout {{ adj_tout_cool }},adj_hout {{ adj_hout_cool }},adj_dew {{ adj_dew_cool
+        }},adj_feels {{ adj_feels_cool }},adj_trend {{ adj_tout_trend_cool }},adj_forecast {{ adj_forecast_cool
+        }},adj_rain {{ adj_rain_cool }},adj_delta_io {{ adj_delta_io_cool }},adj_inertia {{ adj_inertia_cool
+        }},confiabilidad_contextual {{ contextual_reliability }},adj_clima {{
         adj_clima_cool }},heat_adj_tout {{ adj_tout_heat }},heat_adj_hout {{ adj_hout_heat
         }},heat_adj_clima {{ adj_clima_heat }},heat_on {{ t_on_heat_base }},heat_off
         {{ t_off_heat_base }} | offset_columna=cool {{ offset_cool_helper }} ({{ offset_cool_helper_entity }}),heat
@@ -3056,6 +3145,156 @@ Contexto: Columna {{ col_idx }} ({{ col_humana }})'
             name: AC-Matriz 160
             message: hito=auto_off_no_presencia_cancelado | trace_id={{ trace_id }} | modo_previo={{ modo_previo }} | s24_state={{ states('device_tracker.samsung_s24') }} | movimiento_crudo_state={{ states('binary_sensor.tze204_gkfbdvyx_ts0601') }} | resultado_terminal=cancelado | razon=guardas_no_cumplidas_30m | override_activo={{ not override_guard_ok }}
             entity_id: climate.0200009211c7_climate
+- id: ac_matriz_160_context_memory_forecast_v1
+  alias: AC-Matriz 160 - Memoria contextual y forecast
+  description: Mantiene memoria térmica exterior/interior y forecast auxiliar para la fórmula COOL de AC-Matriz 160 sin cambiar HVAC.
+  triggers:
+  - trigger: homeassistant
+    event: start
+  - trigger: time_pattern
+    minutes: /15
+  - trigger: state
+    entity_id:
+    - weather.openweathermap
+    - sensor.lumi_lumi_weather_cuarto_temperatura
+    - sensor.lumi_lumi_weather_coco_temperatura
+  actions:
+  - service: weather.get_forecasts
+    continue_on_error: true
+    target:
+      entity_id: weather.openweathermap
+    data:
+      type: hourly
+    response_variable: ac_matriz_160_forecast_response
+  - variables:
+      now_ts: '{{ as_timestamp(now()) }}'
+      now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      tout_current: '{{ state_attr(''weather.openweathermap'',''temperature'') | float(none) }}'
+      tin_current: >-
+        {% set vals = [states('sensor.lumi_lumi_weather_cuarto_temperatura') | float(none), states('sensor.lumi_lumi_weather_coco_temperatura') | float(none)] | reject('equalto', none) | list %}
+        {{ (vals | average | round(2)) if vals | count > 0 else none }}
+      tout_memory_ts_raw: '{{ states(''input_datetime.ac_matriz_160_tout_memory_updated_ts'') }}'
+      tin_memory_ts_raw: '{{ states(''input_datetime.ac_matriz_160_tin_memory_updated_ts'') }}'
+      tout_memory_ts: >-
+        {% if tout_memory_ts_raw in ['unknown','unavailable','none',''] %}0{% else %}{{ as_timestamp(tout_memory_ts_raw, default=0) }}{% endif %}
+      tin_memory_ts: >-
+        {% if tin_memory_ts_raw in ['unknown','unavailable','none',''] %}0{% else %}{{ as_timestamp(tin_memory_ts_raw, default=0) }}{% endif %}
+      tout_memory_mature: '{{ tout_memory_ts | float(0) > 0 and (now_ts | float(0) - tout_memory_ts | float(0)) >= 3300 }}'
+      tin_memory_mature: '{{ tin_memory_ts | float(0) > 0 and (now_ts | float(0) - tin_memory_ts | float(0)) >= 1500 }}'
+      forecast_items: >-
+        {% set payload = ac_matriz_160_forecast_response | default({}) %}
+        {% if payload is mapping and 'weather.openweathermap' in payload and payload['weather.openweathermap'].forecast is defined %}
+          {{ payload['weather.openweathermap'].forecast[:2] }}
+        {% else %}
+          {{ [] }}
+        {% endif %}
+      forecast_count: '{{ forecast_items | count }}'
+      forecast_max_temp_2h: >-
+        {% set ns = namespace(vals=[]) %}
+        {% for item in forecast_items if item.temperature is defined and item.temperature | float(none) is not none %}
+          {% set ns.vals = ns.vals + [item.temperature | float] %}
+        {% endfor %}
+        {{ (ns.vals | max | round(2)) if ns.vals | count > 0 else none }}
+      forecast_rain_probability_2h: >-
+        {% set ns = namespace(vals=[]) %}
+        {% for item in forecast_items if item.precipitation_probability is defined and item.precipitation_probability | float(none) is not none %}
+          {% set ns.vals = ns.vals + [item.precipitation_probability | float] %}
+        {% endfor %}
+        {{ (ns.vals | max | round(0)) if ns.vals | count > 0 else 0 }}
+      forecast_rain_amount_2h: >-
+        {% set ns = namespace(total=0) %}
+        {% for item in forecast_items if item.precipitation is defined and item.precipitation | float(none) is not none %}
+          {% set ns.total = ns.total + (item.precipitation | float(0)) %}
+        {% endfor %}
+        {{ ns.total | round(2) }}
+      forecast_ok: '{{ forecast_max_temp_2h | float(none) is not none }}'
+      reliability_state: >-
+        {% if tout_current is none or tin_current is none %}
+          error_controlado
+        {% elif forecast_ok and tout_memory_mature and tin_memory_mature %}
+          ok
+        {% elif not forecast_ok and not (tout_memory_mature and tin_memory_mature) %}
+          parcial_sin_forecast_sin_historial
+        {% elif not forecast_ok %}
+          sin_forecast
+        {% elif not (tout_memory_mature and tin_memory_mature) %}
+          sin_historial
+        {% else %}
+          parcial
+        {% endif %}
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ tout_current is not none and (tout_memory_ts | float(0) == 0 or (now_ts | float(0) - tout_memory_ts | float(0)) >= 3600) }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ac_matriz_160_tout_1h_ago
+        data:
+          value: '{{ tout_current | float | round(1) }}'
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_tout_memory_updated_ts
+        data:
+          datetime: '{{ now_str }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ tin_current is not none and (tin_memory_ts | float(0) == 0 or (now_ts | float(0) - tin_memory_ts | float(0)) >= 1800) }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ac_matriz_160_tin_30m_ago
+        data:
+          value: '{{ tin_current | float | round(1) }}'
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_tin_memory_updated_ts
+        data:
+          datetime: '{{ now_str }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ forecast_ok }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ac_matriz_160_forecast_max_temp_2h
+        data:
+          value: '{{ forecast_max_temp_2h | float | round(1) }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ac_matriz_160_forecast_rain_probability_2h
+        data:
+          value: '{{ forecast_rain_probability_2h | float(0) | round(0) }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ac_matriz_160_forecast_rain_amount_2h
+        data:
+          value: '{{ forecast_rain_amount_2h | float(0) | round(1) }}'
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_forecast_updated_ts
+        data:
+          datetime: '{{ now_str }}'
+    default:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ac_matriz_160_forecast_rain_probability_2h
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ac_matriz_160_forecast_rain_amount_2h
+      data:
+        value: 0
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_contextual_reliability
+    data:
+      value: '{{ reliability_state }}'
+  mode: single
+
 - id: ac_matriz_160_learning_manual_v1
   alias: AC-Matriz 160 - Aprendizaje manual por columna
   description: Aprende offset por columna y modo desde ON/OFF manual con clasificación

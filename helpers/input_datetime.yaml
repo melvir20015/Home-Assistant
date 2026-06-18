@@ -79,3 +79,16 @@ ac_night_cool_cycle_started_ts:
   name: AC Night Inicio ciclo frío activo
   has_date: true
   has_time: true
+
+ac_matriz_160_tout_memory_updated_ts:
+  name: AC Matriz 160 Tout Memory Updated Timestamp
+  has_date: true
+  has_time: true
+ac_matriz_160_tin_memory_updated_ts:
+  name: AC Matriz 160 Tin Memory Updated Timestamp
+  has_date: true
+  has_time: true
+ac_matriz_160_forecast_updated_ts:
+  name: AC Matriz 160 Forecast Updated Timestamp
+  has_date: true
+  has_time: true
