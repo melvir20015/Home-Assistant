@@ -4425,6 +4425,9 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
     - sensor.lumi_lumi_weather_coco_humedad
     - binary_sensor.presencia_ok_estable
     - climate.0200009211c7_climate
+    - sensor.0200009211c7_wac_demand_response_power
+    - sensor.ac_power_w
+    - binary_sensor.ac_compressor_active
   - platform: state
     entity_id: input_text.ac_night_hot_learning_recalc_payload
     id: hot_learning_recalc
@@ -4495,14 +4498,52 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       night_cycle_invalid: "{{ (night_cycle_started_ts_raw | int(0)) > 0 and (night_cycle_started_ts | int(0)) == 0 }}"
       night_cycle_active: "{{ (night_cycle_started_ts | int(0)) > 0 }}"
       night_cycle_elapsed_min: "{{ ([0, (((as_timestamp(now()) | int) - (night_cycle_started_ts | int(0))) / 60)] | max) | round(1) if night_cycle_active else 0 }}"
+      dew_moderate: "{{ (dew_point_night | float(0)) >= 14.8 }}"
+      dew_high: "{{ (dew_point_night | float(0)) >= 15.6 }}"
+      dew_severe: "{{ (dew_point_night | float(0)) >= 16.2 }}"
+      muggy_moderate: "{{ dew_moderate or (hin | float(0)) >= 58 or (bochorno_score | float(0)) >= 0.18 }}"
+      muggy_high: "{{ dew_high or (hin | float(0)) >= 62 or (bochorno_score | float(0)) >= 0.45 }}"
+      muggy_severe: "{{ dew_severe or (hin | float(0)) >= 63 or (bochorno_score | float(0)) >= 0.62 }}"
+      normal_off_ready: "{{ hvac_mode == 'cool' and tin <= off_cool }}"
+      muggy_guard_active: "{{ dew_moderate or (hin | float(0)) >= 58 or (bochorno_score | float(0)) >= 0.18 }}"
+      muggy_guard_max_elapsed_min: 75
+      muggy_guard_force_release: "{{ (night_cycle_elapsed_min | float(0)) >= (muggy_guard_max_elapsed_min | float(75)) }}"
+      compressor_power_threshold_w: 350
+      fan_only_power_threshold_w: 120
+      compressor_inactive_min_minutes: 10
+      ac_power_primary: "{{ states('sensor.0200009211c7_wac_demand_response_power') | float(none) }}"
+      ac_power_fallback: "{{ states('sensor.ac_power_w') | float(none) }}"
+      ac_power_w: "{{ ac_power_primary if ac_power_primary is not none else ac_power_fallback }}"
+      climate_action_raw: "{{ (state_attr(climate_ent, 'hvac_action') | default(state_attr(climate_ent, 'action'), true) | default('', true)) | lower }}"
+      compressor_attr_raw: "{{ (state_attr(climate_ent, 'compressor') | default(state_attr(climate_ent, 'compressor_state'), true) | default(state_attr(climate_ent, 'running'), true) | default('', true)) | string | lower }}"
+      compressor_power_active: "{{ ac_power_w is not none and (ac_power_w | float(0)) >= (compressor_power_threshold_w | float(350)) }}"
+      compressor_binary_active: "{{ is_state('binary_sensor.ac_compressor_active', 'on') }}"
+      compressor_attr_active: "{{ climate_action_raw in ['cooling','drying'] or compressor_attr_raw in ['on','true','active','running','cooling'] }}"
+      compressor_last_active_ts_raw: "{{ as_timestamp(states('input_datetime.ac_night_compressor_last_active_ts'), 0) | int(0) }}"
+      compressor_minutes_since_active: "{{ ([0, (((as_timestamp(now()) | int) - (compressor_last_active_ts_raw | int(0))) / 60)] | max) | round(1) if (compressor_last_active_ts_raw | int(0)) > 0 else 9999 }}"
+      compressor_state: "{% if compressor_power_active or compressor_binary_active or compressor_attr_active %}active{% elif hvac_mode == 'cool' and ac_power_w is not none and (ac_power_w | float(0)) <= (fan_only_power_threshold_w | float(120)) and (compressor_minutes_since_active | float(9999)) >= (compressor_inactive_min_minutes | float(10)) %}inactive_probable{% elif hvac_mode == 'cool' and ac_power_w is none and not compressor_binary_active and not compressor_attr_active %}unknown{% else %}inactive_probable{% endif %}"
+      compressor_inactive_while_cool: "{{ hvac_mode == 'cool' and compressor_state == 'inactive_probable' }}"
+      tin_at_cycle_start: "{{ states('input_number.ac_night_tin_at_cycle_start') | float(tin) }}"
+      hin_at_cycle_start: "{{ states('input_number.ac_night_hin_at_cycle_start') | float(hin) }}"
+      dew_at_cycle_start: "{{ states('input_number.ac_night_dew_at_cycle_start') | float(dew_point_night) }}"
+      dew_not_improving: "{{ (night_cycle_elapsed_min | float(0)) >= 20 and (dew_point_night | float(0)) >= 14.8 and ((dew_at_cycle_start | float(dew_point_night)) - (dew_point_night | float(0))) < 0.4 }}"
+      humidity_not_improving: "{{ (night_cycle_elapsed_min | float(0)) >= 20 and (hin | float(0)) >= 58 and ((hin_at_cycle_start | float(hin)) - (hin | float(0))) < 2.0 }}"
       night_reinforcement_count_raw: "{{ states('input_number.ac_night_cool_reinforcement_count') | int(0) }}"
       night_reinforcement_count: "{{ night_reinforcement_count_raw | int(0) if night_cycle_active else 0 }}"
-      night_reinforcement_due_count: "{% set elapsed = night_cycle_elapsed_min | float(0) %}{{ ([3, 3 if elapsed >= 80 else 2 if elapsed >= 50 else 1 if elapsed >= 20 else 0] | min) if night_cycle_active else 0 }}"
+      night_reinforcement_due_count_normal: "{% set elapsed = night_cycle_elapsed_min | float(0) %}{{ ([3, 3 if elapsed >= 80 else 2 if elapsed >= 50 else 1 if elapsed >= 20 else 0] | min) if night_cycle_active else 0 }}"
+      night_reinforcement_due_count_hum: "{% set elapsed = night_cycle_elapsed_min | float(0) %}{% if not night_cycle_active %}0{% elif muggy_severe %}{{ 3 if elapsed >= 55 else 2 if elapsed >= 35 else 1 if elapsed >= 15 else 0 }}{% elif muggy_high or dew_not_improving or humidity_not_improving or (compressor_inactive_while_cool and muggy_high) %}{{ 3 if elapsed >= 70 else 2 if elapsed >= 45 else 1 if elapsed >= 20 else 0 }}{% else %}0{% endif %}"
+      night_reinforcement_due_count: "{{ [3, [night_reinforcement_due_count_normal | int(0), night_reinforcement_due_count_hum | int(0)] | max] | min }}"
+      night_reinforcement_reason: "{% if compressor_inactive_while_cool and muggy_high %}compressor_inactive_muggy{% elif muggy_high or muggy_severe or dew_not_improving or humidity_not_improving %}humidity_dew{% else %}thermal_progressive{% endif %}"
       sp_cool_effective: "{{ [hvac_min_sp | int, ((sp_cool_target | int) - (night_reinforcement_count | int(0)))] | max }}"
       sp_cool_reinforced_next: "{{ [hvac_min_sp | int, ((sp_cool_target | int) - (night_reinforcement_due_count | int(0)))] | max }}"
-      night_contract_signature: "sp={{ sp_cool_target }}|off={{ off_cool }}|on={{ on_cool }}|col={{ col_idx }}|franja={{ franja }}|clima={{ weather_state }}|comfort={{ night_comfort_pressure }}"
+      fan_modes_supported: "{{ state_attr(climate_ent,'fan_modes') | default([], true) }}"
+      humidity_fan_boost_enabled: "{{ is_state('input_boolean.ac_night_enable_humidity_fan_boost','on') }}"
+      humidity_fan_boost_started_ts_raw: "{{ as_timestamp(states('input_datetime.ac_night_humidity_fan_boost_started_ts'), 0) | int(0) }}"
+      humidity_fan_boost_elapsed_min: "{{ ([0, (((as_timestamp(now()) | int) - (humidity_fan_boost_started_ts_raw | int(0))) / 60)] | max) | round(1) if (humidity_fan_boost_started_ts_raw | int(0)) > 0 else 9999 }}"
+      humidity_fan_target: "{% if compressor_state == 'active' and muggy_severe and 'High' in fan_modes_supported %}High{% elif compressor_state == 'active' and muggy_high and 'Med' in fan_modes_supported %}Med{% elif compressor_state == 'unknown' and humidity_fan_boost_enabled and muggy_high and (humidity_fan_boost_elapsed_min | float(9999)) < 15 and 'Med' in fan_modes_supported %}Med{% else %}Low{% endif %}"
+      night_contract_signature: "sp={{ sp_cool_target }}|off={{ off_cool }}|on={{ on_cool }}|col={{ col_idx }}|franja={{ franja }}|clima={{ weather_state }}|comfort={{ night_comfort_pressure }}|muggy={{ muggy_high }}|compressor={{ compressor_state }}"
       night_resync_sp_needed: "{{ hvac_mode == 'cool' and presencia_ok and sp_reportado_actual is not none and (sp_reportado_actual | float) != (sp_cool_effective | float) }}"
-      night_resync_fan_needed: "{{ hvac_mode == 'cool' and presencia_ok and fan_mode_actual != 'Low' }}"
+      night_resync_fan_needed: "{{ hvac_mode == 'cool' and presencia_ok and fan_mode_actual != humidity_fan_target }}"
       auto_off_pending_raw: "{{ states('input_text.ac_night_auto_off_pending_payload') }}"
       auto_off_pending_kind: "{{ auto_off_pending_raw.split('kind=')[1].split('|')[0] if 'kind=' in auto_off_pending_raw else '' }}"
       auto_off_pending_climate: "{{ auto_off_pending_raw.split('climate=')[1].split('|')[0] if 'climate=' in auto_off_pending_raw else '' }}"
@@ -4551,6 +4592,25 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
   - choose:
     - conditions:
       - condition: template
+        value_template: "{{ hvac_mode == 'cool' and compressor_state == 'active' }}"
+      sequence:
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_compressor_last_active_ts}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+    - conditions:
+      - condition: template
+        value_template: "{{ hvac_mode == 'cool' and compressor_state == 'unknown' and humidity_fan_boost_enabled and muggy_high and humidity_fan_boost_elapsed_min > 20 }}"
+      sequence:
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_humidity_fan_boost_started_ts}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | motivo=inicio_boost_experimental | fan_target={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_high={{ muggy_high }} | limite_min=15 | resultado_terminal=boost_timer_started"
+  - choose:
+    - conditions:
+      - condition: template
         value_template: "{{ hot_learning_recalc_requested }}"
       sequence:
       - service: logbook.log
@@ -4570,6 +4630,15 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
           value: "kind=night_auto|trace_id={{ context.id|default('na') }}|last_action=turn_off|expected_transition={{ hvac_mode }}->off|expires_at={{ (as_timestamp(now()) + 30) | int }}|consumed=0"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ muggy_guard_active and muggy_guard_force_release }}"
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC Night
+              message: "hito=night_auto_off_humidity_guard_released_by_timeout | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | elapsed={{ night_cycle_elapsed_min }} | max_elapsed={{ muggy_guard_max_elapsed_min }} | resultado_terminal=release"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: input_datetime.set_datetime
@@ -4594,7 +4663,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo={{ hvac_mode }} | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | dew_point_night={{ dew_point_night }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | night_comfort_pressure={{ night_comfort_pressure }} | comfort_pull={{ comfort_pull }} | exterior_adjust_cool={{ exterior_adjust_cool }} | resultado_terminal=turn_off"
     - conditions:
       - condition: template
-        value_template: "{{ hvac_mode == 'cool' and tin <= off_cool and presencia_ok and manual_on_block_active }}"
+        value_template: "{{ normal_off_ready and presencia_ok and manual_on_block_active }}"
       sequence:
       - choose:
         - conditions:
@@ -4610,7 +4679,15 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           message: "hito=manual_on_auto_off_blocked | trace_id={{ context.id|default('na') }} | motivo=manual_on_grace_window | transition={{ matrix_trigger_transition }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | user_id={{ matrix_trigger_user_id if matrix_trigger_user_id not in ['', 'none', 'unknown', 'unavailable'] else 'none' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool_old={{ off_cool }} | on_cool_old={{ on_cool }} | off_cool_after_anchor=pendiente_recalculo | block_until={{ manual_on_block_until_effective }} | manual_on_climate_trigger={{ manual_on_climate_trigger }} | manual_on_block_until_raw={{ manual_on_block_until_raw }} | resultado_terminal=no_auto_off_after_manual_on"
     - conditions:
       - condition: template
-        value_template: "{{ hvac_mode == 'cool' and tin <= off_cool and auto_off_pending_recent and not manual_on_block_active }}"
+        value_template: "{{ normal_off_ready and presencia_ok and not manual_on_block_active and muggy_guard_active and not muggy_guard_force_release }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_auto_off_blocked_by_humidity_guard | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | bochorno_score={{ bochorno_score }} | elapsed={{ night_cycle_elapsed_min }} | muggy_moderate={{ muggy_moderate }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | compressor_state={{ compressor_state }} | resultado_terminal=blocked"
+    - conditions:
+      - condition: template
+        value_template: "{{ normal_off_ready and auto_off_pending_recent and not manual_on_block_active and (not muggy_guard_active or muggy_guard_force_release) }}"
       sequence:
       - service: logbook.log
         data:
@@ -4618,7 +4695,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           message: "hito=night_auto_off_suppressed | trace_id={{ context.id|default('na') }} | pending_trace={{ auto_off_pending_trace }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | modo_previo={{ hvac_mode }} | modo_actual={{ states(climate_ent) }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | pending_result={{ auto_off_pending_result }} | pending_retry={{ auto_off_pending_retry }} | retry_allowed={{ auto_off_pending_timeout_retry_allowed }} | motivo=apagado_pendiente_reciente_mismo_contexto | resultado_terminal=suppressed"
     - conditions:
       - condition: template
-        value_template: "{{ hvac_mode == 'cool' and tin <= off_cool and not manual_on_block_active }}"
+        value_template: "{{ normal_off_ready and not manual_on_block_active and (not muggy_guard_active or muggy_guard_force_release) }}"
       sequence:
       - variables:
           modo_previo_label: Frío
@@ -4642,6 +4719,15 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
             target: {entity_id: input_text.ac_night_learning_auto_off_guard_payload}
             data:
               value: "expected_transition=cool->off|echo_transition=|col={{ col_idx }}|offset_new={{ hot_learning_recalc_offset_new }}|expires_at={{ (as_timestamp(now()) + 60) | int }}|consumed=0|reason=hot_recalc_matrix_auto_off|trace={{ context.id|default('na') }}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ muggy_guard_active and muggy_guard_force_release }}"
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC Night
+              message: "hito=night_auto_off_humidity_guard_released_by_timeout | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | bochorno_score={{ bochorno_score }} | elapsed={{ night_cycle_elapsed_min }} | max_elapsed={{ muggy_guard_max_elapsed_min }} | resultado_terminal=release"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: input_datetime.set_datetime
@@ -4717,6 +4803,21 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: input_datetime.set_datetime
         target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
         data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_compressor_last_active_ts}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_last_humidity_check_ts}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_tin_at_cycle_start}
+        data: {value: "{{ tin }}"}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_hin_at_cycle_start}
+        data: {value: "{{ hin }}"}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_dew_at_cycle_start}
+        data: {value: "{{ dew_point_night }}"}
       - variables:
           sp_contractual: "{{ sp_cool_target | int }}"
           sp_solicitado: "{{ sp_cool_target | int }}"
@@ -4765,7 +4866,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           message: "hito=night_sp_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos=0 | minutos_ciclo=0 | motivo={{ 'ciclo_invalido_descartado_e_inicio_limpio' if night_cycle_invalid else 'ciclo_cool_nocturno_detectado_o_nuevo' }} | cycle_started_raw={{ night_cycle_started_ts_raw }} | night_cycle_invalid={{ night_cycle_invalid }} | night_window_start={{ night_window_start_ts }} | fan_resync=true | contrato={{ night_contract_signature }} | resultado_terminal={{ 'resync' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
-        value_template: "{{ hvac_mode == 'cool' and presencia_ok and tin > off_cool and (night_reinforcement_due_count | int(0)) > (night_reinforcement_count | int(0)) and (night_reinforcement_count | int(0)) < 3 and reinforcement_retry_allowed }}"
+        value_template: "{{ hvac_mode == 'cool' and presencia_ok and (tin > off_cool or muggy_high or muggy_severe or dew_not_improving or humidity_not_improving or (compressor_inactive_while_cool and muggy_high)) and (night_reinforcement_due_count | int(0)) > (night_reinforcement_count | int(0)) and (night_reinforcement_count | int(0)) < 3 and reinforcement_retry_allowed }}"
       sequence:
       - variables:
           sp_contractual: "{{ sp_cool_target | int }}"
@@ -4798,7 +4899,16 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
               sp_intento: 2
       - service: climate.set_fan_mode
         target: {entity_id: "{{ climate_ent }}"}
-        data: {fan_mode: Low}
+        data: {fan_mode: "{{ humidity_fan_target }}"}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ humidity_fan_target != 'Low' }}"
+          sequence:
+          - service: logbook.log
+            data:
+              name: AC Night
+              message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | fan_previo={{ fan_mode_actual }} | fan={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | experimental={{ humidity_fan_boost_enabled }} | resultado_terminal=fan_adjustment"
       - variables:
           current_temperature_despues: "{{ state_attr(climate_ent, 'current_temperature') | float(none) }}"
           reinforcement_result: "{{ 'confirmed' if sp_confirmado else 'sp_no_confirmado' }}"
@@ -4821,7 +4931,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_sp_progressive_reinforcement | trace_id={{ context.id|default('na') }} | trigger_entity={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | current_temperature_antes={{ current_temperature_antes if current_temperature_antes is not none else 'none' }} | current_temperature_despues={{ current_temperature_despues if current_temperature_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | cooldown_seconds={{ reinforcement_cooldown_seconds if not sp_confirmado else 0 }} | retry_at={{ reinforcement_retry_at_human if not sp_confirmado else 'none' }} | pending_previous_result={{ reinforcement_pending_result if reinforcement_pending_result != '' else 'none' }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos_actuales={{ night_reinforcement_count }} | refuerzos_debidos={{ night_reinforcement_due_count }} | refuerzos={{ night_reinforcement_due_count if sp_confirmado else night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=refuerzo_progresivo_sin_llegar_a_off_cool | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal={{ 'reinforcement' if sp_confirmado else 'sp_no_confirmado' }}"
+          message: "hito={{ 'night_humidity_compressor_inactive_reinforcement' if night_reinforcement_reason == 'compressor_inactive_muggy' else 'night_humidity_based_sp_reinforcement' if night_reinforcement_reason == 'humidity_dew' else 'night_sp_progressive_reinforcement' }} | trace_id={{ context.id|default('na') }} | trigger_entity={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | current_temperature_antes={{ current_temperature_antes if current_temperature_antes is not none else 'none' }} | current_temperature_despues={{ current_temperature_despues if current_temperature_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | cooldown_seconds={{ reinforcement_cooldown_seconds if not sp_confirmado else 0 }} | retry_at={{ reinforcement_retry_at_human if not sp_confirmado else 'none' }} | pending_previous_result={{ reinforcement_pending_result if reinforcement_pending_result != '' else 'none' }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos_actuales={{ night_reinforcement_count }} | refuerzos_debidos={{ night_reinforcement_due_count }} | refuerzos={{ night_reinforcement_due_count if sp_confirmado else night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo={{ night_reinforcement_reason }} | dew_not_improving={{ dew_not_improving }} | humidity_not_improving={{ humidity_not_improving }} | compressor_state={{ compressor_state }} | ac_power_w={{ ac_power_w if ac_power_w is not none else 'none' }} | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal={{ 'reinforcement' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and presencia_ok and (night_resync_sp_needed or night_resync_fan_needed) }}"
@@ -4867,11 +4977,11 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           sequence:
           - service: climate.set_fan_mode
             target: {entity_id: "{{ climate_ent }}"}
-            data: {fan_mode: Low}
+            data: {fan_mode: "{{ humidity_fan_target }}"}
           - service: logbook.log
             data:
               name: AC Night
-              message: "hito=night_fan_context_resync | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=fan_nocturno_desalineado | fan_previo={{ fan_mode_actual }} | fan=Low | resultado_terminal=resync"
+              message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=fan_nocturno_desalineado | fan_previo={{ fan_mode_actual }} | fan={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | resultado_terminal=resync"
       - choose:
         - conditions:
           - condition: template
@@ -4926,6 +5036,21 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: input_datetime.set_datetime
         target: {entity_id: input_datetime.ac_night_cool_cycle_started_ts}
         data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_compressor_last_active_ts}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_last_humidity_check_ts}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_tin_at_cycle_start}
+        data: {value: "{{ tin }}"}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_hin_at_cycle_start}
+        data: {value: "{{ hin }}"}
+      - service: input_number.set_value
+        target: {entity_id: input_number.ac_night_dew_at_cycle_start}
+        data: {value: "{{ dew_point_night }}"}
       - service: climate.set_hvac_mode
         target: {entity_id: "{{ climate_ent }}"}
         data: {hvac_mode: cool}

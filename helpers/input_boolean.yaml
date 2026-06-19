@@ -28,3 +28,6 @@ ac_night_auto_habilitado:
 ac_night_manual_off_lock:
   name: AC Night Manual OFF Lock
   icon: mdi:hand-back-right
+ac_night_enable_humidity_fan_boost:
+  name: AC Night Enable Humidity Fan Boost Experimental
+  icon: mdi:fan-alert

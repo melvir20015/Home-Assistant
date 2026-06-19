@@ -3899,3 +3899,24 @@ ac_matriz_160_forecast_rain_amount_2h:
   step: 0.1
   mode: box
   unit_of_measurement: mm
+ac_night_tin_at_cycle_start:
+  name: AC Night Tin at Cycle Start
+  min: 0
+  max: 50
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C
+ac_night_hin_at_cycle_start:
+  name: AC Night Hin at Cycle Start
+  min: 0
+  max: 100
+  step: 0.1
+  mode: box
+  unit_of_measurement: "%"
+ac_night_dew_at_cycle_start:
+  name: AC Night Dew Point at Cycle Start
+  min: -10
+  max: 35
+  step: 0.1
+  mode: box
+  unit_of_measurement: °C

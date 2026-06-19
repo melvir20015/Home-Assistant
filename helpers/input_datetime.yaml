@@ -96,3 +96,15 @@ ac_matriz_160_forecast_updated_ts:
   name: AC Matriz 160 Forecast Updated Timestamp
   has_date: true
   has_time: true
+ac_night_compressor_last_active_ts:
+  name: AC Night Compressor Last Active Timestamp
+  has_date: true
+  has_time: true
+ac_night_last_humidity_check_ts:
+  name: AC Night Last Humidity Check Timestamp
+  has_date: true
+  has_time: true
+ac_night_humidity_fan_boost_started_ts:
+  name: AC Night Humidity Fan Boost Started Timestamp
+  has_date: true
+  has_time: true
