@@ -168,6 +168,10 @@ ac_night_cool_cycle_signature:
   name: AC Night Cool Cycle Signature
   max: 255
   initial: sin_ciclo
+ac_night_compressor_unknown_diag_payload:
+  name: AC Night Compressor Unknown Diag Payload
+  max: 255
+  initial: sin_unknown
 
 ac_matriz_160_contextual_reliability:
   name: AC Matriz 160 Contextual Reliability

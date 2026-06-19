@@ -3025,7 +3025,7 @@ Implementación contractual:
 - **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) y espejo de cálculo térmico en `AC Night - Aprendizaje manual por columna` para conservar compatibilidad de umbrales, anchors y recálculo caliente.
 - **Eliminación del parche fijo:** `cool_global_bias` deja de ser un sesgo operativo de `-0.5`; se conserva únicamente como variable de compatibilidad con valor `0` para no romper trazas históricas o plantillas que todavía la inspeccionen.
 - **Base nocturna nueva:** `off_cool_base` queda centrado en `23.5 °C`. El umbral final `off_cool` ya no nace de una base exterior alta, sino de `23.5 + offset_cool_col + exterior_adjust_cool - comfort_pull` con clamp nocturno `[22.7, 24.2]`.
-- **Modelo continuo y predictivo:** el confort nocturno de frío usa `Tin`, `Hin` y un punto de rocío aproximado robusto sin `ln()` (`dew_point_night = Tin - ((100 - Hin) / 5)`). Cada señal se normaliza con `smoothstep(x)=x*x*(3-2*x)` para evitar saltos duros:
+- **Modelo continuo y predictivo:** el confort nocturno de frío usa `Tin`, `Hin` y un punto de rocío con fórmula Magnus simplificada (`dew_point_night` conserva redondeo a 2 decimales y alimenta las mismas variables dependientes). Cada señal se normaliza con `smoothstep(x)=x*x*(3-2*x)` para evitar saltos duros:
   - `temp_pressure`: empieza cerca de `23.0 °C` y llega fuerte cerca de `24.2 °C`.
   - `hum_pressure`: empieza cerca de `52%` y crece gradualmente hacia `70%`.
   - `dew_pressure`: empieza cerca de `13.8 °C` y crece hacia `18.3 °C`.
@@ -3305,9 +3305,69 @@ Para validar en operación:
 ## 76. AC Night Matriz Contextual — guardia anti-bochorno, compresor y fan seguro
 
 - **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`), helpers nocturnos en `helpers/input_datetime.yaml`, `helpers/input_number.yaml` y `helpers/input_boolean.yaml`, y sensor de potencia `sensor.0200009211c7_wac_demand_response_power` integrado en `sensors.yaml`.
-- **Guardia anti-bochorno para auto-off COOL:** el apagado normal queda separado en `normal_off_ready = hvac_mode == 'cool' and tin <= off_cool`. Si el punto de rocío nocturno es al menos `14.8 °C` (o humedad/`bochorno_score` respaldan incomodidad), `muggy_guard_active` bloquea el apagado aunque `Tin` ya haya bajado del umbral. La guardia se libera por seguridad operativa cuando el ciclo llega a `75 min`, dejando trazas diferenciadas: `night_auto_off_blocked_by_humidity_guard` y `night_auto_off_humidity_guard_released_by_timeout`.
+- **Guardia anti-bochorno para auto-off COOL:** el apagado normal queda separado en `normal_off_ready = hvac_mode == 'cool' and tin <= off_cool`. Si el punto de rocío nocturno es al menos `14.8 °C` (o humedad/`bochorno_score` respaldan incomodidad), `muggy_guard_active` bloquea el apagado aunque `Tin` ya haya bajado del umbral. La guardia se libera por seguridad operativa con límite dinámico: `60 min` para bochorno moderado, `75 min` para bochorno alto y `90 min` para bochorno severo, salvo protección de sobreenfriamiento (`tin <= off_cool - 0.4`) que evita extender a 90 minutos. Las trazas diferenciadas son `night_auto_off_blocked_by_humidity_guard` y `night_auto_off_humidity_guard_released_by_timeout`, ambas reportando el límite dinámico usado.
 - **Clasificación de bochorno:** se conservan `bochorno_score`, `temp_pressure`, `hum_pressure`, `dew_pressure` y la fórmula de `night_comfort_pressure`. La nueva capa añade `dew_moderate/high/severe` y `muggy_moderate/high/severe`, priorizando punto de rocío (`14.8`, `15.6`, `16.2 °C`) y usando humedad interior y `bochorno_score` como respaldo.
 - **Contrato de compresor:** la fuente principal es `sensor.0200009211c7_wac_demand_response_power`; como fallback se aceptan `sensor.ac_power_w`, `binary_sensor.ac_compressor_active` y atributos defensivos del climate (`hvac_action`, `action`, `compressor`, `compressor_state`, `running`). La matriz publica internamente `compressor_state = active | inactive_probable | unknown`, con umbrales iniciales de `350 W` para compresor y `120 W` para fan-only. `input_datetime.ac_night_compressor_last_active_ts` mide cuánto lleva el equipo en COOL sin evidencia de compresor activo.
 - **Baseline de ciclo y mejora higrométrica:** al iniciar o detectar un ciclo COOL nocturno se guardan `Tin`, humedad interior y punto de rocío en `input_number.ac_night_tin_at_cycle_start`, `input_number.ac_night_hin_at_cycle_start` e `input_number.ac_night_dew_at_cycle_start`; `input_datetime.ac_night_last_humidity_check_ts` deja memoria de chequeo. A partir de 20 minutos se consideran `dew_not_improving` y `humidity_not_improving` cuando el punto de rocío/humedad siguen altos sin mejora suficiente.
 - **Refuerzo de setpoint por humedad:** se mantiene el mínimo HVAC, máximo de 3 refuerzos, contador `input_number.ac_night_cool_reinforcement_count`, firma de ciclo y payload pendiente con retry/confirmación. Además de la presión térmica normal, puede reforzar por `muggy_high/severe`, falta de mejora de punto de rocío/humedad o compresor probablemente inactivo con bochorno alto. Los escalones por humedad son: severo desde `15/35/55 min`, alto desde `20/45/70 min`, y normal conserva `20/50/80 min`. Las trazas diferencian `night_humidity_based_sp_reinforcement` y `night_humidity_compressor_inactive_reinforcement`.
 - **Fan seguro:** con compresor activo puede subir a `Med` si hay bochorno alto y a `High` si es severo y está soportado. Con `compressor_state=inactive_probable` no se sube fan y se prioriza bajar SP. Con `compressor_state=unknown` se mantiene `Low`, salvo que `input_boolean.ac_night_enable_humidity_fan_boost` habilite explícitamente un boost experimental acotado por `input_datetime.ac_night_humidity_fan_boost_started_ts` a 15 minutos. Los cambios de fan usan `night_humidity_fan_adjustment`.
+
+---
+
+## Anexo: escenarios operativos críticos de `AC Night Matriz Contextual`
+
+Este anexo documenta los escenarios principales de la automatización nocturna `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) para facilitar mantenimiento por IA o por programadores.
+
+### 1. Encendido nocturno normal
+- **Valores de entrada**: horario entre 22:00 y 07:00, presencia estable activa, `hvac_mode != cool`, `tin >= on_cool`, sin bloqueo manual vigente.
+- **Variables clave calculadas**: `dew_point_night` se calcula con Magnus simplificado; `dew_pressure` alimenta `night_comfort_pressure` y `bochorno_score`; `sp_cool_target` sale del contrato nocturno; `humidity_fan_target` normalmente queda en `Low` salvo bochorno y compresor activo.
+- **Acción esperada**: cambiar el equipo a `cool`, solicitar `sp_cool_target`, iniciar ciclo nocturno, guardar temperatura/humedad/punto de rocío iniciales y dejar contador de refuerzos en cero.
+- **Log esperado**: `hito=night_auto_on_notified` con `dew`, `bochorno_score`, `sp_contractual`, `sp_solicitado` y `resultado_terminal=turn_on_cool` si el setpoint queda confirmado.
+
+### 2. Refuerzo progresivo por tiempo
+- **Valores de entrada**: ciclo nocturno activo en `cool`, presencia estable, `tin > off_cool`, sin señales fuertes de bochorno, y `night_cycle_elapsed_min` cruza los tramos progresivos de 20, 50 u 80 minutos.
+- **Variables clave calculadas**: `night_reinforcement_due_count_normal`, `night_reinforcement_due_count`, `night_reinforcement_primary_cause=thermal_progressive`, `night_reinforcement_flags` con señales de humedad/compresor en `0` cuando no aplican.
+- **Acción esperada**: bajar temporalmente el setpoint solicitado a `sp_cool_reinforced_next` sin modificar el mínimo nocturno configurable porque esa mejora queda explícitamente fuera de alcance.
+- **Log esperado**: `hito=night_sp_progressive_reinforcement`, `causa_principal=thermal_progressive`, `banderas=...`, `motivo=thermal_progressive` y `resultado_terminal=reinforcement` cuando confirma.
+
+### 3. Refuerzo por punto de rocío o humedad
+- **Valores de entrada**: ciclo nocturno activo en `cool`, presencia estable, `muggy_high`/`muggy_severe` verdadero o `dew_not_improving`/`humidity_not_improving` verdadero tras al menos 20 minutos.
+- **Variables clave calculadas**: `dew_point_night` con Magnus simplificado; `dew_pressure` alimenta `night_comfort_pressure`; `bochorno_score` conserva esa presión de confort; `night_reinforcement_primary_cause` prioriza `dew_not_improving`, `humidity_not_improving`, `muggy_severe` o `muggy_high` según corresponda.
+- **Acción esperada**: aplicar el siguiente refuerzo nocturno permitido y ajustar ventilador a `Med`/`High` solo cuando la lógica de `humidity_fan_target` lo requiera.
+- **Log esperado**: `hito=night_humidity_based_sp_reinforcement`, con `causa_principal` específica y `banderas` compactas para separar causa principal de señales secundarias.
+
+### 4. Refuerzo por compresor inactivo con bochorno
+- **Valores de entrada**: `hvac_mode=cool`, `compressor_state=inactive_probable`, `muggy_high=true` y ciclo nocturno activo con refuerzo pendiente.
+- **Variables clave calculadas**: `compressor_inactive_while_cool=true`, `night_reinforcement_primary_cause=compressor_inactive_muggy`, `night_reinforcement_reason=compressor_inactive_muggy` para conservar compatibilidad con el log existente.
+- **Acción esperada**: mantener la decisión térmica existente y reforzar setpoint si corresponde; la nueva observabilidad no convierte `unknown` en acción agresiva.
+- **Log esperado**: `hito=night_humidity_compressor_inactive_reinforcement`, `causa_principal=compressor_inactive_muggy`, `banderas=...compressor_inactive=1`, `compressor_state=inactive_probable`.
+
+### 5. Apagado normal por temperatura alcanzada
+- **Valores de entrada**: `hvac_mode=cool`, `tin <= off_cool`, presencia estable o condición de apagado aplicable, y `muggy_guard_active=false`.
+- **Variables clave calculadas**: `normal_off_ready=true`, `muggy_guard_active=false`, `muggy_guard_force_release` no es necesario para permitir apagado.
+- **Acción esperada**: apagar el climate, limpiar ciclo nocturno, reiniciar refuerzos y payloads pendientes.
+- **Log esperado**: `hito=night_auto_off_confirmed_notified` con `resultado_terminal=turn_off_confirmed`; en apagado por ausencia también puede verse `hito=night_auto_off_notified`.
+
+### 6. Apagado bloqueado por `muggy_guard_active`
+- **Valores de entrada**: `hvac_mode=cool`, `tin <= off_cool`, presencia estable, `muggy_guard_active=true` y `night_cycle_elapsed_min < muggy_guard_max_elapsed_min`.
+- **Variables clave calculadas**: `muggy_guard_max_elapsed_min` dinámico: 60 minutos si el bochorno es moderado, 75 si es alto, 90 si es severo, excepto que con `tin <= off_cool - 0.4` no se extiende a 90 minutos.
+- **Acción esperada**: no apagar todavía para no cortar el trabajo de deshumidificación percibida.
+- **Log esperado**: `hito=night_auto_off_blocked_by_humidity_guard`, con `max_elapsed` y `limite_dinamico_min` reportando el límite dinámico activo.
+
+### 7. Apagado liberado por timeout dinámico
+- **Valores de entrada**: `normal_off_ready=true`, `muggy_guard_active=true` y `night_cycle_elapsed_min >= muggy_guard_max_elapsed_min`.
+- **Variables clave calculadas**: `muggy_guard_force_release=true`; el límite usado depende de severidad y protección de sobreenfriamiento.
+- **Acción esperada**: permitir apagado aunque siga la señal de bochorno para evitar ciclos nocturnos excesivamente largos.
+- **Log esperado**: `hito=night_auto_off_humidity_guard_released_by_timeout`, con `max_elapsed` y `limite_dinamico_min` iguales al límite dinámico que liberó el apagado.
+
+### 8. Resync de setpoint/fan
+- **Valores de entrada**: `hvac_mode=cool`, presencia estable, ciclo activo y `night_resync_sp_needed=true` o `night_resync_fan_needed=true`.
+- **Variables clave calculadas**: `sp_cool_effective` sigue usando el contrato actual y los refuerzos existentes; `humidity_fan_target` puede cambiar por bochorno y estado de compresor; no se agrega `night_min_comfort_sp` en esta intervención.
+- **Acción esperada**: reescribir setpoint efectivo o fan esperado sin reiniciar el ciclo nocturno.
+- **Log esperado**: `hito=night_sp_resync` para setpoint y/o `hito=night_humidity_fan_adjustment` con `resultado_terminal=resync` para fan.
+
+### Diagnóstico adicional: compresor desconocido persistente
+- **Valores de entrada**: `compressor_state=unknown` más de una vez dentro del mismo ciclo nocturno.
+- **Variables clave calculadas**: `compressor_unknown_next_count`, `compressor_unknown_repeated` y payload `input_text.ac_night_compressor_unknown_diag_payload`.
+- **Acción esperada**: registrar observabilidad de baja confianza sin cambiar la decisión térmica basada en `unknown`.
+- **Log esperado**: `hito=night_compressor_state_low_confidence`, `compressor_state=unknown`, `ac_power_w`, estado de `binary_sensor.ac_compressor_active`, `hvac_action` y `night_cycle_elapsed_min`.
