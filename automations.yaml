@@ -4624,7 +4624,9 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       sequence:
       - variables:
           modo_previo_label: "{% if hvac_mode == 'cool' %}Frío{% elif hvac_mode == 'heat' %}Calor{% else %}Apagado{% endif %}"
-          sp_previo: "{{ sp_cool_target if hvac_mode == 'cool' else sp_heat_target if hvac_mode == 'heat' else sp_cool_target }}"
+          sp_previo_real: "{% set sp_real = state_attr(climate_ent, 'temperature') | float(none) %}{{ sp_real if sp_real is not none else sp_cool_effective | float(sp_cool_target | float) }}"
+          sp_previo_real_display: "{% set v = sp_previo_real | float(sp_cool_target | float) %}{{ v | round(1) if (v % 1) != 0 else v | round(0) | int }}"
+          sp_previo: "{{ sp_previo_real_display if hvac_mode == 'cool' else sp_heat_target if hvac_mode == 'heat' else sp_cool_target }}"
           temp_apagado_prev: "{{ off_cool if hvac_mode == 'cool' else off_heat if hvac_mode == 'heat' else off_cool }}"
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
@@ -4700,6 +4702,8 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - variables:
           modo_previo_label: Frío
           estado_previo: "{{ states(climate_ent) }}"
+          sp_previo_real: "{% set sp_real = state_attr(climate_ent, 'temperature') | float(none) %}{{ sp_real if sp_real is not none else sp_cool_effective | float(sp_cool_target | float) }}"
+          sp_previo_real_display: "{% set v = sp_previo_real | float(sp_cool_target | float) %}{{ v | round(1) if (v % 1) != 0 else v | round(0) | int }}"
           auto_off_pending_exp_new: "{{ (as_timestamp(now()) + 45) | int }}"
           auto_off_pending_retry_new: "{{ (auto_off_pending_retry | int(0)) + 1 if (auto_off_pending_timeout_retry_allowed | bool(false)) else 0 }}"
       - service: input_text.set_value
@@ -4762,7 +4766,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           - service: notify.mobile_app_samsung_s24
             data:
               title: AC-Matriz Nocturna
-              message: "{{ now().strftime('%I:%M:%S %p') }} — Apagado automático\n\nMotivo: Temp. alcanzada.\n\nModo anterior: {{ modo_previo_label }}\n\nInterior: {{ tin }} °C\n\nHumedad interior: {{ hin }} %\n\nExterior: {{ tout }} °C\n\nAjuste de temp. anterior: {{ sp_cool_target }} °C\n\nUmbral de apagado: {{ off_cool }} °C\n\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+              message: "{{ now().strftime('%I:%M:%S %p') }} — Apagado automático\n\nMotivo: Temp. alcanzada.\n\nModo anterior: {{ modo_previo_label }}\n\nInterior: {{ tin }} °C\n\nHumedad interior: {{ hin }} %\n\nExterior: {{ tout }} °C\n\nAjuste de temp. anterior: {{ sp_previo_real_display }} °C\n\nUmbral de apagado: {{ off_cool }} °C\n\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
           - service: logbook.log
             data:
               name: AC Night
