@@ -67,6 +67,10 @@ ac_night_manual_off_block_until:
   name: AC Night Bloqueo Auto ON post Manual OFF
   has_date: true
   has_time: true
+ac_night_manual_on_block_auto_off_until:
+  name: AC Night Bloqueo Auto OFF post Manual ON
+  has_date: true
+  has_time: true
 ac_night_heat_block_until:
   name: AC Night Bloqueo Heat anti-reversa
   has_date: true
