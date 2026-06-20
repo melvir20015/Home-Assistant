@@ -3622,8 +3622,35 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         }}'
       reconcile_contract_guarantee_required: '{{ reconcile_manual_thermal_from_fan
         and modo_nuevo == reconcile_target_mode }}'
+      manual_off_block_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_off_block_until'')
+        | trim }}'
+      manual_off_block_until_ts: '{% if manual_off_block_until_raw in [''unknown'',''unavailable'',''none'','''']
+        %}{{ 0 }}{% else %}{{ as_timestamp(manual_off_block_until_raw, default=0) }}{% endif %}'
+      manual_off_block_active: '{{ as_timestamp(now()) < (manual_off_block_until_ts | float(0)) }}'
+      heat_block_until_raw: '{{ states(''input_datetime.ac_matriz_160_heat_block_until'')
+        | trim }}'
+      heat_block_until_ts: '{% if heat_block_until_raw in [''unknown'',''unavailable'',''none'','''']
+        %}{{ 0 }}{% else %}{{ as_timestamp(heat_block_until_raw, default=0) }}{% endif %}'
+      heat_block_active: '{{ as_timestamp(now()) < (heat_block_until_ts | float(0)) }}'
+      cool_block_until_raw: '{{ states(''input_datetime.ac_matriz_160_cool_block_until'')
+        | trim }}'
+      cool_block_until_ts: '{% if cool_block_until_raw in [''unknown'',''unavailable'',''none'','''']
+        %}{{ 0 }}{% else %}{{ as_timestamp(cool_block_until_raw, default=0) }}{% endif %}'
+      cool_block_active: '{{ as_timestamp(now()) < (cool_block_until_ts | float(0)) }}'
+      s24_home: '{{ states(''device_tracker.samsung_s24'') == ''home'' }}'
+      movimiento_on: '{{ states(''binary_sensor.presencia_movimiento_estable'') ==
+        ''on'' }}'
+      fan_only_assisted_candidate: '{{ transicion_compuesta_inicio_valida and not marker_compatible
+        and not marker_vigente }}'
+      fan_only_assisted_thermal_ok: '{{ (reconcile_target_mode == ''cool'' and (tin | float(0)) >= (umbral_off_cool_operacional | float(24)))
+        or (reconcile_target_mode == ''heat'' and (tin | float(0)) <= (umbral_off_heat_operacional | float(22))) }}'
+      fan_only_assisted_guards_ok: '{{ fan_only_assisted_candidate and is_state(''input_boolean.ac_matriz_160_auto_habilitado'',''on'')
+        and horario_aprendizaje_habilitado and (s24_home or movimiento_on) and not manual_off_block_active
+        and not manual_off_rebound_active and not legacy_manual_hold_active and ((reconcile_target_mode == ''cool'' and not cool_block_active)
+        or (reconcile_target_mode == ''heat'' and not heat_block_active)) and reconcile_target_mode in [''cool'',''heat'']
+        and fan_only_assisted_thermal_ok }}'
       reconcile_operational_eligible: '{{ origen_clasificacion == ''manual_externo''
-        or reconcile_manual_thermal_from_fan }}'
+        or reconcile_manual_thermal_from_fan or fan_only_assisted_guards_ok }}'
       reconcile_has_contract_work: '{{ reconcile_inconsistent_mode or reconcile_inconsistent_contract
         or reconcile_inconsistent_fan or reconcile_contract_guarantee_required }}'
       reconcile_skip_reason: '{% if reconcile_fan_to_thermal_marker_compatible %}origen_automatico
@@ -3634,6 +3661,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         %}fan_no_soportado {% else %}no_aplica{% endif %}'
       reconcile_apply: '{{ reconcile_operational_eligible and transicion_real and reconcile_has_contract_work
         and (not legacy_manual_hold_active) and reconcile_dedup_ok }}'
+      fan_only_assisted_reconcile_apply: '{{ fan_only_assisted_guards_ok and reconcile_apply }}'
       manual_presence_override_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_presence_override_until'')
         | trim }}'
       manual_presence_override_until_ts: '{% if manual_presence_override_until_raw
@@ -3641,9 +3669,6 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         default=0) }}{% endif %}'
       manual_presence_override_active: '{{ as_timestamp(now()) < (manual_presence_override_until_ts
         | float(0)) }}'
-      s24_home: '{{ states(''device_tracker.samsung_s24'') == ''home'' }}'
-      movimiento_on: '{{ states(''binary_sensor.presencia_movimiento_estable'') ==
-        ''on'' }}'
       manual_presence_override_candidate: '{{ origen_clasificacion == ''manual_externo''
         and transicion_hvac_real and transicion_consolidada_from == ''off'' and transicion_consolidada_to in [''cool'',''heat'']
         and not s24_home and not movimiento_on }}'
@@ -3760,12 +3785,12 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: hito={{ 'reconcile_manual_fan_to_thermal_applied' if reconcile_manual_thermal_from_fan else 'reconcile_manual_pre_learning_applied' }} | contrato=pre_learning | origen={{ origen_clasificacion
+          message: hito={{ 'reconcile_manual_fan_only_assisted_applied' if fan_only_assisted_reconcile_apply else 'reconcile_manual_fan_to_thermal_applied' if reconcile_manual_thermal_from_fan else 'reconcile_manual_pre_learning_applied' }} | contrato=pre_learning | origen={{ origen_clasificacion
             }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | modo_heredado={{ modo_nuevo
             }} | modo_objetivo={{ reconcile_target_mode }} | columna={{ col_idx_resuelto
             }} | contexto={{ contexto_activo_resuelto }} | off_previo={{ off_vigente }} | off_nuevo={{ umbral_off_cool_operacional if reconcile_target_mode == 'cool' else umbral_off_heat_operacional }} | sp_objetivo={{ reconcile_sp_target }} | fan_objetivo={{ reconcile_fan_target_final
             }} | fan_soportado={{ reconcile_fan_candidate_supported }} | guarantee={{ reconcile_contract_guarantee_required
-            }} | anchor_aplicado={{ fuera_rango_anchor }} | tipo_anchor={{ tipo_anchor }} | on_objetivo={{ on_obj_anchor }} | off_objetivo={{ off_obj_anchor }} | delta_anchor={{ delta_anchor }} | anchor_limitado_por_clamp={{ anchor_limitado_por_clamp }} | delta_aplicado_real={{ delta_aplicado_real }} | dedup_ok={{ reconcile_dedup_ok }} | razon={{ 'fan_only_to_' ~ modo_nuevo ~ '_manual_reconcile' if reconcile_manual_thermal_from_fan else 'manual_externo_reconcile' }}
+            }} | anchor_aplicado={{ fuera_rango_anchor }} | tipo_anchor={{ tipo_anchor }} | on_objetivo={{ on_obj_anchor }} | off_objetivo={{ off_obj_anchor }} | delta_anchor={{ delta_anchor }} | anchor_limitado_por_clamp={{ anchor_limitado_por_clamp }} | delta_aplicado_real={{ delta_aplicado_real }} | dedup_ok={{ reconcile_dedup_ok }} | fan_only_assisted_candidate={{ fan_only_assisted_candidate }} | fan_only_assisted_thermal_ok={{ fan_only_assisted_thermal_ok }} | blocks=manual_off:{{ manual_off_block_active }},rebound:{{ manual_off_rebound_active }},hold:{{ legacy_manual_hold_active }},cool:{{ cool_block_active }},heat:{{ heat_block_active }} | razon={{ 'off_to_fan_only_manual_assisted_reconcile' if fan_only_assisted_reconcile_apply else 'fan_only_to_' ~ modo_nuevo ~ '_manual_reconcile' if reconcile_manual_thermal_from_fan else 'manual_externo_reconcile' }}
           entity_id: climate.0200009211c7_climate
     default:
     - service: logbook.log
@@ -3774,7 +3799,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         message: hito=reconcile_manual_pre_learning_skip | contrato=pre_learning | origen={{ origen_clasificacion
           }} | modo_heredado={{ modo_nuevo }} | modo_objetivo={{ reconcile_target_mode
           }} | columna={{ col_idx_resuelto }} | off_previo={{ off_vigente }} | off_nuevo={{ umbral_off_cool_operacional if reconcile_target_mode == 'cool' else umbral_off_heat_operacional }} | sp_objetivo={{ reconcile_sp_target
-          }} | fan_objetivo={{ reconcile_fan_target_final }} | fan_soportado={{ reconcile_fan_candidate_supported }} | fan_candidate={{ reconcile_fan_candidate_label }} | fan_modes={{ reconcile_fan_modes_supported }} | fan_from_fan_only_eligible={{ reconcile_manual_thermal_from_fan }} | auto_marker_fan_to_thermal={{ reconcile_fan_to_thermal_marker_compatible }} | guarantee={{ reconcile_contract_guarantee_required }} | anchor_aplicado={{ fuera_rango_anchor }} | tipo_anchor={{ tipo_anchor }} | on_objetivo={{ on_obj_anchor }} | off_objetivo={{ off_obj_anchor }} | delta_anchor={{ delta_anchor }} | anchor_limitado_por_clamp={{ anchor_limitado_por_clamp }} | delta_aplicado_real={{ delta_aplicado_real }} | hold={{ legacy_manual_hold_active
+          }} | fan_objetivo={{ reconcile_fan_target_final }} | fan_soportado={{ reconcile_fan_candidate_supported }} | fan_candidate={{ reconcile_fan_candidate_label }} | fan_modes={{ reconcile_fan_modes_supported }} | fan_from_fan_only_eligible={{ reconcile_manual_thermal_from_fan }} | fan_only_assisted_candidate={{ fan_only_assisted_candidate }} | fan_only_assisted_guards_ok={{ fan_only_assisted_guards_ok }} | fan_only_assisted_thermal_ok={{ fan_only_assisted_thermal_ok }} | blocks=manual_off:{{ manual_off_block_active }},rebound:{{ manual_off_rebound_active }},hold:{{ legacy_manual_hold_active }},cool:{{ cool_block_active }},heat:{{ heat_block_active }} | auto_marker_fan_to_thermal={{ reconcile_fan_to_thermal_marker_compatible }} | guarantee={{ reconcile_contract_guarantee_required }} | anchor_aplicado={{ fuera_rango_anchor }} | tipo_anchor={{ tipo_anchor }} | on_objetivo={{ on_obj_anchor }} | off_objetivo={{ off_obj_anchor }} | delta_anchor={{ delta_anchor }} | anchor_limitado_por_clamp={{ anchor_limitado_por_clamp }} | delta_aplicado_real={{ delta_aplicado_real }} | hold={{ legacy_manual_hold_active
           }} | dedup_ok={{ reconcile_dedup_ok }} | inconsistent_mode={{ reconcile_inconsistent_mode }} | inconsistent_contract={{ reconcile_inconsistent_contract }} | inconsistent_fan={{ reconcile_inconsistent_fan }} | razon={{ reconcile_skip_reason }}
         entity_id: climate.0200009211c7_climate
   - choose:
@@ -3858,7 +3883,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
             dedup_ok }} | from={{ modo_anterior }} | to={{ modo_nuevo }}
           entity_id: climate.0200009211c7_climate
   - delay:
-      seconds: 3
+      seconds: '{{ 15 if fan_only_assisted_reconcile_apply else 3 }}'
   - variables:
       estado_tras_10s: '{{ states(''climate.0200009211c7_climate'') | lower }}'
       cierre_compuesto_valido: '{{ transicion_compuesta_inicio_valida and estado_tras_10s in [''cool'',''heat''] }}'
@@ -3952,11 +3977,11 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       transicion_derivada_auto_aceptada: '{{ cadena_auto_context_match or cadena_auto_parent_match or cadena_auto_root_match }}'
       origen_clasificacion_detallado: '{% if not transicion_hvac_real %}sin_transicion_real{% elif marker_compatible_final %}{{ ''apagado_automatico'' if evento_manual_tipo == ''apagado_manual'' else ''encendido_automatico'' if evento_manual_tipo == ''encendido_manual'' else ''transicion_derivada_de_una_orden_automatica'' }}{% elif transicion_derivada_auto_aceptada %}transicion_derivada_de_una_orden_automatica{% elif rebote_causal_post_apagado_manual %}rebote_post_apagado_manual{% elif evento_manual_tipo == ''apagado_manual'' %}apagado_manual_real{% elif evento_manual_tipo == ''encendido_manual'' %}encendido_manual_real{% else %}confirmacion_tardia_del_dispositivo{% endif %}'
       aprendizaje_aplicado_o_bloqueado: '{{ ''aplicado'' if origen_clasificacion_detallado in [''apagado_manual_real'',''encendido_manual_real''] else ''bloqueado'' }}'
-      manual_fan_stuck_case: '{{ transicion_compuesta_inicio_valida and not cierre_compuesto_valido and origen_clasificacion == ''manual_externo'' }}'
+      manual_fan_stuck_case: '{{ transicion_compuesta_inicio_valida and not cierre_compuesto_valido and (origen_clasificacion == ''manual_externo'' or (not marker_compatible_final and not marker_vigente_final)) }}'
       manual_fan_stuck_trace_id: '{{ trace_id_learning if trace_id_learning is defined else (marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts)) }}'
       manual_fan_stuck_signature: '{{ manual_fan_stuck_trace_id ~ ''|'' ~ modo_anterior ~ ''->'' ~ estado_tras_10s ~ ''|'' ~ (as_timestamp(now()) | int(0) // 10) }}'
       manual_fan_stuck_requires_reconcile: '{{ manual_fan_stuck_case and estado_tras_10s in [''fan_only'',''auto''] }}'
-      manual_fan_stuck_cancel_reason: '{% if not manual_fan_stuck_case %}no_aplica {% elif legacy_manual_hold_active %}manual_hold_activo {% elif not horario_aprendizaje_habilitado %}fuera_horario {% elif not (manual_presence_override_active and (s24_home or movimiento_on)) %}sin_presencia_manual_override {% elif not reconcile_dedup_ok %}dedup_reconcile {% else %}none{% endif %}'
+      manual_fan_stuck_cancel_reason: '{% if not manual_fan_stuck_case %}no_aplica {% elif marker_compatible_final or marker_vigente_final %}origen_automatico {% elif legacy_manual_hold_active %}manual_hold_activo {% elif not horario_aprendizaje_habilitado %}fuera_horario {% elif not (s24_home or movimiento_on) %}sin_presencia_efectiva {% elif manual_off_block_active %}manual_off_block_activo {% elif manual_off_rebound_active %}manual_off_rebound_activo {% elif reconcile_target_mode == ''cool'' and cool_block_active %}cool_block_activo {% elif reconcile_target_mode == ''heat'' and heat_block_active %}heat_block_activo {% elif not fan_only_assisted_thermal_ok %}sin_demanda_termica_manual {% elif not reconcile_dedup_ok %}dedup_reconcile {% else %}none{% endif %}'
       manual_fan_stuck_reconcile_eligible: '{{ manual_fan_stuck_requires_reconcile and manual_fan_stuck_cancel_reason == ''none'' }}'
       resultado_terminal: '{% if manual_fan_stuck_case and not manual_fan_stuck_reconcile_eligible %}ignorado {% elif transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
         {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' or origen_clasificacion_detallado in [''transicion_derivada_de_una_orden_automatica'',''rebote_post_apagado_manual'',''confirmacion_tardia_del_dispositivo'',''apagado_automatico'',''encendido_automatico''] %}ignorado
