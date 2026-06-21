@@ -1326,6 +1326,20 @@
       immediate_marker_vigente: '{{ immediate_marker_kind == ''automatico_ac_matriz_160'' and immediate_marker_not_consumed and (as_timestamp(now()) | float(0)) <= (immediate_marker_expires_ts | float(0)) }}'
       immediate_marker_expected_transition: '{% if immediate_marker_last_action == ''turn_on_cool'' %}off->cool{% elif immediate_marker_last_action == ''turn_on_heat'' %}off->heat{% elif immediate_marker_last_action == ''turn_off'' %}*->off{% else %}none{% endif %}'
       immediate_marker_compatible: '{{ immediate_marker_vigente and immediate_marker_last_action == ''turn_off'' and climate_trigger_to == ''off'' and climate_trigger_from in [''cool'',''heat''] and immediate_marker_expected_transition in [climate_trigger_transition, ''*->off''] }}'
+      immediate_on_marker_compatible: '{{ immediate_marker_vigente and immediate_marker_last_action == ''turn_on_cool'' and climate_trigger_transition in [''off->cool'',''fan_only->cool''] }}'
+      immediate_auto_chain_context_raw: '{{ states(''input_text.ac_matriz_160_auto_origin_chain_context'') | default('''', true) | trim }}'
+      climate_trigger_auto_chain_context_match: '{{ climate_trigger_context_id not in [''none'',''unknown'',''''] and (''context_id='' ~ climate_trigger_context_id) in immediate_auto_chain_context_raw }}'
+      climate_trigger_auto_chain_parent_match: '{{ climate_trigger_parent_id not in [''none'',''unknown'',''''] and ((''parent_id='' ~ climate_trigger_parent_id) in immediate_auto_chain_context_raw or (''root_id='' ~ climate_trigger_parent_id) in immediate_auto_chain_context_raw) }}'
+      manual_on_hold_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_on_hold_until'') | trim }}'
+      manual_on_hold_until_ts: '{% if manual_on_hold_until_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_on_hold_until_raw, default=0) }}{% endif %}'
+      manual_on_hold_active: '{{ as_timestamp(now()) < (manual_on_hold_until_ts | float(0)) }}'
+      manual_on_hold_new_until: '{{ (now() + timedelta(minutes=3)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      manual_learning_applied_ts_raw: '{{ states(''input_datetime.ac_matriz_160_manual_learning_applied_ts'') | trim }}'
+      manual_learning_applied_ts: '{% if manual_learning_applied_ts_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_learning_applied_ts_raw, default=0) }}{% endif %}'
+      last_manual_learning_root_raw: '{{ states(''input_text.ac_matriz_160_last_manual_learning_root'') | default('''', true) | trim }}'
+      manual_on_learning_recent: '{{ (as_timestamp(now()) - (manual_learning_applied_ts | float(0))) <= 300 and (manual_learning_applied_ts | float(0)) > 0 and (''evento=encendido_manual'' in last_manual_learning_root_raw or ''evento_tipo=encendido_manual'' in last_manual_learning_root_raw) }}'
+      manual_on_transition_candidate: '{{ climate_trigger_is_target and climate_trigger_transition in [''off->cool'',''fan_only->cool''] }}'
+      manual_on_candidate: '{{ manual_on_transition_candidate and not immediate_on_marker_compatible and not climate_trigger_auto_chain_context_match and not climate_trigger_auto_chain_parent_match }}'
       manual_off_trigger_immediate: '{{ climate_trigger_real_off_transition and not immediate_marker_compatible }}'
       manual_off_trigger_immediate_block_until: '{{ (now() + timedelta(minutes=5)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       helper_firma: '{{ states(''input_text.ac_matriz_160_contexto_firma_activa'')
@@ -1646,6 +1660,40 @@
     data:
       value: '{{ validation_reason }}'
     action: input_text.set_value
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ manual_on_candidate }}'
+      sequence:
+      - data:
+          name: AC-Matriz 160
+          message: hito=manual_on_candidate_detected | transition={{ climate_trigger_transition
+            }} | context_id={{ climate_trigger_context_id }} | parent_id={{ climate_trigger_parent_id
+            }} | marker_vigente={{ immediate_marker_vigente }} | marker_last_action={{
+            immediate_marker_last_action }} | auto_context_match={{ climate_trigger_auto_chain_context_match
+            }} | auto_parent_match={{ climate_trigger_auto_chain_parent_match }} | hold_active={{
+            manual_on_hold_active }} | hold_until={{ manual_on_hold_until_raw }} | action_base={{
+            action_target_base }} | action={{ action_target }}
+          entity_id: climate.0200009211c7_climate
+        action: logbook.log
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ not manual_on_hold_active }}'
+          sequence:
+          - target:
+              entity_id: input_datetime.ac_matriz_160_manual_on_hold_until
+            data:
+              datetime: '{{ manual_on_hold_new_until }}'
+            action: input_datetime.set_datetime
+          - data:
+              name: AC-Matriz 160
+              message: hito=manual_on_hold_created | transition={{ climate_trigger_transition
+                }} | hold_until={{ manual_on_hold_new_until }} | context_id={{ climate_trigger_context_id
+                }} | parent_id={{ climate_trigger_parent_id }} | action_base={{ action_target_base
+                }} | action={{ action_target }}
+              entity_id: climate.0200009211c7_climate
+            action: logbook.log
   - choose:
     - conditions:
       - condition: template
@@ -2460,11 +2508,116 @@
         value_template: '{{ action_target == ''turn_off'' }}'
       sequence:
       - variables:
+          manual_on_protection_active: '{{ manual_on_candidate or manual_on_hold_active or manual_on_learning_recent }}'
           turn_off_recheck_mode: '{{ states(''climate.0200009211c7_climate'') | lower }}'
           turn_off_recheck_tin: '{{ [states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(0), states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(0)] | average | round(2) }}'
           turn_off_recheck_t_off_cool: '{{ states(''input_number.ac_matriz_160_t_off_cool'') | float(eff_t_off_cool | float(24)) }}'
+          turn_off_recheck_t_on_cool: '{{ states(''input_number.ac_matriz_160_t_on_cool'') | float((turn_off_recheck_t_off_cool | float(24)) + 1.0) }}'
           turn_off_recheck_t_off_heat: '{{ states(''input_number.ac_matriz_160_t_off_heat'') | float(eff_t_off_heat | float(22)) }}'
           turn_off_recheck_allowed: '{{ (turn_off_recheck_mode == ''cool'' and (turn_off_recheck_tin | float(0)) <= (turn_off_recheck_t_off_cool | float(24))) or (turn_off_recheck_mode == ''heat'' and (turn_off_recheck_tin | float(0)) >= (turn_off_recheck_t_off_heat | float(22))) }}'
+          fresh_tin: '{{ turn_off_recheck_tin }}'
+          fresh_off_cool: '{{ turn_off_recheck_t_off_cool }}'
+          fresh_on_cool: '{{ turn_off_recheck_t_on_cool }}'
+          fresh_offset_cool: '{{ states(offset_cool_helper_entity) | float(offset_cool_helper | float(0)) }}'
+          fresh_sp_contractual: '{{ [hvac_max_sp|int, [hvac_min_sp|int, (((turn_off_recheck_t_off_cool | float(24)) | round(0, ''floor'') | int) - 1)] | max] | min | int }}'
+          fresh_cool_delta: '{{ ((turn_off_recheck_tin | float(0)) - (turn_off_recheck_t_off_cool | float(24))) | round(2) }}'
+          fresh_fan_internal: '{% if fresh_cool_delta | float(0) >= 2.0 %}high{% elif fresh_cool_delta | float(0) >= 1.0 %}medium{% else %}low{% endif %}'
+          fresh_fan_candidate_label: '{% if fresh_fan_internal == ''low'' %}Low{% elif fresh_fan_internal in [''medium'',''med''] %}Med{% elif fresh_fan_internal == ''high'' %}High{% elif fresh_fan_internal == ''auto'' %}Auto{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{% endif %}'
+          fresh_fan_modes_supported: '{{ (state_attr(''climate.0200009211c7_climate'', ''fan_modes'') or []) | list }}'
+          fresh_fan_target: '{% if fresh_fan_candidate_label in fresh_fan_modes_supported %}{{ fresh_fan_candidate_label }}{% else %}{{ state_attr(''climate.0200009211c7_climate'',''fan_mode'') | string }}{% endif %}'
+          fresh_fan_target_valid: '{{ fresh_fan_target in fresh_fan_modes_supported }}'
+          fresh_turn_off_allowed: '{{ (fresh_tin | float(0)) <= (fresh_off_cool | float(24)) }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ manual_on_protection_active }}'
+          sequence:
+          - data:
+              name: AC-Matriz 160
+              message: hito=turn_off_revalidated_with_fresh_thresholds | trace_id={{
+                auto_origin_trace_id }} | manual_on_candidate={{ manual_on_candidate }} | hold_active={{
+                manual_on_hold_active }} | learning_recent={{ manual_on_learning_recent }} |
+                Tin_fresco={{ fresh_tin }} | OFF_fresco={{ fresh_off_cool }} | ON_fresco={{
+                fresh_on_cool }} | offset_cool_fresco={{ fresh_offset_cool }} | sp_contractual={{
+                fresh_sp_contractual }} | fan_target={{ fresh_fan_target }} | turn_off_allowed={{
+                fresh_turn_off_allowed }}
+              entity_id: climate.0200009211c7_climate
+            action: logbook.log
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ not fresh_turn_off_allowed }}'
+              sequence:
+              - data:
+                  name: AC-Matriz 160
+                  message: hito=turn_off_blocked_before_fan_only_by_manual_on | trace_id={{
+                    auto_origin_trace_id }} | transition={{ climate_trigger_transition }} | Tin={{
+                    fresh_tin }} | OFF_fresco={{ fresh_off_cool }} | hold_active={{ manual_on_hold_active
+                    }} | learning_recent={{ manual_on_learning_recent }} | resultado_terminal=cancelado
+                  entity_id: climate.0200009211c7_climate
+                action: logbook.log
+              - target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  hvac_mode: cool
+                action: climate.set_hvac_mode
+              - target:
+                  entity_id: climate.0200009211c7_climate
+                data:
+                  temperature: '{{ fresh_sp_contractual }}'
+                action: climate.set_temperature
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ fresh_fan_target_valid }}'
+                  sequence:
+                  - target:
+                      entity_id: climate.0200009211c7_climate
+                    data:
+                      fan_mode: '{{ fresh_fan_target }}'
+                    action: climate.set_fan_mode
+              - target:
+                  entity_id: input_text.ac_matriz_160_cancel_auto_turn_off_root
+                data:
+                  value: context_id={{ climate_trigger_context_id }}|parent_id={{ climate_trigger_parent_id }}|transition={{ climate_trigger_transition }}|ts={{ eval_ts }}|tin={{ fresh_tin }}|off_fresco={{ fresh_off_cool }}
+                action: input_text.set_value
+              - data:
+                  name: AC-Matriz 160
+                  message: hito=turn_off_cancelled_by_manual_on_hold | trace_id={{ auto_origin_trace_id
+                    }} | hold_until={{ manual_on_hold_until_raw if manual_on_hold_active else manual_on_hold_new_until
+                    }} | Tin={{ fresh_tin }} | OFF_fresco={{ fresh_off_cool }} | notificacion_apagado=suprimida
+                  entity_id: climate.0200009211c7_climate
+                action: logbook.log
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ manual_on_learning_recent }}'
+                  sequence:
+                  - data:
+                      name: AC-Matriz 160
+                      message: hito=turn_off_cancelled_by_manual_learning | trace_id={{
+                        auto_origin_trace_id }} | learning_ts={{ manual_learning_applied_ts_raw }} | root={{
+                        last_manual_learning_root_raw }} | Tin={{ fresh_tin }} | OFF_fresco={{
+                        fresh_off_cool }}
+                      entity_id: climate.0200009211c7_climate
+                    action: logbook.log
+              - data:
+                  name: AC-Matriz 160
+                  message: hito=cool_restored_after_cancelled_turn_off | trace_id={{
+                    auto_origin_trace_id }} | sp_contractual={{ fresh_sp_contractual }} | fan_target={{
+                    fresh_fan_target }} | fan_target_valid={{ fresh_fan_target_valid }} | razon=manual_on_hold_con_tin_sobre_off_fresco
+                  entity_id: climate.0200009211c7_climate
+                action: logbook.log
+              - stop: turn_off_cancelled_by_manual_on_hold
+            default:
+            - data:
+                name: AC-Matriz 160
+                message: hito=turn_off_allowed_after_fresh_revalidation | trace_id={{
+                  auto_origin_trace_id }} | Tin={{ fresh_tin }} | OFF_fresco={{ fresh_off_cool
+                  }} | manual_on_candidate={{ manual_on_candidate }} | hold_active={{ manual_on_hold_active
+                  }} | learning_recent={{ manual_on_learning_recent }}
+                entity_id: climate.0200009211c7_climate
+              action: logbook.log
       - choose:
         - conditions:
           - condition: template
@@ -2589,6 +2742,37 @@
                   fan_mode: Low
                 action: climate.set_fan_mode
               - delay: 00:02:00
+              - variables:
+                  secondary_fresh_tin: '{{ [states(''sensor.lumi_lumi_weather_cuarto_temperatura'')|float(0), states(''sensor.lumi_lumi_weather_coco_temperatura'')|float(0)] | average | round(2) }}'
+                  secondary_fresh_off_cool: '{{ states(''input_number.ac_matriz_160_t_off_cool'') | float(fresh_off_cool | default(eff_t_off_cool) | float(24)) }}'
+                  secondary_manual_hold_raw: '{{ states(''input_datetime.ac_matriz_160_manual_on_hold_until'') | trim }}'
+                  secondary_manual_hold_ts: '{% if secondary_manual_hold_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(secondary_manual_hold_raw, default=0) }}{% endif %}'
+                  secondary_manual_hold_active: '{{ as_timestamp(now()) < (secondary_manual_hold_ts | float(0)) }}'
+                  secondary_turn_off_allowed: '{{ (secondary_fresh_tin | float(0)) <= (secondary_fresh_off_cool | float(24)) }}'
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ secondary_manual_hold_active and not secondary_turn_off_allowed }}'
+                  sequence:
+                  - target:
+                      entity_id: climate.0200009211c7_climate
+                    data:
+                      hvac_mode: cool
+                    action: climate.set_hvac_mode
+                  - target:
+                      entity_id: climate.0200009211c7_climate
+                    data:
+                      temperature: '{{ fresh_sp_contractual | default(sp_cool_normal) }}'
+                    action: climate.set_temperature
+                  - data:
+                      name: AC-Matriz 160
+                      message: hito=turn_off_cancelled_by_manual_on_hold | trace_id={{
+                        auto_origin_trace_id }} | etapa=defensa_secundaria_pre_turn_off |
+                        hold_until={{ secondary_manual_hold_raw }} | Tin={{ secondary_fresh_tin
+                        }} | OFF_fresco={{ secondary_fresh_off_cool }} | resultado_terminal=cancelado
+                      entity_id: climate.0200009211c7_climate
+                    action: logbook.log
+                  - stop: turn_off_cancelled_by_secondary_manual_on_hold
               - target:
                   entity_id: climate.0200009211c7_climate
                 action: climate.turn_off
@@ -4220,6 +4404,26 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       name: AC-Matriz 160
       message: hito=learning_manual_clasificacion_causal | context_id={{ evento_context_id }} | parent_id={{ evento_parent_id }} | user_id={{ evento_user_id }} | trigger_ts={{ evento_last_changed_iso }} | processing_ts={{ ts_evento }} | causal_root_id={{ evento_causal_root_id }} | firma_causal_evento={{ firma_causal_evento }} | origen_clasificacion={{ origen_clasificacion }} | origen_clasificacion_detallado={{ origen_clasificacion_detallado }} | evento_raiz={{ evento_raiz }} | evento_derivado={{ evento_derivado }} | auto_context_match={{ cadena_auto_context_match }} | auto_parent_match={{ cadena_auto_parent_match }} | auto_root_match={{ cadena_auto_root_match }} | manual_root_match={{ cadena_manual_root_match }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | aprendizaje_aplicado_o_bloqueado={{ aprendizaje_aplicado_o_bloqueado }}
       entity_id: climate.0200009211c7_climate
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.ac_matriz_160_manual_learning_result
+    data:
+      value: resultado={{ resultado_terminal }}|razon={{ razon }}|evento={{ evento_manual_tipo }}|modo={{ modo_aprendizaje }}|root_id={{ evento_causal_root_id }}|ts={{ ts_evento }}
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ resultado_terminal == ''aplicado'' and evento_manual_tipo == ''encendido_manual'' }}'
+      sequence:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_manual_learning_applied_ts
+        data:
+          datetime: '{{ ts_evento }}'
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_last_manual_learning_root
+        data:
+          value: root_id={{ evento_causal_root_id }}|context_id={{ evento_context_id }}|parent_id={{ evento_parent_id }}|evento=encendido_manual|modo={{ modo_aprendizaje }}|col={{ col_idx_resuelto }}|ts={{ ts_evento }}
   - choose:
     - conditions:
       - condition: template

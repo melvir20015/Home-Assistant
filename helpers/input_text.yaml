@@ -61,6 +61,18 @@ ac_matriz_160_cool_sp_adjust_reason:
   initial: sin_ajuste
 
 
+ac_matriz_160_last_manual_learning_root:
+  name: AC Matriz 160 Last Manual Learning Root
+  max: 255
+  initial: sin_root_manual
+ac_matriz_160_cancel_auto_turn_off_root:
+  name: AC Matriz 160 Cancel Auto Turn Off Root
+  max: 255
+  initial: sin_cancelacion
+ac_matriz_160_manual_learning_result:
+  name: AC Matriz 160 Manual Learning Result
+  max: 255
+  initial: sin_resultado
 ac_matriz_160_learning_last_signature:
   name: AC Matriz 160 Learning Last Signature
   max: 255
