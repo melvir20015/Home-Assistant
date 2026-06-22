@@ -85,6 +85,15 @@ ac_matriz_160_learning_manual_causal_signature:
   max: 255
   initial: sin_firma_causal
 
+ac_matriz_160_learning_ignored_last_signature:
+  name: AC Matriz 160 Learning Ignored Last Signature
+  max: 255
+  initial: sin_firma_ignorada
+ac_matriz_160_manual_learning_reconcile_marker:
+  name: AC Matriz 160 Manual Learning Reconcile Marker
+  max: 255
+  initial: sin_reconcile_manual
+
 ac_matriz_160_learning_error_last_signature:
   name: AC Matriz 160 Learning Error Last Signature
   max: 255

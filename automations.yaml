@@ -3615,6 +3615,11 @@ Contexto: Columna {{ col_idx }} ({{ col_humana }})'
       firma_causal_evento: '{{ modo_aprendizaje ~ ''|'' ~ col_idx_resuelto ~ ''|'' ~ evento_causal_root_id ~ ''|'' ~ evento_transition }}'
       auto_chain_context_raw: '{{ states(''input_text.ac_matriz_160_auto_origin_chain_context'') | trim }}'
       manual_causal_signature_raw: '{{ states(''input_text.ac_matriz_160_learning_manual_causal_signature'') | trim }}'
+      manual_reconcile_marker_raw: '{{ states(''input_text.ac_matriz_160_manual_learning_reconcile_marker'') | trim }}'
+      manual_reconcile_marker_active: '{{ ''kind=manual_learning_reconcile_ac_matriz_160'' in manual_reconcile_marker_raw and (''root_id='' ~ evento_causal_root_id) in manual_reconcile_marker_raw and (''expires_at='' in manual_reconcile_marker_raw) and as_timestamp(now()) < as_timestamp((manual_reconcile_marker_raw | regex_findall(''expires_at=([^|]+)'') | first | default(''1970-01-01 00:00:00'', true)), default=0) }}'
+      manual_on_hold_until_raw: '{{ states(''input_datetime.ac_matriz_160_manual_on_hold_until'') | trim }}'
+      manual_on_hold_until_ts: '{% if manual_on_hold_until_raw in [''unknown'',''unavailable'',''none'',''''] %}{{ 0 }}{% else %}{{ as_timestamp(manual_on_hold_until_raw, default=0) }}{% endif %}'
+      manual_on_hold_active: '{{ as_timestamp(now()) < (manual_on_hold_until_ts | float(0)) }}'
       learning_bucket_corto: '{{ (as_timestamp(now()) | int(0) // 15) }}'
       learning_bucket_error_5s: '{{ (as_timestamp(now()) | int(0) // 5) }}'
       firma_evento: '{{ evento_context_id ~ ''|'' ~ evento_last_changed_ts ~ ''|''
@@ -3727,18 +3732,22 @@ Contexto: Columna {{ col_idx }} ({{ col_humana }})'
       cadena_auto_context_match: '{{ evento_context_id|length > 0 and evento_context_id != ''no_context'' and (''context_id='' ~ evento_context_id) in auto_chain_context_raw }}'
       cadena_auto_parent_match: '{{ evento_parent_id|length > 0 and ((''parent_id='' ~ evento_parent_id) in auto_chain_context_raw or (''root_id='' ~ evento_parent_id) in auto_chain_context_raw) }}'
       cadena_auto_root_match: '{{ evento_causal_root_id|length > 0 and evento_causal_root_id != ''no_context'' and (''root_id='' ~ evento_causal_root_id) in auto_chain_context_raw }}'
-      cadena_manual_root_match: '{{ evento_causal_root_id|length > 0 and evento_causal_root_id != ''no_context'' and (''root_id='' ~ evento_causal_root_id) in manual_causal_signature_raw and (''modo='' ~ modo_aprendizaje) in manual_causal_signature_raw and (''col='' ~ (col_idx_resuelto|string)) in manual_causal_signature_raw }}'
+      cadena_manual_root_match: '{{ evento_causal_root_id|length > 0 and evento_causal_root_id != ''no_context'' and (''root_id='' ~ evento_causal_root_id) in manual_causal_signature_raw and (''col='' ~ (col_idx_resuelto|string)) in manual_causal_signature_raw }}'
+      evento_derivado_manual_sin_user: '{{ evento_user_id|length == 0 and (evento_derivado or evento_parent_id|length > 0 or evento_from_parent_id|length > 0) and cadena_manual_root_match }}'
+      causal_dedup_manual_root_block: '{{ evento_derivado_manual_sin_user and (''tipo=encendido_manual_aprendido'' in manual_causal_signature_raw or ''evento=encendido_manual'' in manual_causal_signature_raw) }}'
+      rebote_causal_post_encendido_manual: '{{ evento_manual_tipo == ''apagado_manual'' and causal_dedup_manual_root_block and (manual_on_hold_active or manual_off_rebound_active) }}'
+      reencendido_causal_post_rebote: '{{ evento_manual_tipo == ''encendido_manual'' and causal_dedup_manual_root_block and manual_off_rebound_active }}'
       rebote_causal_post_apagado_manual: '{{ evento_manual_tipo == ''apagado_manual'' and manual_off_rebound_active and cadena_manual_root_match }}'
-      transicion_derivada_auto_aceptada: '{{ cadena_auto_context_match or cadena_auto_parent_match or cadena_auto_root_match }}'
-      origen_clasificacion_detallado: '{% if not transicion_hvac_real %}sin_transicion_real{% elif marker_compatible %}{{ ''apagado_automatico'' if evento_manual_tipo == ''apagado_manual'' else ''encendido_automatico'' if evento_manual_tipo == ''encendido_manual'' else ''transicion_derivada_de_una_orden_automatica'' }}{% elif transicion_derivada_auto_aceptada %}transicion_derivada_de_una_orden_automatica{% elif rebote_causal_post_apagado_manual %}rebote_post_apagado_manual{% elif evento_manual_tipo == ''apagado_manual'' %}apagado_manual_real{% elif evento_manual_tipo == ''encendido_manual'' %}encendido_manual_real{% else %}confirmacion_tardia_del_dispositivo{% endif %}'
+      transicion_derivada_auto_aceptada: '{{ cadena_auto_context_match or cadena_auto_parent_match or cadena_auto_root_match or manual_reconcile_marker_active }}'
+      origen_clasificacion_detallado: '{% if not transicion_hvac_real %}sin_transicion_real{% elif marker_compatible %}{{ ''apagado_automatico'' if evento_manual_tipo == ''apagado_manual'' else ''encendido_automatico'' if evento_manual_tipo == ''encendido_manual'' else ''transicion_derivada_de_una_orden_automatica'' }}{% elif manual_reconcile_marker_active %}manual_reconcile_derived_event{% elif rebote_causal_post_encendido_manual %}rebote_causal_post_encendido_manual{% elif reencendido_causal_post_rebote %}reencendido_causal_post_rebote{% elif causal_dedup_manual_root_block %}derivado_de_encendido_manual{% elif transicion_derivada_auto_aceptada %}transicion_derivada_de_una_orden_automatica{% elif rebote_causal_post_apagado_manual %}rebote_post_apagado_manual{% elif evento_manual_tipo == ''apagado_manual'' %}apagado_manual_real{% elif evento_manual_tipo == ''encendido_manual'' %}encendido_manual_real{% else %}confirmacion_tardia_del_dispositivo{% endif %}'
       aprendizaje_aplicado_o_bloqueado: '{{ ''aplicado'' if origen_clasificacion_detallado in [''apagado_manual_real'',''encendido_manual_real''] and resultado_terminal == ''aplicado'' else ''bloqueado'' }}'
       resultado_terminal: '{% if not transicion_hvac_real %}ignorado {% elif origen_clasificacion
-        == ''automatico_ac_matriz_160'' or origen_clasificacion_detallado in [''transicion_derivada_de_una_orden_automatica'',''cierre_automatico_tardio'',''rebote_post_apagado_manual'',''confirmacion_tardia_del_dispositivo'',''apagado_automatico'',''encendido_automatico''] %}ignorado {% elif not horario_aprendizaje_habilitado
+        == ''automatico_ac_matriz_160'' or origen_clasificacion_detallado in [''transicion_derivada_de_una_orden_automatica'',''manual_reconcile_derived_event'',''rebote_causal_post_encendido_manual'',''reencendido_causal_post_rebote'',''derivado_de_encendido_manual'',''cierre_automatico_tardio'',''rebote_post_apagado_manual'',''confirmacion_tardia_del_dispositivo'',''apagado_automatico'',''encendido_automatico''] %}ignorado {% elif not horario_aprendizaje_habilitado
         %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
         %}ignorado {% elif evento_manual_tipo == ''ignorado'' %}ignorado {% elif not
         dedup_ok %}ignorado {% elif not helper_valido %}error_controlado {% else %}aplicado
         {% endif %}'
-      razon: '{% if not transicion_hvac_real %}evento_no_transicion {% elif origen_clasificacion_detallado == ''transicion_derivada_de_una_orden_automatica'' %}transicion_derivada_de_una_orden_automatica {% elif origen_clasificacion_detallado == ''cierre_automatico_tardio'' %}cierre_automatico_tardio {% elif origen_clasificacion_detallado == ''rebote_post_apagado_manual'' %}rebote_post_apagado_manual {% elif origen_clasificacion_detallado == ''confirmacion_tardia_del_dispositivo'' %}confirmacion_tardia_del_dispositivo {% elif origen_clasificacion
+      razon: '{% if not transicion_hvac_real %}evento_no_transicion {% elif origen_clasificacion_detallado == ''manual_reconcile_derived_event'' %}manual_reconcile_derived_event_ignored {% elif origen_clasificacion_detallado == ''rebote_causal_post_encendido_manual'' %}rebote_causal_post_encendido_manual {% elif origen_clasificacion_detallado == ''reencendido_causal_post_rebote'' %}reencendido_causal_post_rebote {% elif origen_clasificacion_detallado == ''derivado_de_encendido_manual'' %}manual_learning_causal_dedup_blocked {% elif origen_clasificacion_detallado == ''transicion_derivada_de_una_orden_automatica'' %}transicion_derivada_de_una_orden_automatica {% elif origen_clasificacion_detallado == ''cierre_automatico_tardio'' %}cierre_automatico_tardio {% elif origen_clasificacion_detallado == ''rebote_post_apagado_manual'' %}rebote_post_apagado_manual {% elif origen_clasificacion_detallado == ''confirmacion_tardia_del_dispositivo'' %}confirmacion_tardia_del_dispositivo {% elif origen_clasificacion
         == ''automatico_ac_matriz_160'' or origen_clasificacion_detallado in [''apagado_automatico'',''encendido_automatico''] %}origen_automatico_ac_matriz {% elif not
         horario_aprendizaje_habilitado %}out_of_scope_daytime_main {% elif evento_manual_tipo == ''apagado_manual'' and manual_off_rebound_active %}conflicto_post_encendido_manual {% elif evento_manual_tipo
         == ''encendido_manual'' and manual_off_rebound_active %}rebote_post_manual_off
@@ -3876,11 +3885,27 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         and not s24_home and not movimiento_on }}'
       manual_presence_override_trace_id: '{{ marker_trace_id if marker_trace_id|length
         > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts) }}'
-  - service: input_text.set_value
-    target:
-      entity_id: input_text.ac_matriz_160_learning_manual_evento_firma
-    data:
-      value: '{{ firma_learning_manual }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ resultado_terminal == ''aplicado'' }}'
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_learning_manual_evento_firma
+        data:
+          value: '{{ firma_learning_manual }}'
+    default:
+    - service: input_text.set_value
+      target:
+        entity_id: input_text.ac_matriz_160_learning_ignored_last_signature
+      data:
+        value: '{{ firma_learning_manual ~ ''|resultado='' ~ resultado_terminal ~ ''|razon='' ~ razon }}'
+    - service: logbook.log
+      data:
+        name: AC-Matriz 160
+        message: hito=ignored_event_signature_not_persisted | firma={{ firma_learning_manual }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | root_id={{ evento_causal_root_id }}
+        entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
       - condition: template
@@ -4068,7 +4093,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         target:
           entity_id: input_text.ac_matriz_160_learning_manual_causal_signature
         data:
-          value: root_id={{ evento_causal_root_id }}|context_id={{ evento_context_id }}|parent_id={{ evento_parent_id }}|modo={{ modo_aprendizaje }}|col={{ col_idx_resuelto }}|transition={{ evento_transition }}|firma={{ firma_causal_evento }}|ts={{ ts_evento }}|tipo=encendido_manual_aprendido
+          value: root_id={{ evento_causal_root_id }}|evento_causal_root_id={{ evento_causal_root_id }}|context_id={{ evento_context_id }}|parent_id={{ evento_parent_id }}|modo={{ modo_aprendizaje }}|col={{ col_idx_resuelto }}|transition={{ evento_transition }}|firma={{ firma_causal_evento }}|ts={{ ts_evento }}|evento=encendido_manual|tipo=encendido_manual_aprendido
       - service: input_datetime.set_datetime
         target:
           entity_id: input_datetime.ac_matriz_160_manual_off_rebound_until
@@ -4078,7 +4103,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: AC-Matriz 160
-          message: hito=manual_on_learning_short_cycle_guard_set | trace_id={{ trace_id_learning }} | rebound_until={{ (now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S') }} | ttl_s=300 | modo={{ modo_aprendizaje }} | col={{ col_idx_resuelto }} | razon=bloquear_apagado_ambiguo_post_encendido_manual
+          message: hito=manual_learning_root_registered | hito_secundario=manual_on_learning_short_cycle_guard_set | trace_id={{ trace_id_learning }} | rebound_until={{ (now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S') }} | ttl_s=300 | modo={{ modo_aprendizaje }} | col={{ col_idx_resuelto }} | razon=bloquear_apagado_ambiguo_post_encendido_manual
           entity_id: climate.0200009211c7_climate
   - choose:
     - conditions:
@@ -4196,10 +4221,14 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       cadena_auto_context_match: '{{ evento_context_id|length > 0 and evento_context_id != ''no_context'' and (''context_id='' ~ evento_context_id) in auto_chain_context_raw }}'
       cadena_auto_parent_match: '{{ evento_parent_id|length > 0 and ((''parent_id='' ~ evento_parent_id) in auto_chain_context_raw or (''root_id='' ~ evento_parent_id) in auto_chain_context_raw) }}'
       cadena_auto_root_match: '{{ evento_causal_root_id|length > 0 and evento_causal_root_id != ''no_context'' and (''root_id='' ~ evento_causal_root_id) in auto_chain_context_raw }}'
-      cadena_manual_root_match: '{{ evento_causal_root_id|length > 0 and evento_causal_root_id != ''no_context'' and (''root_id='' ~ evento_causal_root_id) in manual_causal_signature_raw and (''modo='' ~ modo_aprendizaje) in manual_causal_signature_raw and (''col='' ~ (col_idx_resuelto|string)) in manual_causal_signature_raw }}'
+      cadena_manual_root_match: '{{ evento_causal_root_id|length > 0 and evento_causal_root_id != ''no_context'' and (''root_id='' ~ evento_causal_root_id) in manual_causal_signature_raw and (''col='' ~ (col_idx_resuelto|string)) in manual_causal_signature_raw }}'
+      evento_derivado_manual_sin_user: '{{ evento_user_id|length == 0 and (evento_derivado or evento_parent_id|length > 0 or evento_from_parent_id|length > 0) and cadena_manual_root_match }}'
+      causal_dedup_manual_root_block: '{{ evento_derivado_manual_sin_user and (''tipo=encendido_manual_aprendido'' in manual_causal_signature_raw or ''evento=encendido_manual'' in manual_causal_signature_raw) }}'
+      rebote_causal_post_encendido_manual: '{{ evento_manual_tipo == ''apagado_manual'' and causal_dedup_manual_root_block and (manual_on_hold_active or manual_off_rebound_active) }}'
+      reencendido_causal_post_rebote: '{{ evento_manual_tipo == ''encendido_manual'' and causal_dedup_manual_root_block and manual_off_rebound_active }}'
       rebote_causal_post_apagado_manual: '{{ evento_manual_tipo == ''apagado_manual'' and manual_off_rebound_active and cadena_manual_root_match }}'
-      transicion_derivada_auto_aceptada: '{{ cadena_auto_context_match or cadena_auto_parent_match or cadena_auto_root_match }}'
-      origen_clasificacion_detallado: '{% if not transicion_hvac_real %}sin_transicion_real{% elif marker_compatible_final %}{{ ''apagado_automatico'' if evento_manual_tipo == ''apagado_manual'' else ''encendido_automatico'' if evento_manual_tipo == ''encendido_manual'' else ''transicion_derivada_de_una_orden_automatica'' }}{% elif marker_turn_off_recent_expired %}cierre_automatico_tardio{% elif transicion_derivada_auto_aceptada %}transicion_derivada_de_una_orden_automatica{% elif rebote_causal_post_apagado_manual %}rebote_post_apagado_manual{% elif evento_manual_tipo == ''apagado_manual'' %}apagado_manual_real{% elif evento_manual_tipo == ''encendido_manual'' %}encendido_manual_real{% else %}confirmacion_tardia_del_dispositivo{% endif %}'
+      transicion_derivada_auto_aceptada: '{{ cadena_auto_context_match or cadena_auto_parent_match or cadena_auto_root_match or manual_reconcile_marker_active }}'
+      origen_clasificacion_detallado: '{% if not transicion_hvac_real %}sin_transicion_real{% elif marker_compatible_final %}{{ ''apagado_automatico'' if evento_manual_tipo == ''apagado_manual'' else ''encendido_automatico'' if evento_manual_tipo == ''encendido_manual'' else ''transicion_derivada_de_una_orden_automatica'' }}{% elif marker_turn_off_recent_expired %}cierre_automatico_tardio{% elif manual_reconcile_marker_active %}manual_reconcile_derived_event{% elif rebote_causal_post_encendido_manual %}rebote_causal_post_encendido_manual{% elif reencendido_causal_post_rebote %}reencendido_causal_post_rebote{% elif causal_dedup_manual_root_block %}derivado_de_encendido_manual{% elif transicion_derivada_auto_aceptada %}transicion_derivada_de_una_orden_automatica{% elif rebote_causal_post_apagado_manual %}rebote_post_apagado_manual{% elif evento_manual_tipo == ''apagado_manual'' %}apagado_manual_real{% elif evento_manual_tipo == ''encendido_manual'' %}encendido_manual_real{% else %}confirmacion_tardia_del_dispositivo{% endif %}'
       aprendizaje_aplicado_o_bloqueado: '{{ ''aplicado'' if origen_clasificacion_detallado in [''apagado_manual_real'',''encendido_manual_real''] and resultado_terminal == ''aplicado'' else ''bloqueado'' }}'
       manual_fan_stuck_case: '{{ transicion_compuesta_inicio_valida and not cierre_compuesto_valido and (origen_clasificacion == ''manual_externo'' or (not marker_compatible_final and not marker_vigente_final)) }}'
       manual_fan_stuck_trace_id: '{{ trace_id_learning if trace_id_learning is defined else (marker_trace_id if marker_trace_id|length > 0 else (evento_context_id ~ ''-'' ~ evento_last_changed_ts)) }}'
@@ -4208,14 +4237,14 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       manual_fan_stuck_cancel_reason: '{% if not manual_fan_stuck_case %}no_aplica {% elif marker_compatible_final or marker_vigente_final %}origen_automatico {% elif legacy_manual_hold_active %}manual_hold_activo {% elif not horario_aprendizaje_habilitado %}fuera_horario {% elif not (s24_home or movimiento_on) %}sin_presencia_efectiva {% elif manual_off_block_active %}manual_off_block_activo {% elif manual_off_rebound_active %}manual_off_rebound_activo {% elif reconcile_target_mode == ''cool'' and cool_block_active %}cool_block_activo {% elif reconcile_target_mode == ''heat'' and heat_block_active %}heat_block_activo {% elif not fan_only_assisted_thermal_ok %}sin_demanda_termica_manual {% elif not reconcile_dedup_ok %}dedup_reconcile {% else %}none{% endif %}'
       manual_fan_stuck_reconcile_eligible: '{{ manual_fan_stuck_requires_reconcile and manual_fan_stuck_cancel_reason == ''none'' }}'
       resultado_terminal: '{% if manual_fan_stuck_case and not manual_fan_stuck_reconcile_eligible %}ignorado {% elif transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}ignorado
-        {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' or origen_clasificacion_detallado in [''transicion_derivada_de_una_orden_automatica'',''cierre_automatico_tardio'',''rebote_post_apagado_manual'',''confirmacion_tardia_del_dispositivo'',''apagado_automatico'',''encendido_automatico''] %}ignorado
+        {% elif not transicion_hvac_real %}ignorado {% elif origen_clasificacion == ''automatico_ac_matriz_160'' or origen_clasificacion_detallado in [''transicion_derivada_de_una_orden_automatica'',''manual_reconcile_derived_event'',''rebote_causal_post_encendido_manual'',''reencendido_causal_post_rebote'',''derivado_de_encendido_manual'',''cierre_automatico_tardio'',''rebote_post_apagado_manual'',''confirmacion_tardia_del_dispositivo'',''apagado_automatico'',''encendido_automatico''] %}ignorado
         {% elif not horario_aprendizaje_habilitado %}ignorado {% elif evento_manual_tipo == ''apagado_manual'' and manual_off_rebound_active %}ignorado {% elif evento_manual_tipo == ''encendido_manual'' and manual_off_rebound_active
         %}ignorado {% elif evento_manual_tipo == ''ignorado'' %}ignorado {% elif not dedup_ok %}ignorado
         {% elif not helper_valido %}error_controlado {% else %}aplicado
         {% endif %}'
       razon: '{% if manual_fan_stuck_case and not manual_fan_stuck_reconcile_eligible %}fan_only_sin_reconciliacion_por_guardas
         {% elif transicion_compuesta_inicio_valida and not cierre_compuesto_valido %}fan_only_sin_cierre_termico_10s
-        {% elif not transicion_hvac_real %}evento_no_transicion {% elif origen_clasificacion_detallado == ''transicion_derivada_de_una_orden_automatica'' %}transicion_derivada_de_una_orden_automatica {% elif origen_clasificacion_detallado == ''cierre_automatico_tardio'' %}cierre_automatico_tardio {% elif origen_clasificacion_detallado == ''rebote_post_apagado_manual'' %}rebote_post_apagado_manual {% elif origen_clasificacion_detallado == ''confirmacion_tardia_del_dispositivo'' %}confirmacion_tardia_del_dispositivo {% elif origen_clasificacion
+        {% elif not transicion_hvac_real %}evento_no_transicion {% elif origen_clasificacion_detallado == ''manual_reconcile_derived_event'' %}manual_reconcile_derived_event_ignored {% elif origen_clasificacion_detallado == ''rebote_causal_post_encendido_manual'' %}rebote_causal_post_encendido_manual {% elif origen_clasificacion_detallado == ''reencendido_causal_post_rebote'' %}reencendido_causal_post_rebote {% elif origen_clasificacion_detallado == ''derivado_de_encendido_manual'' %}manual_learning_causal_dedup_blocked {% elif origen_clasificacion_detallado == ''transicion_derivada_de_una_orden_automatica'' %}transicion_derivada_de_una_orden_automatica {% elif origen_clasificacion_detallado == ''cierre_automatico_tardio'' %}cierre_automatico_tardio {% elif origen_clasificacion_detallado == ''rebote_post_apagado_manual'' %}rebote_post_apagado_manual {% elif origen_clasificacion_detallado == ''confirmacion_tardia_del_dispositivo'' %}confirmacion_tardia_del_dispositivo {% elif origen_clasificacion
         == ''automatico_ac_matriz_160'' or origen_clasificacion_detallado in [''apagado_automatico'',''encendido_automatico''] %}origen_automatico_ac_matriz {% elif not
         horario_aprendizaje_habilitado %}out_of_scope_daytime_main {% elif evento_manual_tipo == ''apagado_manual'' and manual_off_rebound_active %}conflicto_post_encendido_manual {% elif evento_manual_tipo
         == ''encendido_manual'' and manual_off_rebound_active %}rebote_post_manual_off
@@ -4377,6 +4406,27 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
   - choose:
     - conditions:
       - condition: template
+        value_template: '{{ evento_manual_tipo == ''encendido_manual'' and origen_clasificacion == ''manual_externo'' and dedup_ok and resultado_terminal == ''aplicado'' }}'
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ac_matriz_160_learning_manual_causal_signature
+        data:
+          value: root_id={{ evento_causal_root_id }}|evento_causal_root_id={{ evento_causal_root_id }}|context_id={{ evento_context_id }}|parent_id={{ evento_parent_id }}|modo={{ modo_aprendizaje }}|col={{ col_idx_resuelto }}|transition={{ evento_transition }}|firma={{ firma_causal_evento }}|ts={{ ts_evento }}|evento=encendido_manual|tipo=encendido_manual_aprendido|razon={{ razon }}
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_matriz_160_manual_off_rebound_until
+        data:
+          datetime: '{{ (now() + timedelta(minutes=5)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=manual_learning_root_registered | root_id={{ evento_causal_root_id }} | context_id={{ evento_context_id }} | parent_id={{ evento_parent_id }} | transition={{ evento_transition }} | evento={{ evento_manual_tipo }} | modo={{ modo_aprendizaje }} | col={{ col_idx_resuelto }} | ttl_s=300 | razon={{ razon }}
+          entity_id: climate.0200009211c7_climate
+
+  - choose:
+    - conditions:
+      - condition: template
         value_template: '{{ transicion_hvac_real and resultado_terminal == ''ignorado''
           and razon == ''origen_automatico_ac_matriz'' }}'
       sequence:
@@ -4404,6 +4454,34 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       name: AC-Matriz 160
       message: hito=learning_manual_clasificacion_causal | context_id={{ evento_context_id }} | parent_id={{ evento_parent_id }} | user_id={{ evento_user_id }} | trigger_ts={{ evento_last_changed_iso }} | processing_ts={{ ts_evento }} | causal_root_id={{ evento_causal_root_id }} | firma_causal_evento={{ firma_causal_evento }} | origen_clasificacion={{ origen_clasificacion }} | origen_clasificacion_detallado={{ origen_clasificacion_detallado }} | evento_raiz={{ evento_raiz }} | evento_derivado={{ evento_derivado }} | auto_context_match={{ cadena_auto_context_match }} | auto_parent_match={{ cadena_auto_parent_match }} | auto_root_match={{ cadena_auto_root_match }} | manual_root_match={{ cadena_manual_root_match }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }} | aprendizaje_aplicado_o_bloqueado={{ aprendizaje_aplicado_o_bloqueado }}
       entity_id: climate.0200009211c7_climate
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ razon == ''manual_learning_causal_dedup_blocked'' }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=manual_learning_causal_dedup_blocked | root_id={{ evento_causal_root_id }} | context_id={{ evento_context_id }} | parent_id={{ evento_parent_id }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }}
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ razon == ''rebote_causal_post_encendido_manual'' }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=manual_on_hold_blocked_false_off_learning | root_id={{ evento_causal_root_id }} | context_id={{ evento_context_id }} | parent_id={{ evento_parent_id }} | manual_on_hold_active={{ manual_on_hold_active }} | manual_off_rebound_active={{ manual_off_rebound_active }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }}
+          entity_id: climate.0200009211c7_climate
+    - conditions:
+      - condition: template
+        value_template: '{{ razon == ''manual_reconcile_derived_event_ignored'' }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC-Matriz 160
+          message: hito=manual_reconcile_derived_event_ignored | root_id={{ evento_causal_root_id }} | context_id={{ evento_context_id }} | parent_id={{ evento_parent_id }} | marker={{ manual_reconcile_marker_raw }} | from={{ modo_anterior }} | to={{ modo_nuevo }} | resultado_terminal={{ resultado_terminal }} | razon={{ razon }}
+          entity_id: climate.0200009211c7_climate
   - service: input_text.set_value
     target:
       entity_id: input_text.ac_matriz_160_manual_learning_result
@@ -4540,6 +4618,16 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           - condition: template
             value_template: '{{ post_learning_apply }}'
           sequence:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.ac_matriz_160_manual_learning_reconcile_marker
+            data:
+              value: kind=manual_learning_reconcile_ac_matriz_160|root_id={{ evento_causal_root_id }}|context_id={{ evento_context_id }}|expected_transition={{ post_learning_current_mode }}->{{ post_learning_target_mode }}|expires_at={{ (now() + timedelta(seconds=60)).strftime('%Y-%m-%d %H:%M:%S') }}
+          - service: logbook.log
+            data:
+              name: AC-Matriz 160
+              message: hito=manual_reconcile_marker_created | root_id={{ evento_causal_root_id }} | context_id={{ evento_context_id }} | expected_transition={{ post_learning_current_mode }}->{{ post_learning_target_mode }} | expires_at={{ (now() + timedelta(seconds=60)).strftime('%Y-%m-%d %H:%M:%S') }}
+              entity_id: climate.0200009211c7_climate
           - choose:
             - conditions:
               - condition: template
@@ -4616,7 +4704,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ dedup_ok and evento_estable }}'
+        value_template: '{{ dedup_ok and evento_estable and resultado_terminal == ''aplicado'' }}'
       sequence:
       - service: input_text.set_value
         target:
