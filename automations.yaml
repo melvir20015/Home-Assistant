@@ -1172,6 +1172,7 @@
       col_formula: weather_idx*20+season_idx*5+slot_idx+1
       season_index_schema: Primavera=0,Verano=1,Otoño=2,Invierno=3
       col_humana: '{{ weather_cat }} | {{ season_name }} | Horario {{ slot_name }}'
+      contexto_key: '{{ col_idx }}|{{ weather_cat }}|{{ season_name }}|{{ slot_name }}'
       contexto_firma: '{{ weather_cat }}|{{ season_name }}|{{ slot_name }}|{{ eval_ts
         }}'
       invalid_data: '{{ tin is none or hin is none or tout is none }}'
@@ -1344,6 +1345,8 @@
       manual_off_trigger_immediate_block_until: '{{ (now() + timedelta(minutes=5)).strftime(''%Y-%m-%d %H:%M:%S'') }}'
       helper_firma: '{{ states(''input_text.ac_matriz_160_contexto_firma_activa'')
         | trim }}'
+      helper_contexto_key: '{{ states(''input_text.ac_matriz_160_contexto_key_activa'')
+        | trim }}'
       helper_off_cool_raw: '{{ states(''input_number.ac_matriz_160_t_off_cool'') }}'
       helper_on_cool_raw: '{{ states(''input_number.ac_matriz_160_t_on_cool'') }}'
       helper_off_heat_raw: '{{ states(''input_number.ac_matriz_160_t_off_heat'') }}'
@@ -1356,7 +1359,8 @@
       helper_on_cool: '{{ helper_on_cool_raw | float(none) }}'
       helper_off_heat: '{{ helper_off_heat_raw | float(none) }}'
       helper_on_heat: '{{ helper_on_heat_raw | float(none) }}'
-      firma_match: '{{ helper_firma == contexto_firma }}'
+      contexto_key_match: '{{ helper_contexto_key == contexto_key }}'
+      firma_match: '{{ contexto_key_match }}'
       rango_ok: '{{ helper_off_cool is not none and helper_on_cool is not none and
         helper_off_heat is not none and helper_on_heat is not none and (thermal_boundary_by_season|float(22))
         <= helper_off_cool <= 26 and 17 <= helper_off_heat <= (thermal_boundary_by_season|float(22))
@@ -1495,7 +1499,7 @@
         %}sin_cambio_requerido {% elif not fan_change_window_effective_ok %}bloqueado_por_ventana
         {% else %}ok {% endif %}'
       validation_reason: '{% if helper_invalid_state %}recalculado_helper_no_disponible{%
-        elif not firma_match %}contexto_recalculado_por_cambio_columna{% elif not
+        elif not contexto_key_match %}recalculado_por_cambio_contexto{% elif not
         rango_ok %}recalculado_rango_contractual_invalido{% elif not histeresis_ok
         %}recalculado_histeresis_invalida{% else %}ok_lectura_helper_valida{% endif
         %}'
@@ -1619,6 +1623,11 @@
       entity_id: input_text.ac_matriz_160_contexto_firma_activa
     data:
       value: '{{ contexto_firma }}'
+    action: input_text.set_value
+  - target:
+      entity_id: input_text.ac_matriz_160_contexto_key_activa
+    data:
+      value: '{{ contexto_key }}'
     action: input_text.set_value
   - target:
       entity_id: input_text.ac_matriz_160_columna_activa_humana
@@ -1779,8 +1788,8 @@
         action: logbook.log
   - data:
       name: AC-Matriz 160
-      message: hito=evaluacion | col={{ col_idx }} | col_helper_previo={{ col_idx_helper_previo }} | helper_desfasado={{ col_idx_helper_desfasado }} | formula={{ col_formula }} | esquema_temporada={{ season_index_schema }} | season={{ season_name }} | season_idx={{ season_idx }} | weather={{ weather_cat }} | weather_idx={{ weather_idx }} | slot={{ slot_name }} | slot_idx={{ slot_idx }} | contexto={{ col_humana }} | contexto_helper_previo={{ col_humana_helper_previa }} | offset_cool_helper_entity={{ offset_cool_helper_entity }} | offset_heat_helper_entity={{ offset_heat_helper_entity }} | firma={{
-        contexto_firma }} | presencia_real={{ presence_ok }}({{ presence_origin }})
+      message: hito=evaluacion | col={{ col_idx }} | col_helper_previo={{ col_idx_helper_previo }} | helper_desfasado={{ col_idx_helper_desfasado }} | formula={{ col_formula }} | esquema_temporada={{ season_index_schema }} | season={{ season_name }} | season_idx={{ season_idx }} | weather={{ weather_cat }} | weather_idx={{ weather_idx }} | slot={{ slot_name }} | slot_idx={{ slot_idx }} | contexto={{ col_humana }} | contexto_helper_previo={{ col_humana_helper_previa }} | offset_cool_helper_entity={{ offset_cool_helper_entity }} | offset_heat_helper_entity={{ offset_heat_helper_entity }} | contexto_key={{ contexto_key }} | helper_contexto_key={{ helper_contexto_key }} | contexto_key_match={{ contexto_key_match }} | firma={{
+        contexto_firma }} | helper_firma={{ helper_firma }} | presencia_real={{ presence_ok }}({{ presence_origin }})
         | override_activo={{ manual_presence_override_active }} | override_until={{
         manual_presence_override_until_raw }} | presencia_efectiva={{ presence_ok_effective
         }} | llegada_turbo={{ turbo_arrival_real_eligible }} | llegada_razon={{ turbo_arrival_block_reason
