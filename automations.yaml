@@ -4980,6 +4980,8 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       matrix_trigger_to: "{{ trigger.to_state.state | default('unknown') if trigger is defined and trigger.platform == 'state' and trigger.to_state is defined and trigger.to_state is not none else 'unknown' }}"
       matrix_trigger_user_id: "{{ trigger.to_state.context.user_id | default('', true) if trigger is defined and trigger.platform == 'state' and trigger.to_state is defined and trigger.to_state is not none and trigger.to_state.context is defined else '' }}"
       matrix_trigger_transition: "{{ matrix_trigger_from }}->{{ matrix_trigger_to }}"
+      manual_off_event_now: "{{ trigger_entity == climate_ent and matrix_trigger_transition in ['cool->off','heat->off'] and matrix_trigger_user_id not in ['', 'none', 'unknown', 'unavailable'] }}"
+      manual_off_local_block_until: "{{ (now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S') }}"
       manual_on_climate_trigger: "{{ trigger_entity == climate_ent and matrix_trigger_from == 'off' and matrix_trigger_to == 'cool' and matrix_trigger_user_id not in ['', 'none', 'unknown', 'unavailable'] }}"
       manual_on_block_until_raw: "{{ states('input_datetime.ac_night_manual_on_block_auto_off_until') }}"
       manual_on_block_until_ts: "{{ as_timestamp(manual_on_block_until_raw, 0) }}"
@@ -4994,9 +4996,27 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       manual_off_block_until_raw: "{{ states('input_datetime.ac_night_manual_off_block_until') }}"
       manual_off_block_until_ts: "{{ as_timestamp(manual_off_block_until_raw, 0) }}"
       manual_off_block_active: "{{ as_timestamp(now()) | float(0) < (manual_off_block_until_ts | float(0)) }}"
+      manual_off_block_effective: "{{ manual_off_block_active or manual_off_event_now }}"
   - service: input_text.set_value
     target: {entity_id: input_text.ac_night_contexto_firma_activa}
     data: {value: "{{ estacion ~ '|' ~ franja ~ '|' ~ weather_state }}"}
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ manual_off_event_now }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_manual_off_event_detected_in_matrix | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity }} | transition={{ matrix_trigger_transition }} | user_id={{ matrix_trigger_user_id }} | tin={{ tin }} | off_cool={{ off_cool }} | on_cool={{ on_cool }} | resultado_terminal=detected"
+      - service: input_datetime.set_datetime
+        target: {entity_id: input_datetime.ac_night_manual_off_block_until}
+        data: {datetime: "{{ manual_off_local_block_until }}"}
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_manual_off_local_guard_set | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity }} | transition={{ matrix_trigger_transition }} | user_id={{ matrix_trigger_user_id }} | block_until={{ manual_off_local_block_until }} | resultado_terminal=blocked_manual_off_race_guard"
+      - stop: "blocked_manual_off_race_guard"
   - choose:
     - conditions:
       - condition: template
@@ -5048,6 +5068,43 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
         data:
           name: AC Night
           message: "hito=night_hot_learning_recalc_triggered | trace_id={{ context.id|default('na') }} | payload={{ hot_learning_recalc_payload }} | col_idx={{ col_idx }} | off_cool={{ off_cool }} | on_cool={{ on_cool }} | sp_cool_target={{ sp_cool_target }} | off_heat={{ off_heat }} | on_heat={{ on_heat }} | sp_heat_target={{ sp_heat_target }} | resultado_terminal=hot_recalc_triggered"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ hot_learning_recalc_requested and hot_learning_recalc_col == (col_idx | string) and hvac_mode == 'cool' }}"
+      sequence:
+      - variables:
+          sp_contractual: "{{ sp_cool_target | int }}"
+          sp_solicitado: "{{ sp_cool_target | int }}"
+          sp_reportado_antes: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ sp_reportado_antes is none or (sp_reportado_antes | float) != (sp_solicitado | float) }}"
+          sequence:
+          - service: climate.set_temperature
+            target: {entity_id: "{{ climate_ent }}"}
+            data: {temperature: "{{ sp_solicitado }}"}
+          - delay: "00:00:03"
+      - variables:
+          sp_reportado_despues: "{{ state_attr(climate_ent, 'temperature') | float(none) }}"
+          sp_confirmado: "{{ sp_reportado_despues is not none and (sp_reportado_despues | float) == (sp_solicitado | float) }}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ night_resync_fan_needed }}"
+          sequence:
+          - service: climate.set_fan_mode
+            target: {entity_id: "{{ climate_ent }}"}
+            data: {fan_mode: "{{ humidity_fan_target }}"}
+      - service: input_text.set_value
+        target: {entity_id: input_text.ac_night_cool_cycle_signature}
+        data: {value: "{{ night_contract_signature }}"}
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_contract_resynced_after_learning | trace_id={{ context.id|default('na') }} | payload={{ hot_learning_recalc_payload }} | col_idx={{ col_idx }} | offset_current={{ states('input_number.ac_night_offset_cool_col_' ~ col_idx)|float(0) }} | sp_before={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_target={{ sp_solicitado }} | sp_after={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | off_cool={{ off_cool }} | on_cool={{ on_cool }} | manual_off_block_active={{ manual_off_block_active }} | fan_resync={{ night_resync_fan_needed }} | resultado_terminal={{ 'resynced' if sp_confirmado else 'sp_no_confirmado' }}"
+      - stop: "hot_learning_recalc_contract_resync_completed"
   - choose:
     - conditions:
       - condition: template
@@ -5112,7 +5169,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           message: "hito=manual_on_auto_off_blocked | trace_id={{ context.id|default('na') }} | motivo=manual_on_grace_window | transition={{ matrix_trigger_transition }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | user_id={{ matrix_trigger_user_id if matrix_trigger_user_id not in ['', 'none', 'unknown', 'unavailable'] else 'none' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool_old={{ off_cool }} | on_cool_old={{ on_cool }} | off_cool_after_anchor=pendiente_recalculo | block_until={{ manual_on_block_until_effective }} | manual_on_climate_trigger={{ manual_on_climate_trigger }} | manual_on_block_until_raw={{ manual_on_block_until_raw }} | resultado_terminal=no_auto_off_after_manual_on"
     - conditions:
       - condition: template
-        value_template: "{{ normal_off_ready and presencia_ok and not manual_on_block_active and muggy_guard_active and not muggy_guard_force_release }}"
+        value_template: "{{ normal_off_ready and presencia_ok and not manual_on_block_active and muggy_guard_active and not muggy_guard_force_release and not (night_resync_sp_needed or night_resync_fan_needed) }}"
       sequence:
       - service: logbook.log
         data:
@@ -5447,15 +5504,15 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           message: "hito=night_auto_off_notified | trace_id={{ context.id|default('na') }} | modo=heat | col_idx={{ col_idx }} | resultado_terminal=turn_off"
     - conditions:
       - condition: template
-        value_template: "{{ hvac_mode != 'cool' and tin >= on_cool and presencia_ok and manual_off_block_active }}"
+        value_template: "{{ hvac_mode != 'cool' and tin >= on_cool and presencia_ok and manual_off_block_effective }}"
       sequence:
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_auto_on_cool_bloqueado_post_manual_off | trace_id={{ context.id|default('na') }} | modo={{ hvac_mode }} | col_idx={{ col_idx }} | Tin={{ tin }} | on_cool={{ on_cool }} | block_until={{ manual_off_block_until_raw }} | now_ts={{ as_timestamp(now()) | int }} | presencia_ok={{ presencia_ok }} | resultado_terminal=blocked | razon=manual_off_block_activo"
+          message: "hito=night_auto_on_blocked_by_manual_off | trace_id={{ context.id|default('na') }} | modo={{ hvac_mode }} | col_idx={{ col_idx }} | Tin={{ tin }} | on_cool={{ on_cool }} | block_until={{ manual_off_block_until_raw }} | now_ts={{ as_timestamp(now()) | int }} | presencia_ok={{ presencia_ok }} | manual_off_block_active={{ manual_off_block_active }} | manual_off_event_now={{ manual_off_event_now }} | resultado_terminal=blocked | razon=manual_off_block_effective"
     - conditions:
       - condition: template
-        value_template: "{{ hvac_mode != 'cool' and tin >= on_cool and presencia_ok and not manual_off_block_active }}"
+        value_template: "{{ hvac_mode != 'cool' and tin >= on_cool and presencia_ok and not manual_off_block_effective }}"
       sequence:
       - variables:
           sp_contractual: "{{ sp_cool_target | int }}"
@@ -5464,6 +5521,10 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           sp_reportado_equipo: "{{ sp_reportado_antes }}"
           sp_confirmado_ok: "{{ sp_reportado_equipo is not none and (sp_reportado_equipo | float) == (sp_objetivo | float) }}"
           sp_intento: 0
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_thresholds_recomputed_before_auto_on | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | offset_current={{ states('input_number.ac_night_offset_cool_col_' ~ col_idx)|float(0) }} | off_cool={{ off_cool }} | on_cool={{ on_cool }} | sp_cool_target={{ sp_cool_target }} | night_contract_signature={{ night_contract_signature }} | resultado_terminal=recomputed"
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
         data:
@@ -5538,14 +5599,22 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: notify.mobile_app_samsung_s24
         data:
           title: AC-Matriz Nocturna
-          message: "{{ now().strftime('%I:%M:%S %p') }} — Frío encendido auto\n\nInterior: {{ tin }} °C\n\nHumedad interior: {{ hin }} %\n\nExterior: {{ tout }} °C\n\nAjuste de temp.: {{ sp_objetivo }} °C\n\nUmbral de apagado: {{ off_cool }} °C\n\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
+          message: "{{ now().strftime('%I:%M:%S %p') }} — Frío encendido auto\n\nInterior: {{ tin }} °C\n\nHumedad interior: {{ hin }} %\n\nExterior: {{ tout }} °C\n\nAjuste de temp.: {{ sp_objetivo }} °C\n\nUmbral de apagado: {{ off_cool }} °C\n\nUmbral de encendido: {{ on_cool }} °C\n\nContexto: Columna {{ col_idx }} ({{ weather_label_es }} | {{ estacion_label }} | Horario {{ franja_label }})"
       - service: logbook.log
         data:
           name: AC Night
           message: "hito=night_auto_on_notified | trace_id={{ context.id|default('na') }} | modo=cool | col_idx={{ col_idx }} | bochorno_score={{ bochorno_score }} | hysteresis_eff={{ hysteresis_eff }} | comfort={{ night_comfort_pressure }} | dew={{ dew_point_night }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }} | on_cool_cap_night_dynamic={{ on_cool_cap_night_dynamic }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_objetivo }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_equipo if sp_reportado_equipo is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado_ok }} | sp_efectivo={{ sp_reportado_equipo if sp_confirmado_ok else 'none' }} | resultado_terminal={{ 'turn_on_cool' if sp_confirmado_ok else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
-        value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok }}"
+        value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok and manual_off_block_effective }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: AC Night
+          message: "hito=night_auto_on_blocked_by_manual_off | trace_id={{ context.id|default('na') }} | modo={{ hvac_mode }} | col_idx={{ col_idx }} | tin={{ tin }} | on_heat={{ on_heat }} | off_heat={{ off_heat }} | manual_off_block_active={{ manual_off_block_active }} | manual_off_event_now={{ manual_off_event_now }} | resultado_terminal=blocked"
+    - conditions:
+      - condition: template
+        value_template: "{{ hvac_mode != 'heat' and tin <= on_heat and presencia_ok and not manual_off_block_effective }}"
       sequence:
       - service: input_text.set_value
         target: {entity_id: input_text.ac_night_auto_origin_payload}
