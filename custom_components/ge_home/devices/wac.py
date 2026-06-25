@@ -17,6 +17,12 @@ class WacApi(ApplianceApi):
     def get_all_entities(self) -> List[Entity]:
         base_entities = super().get_all_entities()
 
+        demand_response_state_erd = getattr(
+            ErdCode,
+            "WAC_DEMAND_RESPONSE_STATE",
+            getattr(ErdCode, "RESOURCE_DEMAND_RESPONSE_STATE", None),
+        )
+
         wac_entities = [
             GeWacClimate(self),
             GeErdSensor(self, ErdCode.AC_TARGET_TEMPERATURE),
@@ -25,9 +31,17 @@ class WacApi(ApplianceApi):
             GeErdSensor(self, ErdCode.AC_OPERATION_MODE),
             GeErdSwitch(self, ErdCode.AC_POWER_STATUS, bool_converter=ErdOnOffBoolConverter(), icon_on_override="mdi:power-on", icon_off_override="mdi:power-off"),
             GeErdBinarySensor(self, ErdCode.AC_FILTER_STATUS, device_class_override="problem"),
-            GeErdSensor(self, ErdCode.WAC_DEMAND_RESPONSE_STATE),
             GeErdSensor(self, ErdCode.WAC_DEMAND_RESPONSE_POWER, uom_override="kW"),
         ]
+
+        if demand_response_state_erd is not None:
+            wac_entities.append(GeErdSensor(self, demand_response_state_erd))
+        else:
+            _LOGGER.warning(
+                "Demand response state sensor is unavailable because neither "
+                "ErdCode.WAC_DEMAND_RESPONSE_STATE nor "
+                "ErdCode.RESOURCE_DEMAND_RESPONSE_STATE exists in gehomesdk"
+            )
         entities = base_entities + wac_entities
         return entities
         
