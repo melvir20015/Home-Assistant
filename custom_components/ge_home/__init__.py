@@ -14,30 +14,10 @@ from .update_coordinator import GeHomeUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
-REQUIRED_GEHOMESDK_VERSION = "2026.5.4"
-MISSING_COOK_ACTION_MSG = (
-    "gehomesdk instalado no incluye CookAction. "
-    f"Instale gehomesdk=={REQUIRED_GEHOMESDK_VERSION} para compatibilidad con Advantium."
-)
-
-
 async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
 
-def _validate_advantium_support() -> bool:
-    """Verifica que gehomesdk tenga soporte para CookAction."""
-    try:
-        from gehomesdk.erd.values.advantium import advantium_enums
-    except Exception:
-        _LOGGER.error(MISSING_COOK_ACTION_MSG)
-        return False
-
-    if not hasattr(advantium_enums, "CookAction"):
-        _LOGGER.error(MISSING_COOK_ACTION_MSG)
-        return False
-
-    return True
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Migrate old entry."""
@@ -59,9 +39,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up ge_home from a config entry."""
     hass.data.setdefault(DOMAIN, {})
-
-    if not _validate_advantium_support():
-        return False
 
     #try to get existing coordinator
     existing: GeHomeUpdateCoordinator = dict.get(hass.data[DOMAIN],entry.entry_id)

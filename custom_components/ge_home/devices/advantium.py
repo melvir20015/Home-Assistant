@@ -5,7 +5,12 @@ from homeassistant.helpers.entity import Entity
 from gehomesdk.erd import ErdCode, ErdApplianceType, ErdDataType
 
 from .base import ApplianceApi
-from ..entities import GeAdvantium, GeErdSensor, GeErdBinarySensor, GeErdPropertySensor, GeErdPropertyBinarySensor, UPPER_OVEN
+from ..entities import GeErdSensor, GeErdBinarySensor, GeErdPropertySensor, GeErdPropertyBinarySensor, UPPER_OVEN
+from ..entities.advantium.ge_advantium import (
+    GeAdvantium,
+    SUPPORTS_COOK_ACTION,
+    warn_missing_cook_action_once,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +37,6 @@ class AdvantiumApi(ApplianceApi):
             GeErdSensor(self, ErdCode.UPPER_OVEN_DISPLAY_TEMPERATURE, self._single_name(ErdCode.UPPER_OVEN_DISPLAY_TEMPERATURE)),
             GeErdSensor(self, ErdCode.ADVANTIUM_KITCHEN_TIME_REMAINING),
             GeErdSensor(self, ErdCode.ADVANTIUM_COOK_TIME_REMAINING),
-            GeAdvantium(self),
 
             #Cook Status
             GeErdPropertySensor(self, ErdCode.ADVANTIUM_COOK_STATUS, "cook_mode"),
@@ -46,6 +50,11 @@ class AdvantiumApi(ApplianceApi):
             GeErdPropertyBinarySensor(self, ErdCode.ADVANTIUM_COOK_STATUS, "cooling_fan_status", icon_on_override="mdi:fan", icon_off_override="mdi:fan-off"),
             GeErdPropertyBinarySensor(self, ErdCode.ADVANTIUM_COOK_STATUS, "oven_light_status", icon_on_override="mdi:lightbulb-on", icon_off_override="mdi:lightbulb-off"),
         ]
+        if SUPPORTS_COOK_ACTION:
+            advantium_entities.append(GeAdvantium(self))
+        else:
+            warn_missing_cook_action_once()
+
         entities = base_entities + advantium_entities
         return entities
 

@@ -13,7 +13,10 @@ from gehomesdk import (
     ErdAdvantiumRemoteCookModeConfig,
     ADVANTIUM_OPERATION_MODE_COOK_SETTING_MAPPING
 )
-from gehomesdk.erd.values.advantium import advantium_enums
+try:
+    from gehomesdk.erd.values.advantium import advantium_enums
+except ImportError:
+    advantium_enums = None
 
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import ATTR_TEMPERATURE
@@ -26,12 +29,24 @@ _LOGGER = logging.getLogger(__name__)
 
 CookAction = getattr(advantium_enums, "CookAction", None)
 CookMode = getattr(advantium_enums, "CookMode", None)
+SUPPORTS_COOK_ACTION = CookAction is not None
+_MISSING_COOK_ACTION_WARNING = (
+    "CookAction no disponible en gehomesdk; soporte Advantium avanzado "
+    "deshabilitado, continuando con el resto de GE Home."
+)
+_missing_cook_action_warned = False
+
+
+def warn_missing_cook_action_once() -> None:
+    """Log a non-fatal warning when advanced Advantium support is unavailable."""
+    global _missing_cook_action_warned
+    if not _missing_cook_action_warned:
+        _LOGGER.warning(_MISSING_COOK_ACTION_WARNING)
+        _missing_cook_action_warned = True
+
 
 if CookAction is None:
-    _LOGGER.error(
-        "gehomesdk instalado no incluye CookAction. "
-        "Instale gehomesdk==2026.5.4 para compatibilidad con Advantium."
-    )
+    warn_missing_cook_action_once()
 
 class GeAdvantium(GeAbstractWaterHeater):
     """GE Appliance Advantium"""
@@ -178,6 +193,9 @@ class GeAdvantium(GeAbstractWaterHeater):
 
     async def async_set_operation_mode(self, operation_mode: str):
         """Set the operation mode."""
+        if CookAction is None:
+            warn_missing_cook_action_once()
+            return
 
         #try to get the mode/setting for the selection
         try:
@@ -221,6 +239,9 @@ class GeAdvantium(GeAbstractWaterHeater):
 
     async def async_set_temperature(self, **kwargs):
         """Set the cook temperature"""
+        if CookAction is None:
+            warn_missing_cook_action_once()
+            return
 
         target_temp = kwargs.get(ATTR_TEMPERATURE)
         if target_temp is None:
