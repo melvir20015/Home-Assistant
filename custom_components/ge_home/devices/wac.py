@@ -10,18 +10,26 @@ from ..entities import GeWacClimate, GeErdSensor, GeErdBinarySensor, GeErdSwitch
 _LOGGER = logging.getLogger(__name__)
 
 
+def _get_optional_erd(*erd_names: str):
+    for erd_name in erd_names:
+        erd = getattr(ErdCode, erd_name, None)
+        if erd is not None:
+            return erd
+
+    _LOGGER.warning(
+        "ERD WAC demand response no disponible en gehomesdk; "
+        "omitiendo sensor opcional y continuando con el A/C. ERD buscados: %s",
+        ", ".join(erd_names),
+    )
+    return None
+
+
 class WacApi(ApplianceApi):
     """API class for Window AC objects"""
     APPLIANCE_TYPE = ErdApplianceType.AIR_CONDITIONER
 
     def get_all_entities(self) -> List[Entity]:
         base_entities = super().get_all_entities()
-
-        demand_response_state_erd = getattr(
-            ErdCode,
-            "WAC_DEMAND_RESPONSE_STATE",
-            getattr(ErdCode, "RESOURCE_DEMAND_RESPONSE_STATE", None),
-        )
 
         wac_entities = [
             GeWacClimate(self),
@@ -31,17 +39,17 @@ class WacApi(ApplianceApi):
             GeErdSensor(self, ErdCode.AC_OPERATION_MODE),
             GeErdSwitch(self, ErdCode.AC_POWER_STATUS, bool_converter=ErdOnOffBoolConverter(), icon_on_override="mdi:power-on", icon_off_override="mdi:power-off"),
             GeErdBinarySensor(self, ErdCode.AC_FILTER_STATUS, device_class_override="problem"),
-            GeErdSensor(self, ErdCode.WAC_DEMAND_RESPONSE_POWER, uom_override="kW"),
         ]
 
-        if demand_response_state_erd is not None:
-            wac_entities.append(GeErdSensor(self, demand_response_state_erd))
-        else:
-            _LOGGER.warning(
-                "Demand response state sensor is unavailable because neither "
-                "ErdCode.WAC_DEMAND_RESPONSE_STATE nor "
-                "ErdCode.RESOURCE_DEMAND_RESPONSE_STATE exists in gehomesdk"
-            )
+        demand_response_sensors = [
+            (("WAC_DEMAND_RESPONSE_STATE", "RESOURCE_DEMAND_RESPONSE_STATE"), {}),
+            (("WAC_DEMAND_RESPONSE_POWER",), {"uom_override": "kW"}),
+        ]
+
+        for erd_names, sensor_kwargs in demand_response_sensors:
+            demand_response_erd = _get_optional_erd(*erd_names)
+            if demand_response_erd is not None:
+                wac_entities.append(GeErdSensor(self, demand_response_erd, **sensor_kwargs))
+
         entities = base_entities + wac_entities
         return entities
-        
