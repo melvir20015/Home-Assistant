@@ -30,7 +30,7 @@ CookMode = getattr(advantium_enums, "CookMode", None)
 if CookAction is None:
     _LOGGER.error(
         "gehomesdk instalado no incluye CookAction. "
-        "Instale gehomesdk==2025.11.0 para compatibilidad con Advantium."
+        "Instale gehomesdk==2026.5.4 para compatibilidad con Advantium."
     )
 
 class GeAdvantium(GeAbstractWaterHeater):

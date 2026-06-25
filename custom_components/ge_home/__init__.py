@@ -14,7 +14,7 @@ from .update_coordinator import GeHomeUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({})}, extra=vol.ALLOW_EXTRA)
-REQUIRED_GEHOMESDK_VERSION = "2025.11.0"
+REQUIRED_GEHOMESDK_VERSION = "2026.5.4"
 MISSING_COOK_ACTION_MSG = (
     "gehomesdk instalado no incluye CookAction. "
     f"Instale gehomesdk=={REQUIRED_GEHOMESDK_VERSION} para compatibilidad con Advantium."
