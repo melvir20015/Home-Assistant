@@ -22,17 +22,28 @@ class GeErdSensor(GeErdEntity, SensorEntity):
         device_class_override: str = None,
         state_class_override: str = None,
         uom_override: str = None,
-        data_type_override: ErdDataType = None
+        data_type_override: ErdDataType = None,
+        value_attr: str = None,
+        value_scale: float = 1.0,
+        register_without_property_cache: bool = False
     ):
         super().__init__(api, erd_code, erd_override, icon_override, device_class_override)
         self._uom_override = uom_override
         self._state_class_override = state_class_override
         self._data_type_override = data_type_override
+        self._value_attr = value_attr
+        self._value_scale = value_scale
+        self._register_without_property_cache = register_without_property_cache
 
     @property
     def native_value(self):
         try:
             value = self.appliance.get_erd_value(self.erd_code)
+            if self._value_attr is not None:
+                value = getattr(value, self._value_attr, None)
+                if value is None:
+                    return None
+                return value * self._value_scale
 
             # if it's a numeric data type, return it directly            
             if self._data_type in [ErdDataType.INT, ErdDataType.FLOAT]:
@@ -48,6 +59,10 @@ class GeErdSensor(GeErdEntity, SensorEntity):
     @property
     def native_unit_of_measurement(self) -> Optional[str]:
         return self._get_uom()
+
+    @property
+    def register_without_property_cache(self) -> bool:
+        return self._register_without_property_cache
 
     @property
     def state_class(self) -> Optional[str]:

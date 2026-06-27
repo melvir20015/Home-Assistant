@@ -44,6 +44,16 @@ class WacApi(ApplianceApi):
         demand_response_sensors = [
             (("WAC_DEMAND_RESPONSE_STATE", "RESOURCE_DEMAND_RESPONSE_STATE"), {}),
             (("WAC_DEMAND_RESPONSE_POWER",), {"uom_override": "kW"}),
+            (
+                ("RESOURCE_DSM_POWER_USAGE",),
+                {
+                    "erd_override": "WAC_DEMAND_RESPONSE_POWER",
+                    "uom_override": "kW",
+                    "value_attr": "instantaneous_power_w",
+                    "value_scale": 0.001,
+                    "register_without_property_cache": True,
+                },
+            ),
         ]
 
         for erd_names, sensor_kwargs in demand_response_sensors:
