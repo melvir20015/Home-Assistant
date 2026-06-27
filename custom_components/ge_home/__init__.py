@@ -47,11 +47,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     # try to unload the existing coordinator
-    try:
-        if existing:
-            await coordinator.async_reset()
-    except:
-        _LOGGER.warning("Could not reset existing coordinator.")
+    if existing:
+        try:
+            await existing.async_reset()
+        except Exception:
+            _LOGGER.warning("Could not reset existing coordinator.", exc_info=True)
     
     try:
         if not await coordinator.async_setup():

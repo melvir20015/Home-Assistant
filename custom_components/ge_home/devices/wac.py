@@ -43,9 +43,9 @@ class WacApi(ApplianceApi):
 
         demand_response_sensors = [
             (("WAC_DEMAND_RESPONSE_STATE", "RESOURCE_DEMAND_RESPONSE_STATE"), {}),
-            (("WAC_DEMAND_RESPONSE_POWER",), {"uom_override": "kW"}),
+            (("WAC_DEMAND_RESPONSE_POWER",), {"uom_override": "kW", "register_without_property_cache": True}),
             (
-                ("RESOURCE_DSM_POWER_USAGE",),
+                ("RESOURCE_DSM_POWER_USAGE", "DSM_POWER_USAGE", "WAC_POWER_USAGE"),
                 {
                     "erd_override": "WAC_DEMAND_RESPONSE_POWER",
                     "uom_override": "kW",
@@ -59,6 +59,11 @@ class WacApi(ApplianceApi):
         for erd_names, sensor_kwargs in demand_response_sensors:
             demand_response_erd = _get_optional_erd(*erd_names)
             if demand_response_erd is not None:
+                _LOGGER.info(
+                    "Adding optional WAC demand response sensor for %s using ERD %s",
+                    self.appliance.mac_addr,
+                    getattr(demand_response_erd, "name", demand_response_erd),
+                )
                 wac_entities.append(GeErdSensor(self, demand_response_erd, **sensor_kwargs))
 
         entities = base_entities + wac_entities

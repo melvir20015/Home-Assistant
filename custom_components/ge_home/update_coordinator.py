@@ -36,6 +36,7 @@ from .const import (
     MAX_RETRY_DELAY,
     RETRY_OFFLINE_COUNT,
     ASYNC_TIMEOUT,
+    INITIAL_READY_TIMEOUT,
 )
 from .devices import ApplianceApi, get_appliance_api_type
 
@@ -67,6 +68,8 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         self._region = config_entry.data[CONF_REGION]
         self._appliance_apis = {}  # type: Dict[str, ApplianceApi]
         self._signal_remove_callbacks = [] # type: List[Callable]
+        self._retry_count = 0
+        self._initial_ready_handle = None
 
         self._reset_initialization()
 
@@ -78,9 +81,11 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             a.appliance.initialized = False
 
         # Some record keeping to let us know when we can start generating entities
+        if self._initial_ready_handle:
+            self._initial_ready_handle.cancel()
+            self._initial_ready_handle = None
         self._got_roster = False
         self._init_done = False
-        self._retry_count = 0
 
     def create_ge_client(
         self, event_loop: Optional[asyncio.AbstractEventLoop]
@@ -147,9 +152,8 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
     def regenerate_appliance_apis(self):
         """Regenerate the appliance_apis dictionary, adding elements as necessary."""
-        for jid, appliance in self.client.appliances.keys():
-            if jid not in self._appliance_apis and self._is_appliance_valid(appliance):
-                self._appliance_apis[jid] = self._get_appliance_api(appliance)
+        for appliance in self.appliances:
+            self._maybe_add_appliance_api(appliance)
 
     def _maybe_add_appliance_api(self, appliance: GeAppliance):
         mac_addr = appliance.mac_addr
@@ -229,6 +233,10 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             c()
         self._signal_remove_callbacks.clear()
 
+        if self._initial_ready_handle:
+            self._initial_ready_handle.cancel()
+            self._initial_ready_handle = None
+
         unload_ok = await self.hass.config_entries.async_unload_platforms(
             self._config_entry, PLATFORMS
         )
@@ -290,9 +298,16 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         try:
             api = self.appliance_apis[appliance.mac_addr]
         except KeyError:
-            _LOGGER.info(f"Could not find appliance {appliance.mac_addr} in known device list.")
-            return
-        
+            _LOGGER.info(
+                "Received update for appliance %s before discovery completed; adding it now",
+                appliance.mac_addr,
+            )
+            self._maybe_add_appliance_api(appliance)
+            await self.async_maybe_trigger_all_ready()
+            api = self.appliance_apis.get(appliance.mac_addr)
+            if api is None:
+                return
+
         self._update_entity_state(api.entities)
 
     async def _refresh_ha_state(self):
@@ -322,7 +337,8 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
     @property
     def all_appliances_updated(self) -> bool:
         """True if all appliances have had an initial update."""
-        return all([a.initialized for a in self.appliances])
+        appliances = list(self.appliances)
+        return bool(appliances) and all(a.initialized for a in appliances)
 
     async def on_appliance_list(self, _):
         """When we get an appliance list, mark it and maybe trigger all ready."""
@@ -330,9 +346,10 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         self.last_update_success = True
         if not self._got_roster:
             self._got_roster = True
-            # TODO: Probably should have a better way of confirming we're good to go...
-            await asyncio.sleep(5)  
-            # After the initial roster update, wait a bit and hit go
+            roster_count = len(self.client.appliances) if self.client else 0
+            _LOGGER.info("GE Home appliance roster received with %s appliance(s)", roster_count)
+            self.regenerate_appliance_apis()
+            self._schedule_initial_ready_check()
             await self.async_maybe_trigger_all_ready()
 
     async def on_device_initial_update(self, appliance: GeAppliance):
@@ -343,7 +360,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             return
 
         """When an appliance first becomes ready, let the system know and schedule periodic updates."""
-        _LOGGER.debug(f"Got initial update for {appliance.mac_addr}")
+        _LOGGER.info("GE Home initial update received for appliance %s", appliance.mac_addr)
         self.last_update_success = True
         self._maybe_add_appliance_api(appliance)
         await self.async_maybe_trigger_all_ready()
@@ -372,13 +389,45 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             # Been here, done this
             return
         if self._got_roster and self.all_appliances_updated:
-            _LOGGER.debug("Ready to go, sending ready signal")
+            _LOGGER.info(
+                "GE Home initialization complete; publishing %s appliance API(s)",
+                len(self.appliance_apis),
+            )
             self._init_done = True
+            if self._initial_ready_handle:
+                self._initial_ready_handle.cancel()
+                self._initial_ready_handle = None
             await self.client.async_event(EVENT_ALL_APPLIANCES_READY, None)
             async_dispatcher_send(
-                self.hass, 
-                self.signal_ready, 
-                list(self.appliance_apis.values()))            
+                self.hass,
+                self.signal_ready,
+                list(self.appliance_apis.values()))
+
+    def _schedule_initial_ready_check(self) -> None:
+        """Schedule a guarded check for slow SmartHQ initial updates."""
+        if self._init_done or self._initial_ready_handle:
+            return
+        self._initial_ready_handle = self.hass.loop.call_later(
+            INITIAL_READY_TIMEOUT, self._check_initial_ready_timeout
+        )
+
+    @callback
+    def _check_initial_ready_timeout(self) -> None:
+        """Recover from a partial startup where roster arrived but initial data did not."""
+        self._initial_ready_handle = None
+        if self._init_done:
+            return
+
+        appliances = list(self.appliances)
+        pending = [a.mac_addr for a in appliances if not a.initialized]
+        _LOGGER.warning(
+            "GE Home initial data still pending after %s seconds; pending=%s, discovered_apis=%s. Reconnecting with backoff.",
+            INITIAL_READY_TIMEOUT,
+            pending or "none",
+            len(self.appliance_apis),
+        )
+        self.regenerate_appliance_apis()
+        self.reconnect(log=True)
 
     def _get_retry_delay(self) -> int:
         delay = MIN_RETRY_DELAY * 2 ** (self._retry_count - 1)
