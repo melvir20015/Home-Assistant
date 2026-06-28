@@ -81,23 +81,29 @@
     - name: "Costo AC diario"
       unique_id: costo_ac_diario_usd
       unit_of_measurement: "$"
+      availability: >
+        {{ has_value('sensor.energia_ac_diaria') }}
       state: >
         {% set rate = states('input_number.tarifa_kwh_usd')|float(0.24045) %}
-        {{ (states('sensor.energia_ac_diaria')|float(0) * rate) | round(2) }}
+        {{ (states('sensor.energia_ac_diaria')|float * rate) | round(2) }}
 
     - name: "Costo AC mensual"
       unique_id: costo_ac_mensual_usd
       unit_of_measurement: "$"
+      availability: >
+        {{ has_value('sensor.energia_ac_mensual') }}
       state: >
         {% set rate = states('input_number.tarifa_kwh_usd')|float(0.24045) %}
-        {{ (states('sensor.energia_ac_mensual')|float(0) * rate) | round(2) }}
+        {{ (states('sensor.energia_ac_mensual')|float * rate) | round(2) }}
 
     - name: "Proyeccion costo AC este mes"
       unique_id: proyeccion_costo_ac_mes_usd
       unit_of_measurement: "$"
+      availability: >
+        {{ has_value('sensor.energia_ac_mensual') }}
       state: >
         {% set rate = states('input_number.tarifa_kwh_usd')|float(0.24045) %}
-        {% set kwh = states('sensor.energia_ac_mensual')|float(0) %}
+        {% set kwh = states('sensor.energia_ac_mensual')|float %}
         {% set costo = kwh * rate %}
         {% set day = now().day %}
         {% set dim = ((now().replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)).day %}

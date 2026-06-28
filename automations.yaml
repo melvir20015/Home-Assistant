@@ -4825,7 +4825,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
     - sensor.lumi_lumi_weather_coco_humedad
     - binary_sensor.presencia_ok_estable
     - climate.0200009211c7_climate
-    - sensor.0200009211c7_wac_demand_response_power
+    - sensor.dormitorio_aire_acondicionado_0200009211c7_wac_demand_response_power
     - sensor.ac_power_w
     - binary_sensor.ac_compressor_active
   - platform: state
@@ -4911,7 +4911,9 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       compressor_power_threshold_w: 350
       fan_only_power_threshold_w: 120
       compressor_inactive_min_minutes: 10
-      ac_power_primary: "{{ states('sensor.0200009211c7_wac_demand_response_power') | float(none) }}"
+      ac_power_primary: >-
+        {% set ac_power_kw = states('sensor.dormitorio_aire_acondicionado_0200009211c7_wac_demand_response_power') | float(none) %}
+        {{ (ac_power_kw * 1000) | round(0) if ac_power_kw is not none else none }}
       ac_power_fallback: "{{ states('sensor.ac_power_w') | float(none) }}"
       ac_power_w: "{{ ac_power_primary if ac_power_primary is not none else ac_power_fallback }}"
       climate_action_raw: "{{ (state_attr(climate_ent, 'hvac_action') | default(state_attr(climate_ent, 'action'), true) | default('', true)) | lower }}"
