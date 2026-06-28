@@ -98,6 +98,7 @@ ac_matriz_160_reporte_diagnostico:
           {% endif %}
         hvac_encendido: "{{ hvac_mode in ['cool','heat','fan_only','auto'] }}"
         demanda_label: "{{ 'Enfriar' if modo_demandado == 'cool' else 'Calentar' }}"
+        demanda_icon: "{{ '❄️' if modo_demandado == 'cool' else '🔥' }}"
         umbral_tipo: "{{ 'OFF' if hvac_encendido else 'ON' }}"
         tin_comp_umbral: >-
           {% if hvac_encendido %}
@@ -120,7 +121,7 @@ ac_matriz_160_reporte_diagnostico:
           {% if modo_demandado == 'cool' and cool_block_active %}{% set razones = razones + ['Bloqueo anti-reversa cool activo hasta ' ~ cool_block_until_raw] %}{% endif %}
           {% if modo_demandado == 'heat' and heat_block_active %}{% set razones = razones + ['Bloqueo anti-reversa heat activo hasta ' ~ heat_block_until_raw] %}{% endif %}
           {% if not presence_ok_effective %}{% set razones = razones + ['Sin presencia'] %}{% endif %}
-          {% if razones | length > 0 %}| {{ razones | join(' | ') }}{% else %}| Condiciones habilitadas{% endif %}
+          {% if razones | length > 0 %}{{ razones | join(' | ') }}{% else %}✅ Condiciones habilitadas{% endif %}
         resultado_reporte: "{{ 'off_solo_no_encendido' if hvac_mode == 'off' else 'on_con_evaluacion_apagado' }}"
     - service: logbook.log
       data:
@@ -130,12 +131,13 @@ ac_matriz_160_reporte_diagnostico:
       data:
         title: "AC-Matriz 160 · Reporte diagnóstico"
         message: |-
-          Estado del aire: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
+          HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
 
-          Condiciones externas: {{ clima_actual }} | {{ tout_visible_fmt }}°C | {{ hout_visible_fmt }}%
-          Condiciones internas: {{ tin_visible_fmt }}°C | {{ hin_visible_fmt }}%
+          Condiciones
+          🌤 Externas: {{ clima_actual }} | {{ trend_tout }}{{ tout_visible_fmt }}°C | {{ trend_hout }}{{ hout_visible_fmt }}%
+          🏠 Internas: {{ trend_tin }}{{ tin_visible_fmt }}°C | {{ trend_hin }}{{ hin_visible_fmt }}%
 
-          Demanda: {{ demanda_label }} | Temp. interna: {{ tin_visible_fmt }}°C {{ comp_operador }} {{ umbral_label }}: {{ umbral_visible_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }} {{ razones_bloqueo_resumen }}
+          Demanda: {{ demanda_icon }} {{ demanda_label }} | {{ tin_visible_fmt }}°C {{ comp_operador }} {{ umbral_visible_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }} | {{ razones_bloqueo_resumen }}
     - service: input_text.set_value
       target:
         entity_id: input_text.ac_matriz_160_diag_demanda_snapshot
@@ -256,6 +258,7 @@ ac_night_reporte_diagnostico:
         modo_demandado: "{% if turn_on_cool and not turn_on_heat %}cool{% elif turn_on_heat and not turn_on_cool %}heat{% elif turn_on_cool and turn_on_heat %}cool{% else %}cool{% endif %}"
         hvac_encendido: "{{ hvac_mode in ['cool','heat','fan_only','auto'] }}"
         demanda_label: "{{ 'Enfriar' if modo_demandado == 'cool' else 'Calentar' }}"
+        demanda_icon: "{{ '❄️' if modo_demandado == 'cool' else '🔥' }}"
         umbral_tipo: "{{ 'OFF' if hvac_encendido else 'ON' }}"
         tin_comp_umbral: >-
           {% if hvac_encendido %}
@@ -291,13 +294,14 @@ ac_night_reporte_diagnostico:
       data:
         title: "AC Night · Reporte diagnóstico"
         message: |-
-          Estado del aire: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
+          HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
 
-          Condiciones externas: {{ clima_actual }} | {{ tout_visible_fmt }}°C | {{ hout_visible_fmt }}%
-          Condiciones internas: {{ tin_visible_fmt }}°C | {{ hin_visible_fmt }}%
+          Condiciones
+          🌤 Externas: {{ clima_actual }} | {{ trend_tout }}{{ tout_visible_fmt }}°C | {{ trend_hout }}{{ hout_visible_fmt }}%
+          🏠 Internas: {{ trend_tin }}{{ tin_visible_fmt }}°C | {{ trend_hin }}{{ hin_visible_fmt }}%
 
-          Demanda: {{ demanda_label }} | Temp. interna: {{ tin_visible_fmt }}°C {{ comp_operador }} {{ umbral_label }}: {{ umbral_visible_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }}
-          Estado nocturno: {{ 'Apagaría ahora' if auto_off_real_apagaria else 'No apagaría ahora' }} | Apagado automático desde {{ off_cool_visible_fmt }}°C | Vuelve a encender desde {{ on_cool_visible_fmt }}°C | Histéresis {{ hysteresis_eff_visible_fmt }}°C
+          Demanda: {{ demanda_icon }} {{ demanda_label }} | {{ tin_visible_fmt }}°C {{ comp_operador }} {{ umbral_visible_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }}
+          🌙 Noche: {{ 'Apagaría' if auto_off_real_apagaria else 'No apagaría' }} | Apaga ≤{{ off_cool_visible_fmt }}°C | Enciende ≥{{ on_cool_fmt }}°C | Histéresis {{ hysteresis_eff_fmt }}°C
     - service: input_text.set_value
       target:
         entity_id: input_text.ac_night_diag_demanda_snapshot
