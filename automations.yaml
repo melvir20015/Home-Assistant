@@ -4908,8 +4908,8 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       muggy_guard_active: "{{ dew_moderate or (hin | float(0)) >= 58 or (bochorno_score | float(0)) >= 0.18 }}"
       muggy_guard_max_elapsed_min: "{% if muggy_severe and not ((tin | float(0)) <= ((off_cool | float(0)) - 0.4)) %}90{% elif muggy_high %}75{% else %}60{% endif %}"
       muggy_guard_force_release: "{{ (night_cycle_elapsed_min | float(0)) >= (muggy_guard_max_elapsed_min | float(75)) }}"
-      compressor_power_threshold_w: 350
-      fan_only_power_threshold_w: 120
+      compressor_power_threshold_w: 1000
+      fan_only_power_threshold_w: 950
       compressor_inactive_min_minutes: 10
       ac_power_primary: >-
         {% set ac_power_kw = states('sensor.dormitorio_aire_acondicionado_0200009211c7_wac_demand_response_power') | float(none) %}
@@ -4918,12 +4918,12 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       ac_power_w: "{{ ac_power_primary if ac_power_primary is not none else ac_power_fallback }}"
       climate_action_raw: "{{ (state_attr(climate_ent, 'hvac_action') | default(state_attr(climate_ent, 'action'), true) | default('', true)) | lower }}"
       compressor_attr_raw: "{{ (state_attr(climate_ent, 'compressor') | default(state_attr(climate_ent, 'compressor_state'), true) | default(state_attr(climate_ent, 'running'), true) | default('', true)) | string | lower }}"
-      compressor_power_active: "{{ ac_power_w is not none and (ac_power_w | float(0)) >= (compressor_power_threshold_w | float(350)) }}"
+      compressor_power_active: "{{ ac_power_w is not none and (ac_power_w | float(0)) >= (compressor_power_threshold_w | float(1000)) }}"
       compressor_binary_active: "{{ is_state('binary_sensor.ac_compressor_active', 'on') }}"
       compressor_attr_active: "{{ climate_action_raw in ['cooling','drying'] or compressor_attr_raw in ['on','true','active','running','cooling'] }}"
       compressor_last_active_ts_raw: "{{ as_timestamp(states('input_datetime.ac_night_compressor_last_active_ts'), 0) | int(0) }}"
       compressor_minutes_since_active: "{{ ([0, (((as_timestamp(now()) | int) - (compressor_last_active_ts_raw | int(0))) / 60)] | max) | round(1) if (compressor_last_active_ts_raw | int(0)) > 0 else 9999 }}"
-      compressor_state: "{% if compressor_power_active or compressor_binary_active or compressor_attr_active %}active{% elif hvac_mode == 'cool' and ac_power_w is not none and (ac_power_w | float(0)) <= (fan_only_power_threshold_w | float(120)) and (compressor_minutes_since_active | float(9999)) >= (compressor_inactive_min_minutes | float(10)) %}inactive_probable{% elif hvac_mode == 'cool' and ac_power_w is none and not compressor_binary_active and not compressor_attr_active %}unknown{% else %}inactive_probable{% endif %}"
+      compressor_state: "{% if compressor_power_active or compressor_binary_active or compressor_attr_active %}active{% elif hvac_mode == 'cool' and ac_power_w is not none and (ac_power_w | float(0)) <= (fan_only_power_threshold_w | float(950)) and (compressor_minutes_since_active | float(9999)) >= (compressor_inactive_min_minutes | float(10)) %}inactive_probable{% elif hvac_mode == 'cool' and ac_power_w is none and not compressor_binary_active and not compressor_attr_active %}unknown{% else %}inactive_probable{% endif %}"
       compressor_unknown_diag_raw: "{{ states('input_text.ac_night_compressor_unknown_diag_payload') }}"
       compressor_unknown_diag_cycle: "{{ compressor_unknown_diag_raw.split('cycle=')[1].split('|')[0] if 'cycle=' in compressor_unknown_diag_raw else '0' }}"
       compressor_unknown_diag_count: "{{ compressor_unknown_diag_raw.split('count=')[1].split('|')[0] | int(0) if 'count=' in compressor_unknown_diag_raw else 0 }}"
