@@ -42,6 +42,10 @@ ac_matriz_160_reporte_diagnostico:
         hin_fmt: "{{ '%.2f' | format(hin|float) }}"
         tout_fmt: "{{ '%.2f' | format((tout if tout is not none else 0)|float) }}"
         hout_fmt: "{{ '%.2f' | format(hout|float) }}"
+        tin_visible_fmt: "{{ '%.1f' | format(tin|float) }}"
+        hin_visible_fmt: "{{ hin|float | round(0) | int }}"
+        tout_visible_fmt: "{{ '%.1f' | format((tout if tout is not none else 0)|float) }}"
+        hout_visible_fmt: "{{ hout|float | round(0) | int }}"
         clima_actual: >-
           {% set w = weather_state_raw %}
           {% if w in ['clear', 'sunny', 'clear-night'] %}Despejado
@@ -108,6 +112,8 @@ ac_matriz_160_reporte_diagnostico:
             {% if tin_comp_umbral is not none and (tin|float <= tin_comp_umbral|float) %}<{% else %}>{% endif %}
           {% endif %}
         umbral_fmt: "{{ '%.2f' | format(tin_comp_umbral|float) if tin_comp_umbral is not none else 'sin umbral calculado' }}"
+        umbral_visible_fmt: "{{ '%.1f' | format(tin_comp_umbral|float) if tin_comp_umbral is not none else 'sin umbral calculado' }}"
+        umbral_label: "{{ 'Umbral de apagado' if hvac_encendido else 'Vuelve a encender' }}"
         razones_bloqueo_resumen: >-
           {% set razones = [] %}
           {% if manual_off_block_active %}{% set razones = razones + ['Bloqueo manual activo hasta ' ~ manual_off_block_until_raw] %}{% endif %}
@@ -124,10 +130,12 @@ ac_matriz_160_reporte_diagnostico:
       data:
         title: "AC-Matriz 160 · Reporte diagnóstico"
         message: |-
-          Estado HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
-          Condiciones: {{ clima_actual }} | Tin: {{ trend_tin }}{{ tin_fmt }}°C | Hin: {{ trend_hin }}{{ hin_fmt }}% | Tout: {{ trend_tout }}{{ tout_fmt }}°C | Hout: {{ trend_hout }}{{ hout_fmt }}%
+          Estado del aire: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
 
-          Demanda: {{ demanda_label }} | Tin: {{ tin_fmt }}°C {{ comp_operador }} {{ umbral_tipo }}: {{ umbral_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }} {{ razones_bloqueo_resumen }}
+          Condiciones externas: {{ clima_actual }} | {{ tout_visible_fmt }}°C | {{ hout_visible_fmt }}%
+          Condiciones internas: {{ tin_visible_fmt }}°C | {{ hin_visible_fmt }}%
+
+          Demanda: {{ demanda_label }} | Temp. interna: {{ tin_visible_fmt }}°C {{ comp_operador }} {{ umbral_label }}: {{ umbral_visible_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }} {{ razones_bloqueo_resumen }}
     - service: input_text.set_value
       target:
         entity_id: input_text.ac_matriz_160_diag_demanda_snapshot
@@ -193,6 +201,10 @@ ac_night_reporte_diagnostico:
         hin_fmt: "{{ '%.2f' | format(hin|float) }}"
         tout_fmt: "{{ '%.2f' | format((tout if tout is not none else 0)|float) }}"
         hout_fmt: "{{ '%.2f' | format(hout|float) }}"
+        tin_visible_fmt: "{{ '%.1f' | format(tin|float) }}"
+        hin_visible_fmt: "{{ hin|float | round(0) | int }}"
+        tout_visible_fmt: "{{ '%.1f' | format((tout if tout is not none else 0)|float) }}"
+        hout_visible_fmt: "{{ hout|float | round(0) | int }}"
         clima_actual: >-
           {% set w = weather_state_raw %}
           {% if w in ['clear', 'sunny', 'clear-night'] %}Despejado
@@ -258,9 +270,14 @@ ac_night_reporte_diagnostico:
             {% if tin_comp_umbral is not none and (tin|float <= tin_comp_umbral|float) %}<{% else %}>{% endif %}
           {% endif %}
         umbral_fmt: "{{ '%.2f' | format(tin_comp_umbral|float) if tin_comp_umbral is not none else 'sin umbral calculado' }}"
+        umbral_visible_fmt: "{{ '%.1f' | format(tin_comp_umbral|float) if tin_comp_umbral is not none else 'sin umbral calculado' }}"
+        umbral_label: "{{ 'Umbral de apagado' if hvac_encendido else 'Vuelve a encender' }}"
         off_cool_fmt: "{{ '%.2f' | format(off_cool|float) }}"
         on_cool_fmt: "{{ '%.2f' | format(on_cool|float) }}"
         hysteresis_eff_fmt: "{{ '%.2f' | format(hysteresis_eff|float) }}"
+        off_cool_visible_fmt: "{{ '%.1f' | format(off_cool|float) }}"
+        on_cool_visible_fmt: "{{ '%.1f' | format(on_cool|float) }}"
+        hysteresis_eff_visible_fmt: "{{ '%.1f' | format(hysteresis_eff|float) }}"
         offset_cool_col_fmt: "{{ '%.2f' | format(offset_cool_col_value|float) }}"
         off_cool_real_fmt: "{{ '%.2f' | format(off_cool_real|float) }}"
         columna_activa: "{{ (col_idx | int(0)) >= 1 and (col_idx | int(0)) <= 112 and states(offset_cool_col_entity) not in ['unknown','unavailable','none',''] }}"
@@ -274,13 +291,13 @@ ac_night_reporte_diagnostico:
       data:
         title: "AC Night · Reporte diagnóstico"
         message: |-
-          Estado HVAC: {{ 'Encendido' if hvac_encendido else 'Apagado' }} | HVAC={{ hvac_mode }}
-          Condiciones: {{ clima_actual }} | Tin: {{ trend_tin }}{{ tin_fmt }}°C | Hin: {{ trend_hin }}{{ hin_fmt }}% | Tout: {{ trend_tout }}{{ tout_fmt }}°C | Hout: {{ trend_hout }}{{ hout_fmt }}%
+          Estado del aire: {{ 'Encendido' if hvac_encendido else 'Apagado' }}
 
-          Demanda: {{ demanda_label }} | Tin: {{ tin_fmt }}°C {{ comp_operador }} {{ umbral_tipo }}: {{ umbral_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }}
-          Decisión auto-off real: {{ 'APAGARÍA' if auto_off_real_apagaria else 'NO apagaría' }} | hvac_mode==cool={{ hvac_mode == 'cool' }} | Tin<=off_cool_real={{ (tin | float) <= (off_cool_real | float) }} ({{ tin_fmt }} <= {{ off_cool_real_fmt }}) | presencia_ok={{ presencia_ok }} | auto_off_pending_recent={{ auto_off_pending_recent }} (debe ser false) | columna_activa={{ columna_activa }}
-          OFF real matriz: {{ off_cool_fmt }}°C | ON matriz: {{ on_cool_fmt }}°C | H={{ hysteresis_eff_fmt }} | cap_on={{ on_cool_cap_night_dynamic }}
-          Columna {{ col_idx }} | offset usado: {{ offset_cool_col_entity }}={{ offset_cool_col_fmt }} | bochorno={{ bochorno_score }} | comfort={{ night_comfort_pressure }} | pull={{ comfort_pull }} | ext_adj={{ exterior_adjust_cool }}
+          Condiciones externas: {{ clima_actual }} | {{ tout_visible_fmt }}°C | {{ hout_visible_fmt }}%
+          Condiciones internas: {{ tin_visible_fmt }}°C | {{ hin_visible_fmt }}%
+
+          Demanda: {{ demanda_label }} | Temp. interna: {{ tin_visible_fmt }}°C {{ comp_operador }} {{ umbral_label }}: {{ umbral_visible_fmt }}{{ '°C' if tin_comp_umbral is not none else '' }}
+          Estado nocturno: {{ 'Apagaría ahora' if auto_off_real_apagaria else 'No apagaría ahora' }} | Apagado automático desde {{ off_cool_visible_fmt }}°C | Vuelve a encender desde {{ on_cool_visible_fmt }}°C | Histéresis {{ hysteresis_eff_visible_fmt }}°C
     - service: input_text.set_value
       target:
         entity_id: input_text.ac_night_diag_demanda_snapshot
