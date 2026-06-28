@@ -21,8 +21,8 @@ ac_matriz_160_reporte_diagnostico:
       default: []
     - variables:
         hvac_mode: "{{ states('climate.0200009211c7_climate') }}"
-        tin: "{{ [states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average | round(2) }}"
-        hin: "{{ [states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average | round(2) }}"
+        tin: "{% set vals = [states('sensor.lumi_lumi_weather_cuarto_temperatura'), states('sensor.lumi_lumi_weather_coco_temperatura')] | select('is_number') | map('float') | list %}{% set climate_t = state_attr('climate.0200009211c7_climate', 'current_temperature') %}{{ (vals | average | round(2)) if (vals | count) > 0 else (climate_t | float | round(2) if climate_t is number else none) }}"
+        hin: "{% set vals = [states('sensor.lumi_lumi_weather_cuarto_humedad'), states('sensor.lumi_lumi_weather_coco_humedad')] | select('is_number') | map('float') | list %}{{ (vals | average | round(2)) if (vals | count) > 0 else 55 }}"
         tout: "{{ state_attr('weather.openweathermap','temperature') | float(none) }}"
         hout_raw: "{{ state_attr('weather.openweathermap','humidity') | float(none) }}"
         hout: "{{ hout_raw if hout_raw is not none else 60 }}"
@@ -168,8 +168,8 @@ ac_night_reporte_diagnostico:
     - variables:
         climate_ent: climate.0200009211c7_climate
         hvac_mode: "{{ states(climate_ent) }}"
-        tin: "{{ [states('sensor.lumi_lumi_weather_cuarto_temperatura')|float(0), states('sensor.lumi_lumi_weather_coco_temperatura')|float(0)] | average | round(2) }}"
-        hin: "{{ [states('sensor.lumi_lumi_weather_cuarto_humedad')|float(0), states('sensor.lumi_lumi_weather_coco_humedad')|float(0)] | average | round(2) }}"
+        tin: "{% set vals = [states('sensor.lumi_lumi_weather_cuarto_temperatura'), states('sensor.lumi_lumi_weather_coco_temperatura')] | select('is_number') | map('float') | list %}{% set climate_t = state_attr('climate.0200009211c7_climate', 'current_temperature') %}{{ (vals | average | round(2)) if (vals | count) > 0 else (climate_t | float | round(2) if climate_t is number else none) }}"
+        hin: "{% set vals = [states('sensor.lumi_lumi_weather_cuarto_humedad'), states('sensor.lumi_lumi_weather_coco_humedad')] | select('is_number') | map('float') | list %}{{ (vals | average | round(2)) if (vals | count) > 0 else 55 }}"
         tout: "{{ state_attr('weather.openweathermap','temperature') | float(none) }}"
         hout_raw: "{{ state_attr('weather.openweathermap','humidity') | float(none) }}"
         hout: "{{ hout_raw if hout_raw is not none else 60 }}"
