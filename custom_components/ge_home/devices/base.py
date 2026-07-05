@@ -12,6 +12,18 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from ..const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+_DIAGNOSTIC_MACS = {"AZ312796N"}
+_DIAGNOSTIC_ERD_NAMES = {
+    "LAUNDRY_MACHINE_STATE",
+    "LAUNDRY_CYCLE",
+    "LAUNDRY_SUB_CYCLE",
+    "LAUNDRY_TIME_REMAINING",
+    "LAUNDRY_DELAY_TIME_REMAINING",
+    "LAUNDRY_DOOR",
+    "LAUNDRY_REMOTE_STATUS",
+    "LAUNDRY_WASHER_SMART_DISPENSE_TANK_STATUS",
+    "LAUNDRY_DRYER_EXTENDED_TUMBLE_OPTION_SELECTION",
+}
 
 class ApplianceApi:
     """
@@ -55,7 +67,16 @@ class ApplianceApi:
         #Note - online will be there since we're using the GE coordinator
         #Didn't want to deal with the circular references to get the type hints
         #working.
-        return self.appliance.available and self.coordinator.online
+        available = self.appliance.available and self.coordinator.online
+        if not self.appliance.available:
+            _LOGGER.debug(
+                "GE Home appliance unavailable: mac_addr=%s, serial_or_mac=%s, appliance_type=%s, coordinator_online=%s",
+                self.mac_addr,
+                self.serial_or_mac,
+                self.appliance.appliance_type,
+                self.coordinator.online,
+            )
+        return available
 
     @property
     def serial_number(self) -> str:
@@ -140,6 +161,21 @@ class ApplianceApi:
             for erd_code in self.REGISTER_WITHOUT_KNOWN_PROPERTIES
         }
         entities = []
+        omitted_entities = []
+
+        if self.mac_addr in _DIAGNOSTIC_MACS:
+            diagnostic_known_properties = sorted(str(prop) for prop in known_properties)
+            diagnostic_property_cache = sorted(str(prop) for prop in property_cache)
+            _LOGGER.debug(
+                "GE Home build entities start: serial_or_mac=%s, mac_addr=%s, api_class=%s, known_properties_count=%s, property_cache_count=%s, relevant_known_properties=%s, relevant_property_cache=%s",
+                self.serial_or_mac,
+                self.mac_addr,
+                type(self).__name__,
+                len(known_properties),
+                len(property_cache),
+                [prop for prop in diagnostic_known_properties if any(name in prop for name in _DIAGNOSTIC_ERD_NAMES)],
+                [prop for prop in diagnostic_property_cache if any(name in prop for name in _DIAGNOSTIC_ERD_NAMES)],
+            )
 
         for entity in self.get_all_entities():
             if not isinstance(entity, GeErdEntity) or isinstance(entity, GeErdButton):
@@ -177,6 +213,20 @@ class ApplianceApi:
                     entity.erd_code,
                 )
                 entities.append(entity)
+                continue
+
+            omitted_entities.append((entity.unique_id, str(entity.erd_code)))
+
+        if self.mac_addr in _DIAGNOSTIC_MACS:
+            _LOGGER.debug(
+                "GE Home build entities complete: serial_or_mac=%s, mac_addr=%s, api_class=%s, entity_count=%s, entities=%s, omitted_entities=%s",
+                self.serial_or_mac,
+                self.mac_addr,
+                type(self).__name__,
+                len(entities),
+                [(entity.unique_id, str(getattr(entity, "erd_code", None))) for entity in entities],
+                omitted_entities,
+            )
 
         for entity in entities:
             if entity.unique_id not in self._entities:

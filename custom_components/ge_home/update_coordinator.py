@@ -53,6 +53,7 @@ PLATFORMS = [
     "humidifier"
 ]
 _LOGGER = logging.getLogger(__name__)
+_DIAGNOSTIC_MACS = {"AZ312796N"}
 
 
 class GeHomeUpdateCoordinator(DataUpdateCoordinator):
@@ -148,6 +149,13 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
     def _get_appliance_api(self, appliance: GeAppliance) -> ApplianceApi:
         self._dump_appliance(appliance)
         api_type = get_appliance_api_type(appliance.appliance_type)
+        _LOGGER.debug(
+            "GE Home appliance api selection: mac_addr=%s, appliance_type=%s, appliance_type_class=%s, api_class=%s",
+            appliance.mac_addr,
+            appliance.appliance_type,
+            type(appliance.appliance_type).__name__,
+            api_type.__name__,
+        )
         return api_type(self, appliance)
 
     def regenerate_appliance_apis(self):
@@ -164,18 +172,22 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
         if not self._is_appliance_valid(appliance):
             _LOGGER.debug(
-                "Skipping appliance api for invalid appliance %s: available=%s, appliance_type=%s",
+                "Skipping appliance api for invalid appliance %s: available=%s, initialized=%s, appliance_type=%s, coordinator_online=%s",
                 mac_addr,
                 appliance.available,
+                appliance.initialized,
                 appliance.appliance_type,
+                self.online,
             )
             return False
 
         if not appliance.initialized:
             _LOGGER.debug(
-                "Skipping appliance api for appliance %s (%s): appliance is in roster but not initialized",
+                "Skipping appliance api for appliance %s (%s): appliance is in roster but not initialized; available=%s, coordinator_online=%s",
                 mac_addr,
                 appliance.appliance_type,
+                appliance.available,
+                self.online,
             )
             return False
 
@@ -191,6 +203,13 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         else:
             # if we already have the API, switch out its appliance reference for this one
             api = self.appliance_apis[mac_addr]
+            _LOGGER.debug(
+                "GE Home appliance api already exists for %s; api_class=%s, incoming_appliance_id=%s, current_api_appliance_id=%s",
+                mac_addr,
+                type(api).__name__,
+                id(appliance),
+                id(api.appliance),
+            )
             api.appliance = appliance
         return True
 
@@ -324,6 +343,15 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
         try:
             api = self.appliance_apis[appliance.mac_addr]
+            _LOGGER.debug(
+                "GE Home device update for %s: incoming_appliance_id=%s, api_appliance_id=%s, available=%s, initialized=%s, api_class=%s",
+                appliance.mac_addr,
+                id(appliance),
+                id(api.appliance),
+                appliance.available,
+                appliance.initialized,
+                type(api).__name__,
+            )
         except KeyError:
             _LOGGER.info(
                 "Received update for appliance %s before discovery completed; adding it now",
@@ -377,6 +405,13 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.info("GE Home appliance roster received with %s appliance(s)", roster_count)
             if self.client:
                 for appliance in self.client.appliances.values():
+                    _LOGGER.debug(
+                        "GE Home roster appliance: mac_addr=%s, appliance_type=%s, available=%s, initialized=%s",
+                        appliance.mac_addr,
+                        appliance.appliance_type,
+                        appliance.available,
+                        appliance.initialized,
+                    )
                     if self._is_appliance_valid(appliance):
                         _LOGGER.debug(
                             "GE Home appliance %s (%s) is in roster but not initialized; waiting for initial update",
@@ -385,9 +420,10 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                         )
                     else:
                         _LOGGER.debug(
-                            "GE Home appliance %s is invalid from roster: available=%s, appliance_type=%s",
+                            "GE Home appliance %s is invalid from roster: available=%s, initialized=%s, appliance_type=%s",
                             appliance.mac_addr,
                             appliance.available,
+                            appliance.initialized,
                             appliance.appliance_type,
                         )
             self._schedule_initial_ready_check()
