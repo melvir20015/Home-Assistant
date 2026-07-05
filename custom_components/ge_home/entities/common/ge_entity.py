@@ -65,6 +65,7 @@ class GeEntity:
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
+        await super().async_added_to_hass()
         self._added = True
         if self._is_laundry_diagnostic_target():
             _LOGGER.warning(
@@ -76,6 +77,7 @@ class GeEntity:
 
     async def async_will_remove_from_hass(self) -> None:
         """Run when entity will be removed from hass."""
+        await super().async_will_remove_from_hass()
         self._added = False
 
     def _stringify(self, value: any, **kwargs) -> Optional[str]:
