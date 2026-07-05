@@ -38,12 +38,16 @@ class WasherApi(ApplianceApi):
         return entities
 
     def get_washer_entities(self) -> List[Entity]:
-        washer_entities = [
-            GeErdSensor(self, ErdCode.LAUNDRY_WASHER_SOIL_LEVEL, icon_override="mdi:emoticon-poop"),
-            GeErdSensor(self, ErdCode.LAUNDRY_WASHER_WASHTEMP_LEVEL),
-            GeErdSensor(self, ErdCode.LAUNDRY_WASHER_SPINTIME_LEVEL, icon_override="mdi:speedometer"),
-            GeErdSensor(self, ErdCode.LAUNDRY_WASHER_RINSE_OPTION, icon_override="mdi:shimmer"),
-        ]
+        washer_entities = []
+
+        if self.has_erd_code(ErdCode.LAUNDRY_WASHER_SOIL_LEVEL):
+            washer_entities.extend([GeErdSensor(self, ErdCode.LAUNDRY_WASHER_SOIL_LEVEL, icon_override="mdi:emoticon-poop")])
+        if self.has_erd_code(ErdCode.LAUNDRY_WASHER_WASHTEMP_LEVEL):
+            washer_entities.extend([GeErdSensor(self, ErdCode.LAUNDRY_WASHER_WASHTEMP_LEVEL)])
+        if self.has_erd_code(ErdCode.LAUNDRY_WASHER_SPINTIME_LEVEL):
+            washer_entities.extend([GeErdSensor(self, ErdCode.LAUNDRY_WASHER_SPINTIME_LEVEL, icon_override="mdi:speedometer")])
+        if self.has_erd_code(ErdCode.LAUNDRY_WASHER_RINSE_OPTION):
+            washer_entities.extend([GeErdSensor(self, ErdCode.LAUNDRY_WASHER_RINSE_OPTION, icon_override="mdi:shimmer")])
 
         if self.has_erd_code(ErdCode.LAUNDRY_WASHER_DOOR_LOCK):
             washer_entities.extend([GeErdBinarySensor(self, ErdCode.LAUNDRY_WASHER_DOOR_LOCK)])

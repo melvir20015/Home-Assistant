@@ -21,6 +21,9 @@ _DIAGNOSTIC_ERD_NAMES = {
     "LAUNDRY_TIME_REMAINING",
     "LAUNDRY_DELAY_TIME_REMAINING",
     "LAUNDRY_DOOR",
+    "LAUNDRY_COMBO_DOOR_STATUS",
+    "LAUNDRY_COMBO_WASHER_TIME_REMAINING",
+    "LAUNDRY_COMBO_DRYER_TIME_REMAINING",
     "LAUNDRY_REMOTE_STATUS",
     "LAUNDRY_WASHER_SMART_DISPENSE_TANK_STATUS",
     "LAUNDRY_DRYER_EXTENDED_TUMBLE_OPTION_SELECTION",
@@ -213,8 +216,9 @@ class ApplianceApi:
         known_properties = self.appliance.known_properties
         property_cache = getattr(self.appliance, "_property_cache", {})
         register_without_known_properties = {
-            self.appliance.translate_erd_code(erd_code)
+            translated_erd_code
             for erd_code in self.REGISTER_WITHOUT_KNOWN_PROPERTIES
+            if (translated_erd_code := self._translate_erd_code_safe(erd_code)) is not None
         }
         entities = []
         omitted_entities = []
@@ -313,9 +317,28 @@ class ApplianceApi:
         except:
             return None
     
-    def has_erd_code(self, code: ErdCodeType):
+    def _translate_erd_code_safe(self, code: ErdCodeType):
+        try:
+            return self.appliance.translate_erd_code(code)
+        except Exception:
+            return None
+
+    def has_erd_code(self, code: ErdCodeType) -> bool:
+        translated_code = self._translate_erd_code_safe(code)
+        codes_to_check = {code}
+        if translated_code is not None:
+            codes_to_check.add(translated_code)
+
+        known_properties = getattr(self.appliance, "known_properties", set()) or set()
+        if any(erd_code in known_properties for erd_code in codes_to_check):
+            return True
+
+        property_cache = getattr(self.appliance, "_property_cache", {}) or {}
+        if any(erd_code in property_cache for erd_code in codes_to_check):
+            return True
+
         try:
             self.appliance.get_erd_value(code)
             return True
-        except:
+        except Exception:
             return False
