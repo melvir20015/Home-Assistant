@@ -291,6 +291,8 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             api = self._get_appliance_api(appliance)
             api.build_entities_list()
             self.appliance_apis[mac_addr] = api
+            if self._init_done:
+                self._publish_ready_signal([api])
             if _is_laundry_diagnostic_target(appliance):
                 _LOGGER.warning(
                     "GE_HOME_LAUNDRY_DIAG api_created mac_addr=%s appliance_type=%s available=%s initialized=%s api_class=%s entity_count=%s",
@@ -301,6 +303,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                     type(api).__name__,
                     len(api.entities),
                 )
+            return True
         else:
             # if we already have the API, switch out its appliance reference for this one
             api = self.appliance_apis[mac_addr]
@@ -321,10 +324,20 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                 type(api).__name__,
                 id(appliance),
             )
-        return True
+        return False
 
     def add_signal_remove_callback(self, cb: Callable):
         self._signal_remove_callbacks.append(cb)
+
+    def _publish_ready_signal(
+        self, apis: Optional[Iterable[ApplianceApi]] = None
+    ) -> None:
+        """Publish appliance APIs to all loaded platforms."""
+        async_dispatcher_send(
+            self.hass,
+            self.signal_ready,
+            list(apis or self.appliance_apis.values()),
+        )
 
     async def get_client(self) -> GeWebsocketClient:
         """Get a new GE Websocket client."""
@@ -480,10 +493,19 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                 False,
                 api_type.__name__,
             )
-            self._maybe_add_appliance_api(appliance)
+            was_initialized = self._init_done
+            api_added = self._maybe_add_appliance_api(appliance)
             await self.async_maybe_trigger_all_ready()
             api = self.appliance_apis.get(appliance.mac_addr)
             if api is None:
+                return
+            if api_added and (was_initialized or self._init_done):
+                _LOGGER.debug(
+                    "Skipping immediate state refresh for newly discovered appliance "
+                    "%s; platforms have been notified and will add entities before "
+                    "the next update",
+                    appliance.mac_addr,
+                )
                 return
 
         if _is_laundry_diagnostic_target(appliance):
@@ -760,10 +782,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                 self._initial_ready_handle.cancel()
                 self._initial_ready_handle = None
             await self.client.async_event(EVENT_ALL_APPLIANCES_READY, None)
-            async_dispatcher_send(
-                self.hass,
-                self.signal_ready,
-                list(self.appliance_apis.values()))
+            self._publish_ready_signal()
 
     def _schedule_initial_ready_check(self) -> None:
         """Schedule a guarded check for slow SmartHQ initial updates."""
