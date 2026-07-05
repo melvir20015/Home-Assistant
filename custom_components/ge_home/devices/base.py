@@ -13,6 +13,7 @@ from ..const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 _DIAGNOSTIC_MACS = {"AZ312796N"}
+_LAUNDRY_DIAGNOSTIC_TYPE_PARTS = ("WASHER", "DRYER", "COMBINATION_WASHER_DRYER", "LAUNDRY")
 _DIAGNOSTIC_ERD_NAMES = {
     "LAUNDRY_MACHINE_STATE",
     "LAUNDRY_CYCLE",
@@ -24,6 +25,42 @@ _DIAGNOSTIC_ERD_NAMES = {
     "LAUNDRY_WASHER_SMART_DISPENSE_TANK_STATUS",
     "LAUNDRY_DRYER_EXTENDED_TUMBLE_OPTION_SELECTION",
 }
+
+
+def _is_laundry_diagnostic_target(api) -> bool:
+    try:
+        if api.mac_addr in _DIAGNOSTIC_MACS or api.serial_or_mac in _DIAGNOSTIC_MACS:
+            return True
+    except Exception:
+        pass
+
+    try:
+        appliance_type_name = getattr(
+            api.appliance.appliance_type, "name", str(api.appliance.appliance_type or "")
+        ).upper()
+        if any(part in appliance_type_name for part in _LAUNDRY_DIAGNOSTIC_TYPE_PARTS):
+            return True
+    except Exception:
+        pass
+
+    try:
+        model_number = api.model_number
+        serial_number = api.serial_number
+    except Exception:
+        model_number = serial_number = None
+    return any("PFQ97" in str(value).upper() for value in (model_number, serial_number) if value)
+
+
+def _laundry_erd_sample(values) -> List[str]:
+    try:
+        return [
+            str(value)
+            for value in values
+            if "LAUNDRY_" in str(value).upper()
+        ][:20]
+    except Exception:
+        return []
+
 
 class ApplianceApi:
     """
@@ -75,14 +112,24 @@ class ApplianceApi:
             diagnostic_state = (appliance_available, coordinator_online)
             if diagnostic_state != self._last_availability_diagnostic:
                 self._last_availability_diagnostic = diagnostic_state
-                _LOGGER.debug(
-                    "GE Home appliance availability false: mac_addr=%s, serial_or_mac=%s, appliance_type=%s, appliance_available=%s, coordinator_online=%s",
-                    self.mac_addr,
-                    self.serial_or_mac,
-                    self.appliance.appliance_type,
-                    appliance_available,
-                    coordinator_online,
-                )
+                if _is_laundry_diagnostic_target(self):
+                    _LOGGER.warning(
+                        "GE_HOME_LAUNDRY_DIAG entity_unavailable mac_addr=%s serial_or_mac=%s appliance_type=%s appliance_available=%s coordinator_online=%s",
+                        self.mac_addr,
+                        self.serial_or_mac,
+                        self.appliance.appliance_type,
+                        appliance_available,
+                        coordinator_online,
+                    )
+                else:
+                    _LOGGER.debug(
+                        "GE Home appliance availability false: mac_addr=%s, serial_or_mac=%s, appliance_type=%s, appliance_available=%s, coordinator_online=%s",
+                        self.mac_addr,
+                        self.serial_or_mac,
+                        self.appliance.appliance_type,
+                        appliance_available,
+                        coordinator_online,
+                    )
         else:
             self._last_availability_diagnostic = (appliance_available, coordinator_online)
         return available
@@ -172,7 +219,7 @@ class ApplianceApi:
         entities = []
         omitted_entities = []
 
-        if self.mac_addr in _DIAGNOSTIC_MACS:
+        if _is_laundry_diagnostic_target(self):
             diagnostic_known_properties = sorted(str(prop) for prop in known_properties)
             diagnostic_property_cache = sorted(str(prop) for prop in property_cache)
             _LOGGER.debug(
@@ -235,7 +282,18 @@ class ApplianceApi:
             len(entities),
         )
 
-        if self.mac_addr in _DIAGNOSTIC_MACS or type(self).__name__ == "WasherDryerApi":
+        if _is_laundry_diagnostic_target(self):
+            laundry_entity_erds = _laundry_erd_sample(
+                getattr(entity, "erd_code", None) for entity in entities
+            )
+            _LOGGER.warning(
+                "GE_HOME_LAUNDRY_DIAG entities_built mac_addr=%s serial_or_mac=%s api_class=%s entity_count=%s laundry_entity_erds=%s",
+                self.mac_addr,
+                self.serial_or_mac,
+                type(self).__name__,
+                len(entities),
+                laundry_entity_erds or "none",
+            )
             _LOGGER.debug(
                 "GE Home build entities detail: serial_or_mac=%s, mac_addr=%s, api_class=%s, entities=%s, omitted_entities=%s",
                 self.serial_or_mac,

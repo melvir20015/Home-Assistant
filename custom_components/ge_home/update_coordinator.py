@@ -18,6 +18,7 @@ from gehomesdk import (
     GeWebsocketClient,
 )
 from gehomesdk import GeAuthFailedError, GeGeneralServerError, GeNotAuthenticatedError
+from gehomesdk.erd import ErdCode
 from .exceptions import HaAuthError, HaCannotConnect
 
 from homeassistant.config_entries import ConfigEntry
@@ -54,6 +55,69 @@ PLATFORMS = [
 ]
 _LOGGER = logging.getLogger(__name__)
 _DIAGNOSTIC_MACS = {"AZ312796N"}
+_LAUNDRY_DIAGNOSTIC_TYPE_PARTS = (
+    "WASHER",
+    "DRYER",
+    "COMBINATION_WASHER_DRYER",
+    "LAUNDRY",
+)
+
+
+def _safe_attr(appliance: GeAppliance, attr_name: str, default=None):
+    try:
+        return getattr(appliance, attr_name, default)
+    except Exception:
+        return default
+
+
+def _safe_erd_value(appliance: GeAppliance, erd_code: ErdCodeType):
+    try:
+        return appliance.get_erd_value(erd_code)
+    except Exception:
+        return None
+
+
+def _appliance_type_name(appliance: GeAppliance) -> str:
+    appliance_type = _safe_attr(appliance, "appliance_type")
+    return getattr(appliance_type, "name", str(appliance_type or ""))
+
+
+def _is_laundry_diagnostic_target(appliance: GeAppliance) -> bool:
+    mac_addr = _safe_attr(appliance, "mac_addr")
+    if mac_addr in _DIAGNOSTIC_MACS:
+        return True
+
+    appliance_type_name = _appliance_type_name(appliance).upper()
+    if any(part in appliance_type_name for part in _LAUNDRY_DIAGNOSTIC_TYPE_PARTS):
+        return True
+
+    searchable_values = [
+        _safe_attr(appliance, "model_number"),
+        _safe_attr(appliance, "serial_number"),
+        _safe_attr(appliance, "serial"),
+        _safe_erd_value(appliance, ErdCode.MODEL_NUMBER),
+        _safe_erd_value(appliance, ErdCode.SERIAL_NUMBER),
+    ]
+    return any("PFQ97" in str(value).upper() for value in searchable_values if value)
+
+
+def _property_collection_diagnostics(appliance: GeAppliance) -> Tuple[str, int, List[str], str, int, List[str]]:
+    known_properties = _safe_attr(appliance, "known_properties")
+    property_cache = _safe_attr(appliance, "_property_cache")
+
+    def describe(collection) -> Tuple[str, int, List[str]]:
+        if collection is None:
+            return "unavailable", 0, []
+        try:
+            values = sorted(str(value) for value in collection)
+        except Exception:
+            return "unreadable", 0, []
+        laundry_values = [value for value in values if "LAUNDRY_" in value.upper()]
+        return "ok", len(values), laundry_values[:20]
+
+    known_status, known_count, known_laundry = describe(known_properties)
+    cache_status, cache_count, cache_laundry = describe(property_cache)
+    return known_status, known_count, known_laundry, cache_status, cache_count, cache_laundry
 
 
 class GeHomeUpdateCoordinator(DataUpdateCoordinator):
@@ -158,6 +222,15 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             appliance.initialized,
             api_type.__name__,
         )
+        if _is_laundry_diagnostic_target(appliance):
+            _LOGGER.warning(
+                "GE_HOME_LAUNDRY_DIAG api_selection mac_addr=%s appliance_type=%s available=%s initialized=%s api_class=%s",
+                appliance.mac_addr,
+                appliance.appliance_type,
+                appliance.available,
+                appliance.initialized,
+                api_type.__name__,
+            )
         return api_type(self, appliance)
 
     def regenerate_appliance_apis(self):
@@ -173,6 +246,14 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         mac_addr = appliance.mac_addr
 
         if not self._is_appliance_valid(appliance):
+            if _is_laundry_diagnostic_target(appliance):
+                _LOGGER.warning(
+                    "GE_HOME_LAUNDRY_DIAG maybe_add reason=invalid_appliance mac_addr=%s appliance_type=%s available=%s initialized=%s",
+                    mac_addr,
+                    appliance.appliance_type,
+                    appliance.available,
+                    appliance.initialized,
+                )
             _LOGGER.debug(
                 "Skipping appliance api for invalid appliance %s: available=%s, initialized=%s, appliance_type=%s, coordinator_online=%s",
                 mac_addr,
@@ -184,6 +265,14 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             return False
 
         if not appliance.initialized:
+            if _is_laundry_diagnostic_target(appliance):
+                _LOGGER.warning(
+                    "GE_HOME_LAUNDRY_DIAG maybe_add reason=not_initialized mac_addr=%s appliance_type=%s available=%s initialized=%s",
+                    mac_addr,
+                    appliance.appliance_type,
+                    appliance.available,
+                    appliance.initialized,
+                )
             _LOGGER.debug(
                 "Skipping appliance api for appliance %s (%s): appliance is in roster but not initialized; available=%s, coordinator_online=%s",
                 mac_addr,
@@ -202,6 +291,16 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             api = self._get_appliance_api(appliance)
             api.build_entities_list()
             self.appliance_apis[mac_addr] = api
+            if _is_laundry_diagnostic_target(appliance):
+                _LOGGER.warning(
+                    "GE_HOME_LAUNDRY_DIAG api_created mac_addr=%s appliance_type=%s available=%s initialized=%s api_class=%s entity_count=%s",
+                    mac_addr,
+                    appliance.appliance_type,
+                    appliance.available,
+                    appliance.initialized,
+                    type(api).__name__,
+                    len(api.entities),
+                )
         else:
             # if we already have the API, switch out its appliance reference for this one
             api = self.appliance_apis[mac_addr]
@@ -387,6 +486,18 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             if api is None:
                 return
 
+        if _is_laundry_diagnostic_target(appliance):
+            _LOGGER.warning(
+                "GE_HOME_LAUNDRY_DIAG update mac_addr=%s appliance_type=%s available=%s initialized=%s existing_api=%s api_class=%s entity_count=%s",
+                appliance.mac_addr,
+                appliance.appliance_type,
+                appliance.available,
+                appliance.initialized,
+                True,
+                type(api).__name__,
+                len(api.entities),
+            )
+
         if self._is_laundry_appliance(appliance) and not appliance.available and api.entities:
             warning_key = (appliance.mac_addr, appliance.available, appliance.initialized)
             if warning_key not in self._laundry_unavailable_warnings:
@@ -459,6 +570,15 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                         appliance.initialized,
                         appliance_valid,
                     )
+                    if _is_laundry_diagnostic_target(appliance):
+                        _LOGGER.warning(
+                            "GE_HOME_LAUNDRY_DIAG roster mac_addr=%s appliance_type=%s available=%s initialized=%s valid=%s",
+                            appliance.mac_addr,
+                            appliance.appliance_type,
+                            appliance.available,
+                            appliance.initialized,
+                            appliance_valid,
+                        )
                     if appliance_valid:
                         _LOGGER.debug(
                             "GE Home appliance %s (%s) is in roster but not initialized; waiting for initial update",
@@ -488,6 +608,29 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             len(appliance.known_properties),
             len(property_cache),
         )
+
+        if _is_laundry_diagnostic_target(appliance):
+            (
+                known_status,
+                known_count,
+                known_laundry,
+                cache_status,
+                cache_count,
+                cache_laundry,
+            ) = _property_collection_diagnostics(appliance)
+            _LOGGER.warning(
+                "GE_HOME_LAUNDRY_DIAG initial_update mac_addr=%s appliance_type=%s available=%s initialized=%s known_properties_status=%s known_properties_count=%s property_cache_status=%s property_cache_count=%s known_laundry_erds=%s property_cache_laundry_erds=%s",
+                appliance.mac_addr,
+                appliance.appliance_type,
+                appliance.available,
+                appliance.initialized,
+                known_status,
+                known_count,
+                cache_status,
+                cache_count,
+                known_laundry or "none",
+                cache_laundry or "none",
+            )
 
         if not self._is_appliance_valid(appliance):
             _LOGGER.debug(f"on_device_initial_update: skipping invalid appliance {appliance.mac_addr}")
