@@ -13,6 +13,16 @@ _LOGGER = logging.getLogger(__name__)
 class WasherDryerApi(WasherApi, DryerApi):
     """API class for washer/dryer objects"""
     APPLIANCE_TYPE = ErdApplianceType.COMBINATION_WASHER_DRYER
+    REGISTER_WITHOUT_KNOWN_PROPERTIES = {
+        ErdCode.LAUNDRY_MACHINE_STATE,
+        ErdCode.LAUNDRY_CYCLE,
+        ErdCode.LAUNDRY_SUB_CYCLE,
+        ErdCode.LAUNDRY_END_OF_CYCLE,
+        ErdCode.LAUNDRY_TIME_REMAINING,
+        ErdCode.LAUNDRY_DELAY_TIME_REMAINING,
+        ErdCode.LAUNDRY_DOOR,
+        ErdCode.LAUNDRY_REMOTE_STATUS,
+    }
 
     def get_all_entities(self) -> List[Entity]:
         base_entities = self.get_base_entities()

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from gehomesdk import GeAppliance
 from gehomesdk.erd import ErdCode, ErdCodeType, ErdApplianceType
@@ -20,6 +20,7 @@ class ApplianceApi:
     Since a physical device can have many entities, we"ll pool common elements here
     """
     APPLIANCE_TYPE = None  # type: Optional[ErdApplianceType]
+    REGISTER_WITHOUT_KNOWN_PROPERTIES = set()  # type: Set[ErdCodeType]
 
     def __init__(self, coordinator: DataUpdateCoordinator, appliance: GeAppliance):
         if not appliance.initialized:
@@ -130,11 +131,52 @@ class ApplianceApi:
 
     def build_entities_list(self) -> None:
         """Build the entities list, adding anything new."""
-        from ..entities import GeErdEntity, GeErdButton
-        entities = [
-            e for e in self.get_all_entities()
-            if not isinstance(e, GeErdEntity) or isinstance(e, GeErdButton) or e.erd_code in self.appliance.known_properties
-        ]
+        from ..entities import GeErdEntity, GeErdButton, GeErdSensor
+
+        known_properties = self.appliance.known_properties
+        property_cache = getattr(self.appliance, "_property_cache", {})
+        register_without_known_properties = {
+            self.appliance.translate_erd_code(erd_code)
+            for erd_code in self.REGISTER_WITHOUT_KNOWN_PROPERTIES
+        }
+        entities = []
+
+        for entity in self.get_all_entities():
+            if not isinstance(entity, GeErdEntity) or isinstance(entity, GeErdButton):
+                entities.append(entity)
+                continue
+
+            if entity.erd_code in known_properties:
+                entities.append(entity)
+                continue
+
+            if (
+                entity.erd_code in register_without_known_properties
+                and entity.erd_code in property_cache
+            ):
+                _LOGGER.debug(
+                    "Registering %s for %s because allowed ERD %s exists in the property cache",
+                    entity.unique_id,
+                    self.serial_or_mac,
+                    entity.erd_code,
+                )
+                entities.append(entity)
+                continue
+
+            if (
+                entity.erd_code in register_without_known_properties
+                or (
+                    isinstance(entity, GeErdSensor)
+                    and entity.register_without_property_cache
+                )
+            ):
+                _LOGGER.debug(
+                    "Registering %s for %s even though ERD %s is absent from known properties",
+                    entity.unique_id,
+                    self.serial_or_mac,
+                    entity.erd_code,
+                )
+                entities.append(entity)
 
         for entity in entities:
             if entity.unique_id not in self._entities:
