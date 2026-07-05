@@ -39,6 +39,20 @@ class WasherDryerApi(WasherApi, DryerApi):
         skipped_erds.append(str(erd_code))
         return False
 
+    def _filter_legacy_combo_entities(self, entities: List[Entity]) -> List[Entity]:
+        """Remove generic washer/dryer ERDs superseded on combo laundry units."""
+        superseded_erds = {ErdCode.LAUNDRY_END_OF_CYCLE}
+
+        combo_door_status = _erd_code("LAUNDRY_COMBO_DOOR_STATUS")
+        if combo_door_status is not None and self.has_erd_code(combo_door_status):
+            superseded_erds.add(ErdCode.LAUNDRY_DOOR)
+
+        return [
+            entity
+            for entity in entities
+            if getattr(entity, "erd_code", None) not in superseded_erds
+        ]
+
     def get_all_entities(self) -> List[Entity]:
         base_entities = self.get_base_entities()
         common_entities = []
@@ -68,8 +82,8 @@ class WasherDryerApi(WasherApi, DryerApi):
             _erd_code("LAUNDRY_COMBO_DRYER_TIME_REMAINING"),
         )
 
-        washer_entities = self.get_washer_entities()
-        dryer_entities = self.get_dryer_entities()
+        washer_entities = self._filter_legacy_combo_entities(self.get_washer_entities())
+        dryer_entities = self._filter_legacy_combo_entities(self.get_dryer_entities())
 
         entities = base_entities + common_entities + washer_entities + dryer_entities
         built_erds = [str(getattr(entity, "erd_code", None)) for entity in common_entities + washer_entities + dryer_entities]
