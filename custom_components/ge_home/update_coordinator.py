@@ -71,6 +71,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         self._signal_remove_callbacks = [] # type: List[Callable]
         self._retry_count = 0
         self._initial_ready_handle = None
+        self._laundry_unavailable_warnings = set()
 
         self._reset_initialization()
 
@@ -215,6 +216,12 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                 id(api.appliance),
             )
             api.appliance = appliance
+            _LOGGER.debug(
+                "GE Home replaced appliance reference for existing api: mac_addr=%s, api_class=%s, new_appliance_id=%s",
+                appliance.mac_addr,
+                type(api).__name__,
+                id(appliance),
+            )
         return True
 
     def add_signal_remove_callback(self, cb: Callable):
@@ -380,6 +387,17 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             if api is None:
                 return
 
+        if self._is_laundry_appliance(appliance) and not appliance.available and api.entities:
+            warning_key = (appliance.mac_addr, appliance.available, appliance.initialized)
+            if warning_key not in self._laundry_unavailable_warnings:
+                self._laundry_unavailable_warnings.add(warning_key)
+                _LOGGER.warning(
+                    "GE Home laundry appliance %s (%s) has %s registered entities but SDK reports available=False; entities will remain unavailable until the SDK/coordinator reports availability",
+                    appliance.mac_addr,
+                    appliance.appliance_type,
+                    len(api.entities),
+                )
+
         self._update_entity_state(api.entities)
 
     async def _refresh_ha_state(self):
@@ -408,9 +426,19 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
     @property
     def all_appliances_updated(self) -> bool:
-        """True if all appliances have had an initial update."""
+        """True if all discovered appliances with a type have had an initial update."""
         appliances = list(self.appliances)
-        return bool(appliances) and all(a.initialized for a in appliances)
+        pending = [
+            a.mac_addr for a in appliances
+            if not a.initialized and a.mac_addr not in self.appliance_apis
+        ]
+        if pending:
+            _LOGGER.debug(
+                "GE Home waiting for initial appliance updates: pending=%s, discovered_apis=%s",
+                pending,
+                list(self.appliance_apis),
+            )
+        return bool(appliances) and not pending
 
     async def on_appliance_list(self, _):
         """When we get an appliance list, mark it and maybe trigger all ready."""
@@ -422,14 +450,16 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.info("GE Home appliance roster received with %s appliance(s)", roster_count)
             if self.client:
                 for appliance in self.client.appliances.values():
+                    appliance_valid = self._is_appliance_valid(appliance)
                     _LOGGER.debug(
-                        "GE Home roster appliance: mac_addr=%s, appliance_type=%s, available=%s, initialized=%s",
+                        "GE Home roster appliance: mac_addr=%s, appliance_type=%s, available=%s, initialized=%s, valid=%s",
                         appliance.mac_addr,
                         appliance.appliance_type,
                         appliance.available,
                         appliance.initialized,
+                        appliance_valid,
                     )
-                    if self._is_appliance_valid(appliance):
+                    if appliance_valid:
                         _LOGGER.debug(
                             "GE Home appliance %s (%s) is in roster but not initialized; waiting for initial update",
                             appliance.mac_addr,
@@ -448,6 +478,16 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
     async def on_device_initial_update(self, appliance: GeAppliance):
         self._dump_appliance(appliance)
+        property_cache = getattr(appliance, "_property_cache", {})
+        _LOGGER.debug(
+            "GE Home initial update details: mac_addr=%s, appliance_type=%s, available=%s, initialized=%s, known_properties_count=%s, property_cache_count=%s",
+            appliance.mac_addr,
+            appliance.appliance_type,
+            appliance.available,
+            appliance.initialized,
+            len(appliance.known_properties),
+            len(property_cache),
+        )
 
         if not self._is_appliance_valid(appliance):
             _LOGGER.debug(f"on_device_initial_update: skipping invalid appliance {appliance.mac_addr}")
@@ -528,7 +568,18 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         return min(delay, MAX_RETRY_DELAY)
 
     def _is_appliance_valid(self, appliance: GeAppliance) -> bool:
-        return appliance.appliance_type and appliance.available
+        """Return True when an appliance is discoverable by type.
+
+        Availability is intentionally not part of discovery validity. The entity
+        availability path still uses ApplianceApi.available, which combines the
+        SDK appliance availability with coordinator connectivity.
+        """
+        return bool(appliance.appliance_type)
+
+    def _is_laundry_appliance(self, appliance: GeAppliance) -> bool:
+        appliance_type = getattr(appliance, "appliance_type", None)
+        appliance_type_name = getattr(appliance_type, "name", str(appliance_type))
+        return any(part in appliance_type_name.upper() for part in ("WASHER", "DRYER", "LAUNDRY"))
 
     def _dump_appliance(self, appliance: GeAppliance) -> None:
         if not _LOGGER.isEnabledFor(logging.DEBUG):

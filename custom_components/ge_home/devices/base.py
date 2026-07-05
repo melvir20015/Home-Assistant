@@ -43,6 +43,7 @@ class ApplianceApi:
         self.coordinator = coordinator
         self.initial_update = False
         self._entities = {}  # type: Optional[Dict[str, Entity]]
+        self._last_availability_diagnostic = None
 
     @property
     def hass(self) -> HomeAssistant:
@@ -67,15 +68,23 @@ class ApplianceApi:
         #Note - online will be there since we're using the GE coordinator
         #Didn't want to deal with the circular references to get the type hints
         #working.
-        available = self.appliance.available and self.coordinator.online
-        if not self.appliance.available:
-            _LOGGER.debug(
-                "GE Home appliance unavailable: mac_addr=%s, serial_or_mac=%s, appliance_type=%s, coordinator_online=%s",
-                self.mac_addr,
-                self.serial_or_mac,
-                self.appliance.appliance_type,
-                self.coordinator.online,
-            )
+        appliance_available = self.appliance.available
+        coordinator_online = self.coordinator.online
+        available = appliance_available and coordinator_online
+        if not available:
+            diagnostic_state = (appliance_available, coordinator_online)
+            if diagnostic_state != self._last_availability_diagnostic:
+                self._last_availability_diagnostic = diagnostic_state
+                _LOGGER.debug(
+                    "GE Home appliance availability false: mac_addr=%s, serial_or_mac=%s, appliance_type=%s, appliance_available=%s, coordinator_online=%s",
+                    self.mac_addr,
+                    self.serial_or_mac,
+                    self.appliance.appliance_type,
+                    appliance_available,
+                    coordinator_online,
+                )
+        else:
+            self._last_availability_diagnostic = (appliance_available, coordinator_online)
         return available
 
     @property
@@ -217,14 +226,22 @@ class ApplianceApi:
 
             omitted_entities.append((entity.unique_id, str(entity.erd_code)))
 
-        if self.mac_addr in _DIAGNOSTIC_MACS:
+        entity_diagnostics = [(entity.unique_id, str(getattr(entity, "erd_code", None))) for entity in entities]
+        _LOGGER.debug(
+            "GE Home build entities complete: serial_or_mac=%s, mac_addr=%s, api_class=%s, entity_count=%s",
+            self.serial_or_mac,
+            self.mac_addr,
+            type(self).__name__,
+            len(entities),
+        )
+
+        if self.mac_addr in _DIAGNOSTIC_MACS or type(self).__name__ == "WasherDryerApi":
             _LOGGER.debug(
-                "GE Home build entities complete: serial_or_mac=%s, mac_addr=%s, api_class=%s, entity_count=%s, entities=%s, omitted_entities=%s",
+                "GE Home build entities detail: serial_or_mac=%s, mac_addr=%s, api_class=%s, entities=%s, omitted_entities=%s",
                 self.serial_or_mac,
                 self.mac_addr,
                 type(self).__name__,
-                len(entities),
-                [(entity.unique_id, str(getattr(entity, "erd_code", None))) for entity in entities],
+                entity_diagnostics,
                 omitted_entities,
             )
 
