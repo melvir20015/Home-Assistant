@@ -518,21 +518,106 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
         self._update_entity_state(entities)
 
+    def _is_laundry_entity_diagnostic_target(self, entity: Entity) -> bool:
+        """Return True for the known combo washer/dryer entities under diagnosis."""
+        values = []
+        for attr_name in ("unique_id", "entity_id", "name"):
+            try:
+                values.append(getattr(entity, attr_name, None))
+            except Exception:
+                continue
+
+        api = getattr(entity, "api", None)
+        if api is not None:
+            for attr_name in ("serial_or_mac", "serial_number", "mac_addr"):
+                try:
+                    values.append(getattr(api, attr_name, None))
+                except Exception:
+                    continue
+
+        erd_code = getattr(entity, "erd_code", None)
+        erd_name = getattr(erd_code, "name", erd_code)
+        values.append(erd_name)
+
+        normalized_values = [str(value).upper() for value in values if value]
+        return any(
+            "AZ312796N" in value
+            or "02000047439D" in value
+            or "LAUNDRY" in value
+            or "WASHER" in value
+            or "DRYER" in value
+            for value in normalized_values
+        )
+
     def _update_entity_state(self, entities: List[Entity]):
         from .entities import GeEntity
         for entity in entities:
+            is_laundry_diag = self._is_laundry_entity_diagnostic_target(entity)
+            erd_code = getattr(entity, "erd_code", None)
+            erd_name = getattr(erd_code, "name", erd_code)
+
             # if this is a GeEntity, check if it's been added
             #if not, don't try to refresh this entity
             if isinstance(entity, GeEntity):
                 gee: GeEntity = entity
+                if is_laundry_diag:
+                    _LOGGER.warning(
+                        "GE_HOME_LAUNDRY_STATE_DIAG update_seen unique_id=%s entity_id=%s class=%s enabled=%s added=%s available=%s erd_code=%s",
+                        getattr(entity, "unique_id", None),
+                        getattr(entity, "entity_id", None),
+                        type(entity).__name__,
+                        getattr(entity, "enabled", None),
+                        gee.added,
+                        getattr(entity, "available", None),
+                        erd_name,
+                    )
                 if not gee.added:
+                    if is_laundry_diag:
+                        _LOGGER.warning(
+                            "GE_HOME_LAUNDRY_STATE_DIAG skipped_not_added unique_id=%s entity_id=%s class=%s enabled=%s added=%s available=%s erd_code=%s",
+                            getattr(entity, "unique_id", None),
+                            getattr(entity, "entity_id", None),
+                            type(entity).__name__,
+                            getattr(entity, "enabled", None),
+                            gee.added,
+                            getattr(entity, "available", None),
+                            erd_name,
+                        )
                     _LOGGER.debug(f"Entity {entity} ({entity.unique_id}, {entity.entity_id}) not yet added, skipping update...")
                     continue
             if entity.enabled:
                 try:
+                    if is_laundry_diag:
+                        _LOGGER.warning(
+                            "GE_HOME_LAUNDRY_STATE_DIAG write_attempt unique_id=%s entity_id=%s class=%s enabled=%s available=%s erd_code=%s",
+                            getattr(entity, "unique_id", None),
+                            getattr(entity, "entity_id", None),
+                            type(entity).__name__,
+                            getattr(entity, "enabled", None),
+                            getattr(entity, "available", None),
+                            erd_name,
+                        )
                     _LOGGER.debug(f"Refreshing state for {entity} ({entity.unique_id}, {entity.entity_id}")
                     entity.async_write_ha_state()
-                except:
+                    if is_laundry_diag:
+                        _LOGGER.warning(
+                            "GE_HOME_LAUNDRY_STATE_DIAG write_success unique_id=%s entity_id=%s class=%s enabled=%s available=%s erd_code=%s",
+                            getattr(entity, "unique_id", None),
+                            getattr(entity, "entity_id", None),
+                            type(entity).__name__,
+                            getattr(entity, "enabled", None),
+                            getattr(entity, "available", None),
+                            erd_name,
+                        )
+                except Exception:
+                    _LOGGER.warning(
+                        "GE_HOME_LAUNDRY_STATE_DIAG write_exception unique_id=%s entity_id=%s class=%s erd_code=%s",
+                        getattr(entity, "unique_id", None),
+                        getattr(entity, "entity_id", None),
+                        type(entity).__name__,
+                        erd_name,
+                        exc_info=True,
+                    )
                     _LOGGER.warning(f"Could not refresh state for {entity} ({entity.unique_id}, {entity.entity_id}", exc_info=1)
 
     @property

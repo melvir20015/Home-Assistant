@@ -37,24 +37,67 @@ class GeErdSensor(GeErdEntity, SensorEntity):
 
     @property
     def native_value(self):
+        raw_value = None
         try:
-            value = self.appliance.get_erd_value(self.erd_code)
+            raw_value = self.appliance.get_erd_value(self.erd_code)
+            value = raw_value
             if self._value_attr is not None:
                 value = getattr(value, self._value_attr, None)
                 if value is None:
-                    return None
-                return value * self._value_scale
+                    result = None
+                else:
+                    result = value * self._value_scale
+                if self._is_laundry_diagnostic_target():
+                    _LOGGER.warning(
+                        "GE_HOME_LAUNDRY_STATE_DIAG native_value unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=%s",
+                        getattr(self, "unique_id", None),
+                        getattr(self, "entity_id", None),
+                        getattr(self.erd_code, "name", self.erd_code),
+                        raw_value,
+                        result,
+                    )
+                return result
 
             # if it's a numeric data type, return it directly            
             if self._data_type in [ErdDataType.INT, ErdDataType.FLOAT]:
-                return self._convert_numeric_value_from_device(value)
+                result = self._convert_numeric_value_from_device(value)
+            else:
+                # otherwise, return a stringified version
+                # TODO: perhaps enhance so that there's a list of variables available
+                #       for the stringify function to consume...
+                result = self._stringify(value, temp_units=self._temp_units)
 
-            # otherwise, return a stringified version
-            # TODO: perhaps enhance so that there's a list of variables available
-            #       for the stringify function to consume...
-            return self._stringify(value, temp_units=self._temp_units)
+            if self._is_laundry_diagnostic_target():
+                _LOGGER.warning(
+                    "GE_HOME_LAUNDRY_STATE_DIAG native_value unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=%s",
+                    getattr(self, "unique_id", None),
+                    getattr(self, "entity_id", None),
+                    getattr(self.erd_code, "name", self.erd_code),
+                    raw_value,
+                    result,
+                )
+            return result
         except KeyError:
+            if self._is_laundry_diagnostic_target():
+                _LOGGER.warning(
+                    "GE_HOME_LAUNDRY_STATE_DIAG native_value_missing unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=None",
+                    getattr(self, "unique_id", None),
+                    getattr(self, "entity_id", None),
+                    getattr(self.erd_code, "name", self.erd_code),
+                    raw_value,
+                )
             return None
+        except Exception:
+            if self._is_laundry_diagnostic_target():
+                _LOGGER.warning(
+                    "GE_HOME_LAUNDRY_STATE_DIAG native_value_exception unique_id=%s entity_id=%s erd_code=%s raw_value=%s",
+                    getattr(self, "unique_id", None),
+                    getattr(self, "entity_id", None),
+                    getattr(self.erd_code, "name", self.erd_code),
+                    raw_value,
+                    exc_info=True,
+                )
+            raise
 
     @property
     def native_unit_of_measurement(self) -> Optional[str]:
