@@ -202,3 +202,8 @@ ac_matriz_160_contextual_reliability:
   name: AC Matriz 160 Contextual Reliability
   max: 255
   initial: sin_historial
+
+lavadora_az312796n_watchdog_ultimo_dryer_time:
+  name: Lavadora AZ312796N Watchdog Último Dryer Time
+  max: 40
+  initial: unknown

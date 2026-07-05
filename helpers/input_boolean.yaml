@@ -31,3 +31,7 @@ ac_night_manual_off_lock:
 ac_night_enable_humidity_fan_boost:
   name: AC Night Enable Humidity Fan Boost Experimental
   icon: mdi:fan-alert
+
+lavadora_az312796n_watchdog_loop_notificado:
+  name: Lavadora AZ312796N Watchdog Loop Notificado
+  icon: mdi:washing-machine-alert

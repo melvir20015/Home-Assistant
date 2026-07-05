@@ -116,3 +116,8 @@ ac_night_humidity_fan_boost_started_ts:
   name: AC Night Humidity Fan Boost Started Timestamp
   has_date: true
   has_time: true
+
+lavadora_az312796n_load_sensing_inicio:
+  name: Lavadora AZ312796N Inicio Detectando Carga
+  has_date: true
+  has_time: true

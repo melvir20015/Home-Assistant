@@ -6177,3 +6177,147 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           entity_id:
           - automation.ac_matriz_160
           - automation.ac_matriz_160_aprendizaje_manual_por_columna
+
+- id: lavadora_watchdog_detectando_carga_secado_az312796n_v1
+  alias: Lavadora - Watchdog Detectando carga secado
+  description: Detecta y notifica posible loop de secado automático atrapado en Load Sensing/Detectando carga para la lavadora GE AZ312796N, sin ejecutar apagado remoto.
+  mode: queued
+  max: 5
+  trigger:
+  - platform: state
+    entity_id:
+    - sensor.az312796n_laundry_sub_cycle
+    - sensor.dormitorio_lavadora_az312796n_laundry_combo_dryer_time_remaining
+    - sensor.az312796n_laundry_machine_state
+    - sensor.az312796n_laundry_cycle
+  - platform: time_pattern
+    minutes: /1
+  variables:
+    machine_state_raw: "{{ states('sensor.az312796n_laundry_machine_state') }}"
+    machine_state_norm: "{{ machine_state_raw | lower | trim }}"
+    cycle_raw: "{{ states('sensor.az312796n_laundry_cycle') }}"
+    cycle_norm: "{{ cycle_raw | lower | trim }}"
+    sub_cycle_raw: "{{ states('sensor.az312796n_laundry_sub_cycle') }}"
+    sub_cycle_norm: "{{ sub_cycle_raw | lower | trim }}"
+    total_time_remaining: "{{ states('sensor.az312796n_laundry_time_remaining') }}"
+    dryer_time_raw: "{{ states('sensor.dormitorio_lavadora_az312796n_laundry_combo_dryer_time_remaining') }}"
+    washer_time_raw: "{{ states('sensor.dormitorio_lavadora_az312796n_laundry_combo_washer_time_remaining') }}"
+    door_status: "{{ states('binary_sensor.dormitorio_lavadora_az312796n_laundry_combo_door_status') }}"
+    remote_status: "{{ states('binary_sensor.az312796n_laundry_remote_status') }}"
+    extended_tumble: "{{ states('sensor.az312796n_laundry_dryer_extended_tumble_option_selection') }}"
+    load_sensing_activo: >-
+      {{ sub_cycle_norm in ['load sensing', 'detectando carga'] }}
+    estado_inactivo: >-
+      {{ machine_state_norm in ['', 'unknown', 'unavailable', 'off', 'idle', 'standby', 'complete', 'completed', 'end', 'ended', 'finished', 'finish'] }}
+    ciclo_activo: >-
+      {{ not estado_inactivo }}
+    start_ts: "{{ as_timestamp(states('input_datetime.lavadora_az312796n_load_sensing_inicio'), 0) | int(0) }}"
+    elapsed_s: "{{ (as_timestamp(now()) - (start_ts | int(0))) | int(0) if (start_ts | int(0)) > 0 else 0 }}"
+    loop_notificado: "{{ is_state('input_boolean.lavadora_az312796n_watchdog_loop_notificado', 'on') }}"
+    ultimo_dryer_time_raw: "{{ states('input_text.lavadora_az312796n_watchdog_ultimo_dryer_time') }}"
+    dryer_minutes: >-
+      {% set raw = dryer_time_raw | lower | trim %}
+      {% if raw in ['', 'unknown', 'unavailable', 'none'] %}
+        {{ -1 }}
+      {% elif ':' in raw %}
+        {% set parts = raw.split(':') | map('int', 0) | list %}
+        {% if parts | length == 3 %}
+          {{ (parts[0] * 60 + parts[1] + (1 if parts[2] >= 30 else 0)) | int }}
+        {% elif parts | length == 2 %}
+          {{ (parts[0] * 60 + parts[1]) | int }}
+        {% else %}
+          {{ -1 }}
+        {% endif %}
+      {% else %}
+        {{ raw | float(-1) }}
+      {% endif %}
+    ultimo_dryer_minutes: >-
+      {% set raw = ultimo_dryer_time_raw | lower | trim %}
+      {% if raw in ['', 'unknown', 'unavailable', 'none'] %}
+        {{ -1 }}
+      {% elif ':' in raw %}
+        {% set parts = raw.split(':') | map('int', 0) | list %}
+        {% if parts | length == 3 %}
+          {{ (parts[0] * 60 + parts[1] + (1 if parts[2] >= 30 else 0)) | int }}
+        {% elif parts | length == 2 %}
+          {{ (parts[0] * 60 + parts[1]) | int }}
+        {% else %}
+          {{ -1 }}
+        {% endif %}
+      {% else %}
+        {{ raw | float(-1) }}
+      {% endif %}
+    dryer_reinicio_15: >-
+      {{ (dryer_minutes | float(-1)) >= 14 and (dryer_minutes | float(-1)) <= 16 and (ultimo_dryer_minutes | float(-1)) >= 0 and (ultimo_dryer_minutes | float(-1)) < 14 }}
+    loop_confirmado: >-
+      {{ load_sensing_activo and ciclo_activo and (start_ts | int(0)) > 0 and not loop_notificado and ((elapsed_s | int(0)) >= 1200 or dryer_reinicio_15) }}
+  action:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ load_sensing_activo and ciclo_activo and (start_ts | int(0)) == 0 }}"
+      sequence:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.lavadora_az312796n_load_sensing_inicio
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.lavadora_az312796n_watchdog_ultimo_dryer_time
+        data:
+          value: "{{ dryer_time_raw }}"
+      - service: logbook.log
+        data:
+          name: Lavadora Watchdog
+          message: "hito=inicio_vigilancia | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | subciclo={{ sub_cycle_raw }} | total={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | washer={{ washer_time_raw }} | puerta={{ door_status }} | remote={{ remote_status }} | extended_tumble={{ extended_tumble }}"
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: "Lavadora: vigilando Detectando carga"
+          message: "Ciclo={{ cycle_raw }}; subciclo={{ sub_cycle_raw }}; total={{ total_time_remaining }}; dryer={{ dryer_time_raw }}; washer={{ washer_time_raw }}; puerta={{ door_status }}; remote={{ remote_status }}; hora={{ now().strftime('%H:%M:%S') }}."
+    - conditions:
+      - condition: template
+        value_template: "{{ loop_confirmado }}"
+      sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.lavadora_az312796n_watchdog_loop_notificado
+      - service: logbook.log
+        data:
+          name: Lavadora Watchdog
+          message: "hito=loop_confirmado | elapsed_s={{ elapsed_s }} | dryer_reinicio_15={{ dryer_reinicio_15 }} | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | subciclo={{ sub_cycle_raw }} | total={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | dryer_previo={{ ultimo_dryer_time_raw }} | puerta={{ door_status }} | remote={{ remote_status }}"
+      - service: notify.mobile_app_samsung_s24
+        data:
+          title: "Lavadora: posible loop de secado"
+          message: "La lavadora lleva aprox. 20 min en Detectando carga/Load Sensing o reinició el bloque de 15 min. La ropa probablemente ya está seca. Home Assistant no tiene apagado remoto expuesto; apágala desde SmartHQ si corresponde."
+    - conditions:
+      - condition: template
+        value_template: "{{ (start_ts | int(0)) > 0 and (not ciclo_activo or not load_sensing_activo) }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: Lavadora Watchdog
+          message: "hito={{ 'reset_watchdog' if not ciclo_activo else 'salida_normal' }} | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | subciclo={{ sub_cycle_raw }} | elapsed_s={{ elapsed_s }} | loop_notificado={{ loop_notificado }} | dryer={{ dryer_time_raw }}"
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.lavadora_az312796n_load_sensing_inicio
+        data:
+          timestamp: 0
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.lavadora_az312796n_watchdog_loop_notificado
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.lavadora_az312796n_watchdog_ultimo_dryer_time
+        data:
+          value: unknown
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ load_sensing_activo and ciclo_activo }}"
+      sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.lavadora_az312796n_watchdog_ultimo_dryer_time
+        data:
+          value: "{{ dryer_time_raw }}"
