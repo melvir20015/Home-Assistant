@@ -15,18 +15,24 @@ class GeErdBinarySensor(GeErdEntity, BinarySensorEntity):
 
     """GE Entity for binary sensors"""
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> Optional[bool]:
         """Return True if entity is on."""
-        return self._boolify(self.appliance.get_erd_value(self.erd_code))
+        try:
+            return self._boolify(self.appliance.get_erd_value(self.erd_code))
+        except KeyError:
+            return None
 
     def _get_icon(self):
-        if self._icon_on_override and self.is_on:
+        is_on = self.is_on
+        if self._icon_on_override and is_on is True:
             return self._icon_on_override
-        if self._icon_off_override and not self.is_on:
+        if self._icon_off_override and is_on is False:
             return self._icon_off_override
 
         if self._erd_code_class == ErdCodeClass.DOOR or self.device_class == "door":
-            return "mdi:door-open" if self.is_on else "mdi:door-closed"
+            if is_on is None:
+                return super()._get_icon()
+            return "mdi:door-open" if is_on else "mdi:door-closed"
 
         return super()._get_icon()
 

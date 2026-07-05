@@ -150,10 +150,11 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         self._dump_appliance(appliance)
         api_type = get_appliance_api_type(appliance.appliance_type)
         _LOGGER.debug(
-            "GE Home appliance api selection: mac_addr=%s, appliance_type=%s, appliance_type_class=%s, api_class=%s",
+            "GE Home appliance api selection: mac_addr=%s, appliance_type=%s, available=%s, initialized=%s, api_class=%s",
             appliance.mac_addr,
             appliance.appliance_type,
-            type(appliance.appliance_type).__name__,
+            appliance.available,
+            appliance.initialized,
             api_type.__name__,
         )
         return api_type(self, appliance)
@@ -204,8 +205,11 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             # if we already have the API, switch out its appliance reference for this one
             api = self.appliance_apis[mac_addr]
             _LOGGER.debug(
-                "GE Home appliance api already exists for %s; api_class=%s, incoming_appliance_id=%s, current_api_appliance_id=%s",
+                "GE Home appliance api already exists: mac_addr=%s, appliance_type=%s, available=%s, initialized=%s, api_class=%s, incoming_appliance_id=%s, current_api_appliance_id=%s",
                 mac_addr,
+                appliance.appliance_type,
+                appliance.available,
+                appliance.initialized,
                 type(api).__name__,
                 id(appliance),
                 id(api.appliance),
@@ -344,18 +348,31 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
         try:
             api = self.appliance_apis[appliance.mac_addr]
             _LOGGER.debug(
-                "GE Home device update for %s: incoming_appliance_id=%s, api_appliance_id=%s, available=%s, initialized=%s, api_class=%s",
+                "GE Home device update: mac_addr=%s, appliance_type=%s, available=%s, initialized=%s, existing_api=%s, api_class=%s, incoming_appliance_id=%s, api_appliance_id=%s",
                 appliance.mac_addr,
-                id(appliance),
-                id(api.appliance),
+                appliance.appliance_type,
                 appliance.available,
                 appliance.initialized,
+                True,
                 type(api).__name__,
+                id(appliance),
+                id(api.appliance),
             )
+            api.appliance = appliance
         except KeyError:
+            api_type = get_appliance_api_type(appliance.appliance_type)
             _LOGGER.info(
                 "Received update for appliance %s before discovery completed; adding it now",
                 appliance.mac_addr,
+            )
+            _LOGGER.debug(
+                "GE Home device update: mac_addr=%s, appliance_type=%s, available=%s, initialized=%s, existing_api=%s, api_class=%s",
+                appliance.mac_addr,
+                appliance.appliance_type,
+                appliance.available,
+                appliance.initialized,
+                False,
+                api_type.__name__,
             )
             self._maybe_add_appliance_api(appliance)
             await self.async_maybe_trigger_all_ready()
