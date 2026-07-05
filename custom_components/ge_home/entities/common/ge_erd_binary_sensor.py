@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
@@ -5,6 +6,8 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from gehomesdk import ErdCode, ErdCodeType, ErdCodeClass
 from ...devices import ApplianceApi
 from .ge_erd_entity import GeErdEntity
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeErdBinarySensor(GeErdEntity, BinarySensorEntity):
@@ -20,8 +23,26 @@ class GeErdBinarySensor(GeErdEntity, BinarySensorEntity):
         raw_value = None
         try:
             raw_value = self.appliance.get_erd_value(self.erd_code)
-            return self._laundry_combo_door_bytes_to_bool(raw_value)
+            result = self._laundry_combo_door_bytes_to_bool(raw_value)
+            if self._is_laundry_diagnostic_target():
+                _LOGGER.warning(
+                    "GE_HOME_LAUNDRY_STATE_DIAG is_on unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=%s",
+                    getattr(self, "unique_id", None),
+                    getattr(self, "entity_id", None),
+                    getattr(self.erd_code, "name", self.erd_code),
+                    raw_value,
+                    result,
+                )
+            return result
         except KeyError:
+            if self._is_laundry_diagnostic_target():
+                _LOGGER.warning(
+                    "GE_HOME_LAUNDRY_STATE_DIAG is_on_missing unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=None",
+                    getattr(self, "unique_id", None),
+                    getattr(self, "entity_id", None),
+                    getattr(self.erd_code, "name", self.erd_code),
+                    raw_value,
+                )
             return None
 
     def _laundry_combo_door_bytes_to_bool(self, raw_value) -> Optional[bool]:
