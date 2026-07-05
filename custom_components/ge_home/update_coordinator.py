@@ -152,13 +152,39 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
     def regenerate_appliance_apis(self):
         """Regenerate the appliance_apis dictionary, adding elements as necessary."""
-        for appliance in self.appliances:
+        if not self.client:
+            return
+
+        for appliance in self.client.appliances.values():
             self._maybe_add_appliance_api(appliance)
 
-    def _maybe_add_appliance_api(self, appliance: GeAppliance):
+    def _maybe_add_appliance_api(self, appliance: GeAppliance) -> bool:
+        """Add an appliance API when the appliance is valid and initialized."""
         mac_addr = appliance.mac_addr
+
+        if not self._is_appliance_valid(appliance):
+            _LOGGER.debug(
+                "Skipping appliance api for invalid appliance %s: available=%s, appliance_type=%s",
+                mac_addr,
+                appliance.available,
+                appliance.appliance_type,
+            )
+            return False
+
+        if not appliance.initialized:
+            _LOGGER.debug(
+                "Skipping appliance api for appliance %s (%s): appliance is in roster but not initialized",
+                mac_addr,
+                appliance.appliance_type,
+            )
+            return False
+
         if mac_addr not in self.appliance_apis:
-            _LOGGER.debug(f"Adding appliance api for appliance {mac_addr} ({appliance.appliance_type})")
+            _LOGGER.info(
+                "Adding appliance api for appliance %s (%s): appliance initialized",
+                mac_addr,
+                appliance.appliance_type,
+            )
             api = self._get_appliance_api(appliance)
             api.build_entities_list()
             self.appliance_apis[mac_addr] = api
@@ -166,6 +192,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             # if we already have the API, switch out its appliance reference for this one
             api = self.appliance_apis[mac_addr]
             api.appliance = appliance
+        return True
 
     def add_signal_remove_callback(self, cb: Callable):
         self._signal_remove_callbacks.append(cb)
@@ -348,7 +375,21 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             self._got_roster = True
             roster_count = len(self.client.appliances) if self.client else 0
             _LOGGER.info("GE Home appliance roster received with %s appliance(s)", roster_count)
-            self.regenerate_appliance_apis()
+            if self.client:
+                for appliance in self.client.appliances.values():
+                    if self._is_appliance_valid(appliance):
+                        _LOGGER.debug(
+                            "GE Home appliance %s (%s) is in roster but not initialized; waiting for initial update",
+                            appliance.mac_addr,
+                            appliance.appliance_type,
+                        )
+                    else:
+                        _LOGGER.debug(
+                            "GE Home appliance %s is invalid from roster: available=%s, appliance_type=%s",
+                            appliance.mac_addr,
+                            appliance.available,
+                            appliance.appliance_type,
+                        )
             self._schedule_initial_ready_check()
             await self.async_maybe_trigger_all_ready()
 
