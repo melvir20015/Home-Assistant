@@ -6208,6 +6208,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
     extended_tumble_norm: "{{ extended_tumble | lower | trim }}"
     extended_tumble_activo: >-
       {{ extended_tumble_norm in ['on', 'true', 'active', 'enabled', 'enable', 'yes', 'si', 'sí'] }}
+    loop_threshold_s: 960
     load_sensing_directo: >-
       {{ sub_cycle_norm in ['load sensing', 'detectando carga'] }}
     estado_inactivo: >-
@@ -6286,10 +6287,24 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       {% else %}
         no_detectado
       {% endif %}
+    subciclo_cooldown: >-
+      {{ sub_cycle_norm in ['cool down', 'cooldown', 'cooling', 'enfriamiento'] }}
+    subciclo_drying: >-
+      {{ sub_cycle_norm in ['drying', 'dry', 'secado'] }}
     dryer_reinicio_15: >-
       {{ (dryer_minutes | float(-1)) >= 14 and (dryer_minutes | float(-1)) <= 16 and (ultimo_dryer_minutes | float(-1)) >= 0 and (ultimo_dryer_minutes | float(-1)) < 14 }}
+    salida_sospechosa_post_watchdog: >-
+      {{ (start_ts | int(0)) > 0
+         and (elapsed_s | int(0)) >= 960
+         and ciclo_activo
+         and not loop_notificado
+         and (load_sensing_activo or subciclo_cooldown or subciclo_drying) }}
     loop_confirmado: >-
-      {{ load_sensing_activo and ciclo_activo and (start_ts | int(0)) > 0 and not loop_notificado and ((elapsed_s | int(0)) >= 1200 or dryer_reinicio_15) }}
+      {{ ciclo_activo
+         and (start_ts | int(0)) > 0
+         and not loop_notificado
+         and (elapsed_s | int(0)) >= (loop_threshold_s | int(960))
+         and (load_sensing_activo or subciclo_cooldown or subciclo_drying) }}
   action:
   - choose:
     - conditions:
@@ -6324,19 +6339,41 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: Lavadora Watchdog
-          message: "hito=loop_confirmado | elapsed_s={{ elapsed_s }} | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | load_sensing_directo={{ load_sensing_directo }} | load_sensing_proxy_15={{ load_sensing_proxy_15 }} | load_sensing_activo={{ load_sensing_activo }} | subciclo={{ sub_cycle_raw }} | sub_cycle_raw={{ sub_cycle_raw }} | total={{ total_time_remaining }} | total_time_remaining={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | dryer_minutes={{ dryer_minutes }} | dryer_previo={{ ultimo_dryer_time_raw }} | ultimo_dryer_minutes={{ ultimo_dryer_minutes }} | dryer_reinicio_15={{ dryer_reinicio_15 }} | washer_time_raw={{ washer_time_raw }} | detection_reason={{ detection_reason }} | puerta={{ door_status }} | remote={{ remote_status }}"
+          message: "hito=loop_confirmado_por_tiempo_real | elapsed_s={{ elapsed_s }} | elapsed_min={{ ((elapsed_s | int(0)) / 60) | round(1) }} | threshold_s={{ loop_threshold_s }} | cycle={{ cycle_raw }} | state={{ machine_state_raw }} | subcycle={{ sub_cycle_raw }} | load_sensing_directo={{ load_sensing_directo }} | load_sensing_proxy_15={{ load_sensing_proxy_15 }} | load_sensing_activo={{ load_sensing_activo }} | subciclo_cooldown={{ subciclo_cooldown }} | subciclo_drying={{ subciclo_drying }} | dryer={{ dryer_time_raw }} | total={{ total_time_remaining }} | washer={{ washer_time_raw }} | detection_reason={{ detection_reason }}"
       - service: notify.mobile_app_samsung_s24
         data:
           title: "Lavadora: posible loop de secado"
-          message: "La lavadora lleva aprox. 20 min en Detectando carga/Load Sensing o reinició el bloque de 15 min. La ropa probablemente ya está seca. Home Assistant no tiene apagado remoto expuesto; apágala desde SmartHQ si corresponde."
+          message: "La lavadora lleva {{ (elapsed_s | int(0)) // 60 }} min reales desde que detecté el patrón de 15 min. La app GE puede dejar 15 min fijos y mover la hora final. Estado: {{ machine_state_raw }}. Ciclo: {{ cycle_raw }}. Subciclo: {{ sub_cycle_raw }}. Total: {{ total_time_remaining }}. Dryer: {{ dryer_time_raw }}. Washer: {{ washer_time_raw }}. Detección: {{ detection_reason }}. Revisa la ropa y apaga desde SmartHQ o manualmente si ya está seca."
+      # Home Assistant no tiene apagado remoto confiable expuesto para este equipo; esta versión solo notifica.
     - conditions:
       - condition: template
-        value_template: "{{ (start_ts | int(0)) > 0 and (not ciclo_activo or not load_sensing_activo) }}"
+        value_template: "{{ (start_ts | int(0)) > 0 and not ciclo_activo }}"
       sequence:
       - service: logbook.log
         data:
           name: Lavadora Watchdog
-          message: "hito={{ 'reset_watchdog' if not ciclo_activo else 'salida_normal' }} | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | load_sensing_directo={{ load_sensing_directo }} | load_sensing_proxy_15={{ load_sensing_proxy_15 }} | load_sensing_activo={{ load_sensing_activo }} | subciclo={{ sub_cycle_raw }} | sub_cycle_raw={{ sub_cycle_raw }} | elapsed_s={{ elapsed_s }} | loop_notificado={{ loop_notificado }} | total_time_remaining={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | dryer_minutes={{ dryer_minutes }} | dryer_previo={{ ultimo_dryer_time_raw }} | ultimo_dryer_minutes={{ ultimo_dryer_minutes }} | dryer_reinicio_15={{ dryer_reinicio_15 }} | washer_time_raw={{ washer_time_raw }} | detection_reason={{ detection_reason }}"
+          message: "hito=reset_watchdog | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | load_sensing_directo={{ load_sensing_directo }} | load_sensing_proxy_15={{ load_sensing_proxy_15 }} | load_sensing_activo={{ load_sensing_activo }} | subciclo={{ sub_cycle_raw }} | sub_cycle_raw={{ sub_cycle_raw }} | elapsed_s={{ elapsed_s }} | loop_notificado={{ loop_notificado }} | total_time_remaining={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | dryer_minutes={{ dryer_minutes }} | dryer_previo={{ ultimo_dryer_time_raw }} | ultimo_dryer_minutes={{ ultimo_dryer_minutes }} | dryer_reinicio_15={{ dryer_reinicio_15 }} | washer_time_raw={{ washer_time_raw }} | detection_reason={{ detection_reason }}"
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.lavadora_az312796n_load_sensing_inicio
+        data:
+          timestamp: 0
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.lavadora_az312796n_watchdog_loop_notificado
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.lavadora_az312796n_watchdog_ultimo_dryer_time
+        data:
+          value: unknown
+    - conditions:
+      - condition: template
+        value_template: "{{ (start_ts | int(0)) > 0 and ciclo_activo and not load_sensing_activo and (elapsed_s | int(0)) < (loop_threshold_s | int(960)) and not subciclo_cooldown and not subciclo_drying and sub_cycle_norm not in ['---', '', 'unknown', 'unavailable'] }}"
+      sequence:
+      - service: logbook.log
+        data:
+          name: Lavadora Watchdog
+          message: "hito=salida_normal_antes_umbral | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | subciclo={{ sub_cycle_raw }} | elapsed_s={{ elapsed_s }} | threshold_s={{ loop_threshold_s }} | load_sensing_directo={{ load_sensing_directo }} | load_sensing_proxy_15={{ load_sensing_proxy_15 }} | load_sensing_activo={{ load_sensing_activo }} | subciclo_cooldown={{ subciclo_cooldown }} | subciclo_drying={{ subciclo_drying }} | salida_sospechosa_post_watchdog={{ salida_sospechosa_post_watchdog }} | total={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | washer={{ washer_time_raw }} | detection_reason={{ detection_reason }}"
       - service: input_datetime.set_datetime
         target:
           entity_id: input_datetime.lavadora_az312796n_load_sensing_inicio
