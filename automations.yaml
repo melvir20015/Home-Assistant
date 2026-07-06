@@ -6205,7 +6205,10 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
     door_status: "{{ states('binary_sensor.dormitorio_lavadora_az312796n_laundry_combo_door_status') }}"
     remote_status: "{{ states('binary_sensor.az312796n_laundry_remote_status') }}"
     extended_tumble: "{{ states('sensor.az312796n_laundry_dryer_extended_tumble_option_selection') }}"
-    load_sensing_activo: >-
+    extended_tumble_norm: "{{ extended_tumble | lower | trim }}"
+    extended_tumble_activo: >-
+      {{ extended_tumble_norm in ['on', 'true', 'active', 'enabled', 'enable', 'yes', 'si', 'sí'] }}
+    load_sensing_directo: >-
       {{ sub_cycle_norm in ['load sensing', 'detectando carga'] }}
     estado_inactivo: >-
       {{ machine_state_norm in ['', 'unknown', 'unavailable', 'off', 'idle', 'standby', 'complete', 'completed', 'end', 'ended', 'finished', 'finish'] }}
@@ -6247,6 +6250,42 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       {% else %}
         {{ raw | float(-1) }}
       {% endif %}
+    total_minutes: >-
+      {% set raw = total_time_remaining | lower | trim %}
+      {% if raw in ['', 'unknown', 'unavailable', 'none'] %}
+        {{ -1 }}
+      {% elif ':' in raw %}
+        {% set parts = raw.split(':') | map('int', 0) | list %}
+        {% if parts | length == 3 %}
+          {{ (parts[0] * 60 + parts[1] + (1 if parts[2] >= 30 else 0)) | int }}
+        {% elif parts | length == 2 %}
+          {{ (parts[0] * 60 + parts[1]) | int }}
+        {% else %}
+          {{ -1 }}
+        {% endif %}
+      {% else %}
+        {{ raw | float(-1) }}
+      {% endif %}
+    load_sensing_proxy_15: >-
+      {{ machine_state_norm == 'run'
+         and ciclo_activo
+         and sub_cycle_norm in ['---', '', 'unknown', 'unavailable']
+         and (washer_time_raw | lower | trim) in ['off', '0:00', '0:00:00']
+         and (dryer_minutes | float(-1)) >= 14
+         and (dryer_minutes | float(-1)) <= 16
+         and ((total_minutes | float(-1)) >= 14 and (total_minutes | float(-1)) <= 16
+              or ((total_minutes | float(-1)) >= 0 and ((total_minutes | float(-1)) - (dryer_minutes | float(-1))) | abs <= 1))
+         and not extended_tumble_activo }}
+    load_sensing_activo: >-
+      {{ load_sensing_directo or load_sensing_proxy_15 }}
+    detection_reason: >-
+      {% if load_sensing_directo %}
+        directo_subciclo
+      {% elif load_sensing_proxy_15 %}
+        proxy_subciclo_guion_dryer_15
+      {% else %}
+        no_detectado
+      {% endif %}
     dryer_reinicio_15: >-
       {{ (dryer_minutes | float(-1)) >= 14 and (dryer_minutes | float(-1)) <= 16 and (ultimo_dryer_minutes | float(-1)) >= 0 and (ultimo_dryer_minutes | float(-1)) < 14 }}
     loop_confirmado: >-
@@ -6270,11 +6309,11 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: Lavadora Watchdog
-          message: "hito=inicio_vigilancia | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | subciclo={{ sub_cycle_raw }} | total={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | washer={{ washer_time_raw }} | puerta={{ door_status }} | remote={{ remote_status }} | extended_tumble={{ extended_tumble }}"
+          message: "hito=inicio_vigilancia | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | load_sensing_directo={{ load_sensing_directo }} | load_sensing_proxy_15={{ load_sensing_proxy_15 }} | load_sensing_activo={{ load_sensing_activo }} | subciclo={{ sub_cycle_raw }} | sub_cycle_raw={{ sub_cycle_raw }} | total={{ total_time_remaining }} | total_time_remaining={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | dryer_minutes={{ dryer_minutes }} | dryer_previo={{ ultimo_dryer_time_raw }} | ultimo_dryer_minutes={{ ultimo_dryer_minutes }} | dryer_reinicio_15={{ dryer_reinicio_15 }} | washer={{ washer_time_raw }} | washer_time_raw={{ washer_time_raw }} | detection_reason={{ detection_reason }} | puerta={{ door_status }} | remote={{ remote_status }} | extended_tumble={{ extended_tumble }}"
       - service: notify.mobile_app_samsung_s24
         data:
-          title: "Lavadora: vigilando Detectando carga"
-          message: "Ciclo={{ cycle_raw }}; subciclo={{ sub_cycle_raw }}; total={{ total_time_remaining }}; dryer={{ dryer_time_raw }}; washer={{ washer_time_raw }}; puerta={{ door_status }}; remote={{ remote_status }}; hora={{ now().strftime('%H:%M:%S') }}."
+          title: "Lavadora: vigilando posible Detectando carga"
+          message: "Ciclo={{ cycle_raw }}; subciclo={{ sub_cycle_raw }}; detección={{ detection_reason }}; total={{ total_time_remaining }}; dryer={{ dryer_time_raw }}; washer={{ washer_time_raw }}; puerta={{ door_status }}; remote={{ remote_status }}; hora={{ now().strftime('%H:%M:%S') }}."
     - conditions:
       - condition: template
         value_template: "{{ loop_confirmado }}"
@@ -6285,7 +6324,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: Lavadora Watchdog
-          message: "hito=loop_confirmado | elapsed_s={{ elapsed_s }} | dryer_reinicio_15={{ dryer_reinicio_15 }} | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | subciclo={{ sub_cycle_raw }} | total={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | dryer_previo={{ ultimo_dryer_time_raw }} | puerta={{ door_status }} | remote={{ remote_status }}"
+          message: "hito=loop_confirmado | elapsed_s={{ elapsed_s }} | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | load_sensing_directo={{ load_sensing_directo }} | load_sensing_proxy_15={{ load_sensing_proxy_15 }} | load_sensing_activo={{ load_sensing_activo }} | subciclo={{ sub_cycle_raw }} | sub_cycle_raw={{ sub_cycle_raw }} | total={{ total_time_remaining }} | total_time_remaining={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | dryer_minutes={{ dryer_minutes }} | dryer_previo={{ ultimo_dryer_time_raw }} | ultimo_dryer_minutes={{ ultimo_dryer_minutes }} | dryer_reinicio_15={{ dryer_reinicio_15 }} | washer_time_raw={{ washer_time_raw }} | detection_reason={{ detection_reason }} | puerta={{ door_status }} | remote={{ remote_status }}"
       - service: notify.mobile_app_samsung_s24
         data:
           title: "Lavadora: posible loop de secado"
@@ -6297,7 +6336,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: Lavadora Watchdog
-          message: "hito={{ 'reset_watchdog' if not ciclo_activo else 'salida_normal' }} | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | subciclo={{ sub_cycle_raw }} | elapsed_s={{ elapsed_s }} | loop_notificado={{ loop_notificado }} | dryer={{ dryer_time_raw }}"
+          message: "hito={{ 'reset_watchdog' if not ciclo_activo else 'salida_normal' }} | ciclo={{ cycle_raw }} | estado={{ machine_state_raw }} | load_sensing_directo={{ load_sensing_directo }} | load_sensing_proxy_15={{ load_sensing_proxy_15 }} | load_sensing_activo={{ load_sensing_activo }} | subciclo={{ sub_cycle_raw }} | sub_cycle_raw={{ sub_cycle_raw }} | elapsed_s={{ elapsed_s }} | loop_notificado={{ loop_notificado }} | total_time_remaining={{ total_time_remaining }} | dryer={{ dryer_time_raw }} | dryer_minutes={{ dryer_minutes }} | dryer_previo={{ ultimo_dryer_time_raw }} | ultimo_dryer_minutes={{ ultimo_dryer_minutes }} | dryer_reinicio_15={{ dryer_reinicio_15 }} | washer_time_raw={{ washer_time_raw }} | detection_reason={{ detection_reason }}"
       - service: input_datetime.set_datetime
         target:
           entity_id: input_datetime.lavadora_az312796n_load_sensing_inicio
@@ -6314,7 +6353,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
   - choose:
     - conditions:
       - condition: template
-        value_template: "{{ load_sensing_activo and ciclo_activo }}"
+        value_template: "{{ ciclo_activo and (dryer_minutes | float(-1)) >= 0 }}"
       sequence:
       - service: input_text.set_value
         target:
