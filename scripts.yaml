@@ -237,7 +237,13 @@ ac_night_reporte_diagnostico:
         off_cool_base_plus_offset: "{{ ((off_cool_base | float) + (offset_cool_col_value | float(0)) + (exterior_adjust_cool | float)) | round(2) }}"
         cool_global_bias: 0
         off_cool_biased_pre_clamp: "{{ ((off_cool_base_plus_offset | float) - (comfort_pull | float)) | round(2) }}"
-        off_cool: "{{ ([24.2, [22.7, (off_cool_biased_pre_clamp | float)] | max] | min) | round(2) }}"
+        heat_cool_deadband: 0.8
+        climate_min_temp_safe: "{{ state_attr(climate_ent, 'min_temp') | float(17.8) }}"
+        off_heat: "{{ ([states('input_number.ac_night_offset_heat_col_' ~ col_idx)|float(0) + off_heat_base|float, 24.0] | min) | round(2) }}"
+        cool_heat_boundary: "{{ ((off_heat | float(0)) + (heat_cool_deadband | float(0.8))) | round(2) }}"
+        cool_lower_limit: "{{ ([climate_min_temp_safe | float(17.8), cool_heat_boundary | float(0)] | max) | round(2) }}"
+        # Piso fijo 22.7 removido: bloqueaba aprendizaje manual COOL en verano; ahora limita frontera HEAT/COOL y mínimo físico.
+        off_cool: "{{ ([24.2, [cool_lower_limit | float(17.8), (off_cool_biased_pre_clamp | float)] | max] | min) | round(2) }}"
         off_cool_final_real: "{{ off_cool | float }}"
         off_cool_real: "{{ off_cool_final_real }}"
         hysteresis_eff: "{{ ([0.70, [0.42, (0.65 - ((night_comfort_pressure | float) * 0.20))] | max] | min) | round(2) }}"
@@ -247,7 +253,6 @@ ac_night_reporte_diagnostico:
         on_cool_pre_cap: "{{ ((off_cool_final_real | float) + (hysteresis_eff | float)) | round(2) }}"
         on_cool_candidate: "{{ [on_cool_cap_night_dynamic | float, on_cool_pre_cap | float] | min }}"
         on_cool: "{{ ([24.3, [((off_cool_final_real | float) + 0.35), (on_cool_candidate | float)] | max] | min) | round(2) }}"
-        off_heat: "{{ ([states('input_number.ac_night_offset_heat_col_' ~ col_idx)|float(0) + off_heat_base|float, 24.0] | min) | round(2) }}"
         on_heat: "{{ (off_heat|float - (hysteresis_eff | float)) | round(2) }}"
         cool_off: "{{ off_cool }}"
         cool_on: "{{ on_cool }}"
