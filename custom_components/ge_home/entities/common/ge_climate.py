@@ -94,6 +94,13 @@ class GeClimate(GeEntity, ClimateEntity):
         #return UnitOfTempterature.FAHRENHEIT
 
     @property
+    def target_temperature_step(self) -> float:
+        # GE/SmartHQ uses whole-degree setpoints internally. Advertising a
+        # 1-degree step keeps Home Assistant controls aligned with the physical
+        # HVAC capability instead of offering unsupported 0.5-degree changes.
+        return 1.0
+
+    @property
     def supported_features(self):
         return GE_CLIMATE_SUPPORT
 
@@ -181,8 +188,10 @@ class GeClimate(GeEntity, ClimateEntity):
         
         # GE/SmartHQ accepts integer Fahrenheit values. Home Assistant converts
         # Celsius UI requests into Fahrenheit floats because this entity exposes
-        # Fahrenheit internally. Use ceil instead of int() so 18-23 °C requests
-        # never become the next-lower Celsius value after Fahrenheit truncation.
+        # Fahrenheit internally. Use ceil instead of int() so decimal Celsius
+        # requests such as 24.5 °C still become a compatible whole-degree
+        # Fahrenheit setpoint without dropping the physical HVAC below the
+        # selected Celsius value.
         temperature = math.ceil(float(temperature))
 
         current_target = self.appliance.get_erd_value(self.target_temperature_erd_code)
