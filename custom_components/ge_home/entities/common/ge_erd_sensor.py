@@ -48,7 +48,7 @@ class GeErdSensor(GeErdEntity, SensorEntity):
                 else:
                     result = value * self._value_scale
                 if self._is_laundry_diagnostic_target():
-                    _LOGGER.warning(
+                    _LOGGER.debug(
                         "GE_HOME_LAUNDRY_STATE_DIAG native_value unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=%s",
                         getattr(self, "unique_id", None),
                         getattr(self, "entity_id", None),
@@ -68,7 +68,7 @@ class GeErdSensor(GeErdEntity, SensorEntity):
                 result = self._stringify(value, temp_units=self._temp_units)
 
             if self._is_laundry_diagnostic_target():
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_STATE_DIAG native_value unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=%s",
                     getattr(self, "unique_id", None),
                     getattr(self, "entity_id", None),
@@ -79,7 +79,7 @@ class GeErdSensor(GeErdEntity, SensorEntity):
             return result
         except KeyError:
             if self._is_laundry_diagnostic_target():
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_STATE_DIAG native_value_missing unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=None",
                     getattr(self, "unique_id", None),
                     getattr(self, "entity_id", None),

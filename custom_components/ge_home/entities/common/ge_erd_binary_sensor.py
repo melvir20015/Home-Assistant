@@ -25,7 +25,7 @@ class GeErdBinarySensor(GeErdEntity, BinarySensorEntity):
             raw_value = self.appliance.get_erd_value(self.erd_code)
             result = self._laundry_combo_door_bytes_to_bool(raw_value)
             if self._is_laundry_diagnostic_target():
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_STATE_DIAG is_on unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=%s",
                     getattr(self, "unique_id", None),
                     getattr(self, "entity_id", None),
@@ -36,7 +36,7 @@ class GeErdBinarySensor(GeErdEntity, BinarySensorEntity):
             return result
         except KeyError:
             if self._is_laundry_diagnostic_target():
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_STATE_DIAG is_on_missing unique_id=%s entity_id=%s erd_code=%s raw_value=%s final_value=None",
                     getattr(self, "unique_id", None),
                     getattr(self, "entity_id", None),

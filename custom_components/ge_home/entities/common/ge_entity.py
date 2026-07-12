@@ -68,7 +68,7 @@ class GeEntity:
         await super().async_added_to_hass()
         self._added = True
         if self._is_laundry_diagnostic_target():
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "GE_HOME_LAUNDRY_STATE_DIAG added_to_hass unique_id=%s entity_id=%s class=%s",
                 getattr(self, "unique_id", None),
                 getattr(self, "entity_id", None),

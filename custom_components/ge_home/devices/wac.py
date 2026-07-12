@@ -16,7 +16,7 @@ def _get_optional_erd(*erd_names: str):
         if erd is not None:
             return erd
 
-    _LOGGER.warning(
+    _LOGGER.debug(
         "ERD WAC demand response no disponible en gehomesdk; "
         "omitiendo sensor opcional y continuando con el A/C. ERD buscados: %s",
         ", ".join(erd_names),

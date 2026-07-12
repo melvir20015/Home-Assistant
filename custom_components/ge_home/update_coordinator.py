@@ -223,7 +223,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             api_type.__name__,
         )
         if _is_laundry_diagnostic_target(appliance):
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "GE_HOME_LAUNDRY_DIAG api_selection mac_addr=%s appliance_type=%s available=%s initialized=%s api_class=%s",
                 appliance.mac_addr,
                 appliance.appliance_type,
@@ -247,7 +247,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
         if not self._is_appliance_valid(appliance):
             if _is_laundry_diagnostic_target(appliance):
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_DIAG maybe_add reason=invalid_appliance mac_addr=%s appliance_type=%s available=%s initialized=%s",
                     mac_addr,
                     appliance.appliance_type,
@@ -266,7 +266,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
 
         if not appliance.initialized:
             if _is_laundry_diagnostic_target(appliance):
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_DIAG maybe_add reason=not_initialized mac_addr=%s appliance_type=%s available=%s initialized=%s",
                     mac_addr,
                     appliance.appliance_type,
@@ -294,7 +294,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             if self._init_done:
                 self._publish_ready_signal([api])
             if _is_laundry_diagnostic_target(appliance):
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_DIAG api_created mac_addr=%s appliance_type=%s available=%s initialized=%s api_class=%s entity_count=%s",
                     mac_addr,
                     appliance.appliance_type,
@@ -509,7 +509,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                 return
 
         if _is_laundry_diagnostic_target(appliance):
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "GE_HOME_LAUNDRY_DIAG update mac_addr=%s appliance_type=%s available=%s initialized=%s existing_api=%s api_class=%s entity_count=%s",
                 appliance.mac_addr,
                 appliance.appliance_type,
@@ -583,7 +583,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             if isinstance(entity, GeEntity):
                 gee: GeEntity = entity
                 if is_laundry_diag:
-                    _LOGGER.warning(
+                    _LOGGER.debug(
                         "GE_HOME_LAUNDRY_STATE_DIAG update_seen unique_id=%s entity_id=%s class=%s enabled=%s added=%s available=%s erd_code=%s",
                         getattr(entity, "unique_id", None),
                         getattr(entity, "entity_id", None),
@@ -595,7 +595,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                     )
                 if not gee.added:
                     if is_laundry_diag:
-                        _LOGGER.warning(
+                        _LOGGER.debug(
                             "GE_HOME_LAUNDRY_STATE_DIAG skipped_not_added unique_id=%s entity_id=%s class=%s enabled=%s added=%s available=%s erd_code=%s",
                             getattr(entity, "unique_id", None),
                             getattr(entity, "entity_id", None),
@@ -610,7 +610,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
             if entity.enabled:
                 try:
                     if is_laundry_diag:
-                        _LOGGER.warning(
+                        _LOGGER.debug(
                             "GE_HOME_LAUNDRY_STATE_DIAG write_attempt unique_id=%s entity_id=%s class=%s enabled=%s available=%s erd_code=%s",
                             getattr(entity, "unique_id", None),
                             getattr(entity, "entity_id", None),
@@ -622,7 +622,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug(f"Refreshing state for {entity} ({entity.unique_id}, {entity.entity_id}")
                     entity.async_write_ha_state()
                     if is_laundry_diag:
-                        _LOGGER.warning(
+                        _LOGGER.debug(
                             "GE_HOME_LAUNDRY_STATE_DIAG write_success unique_id=%s entity_id=%s class=%s enabled=%s available=%s erd_code=%s",
                             getattr(entity, "unique_id", None),
                             getattr(entity, "entity_id", None),
@@ -678,7 +678,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                         appliance_valid,
                     )
                     if _is_laundry_diagnostic_target(appliance):
-                        _LOGGER.warning(
+                        _LOGGER.debug(
                             "GE_HOME_LAUNDRY_DIAG roster mac_addr=%s appliance_type=%s available=%s initialized=%s valid=%s",
                             appliance.mac_addr,
                             appliance.appliance_type,
@@ -725,7 +725,7 @@ class GeHomeUpdateCoordinator(DataUpdateCoordinator):
                 cache_count,
                 cache_laundry,
             ) = _property_collection_diagnostics(appliance)
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "GE_HOME_LAUNDRY_DIAG initial_update mac_addr=%s appliance_type=%s available=%s initialized=%s known_properties_status=%s known_properties_count=%s property_cache_status=%s property_cache_count=%s known_laundry_erds=%s property_cache_laundry_erds=%s",
                 appliance.mac_addr,
                 appliance.appliance_type,

@@ -38,10 +38,10 @@ _missing_cook_action_warned = False
 
 
 def warn_missing_cook_action_once() -> None:
-    """Log a non-fatal warning when advanced Advantium support is unavailable."""
+    """Log non-fatal diagnostic detail when advanced Advantium support is unavailable."""
     global _missing_cook_action_warned
     if not _missing_cook_action_warned:
-        _LOGGER.warning(_MISSING_COOK_ACTION_WARNING)
+        _LOGGER.debug(_MISSING_COOK_ACTION_WARNING)
         _missing_cook_action_warned = True
 
 

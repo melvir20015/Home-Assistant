@@ -290,7 +290,7 @@ class ApplianceApi:
             laundry_entity_erds = _laundry_erd_sample(
                 getattr(entity, "erd_code", None) for entity in entities
             )
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "GE_HOME_LAUNDRY_DIAG entities_built mac_addr=%s serial_or_mac=%s api_class=%s entity_count=%s laundry_entity_erds=%s",
                 self.mac_addr,
                 self.serial_or_mac,

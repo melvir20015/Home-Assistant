@@ -68,7 +68,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             api_platform_entities = [entity for entity in api_entities if isinstance(entity, GeErdSensor)]
             api_laundry_entities = [entity for entity in api_entities if _is_laundry_diagnostic_entity(entity)]
             if api_laundry_entities:
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_STATE_DIAG platform_api_summary platform=sensor.py api_class=%s total_entities=%s platform_entities=%s laundry_entities=%s",
                     type(api).__name__,
                     len(api_entities),
@@ -90,7 +90,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
             entity_id = getattr(entity, "entity_id", None)
             is_registered = registry.async_is_registered(entity_id) if entity_id else False
             if _is_laundry_diagnostic_entity(entity):
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "GE_HOME_LAUNDRY_STATE_DIAG platform_discovery platform=sensor.py unique_id=%s entity_id=%s class=%s registered_by_entity_id=%s",
                     unique_id,
                     entity_id,
@@ -99,7 +99,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, asyn
                 )
             if unique_id is not None and unique_id in seen_unique_ids:
                 if _is_laundry_diagnostic_entity(entity):
-                    _LOGGER.warning(
+                    _LOGGER.debug(
                         "GE_HOME_LAUNDRY_STATE_DIAG platform_discovery_duplicate_unique_id platform=sensor.py unique_id=%s entity_id=%s class=%s",
                         unique_id,
                         entity_id,

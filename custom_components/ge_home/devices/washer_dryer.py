@@ -87,7 +87,7 @@ class WasherDryerApi(WasherApi, DryerApi):
 
         entities = base_entities + common_entities + washer_entities + dryer_entities
         built_erds = [str(getattr(entity, "erd_code", None)) for entity in common_entities + washer_entities + dryer_entities]
-        _LOGGER.warning(
+        _LOGGER.debug(
             "GE_HOME_LAUNDRY_DIAG WasherDryerApi supported_entities serial_or_mac=%s mac_addr=%s added_erds=%s omitted_erds=%s",
             self.serial_or_mac,
             self.mac_addr,

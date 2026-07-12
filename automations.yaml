@@ -3538,14 +3538,16 @@ Contexto: Columna {{ col_idx }} ({{ col_humana }})'
       transicion_hvac_directa_real: '{{ (modo_anterior == ''off'' and modo_nuevo in [''cool'',''heat''])
         or (modo_nuevo == ''off'' and modo_anterior in [''cool'',''heat'']) }}'
       transicion_compuesta_inicio_valida: '{{ modo_anterior == ''off'' and modo_nuevo == ''fan_only'' }}'
-      transicion_hvac_real: '{{ transicion_hvac_directa_real }}'
-      modo_aprendizaje: '{% if modo_nuevo in [''cool'',''heat''] %}{{ modo_nuevo }}{%
-        elif modo_anterior in [''cool'',''heat''] %}{{ modo_anterior }}{% else %}fuera_alcance{%
-        endif %}'
-      evento_manual_tipo: '{% if transicion_real and modo_nuevo in [''cool'',''heat'']
-        and modo_anterior == ''off'' %}encendido_manual{% elif transicion_real and
-        modo_nuevo == ''off'' and modo_anterior in [''cool'',''heat''] %}apagado_manual{%
-        else %}ignorado{% endif %}'
+      transicion_consolidada_from: '{{ modo_anterior }}'
+      transicion_consolidada_to: '{{ modo_nuevo }}'
+      transicion_observada_consolidada: '{{ transicion_consolidada_from ~ ''->'' ~ transicion_consolidada_to }}'
+      cierre_compuesto_valido: '{{ false }}'
+      transicion_hvac_real: '{{ (transicion_consolidada_from == ''off'' and transicion_consolidada_to in [''cool'',''heat''])
+        or (transicion_consolidada_to == ''off'' and transicion_consolidada_from in [''cool'',''heat'']) }}'
+      modo_aprendizaje: '{% if transicion_consolidada_to in [''cool'',''heat''] %}{{ transicion_consolidada_to }}{% elif transicion_consolidada_from in [''cool'',''heat''] %}{{ transicion_consolidada_from }}{% else %}fuera_alcance{% endif %}'
+      evento_manual_tipo: '{% if transicion_hvac_real and transicion_consolidada_to in [''cool'',''heat'']
+        and transicion_consolidada_from == ''off'' %}encendido_manual{% elif transicion_hvac_real and
+        transicion_consolidada_to == ''off'' and transicion_consolidada_from in [''cool'',''heat''] %}apagado_manual{% else %}ignorado{% endif %}'
       contexto: '{{ states(''input_text.ac_matriz_160_columna_activa_humana'') | default(''Contexto
         no disponible'', true) }}'
       col_idx: '{{ states(''input_text.ac_matriz_160_columna_activa_idx'') | int(0)
@@ -3675,16 +3677,6 @@ Contexto: Columna {{ col_idx }} ({{ col_humana }})'
         }}'
       helper_t_on_heat: '{{ states(''input_number.ac_matriz_160_t_on_heat'') | float(21)
         }}'
-      transicion_consolidada_from: '{{ modo_anterior }}'
-      transicion_consolidada_to: '{{ modo_nuevo }}'
-      transicion_observada_consolidada: '{{ transicion_consolidada_from ~ ''->'' ~ transicion_consolidada_to }}'
-      cierre_compuesto_valido: '{{ false }}'
-      transicion_hvac_real: '{{ (transicion_consolidada_from == ''off'' and transicion_consolidada_to in [''cool'',''heat''])
-        or (transicion_consolidada_to == ''off'' and transicion_consolidada_from in [''cool'',''heat'']) }}'
-      modo_aprendizaje: '{% if transicion_consolidada_to in [''cool'',''heat''] %}{{ transicion_consolidada_to }}{% elif transicion_consolidada_from in [''cool'',''heat''] %}{{ transicion_consolidada_from }}{% else %}fuera_alcance{% endif %}'
-      evento_manual_tipo: '{% if transicion_hvac_real and transicion_consolidada_to in [''cool'',''heat'']
-        and transicion_consolidada_from == ''off'' %}encendido_manual{% elif transicion_hvac_real and
-        transicion_consolidada_to == ''off'' and transicion_consolidada_from in [''cool'',''heat''] %}apagado_manual{% else %}ignorado{% endif %}'
       off_vigente: '{% if modo_aprendizaje == ''cool'' %}{{ helper_t_off_cool | float(24)
         }}{% elif modo_aprendizaje == ''heat'' %}{{ helper_t_off_heat | float(22)
         }}{% else %}0{% endif %}'
