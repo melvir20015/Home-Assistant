@@ -3312,6 +3312,14 @@ Para validar en operación:
 - **Refuerzo de setpoint por humedad:** se mantiene el mínimo HVAC, máximo de 3 refuerzos, contador `input_number.ac_night_cool_reinforcement_count`, firma de ciclo y payload pendiente con retry/confirmación. Además de la presión térmica normal, puede reforzar por `muggy_high/severe`, falta de mejora de punto de rocío/humedad o compresor probablemente inactivo con bochorno alto. Los escalones por humedad son: severo desde `15/35/55 min`, alto desde `20/45/70 min`, y normal conserva `20/50/80 min`. Las trazas diferencian `night_humidity_based_sp_reinforcement` y `night_humidity_compressor_inactive_reinforcement`.
 - **Fan seguro:** con compresor activo puede subir a `Med` si hay bochorno alto y a `High` si es severo y está soportado. Con `compressor_state=inactive_probable` no se sube fan y se prioriza bajar SP. Con `compressor_state=unknown` se mantiene `Low`, salvo que `input_boolean.ac_night_enable_humidity_fan_boost` habilite explícitamente un boost experimental acotado por `input_datetime.ac_night_humidity_fan_boost_started_ts` a 15 minutos. Los cambios de fan usan `night_humidity_fan_adjustment`.
 
+## 77. AC Night — separación de confort térmico y guardia de humedad (2026-07-16)
+
+- **Alcance:** automatización `AC Night Matriz Contextual` (`id: ac_night_matrix_v1`) en `automations.yaml`.
+- **Causa corregida:** `bochorno_score` es una presión de confort compuesta que incluye `temp_pressure`; por ello podía activar `muggy_moderate/high/severe` y bloquear un apagado COOL aun con humedad relativa y punto de rocío normales.
+- **Contrato nuevo de humedad real:** `muggy_moderate`, `muggy_high` y `muggy_severe` dependen exclusivamente de humedad interior (`58/62/63 %`) o de punto de rocío (`14.8/15.6/16.2 °C`). `muggy_guard_active` reutiliza `muggy_moderate`, por lo que las extensiones de 60/75/90 minutos, refuerzos `humidity_dew`/`compressor_inactive_muggy` y ajustes de ventilador por humedad usan la misma clasificación higrométrica real.
+- **Confort térmico preservado:** `temp_pressure`, `hum_pressure`, `dew_pressure`, `night_comfort_pressure`, `bochorno_score`, `comfort_pull`, `hysteresis_eff`, `off_cool`, `on_cool` y el setpoint contextual conservan su función térmica. En particular, `bochorno_score` sigue ajustando confort, pero ya no puede bloquear por sí solo el apagado mediante la guardia de humedad.
+- **Diagnóstico:** se añade `muggy_guard_reason` (`dew_*`, `humidity_*` o `none`) a los logs de bloqueo/liberación de guardia, refuerzos por humedad y ajustes de ventilador. Esos logs conservan `bochorno_score`, `temp_pressure`, `hum_pressure` y `dew_pressure` para diferenciar presión de confort de humedad real.
+
 ---
 
 ## Anexo: escenarios operativos críticos de `AC Night Matriz Contextual`

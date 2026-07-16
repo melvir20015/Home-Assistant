@@ -4959,11 +4959,12 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       dew_moderate: "{{ (dew_point_night | float(0)) >= 14.8 }}"
       dew_high: "{{ (dew_point_night | float(0)) >= 15.6 }}"
       dew_severe: "{{ (dew_point_night | float(0)) >= 16.2 }}"
-      muggy_moderate: "{{ dew_moderate or (hin | float(0)) >= 58 or (bochorno_score | float(0)) >= 0.18 }}"
-      muggy_high: "{{ dew_high or (hin | float(0)) >= 62 or (bochorno_score | float(0)) >= 0.45 }}"
-      muggy_severe: "{{ dew_severe or (hin | float(0)) >= 63 or (bochorno_score | float(0)) >= 0.62 }}"
+      muggy_moderate: "{{ dew_moderate or (hin | float(0)) >= 58 }}"
+      muggy_high: "{{ dew_high or (hin | float(0)) >= 62 }}"
+      muggy_severe: "{{ dew_severe or (hin | float(0)) >= 63 }}"
       normal_off_ready: "{{ (tin_valid | bool(false)) and hvac_mode == 'cool' and (tin | float) <= (off_cool | float) }}"
-      muggy_guard_active: "{{ dew_moderate or (hin | float(0)) >= 58 or (bochorno_score | float(0)) >= 0.18 }}"
+      muggy_guard_active: "{{ muggy_moderate }}"
+      muggy_guard_reason: "{% if dew_severe %}dew_severe{% elif (hin | float(0)) >= 63 %}humidity_severe{% elif dew_high %}dew_high{% elif (hin | float(0)) >= 62 %}humidity_high{% elif dew_moderate %}dew_moderate{% elif (hin | float(0)) >= 58 %}humidity_moderate{% else %}none{% endif %}"
       muggy_guard_max_elapsed_min: "{% if muggy_severe and not ((tin | float(23)) <= ((off_cool | float(0)) - 0.4)) %}90{% elif muggy_high %}75{% else %}60{% endif %}"
       muggy_guard_force_release: "{{ (night_cycle_elapsed_min | float(0)) >= (muggy_guard_max_elapsed_min | float(75)) }}"
       compressor_power_threshold_w: 1000
@@ -5118,7 +5119,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | motivo=inicio_boost_experimental | fan_target={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_high={{ muggy_high }} | limite_min=15 | resultado_terminal=boost_timer_started"
+          message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | motivo=inicio_boost_experimental | muggy_guard_reason={{ muggy_guard_reason }} | fan_target={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_high={{ muggy_high }} | bochorno_score={{ bochorno_score }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | limite_min=15 | resultado_terminal=boost_timer_started"
   - choose:
     - conditions:
       - condition: template
@@ -5199,7 +5200,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           - service: logbook.log
             data:
               name: AC Night
-              message: "hito=night_auto_off_humidity_guard_released_by_timeout | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | elapsed={{ night_cycle_elapsed_min }} | max_elapsed={{ muggy_guard_max_elapsed_min }} | limite_dinamico_min={{ muggy_guard_max_elapsed_min }} | resultado_terminal=release"
+              message: "hito=night_auto_off_humidity_guard_released_by_timeout | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | muggy_guard_reason={{ muggy_guard_reason }} | bochorno_score={{ bochorno_score }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | elapsed={{ night_cycle_elapsed_min }} | max_elapsed={{ muggy_guard_max_elapsed_min }} | limite_dinamico_min={{ muggy_guard_max_elapsed_min }} | resultado_terminal=release"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: input_datetime.set_datetime
@@ -5245,7 +5246,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito=night_auto_off_blocked_by_humidity_guard | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | bochorno_score={{ bochorno_score }} | elapsed={{ night_cycle_elapsed_min }} | muggy_moderate={{ muggy_moderate }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | compressor_state={{ compressor_state }} | max_elapsed={{ muggy_guard_max_elapsed_min }} | limite_dinamico_min={{ muggy_guard_max_elapsed_min }} | tin_source={{ tin_source }} | tin_sensor_count={{ tin_sensor_count }} | hin_source={{ hin_source }} | hin_sensor_count={{ hin_sensor_count }} | resultado_terminal=blocked"
+          message: "hito=night_auto_off_blocked_by_humidity_guard | trace_id={{ context.id|default('na') }} | trigger={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | muggy_guard_reason={{ muggy_guard_reason }} | bochorno_score={{ bochorno_score }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | elapsed={{ night_cycle_elapsed_min }} | muggy_moderate={{ muggy_moderate }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | compressor_state={{ compressor_state }} | max_elapsed={{ muggy_guard_max_elapsed_min }} | limite_dinamico_min={{ muggy_guard_max_elapsed_min }} | tin_source={{ tin_source }} | tin_sensor_count={{ tin_sensor_count }} | hin_source={{ hin_source }} | hin_sensor_count={{ hin_sensor_count }} | resultado_terminal=blocked"
     - conditions:
       - condition: template
         value_template: "{{ normal_off_ready and auto_off_pending_recent and not manual_on_block_active and (not muggy_guard_active or muggy_guard_force_release) }}"
@@ -5290,7 +5291,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           - service: logbook.log
             data:
               name: AC Night
-              message: "hito=night_auto_off_humidity_guard_released_by_timeout | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | bochorno_score={{ bochorno_score }} | elapsed={{ night_cycle_elapsed_min }} | max_elapsed={{ muggy_guard_max_elapsed_min }} | limite_dinamico_min={{ muggy_guard_max_elapsed_min }} | resultado_terminal=release"
+              message: "hito=night_auto_off_humidity_guard_released_by_timeout | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | hin={{ hin }} | dew_point_night={{ dew_point_night }} | muggy_guard_reason={{ muggy_guard_reason }} | bochorno_score={{ bochorno_score }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | elapsed={{ night_cycle_elapsed_min }} | max_elapsed={{ muggy_guard_max_elapsed_min }} | limite_dinamico_min={{ muggy_guard_max_elapsed_min }} | resultado_terminal=release"
       - service: climate.turn_off
         target: {entity_id: "{{ climate_ent }}"}
       - service: input_datetime.set_datetime
@@ -5471,7 +5472,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           - service: logbook.log
             data:
               name: AC Night
-              message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | fan_previo={{ fan_mode_actual }} | fan={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | experimental={{ humidity_fan_boost_enabled }} | resultado_terminal=fan_adjustment"
+              message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | fan_previo={{ fan_mode_actual }} | fan={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_guard_reason={{ muggy_guard_reason }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | bochorno_score={{ bochorno_score }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | experimental={{ humidity_fan_boost_enabled }} | resultado_terminal=fan_adjustment"
       - variables:
           current_temperature_despues: "{{ state_attr(climate_ent, 'current_temperature') | float(none) }}"
           reinforcement_result: "{{ 'confirmed' if sp_confirmado else 'sp_no_confirmado' }}"
@@ -5494,7 +5495,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
       - service: logbook.log
         data:
           name: AC Night
-          message: "hito={{ 'night_humidity_compressor_inactive_reinforcement' if night_reinforcement_reason == 'compressor_inactive_muggy' else 'night_humidity_based_sp_reinforcement' if night_reinforcement_reason == 'humidity_dew' else 'night_sp_progressive_reinforcement' }} | trace_id={{ context.id|default('na') }} | trigger_entity={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | current_temperature_antes={{ current_temperature_antes if current_temperature_antes is not none else 'none' }} | current_temperature_despues={{ current_temperature_despues if current_temperature_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | cooldown_seconds={{ reinforcement_cooldown_seconds if not sp_confirmado else 0 }} | retry_at={{ reinforcement_retry_at_human if not sp_confirmado else 'none' }} | pending_previous_result={{ reinforcement_pending_result if reinforcement_pending_result != '' else 'none' }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos_actuales={{ night_reinforcement_count }} | refuerzos_debidos={{ night_reinforcement_due_count }} | refuerzos={{ night_reinforcement_due_count if sp_confirmado else night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo={{ night_reinforcement_reason }} | causa_principal={{ night_reinforcement_primary_cause }} | banderas={{ night_reinforcement_flags }} | dew_not_improving={{ dew_not_improving }} | humidity_not_improving={{ humidity_not_improving }} | compressor_state={{ compressor_state }} | ac_power_w={{ ac_power_w if ac_power_w is not none else 'none' }} | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal={{ 'reinforcement' if sp_confirmado else 'sp_no_confirmado' }}"
+          message: "hito={{ 'night_humidity_compressor_inactive_reinforcement' if night_reinforcement_reason == 'compressor_inactive_muggy' else 'night_humidity_based_sp_reinforcement' if night_reinforcement_reason == 'humidity_dew' else 'night_sp_progressive_reinforcement' }} | trace_id={{ context.id|default('na') }} | trigger_entity={{ trigger_entity if trigger_entity != '' else 'time_pattern' }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_contractual={{ sp_contractual }} | sp_solicitado={{ sp_solicitado }} | sp_reportado_antes={{ sp_reportado_antes if sp_reportado_antes is not none else 'none' }} | sp_reportado_final={{ sp_reportado_despues if sp_reportado_despues is not none else 'none' }} | current_temperature_antes={{ current_temperature_antes if current_temperature_antes is not none else 'none' }} | current_temperature_despues={{ current_temperature_despues if current_temperature_despues is not none else 'none' }} | intento={{ sp_intento }} | confirmado={{ sp_confirmado }} | cooldown_seconds={{ reinforcement_cooldown_seconds if not sp_confirmado else 0 }} | retry_at={{ reinforcement_retry_at_human if not sp_confirmado else 'none' }} | pending_previous_result={{ reinforcement_pending_result if reinforcement_pending_result != '' else 'none' }} | sp_efectivo={{ sp_reportado_despues if sp_confirmado else 'none' }} | refuerzos_actuales={{ night_reinforcement_count }} | refuerzos_debidos={{ night_reinforcement_due_count }} | refuerzos={{ night_reinforcement_due_count if sp_confirmado else night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo={{ night_reinforcement_reason }} | causa_principal={{ night_reinforcement_primary_cause }} | muggy_guard_reason={{ muggy_guard_reason }} | banderas={{ night_reinforcement_flags }} | dew_not_improving={{ dew_not_improving }} | humidity_not_improving={{ humidity_not_improving }} | compressor_state={{ compressor_state }} | ac_power_w={{ ac_power_w if ac_power_w is not none else 'none' }} | bochorno_score={{ bochorno_score }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | hvac_min_sp={{ hvac_min_sp }} | contrato={{ night_contract_signature }} | resultado_terminal={{ 'reinforcement' if sp_confirmado else 'sp_no_confirmado' }}"
     - conditions:
       - condition: template
         value_template: "{{ hvac_mode == 'cool' and presencia_ok and (night_resync_sp_needed or night_resync_fan_needed) }}"
@@ -5544,7 +5545,7 @@ Ajuste especial: temperatura fuera del rango esperado.{% endif %}'
           - service: logbook.log
             data:
               name: AC Night
-              message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=fan_nocturno_desalineado | fan_previo={{ fan_mode_actual }} | fan={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | resultado_terminal=resync"
+              message: "hito=night_humidity_fan_adjustment | trace_id={{ context.id|default('na') }} | col_idx={{ col_idx }} | tin={{ tin }} | off_cool={{ off_cool }} | sp_cool_target={{ sp_cool_target }} | sp_efectivo={{ sp_cool_effective }} | refuerzos={{ night_reinforcement_count }} | minutos_ciclo={{ night_cycle_elapsed_min }} | motivo=fan_nocturno_desalineado | fan_previo={{ fan_mode_actual }} | fan={{ humidity_fan_target }} | compressor_state={{ compressor_state }} | muggy_guard_reason={{ muggy_guard_reason }} | muggy_high={{ muggy_high }} | muggy_severe={{ muggy_severe }} | bochorno_score={{ bochorno_score }} | temp_pressure={{ temp_pressure }} | hum_pressure={{ hum_pressure }} | dew_pressure={{ dew_pressure }} | resultado_terminal=resync"
       - choose:
         - conditions:
           - condition: template
