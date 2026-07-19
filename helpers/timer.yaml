@@ -1,3 +1,8 @@
 ac_night_post_cool_dry:
   name: AC Night Post Cool Dry
   duration: "00:00:45"
+
+ac_matriz_160_post_cool_dry:
+  name: AC Matriz 160 Secado Post Cool
+  duration: "00:02:00"
+  restore: true
